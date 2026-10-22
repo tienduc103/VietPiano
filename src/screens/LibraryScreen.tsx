@@ -4,6 +4,7 @@ import type { Lesson } from '../core/lessons/types';
 import { computeTotals, type LessonProgress } from '../core/storage/ProgressStorage';
 import { useApp } from '../store/appStore';
 import { Button, Card, FullscreenButton, Icon, formatDuration } from '../components/ui';
+import { AppVersion } from '../components/AppVersion';
 
 export function LibraryScreen() {
   const progress = useApp((s) => s.progress);
@@ -65,6 +66,7 @@ export function LibraryScreen() {
         <p className="mt-10 text-center text-xs text-slate-400">
           Âm thanh micro chỉ được xử lý trên thiết bị này, không gửi lên Internet. Dữ liệu tiến độ lưu cục bộ.
         </p>
+        <AppVersion className="mt-2" />
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import { ScoreView } from '../components/ScoreView';
 import { PianoKeyboard } from '../components/PianoKeyboard';
 import { DetectedNote, LevelMeter, MicButton, MicError } from '../components/MicPanel';
 import { Button, FullscreenButton, Icon, formatDuration } from '../components/ui';
+import { AppVersion } from '../components/AppVersion';
 import { useSettings } from '../store/settingsStore';
 import { useApp } from '../store/appStore';
 import { useMic } from '../store/micStore';
@@ -193,7 +194,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
       </section>
 
       {settings.showKeyboard && (
-        <footer className="h-[20vh] min-h-28 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <footer className="h-[20vh] min-h-28 px-3">
           <PianoKeyboard
             from={range.from}
             to={range.to}
@@ -206,6 +207,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
           />
         </footer>
       )}
+      <AppVersion className="shrink-0 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] leading-none" />
 
       {state.status === 'finished' && (
         <FinishDialog

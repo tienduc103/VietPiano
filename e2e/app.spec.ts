@@ -15,6 +15,18 @@ test('thư viện hiển thị đủ nhóm bài học', async ({ page }) => {
   await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(8);
 });
 
+test('dòng phiên bản hiện ở cuối mọi màn hình', async ({ page }) => {
+  // Đọc từ file VERSION lúc build; chưa phát hành thì là "dev".
+  const version = /VietPiano · phiên bản (dev|[1-9]\d*\.\d{2}\.\d{6}\.\d{6})$/;
+  await page.goto('/');
+  await expect(page.getByTestId('app-version')).toHaveText(version);
+  await page.getByRole('button', { name: 'Cài đặt' }).click();
+  await expect(page.getByTestId('app-version')).toHaveText(version);
+  await openLesson(page, 'scale-c-major');
+  await expect(page.getByTestId('app-version')).toBeInViewport();
+  await expect(page.getByTestId('app-version')).toHaveText(version);
+});
+
 test('khuông nhạc vẽ đúng số nốt, khoá Fa cho bài tay trái', async ({ page }) => {
   await openLesson(page, 'lh-five-finger');
   await expect(page.locator('.score-note')).toHaveCount(22);

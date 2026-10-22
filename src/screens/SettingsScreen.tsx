@@ -13,6 +13,7 @@ import { useApp } from '../store/appStore';
 import { Button, Card, Icon, Segmented, Toggle } from '../components/ui';
 import { DetectedNote, LevelMeter, MicButton, MicError } from '../components/MicPanel';
 import { AutoCalibration } from '../components/AutoCalibration';
+import { AppVersion } from '../components/AppVersion';
 
 const CALIBRATION_MS = 2500;
 
@@ -166,9 +167,7 @@ export function SettingsScreen() {
           <DataCard />
         </div>
 
-        <p className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400" data-testid="app-version">
-          VietPiano · phiên bản {__APP_VERSION__}
-        </p>
+        <AppVersion className="mt-8" />
       </div>
     </div>
   );
