@@ -12,6 +12,7 @@ import { useMic } from '../store/micStore';
 import { useApp } from '../store/appStore';
 import { Button, Card, Icon, Segmented, Toggle } from '../components/ui';
 import { DetectedNote, LevelMeter, MicButton, MicError } from '../components/MicPanel';
+import { AutoCalibration } from '../components/AutoCalibration';
 
 const CALIBRATION_MS = 2500;
 
@@ -212,7 +213,10 @@ function Slider(props: {
   );
 }
 
-/** Hiệu chuẩn: đo nhiễu nền khi im lặng để đặt noise gate; sau đó đánh thử để kiểm tra. */
+/**
+ * Hiệu chuẩn: tự căn chỉnh (máy hiện nốt, nghe và đề xuất cài đặt), hoặc chỉ đo nhiễu nền
+ * để đặt noise gate; sau đó đánh thử để kiểm tra.
+ */
 function Calibration() {
   const status = useMic((s) => s.status);
   const update = useSettings((s) => s.update);
@@ -254,13 +258,17 @@ function Calibration() {
   return (
     <div className="mt-5 rounded-xl bg-slate-50 p-4 dark:bg-slate-900/60">
       <h3 className="font-semibold">Hiệu chuẩn micro</h3>
-      <ol className="mt-1 list-decimal pl-5 text-sm text-slate-600 dark:text-slate-300">
-        <li>Giữ yên lặng, không đánh đàn, bấm “Đo tiếng ồn nền” (khoảng 2–3 giây).</li>
-        <li>Bấm “Đánh thử” rồi lần lượt đánh vài nốt Đô4 – Rê4 – Mi4, kiểm tra ứng dụng nhận đúng từng nốt, mỗi phím đúng một lần.</li>
-      </ol>
+      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+        <b>Tự căn chỉnh:</b> giữ yên lặng vài giây, sau đó ứng dụng hiện lần lượt từng nốt (từ quãng trầm tới quãng cao) —
+        bạn đánh nốt đó, máy nghe và đề xuất độ nhạy, độ tin cậy, thời gian ổn định, ngưỡng đánh lại và cao độ chuẩn.
+        Xong thì bấm “Đánh thử” rồi đánh vài nốt để kiểm tra mỗi phím được nhận đúng một lần.
+      </p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <Button variant="primary" onClick={() => void measure()} disabled={phase === 'measuring'}>
-          {phase === 'measuring' ? 'Đang đo… hãy giữ yên lặng' : 'Đo tiếng ồn nền'}
+        <AutoCalibration labelStyle={labelStyle} />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Button onClick={() => void measure()} disabled={phase === 'measuring'}>
+          {phase === 'measuring' ? 'Đang đo… hãy giữ yên lặng' : 'Chỉ đo tiếng ồn nền'}
         </Button>
         <Button onClick={listenTest} disabled={status !== 'running'}>
           Đánh thử (15 giây)

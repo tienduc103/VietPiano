@@ -38,6 +38,7 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt
   storage/ProgressStorage.ts  IndexedDB (phiên + tổng hợp theo bài), fallback bộ nhớ; bài gần đây ở localStorage
   settings/DeviceSettings.ts  cài đặt micro/hiển thị ở localStorage
+  calibration/AutoCalibrator.ts  tự căn chỉnh: đo im lặng → hiện nốt đo → nghe khung cao độ thô → đề xuất cài đặt
 src/store/           Zustand: settingsStore, micStore, appStore (route + tiến độ)
 src/hooks/           vòng đời app (ẩn nền → tắt micro), theme, wake lock, ghi phiên luyện tập
 src/components/      ScoreView, PianoKeyboard, MicPanel, ui

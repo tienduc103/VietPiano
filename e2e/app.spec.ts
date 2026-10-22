@@ -128,3 +128,15 @@ test('ẩn trang (chạy nền) thì tự tắt micro và hiện nút bật lạ
   await expect(page.getByTestId('mic-button')).toHaveText(/Bật lại micro/);
   await expect(page.getByRole('status').filter({ hasText: 'Micro đã tạm dừng' })).toBeVisible();
 });
+
+test('tự căn chỉnh: đo im lặng rồi hiện nốt cần đánh', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Cài đặt' }).click();
+  await page.getByTestId('auto-calibrate').click();
+  await expect(page.getByTestId('auto-calibration')).toContainText('Giữ yên lặng');
+  // Bước 2: nốt đo đầu tiên là C3 — micro giả chỉ phát gam C4…C5 nên không bao giờ khớp.
+  await expect(page.getByTestId('calibration-target')).toHaveText('C3', { timeout: 10_000 });
+  await expect(page.getByTestId('auto-calibration')).toContainText('Bước 2/8');
+  await page.getByRole('button', { name: 'Huỷ' }).click();
+  await expect(page.getByTestId('auto-calibrate')).toBeVisible();
+});

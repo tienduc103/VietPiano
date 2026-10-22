@@ -6,7 +6,12 @@
 import { AudioInput, type AudioInputError, type AudioInputStatus } from '../audio/AudioInput';
 import { PitchDetector } from '../audio/PitchDetector';
 import { AttackAnalyzer } from '../audio/AttackAnalyzer';
-import { NoteRecognizer, type NoteRecognizerConfig, type RecognizerOutput } from '../audio/NoteRecognizer';
+import {
+  NoteRecognizer,
+  type NoteRecognizerConfig,
+  type RecognizerOutput,
+  type TimedPitchFrame,
+} from '../audio/NoteRecognizer';
 import { Emitter, type NoteInputEvent, type NoteInputProvider } from './NoteInputProvider';
 
 export interface MicAnalysis extends RecognizerOutput {
@@ -21,6 +26,8 @@ export interface MicStatus {
 export class MicrophoneInputProvider implements NoteInputProvider {
   readonly kind = 'microphone' as const;
   readonly analysis = new Emitter<MicAnalysis>();
+  /** Khung cao độ thô (chưa qua NoteRecognizer) — dùng cho tự căn chỉnh. */
+  readonly pitchFrames = new Emitter<TimedPitchFrame>();
   readonly statusChanges: Emitter<MicStatus>;
 
   private readonly notes = new Emitter<NoteInputEvent>();
@@ -38,8 +45,9 @@ export class MicrophoneInputProvider implements NoteInputProvider {
         this.detector = new PitchDetector({ sampleRate, frameSize: samples.length });
         this.attack = new AttackAnalyzer({ sampleRate, frameSize: samples.length });
       }
-      const pitch = this.detector.detect(samples);
-      const out = this.recognizer.process({ ...pitch, time, attack: this.attack!.process(samples, time) });
+      const frame = { ...this.detector.detect(samples), time };
+      this.pitchFrames.emit(frame);
+      const out = this.recognizer.process({ ...frame, attack: this.attack!.process(samples, time) });
       this.analysis.emit({ ...out, time });
       if (out.noteOn) this.notes.emit({ midi: out.noteOn.midi, time: out.noteOn.time, source: 'microphone' });
     });
