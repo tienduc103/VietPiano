@@ -16,6 +16,14 @@
   --score-skipped: #94a3b8;
   --score-wrong-cursor: rgb(220 38 38 / 0.18);
   --score-label: #475569;
+  /* Khoảng trống thêm phía trên header khi toàn màn hình (Fullscreen API) */
+  --fullscreen-top-gap: 0px;
+}
+
+/* Safari iPadOS toàn màn hình vẽ nút đóng/thanh trạng thái đè lên mép trên mà
+   không báo safe-area-inset-top → chừa thêm chỗ. */
+:root:fullscreen {
+  --fullscreen-top-gap: 1.5rem;
 }
 
 .dark {

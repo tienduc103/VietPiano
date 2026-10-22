@@ -9,7 +9,7 @@ import { chooseBaseC, keyboardRange, keyHintsFor, keyToMidi } from '../core/inpu
 import { ScoreView } from '../components/ScoreView';
 import { PianoKeyboard } from '../components/PianoKeyboard';
 import { DetectedNote, LevelMeter, MicButton, MicError } from '../components/MicPanel';
-import { Button, Icon, formatDuration } from '../components/ui';
+import { Button, FullscreenButton, Icon, formatDuration } from '../components/ui';
 import { useSettings } from '../store/settingsStore';
 import { useApp } from '../store/appStore';
 import { useMic } from '../store/micStore';
@@ -111,7 +111,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
   return (
     <div className="flex h-full flex-col">
       {/* ── Trên: tên bài, tiến độ ── */}
-      <header className="flex items-center gap-3 px-4 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
+      <header className="flex items-center gap-3 px-4 pt-[calc(max(0.5rem,env(safe-area-inset-top))+var(--fullscreen-top-gap))] pb-2">
         <Button variant="ghost" onClick={() => navigate({ name: 'library' })} aria-label="Về thư viện" className="px-2">
           <Icon name="back" />
         </Button>
@@ -152,6 +152,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
         >
           <Icon name="keyboard" />
         </Button>
+        <FullscreenButton />
       </header>
 
       {/* ── Giữa: khuông nhạc ── */}

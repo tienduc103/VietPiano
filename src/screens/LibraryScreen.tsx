@@ -3,7 +3,7 @@ import { lessonManager } from '../core/lessons/LessonManager';
 import type { Lesson } from '../core/lessons/types';
 import { computeTotals, type LessonProgress } from '../core/storage/ProgressStorage';
 import { useApp } from '../store/appStore';
-import { Button, Card, Icon, formatDuration } from '../components/ui';
+import { Button, Card, FullscreenButton, Icon, formatDuration } from '../components/ui';
 
 export function LibraryScreen() {
   const progress = useApp((s) => s.progress);
@@ -17,13 +17,14 @@ export function LibraryScreen() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-10">
+      <div className="mx-auto max-w-6xl px-6 pt-[calc(max(1.5rem,env(safe-area-inset-top))+var(--fullscreen-top-gap))] pb-10">
         <header className="flex items-center gap-4">
           <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-12 w-12" />
           <div className="flex-1">
             <h1 className="text-3xl font-bold tracking-tight">VietPiano</h1>
             <p className="text-slate-500 dark:text-slate-400">Đánh đúng nốt — bản nhạc tự chuyển tiếp.</p>
           </div>
+          <FullscreenButton />
           <Button onClick={() => navigate({ name: 'settings' })} aria-label="Cài đặt">
             <Icon name="settings" />
             <span>Cài đặt & micro</span>

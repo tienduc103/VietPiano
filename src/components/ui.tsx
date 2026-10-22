@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useFullscreen } from '../hooks/useFullscreen';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -95,6 +96,8 @@ const ICONS = {
   eyeOff: 'M17.9 17.9A10 10 0 0 1 12 20c-7 0-11-8-11-8a18 18 0 0 1 5.1-5.9M9.9 4.2A9 9 0 0 1 12 4c7 0 11 8 11 8a18 18 0 0 1-2.2 3.2M14.1 14.1a3 3 0 1 1-4.2-4.2M1 1l22 22',
   keyboard: 'M2 6h20v12H2zM6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10',
   check: 'M20 6L9 17l-5-5',
+  maximize: 'M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3',
+  minimize: 'M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3',
 } as const;
 
 export type IconName = keyof typeof ICONS;
@@ -104,6 +107,17 @@ export function Icon({ name, className = 'h-6 w-6' }: { name: IconName; classNam
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden>
       <path d={ICONS[name]} />
     </svg>
+  );
+}
+
+/** Nút bật/tắt toàn màn hình; tự ẩn khi trình duyệt không hỗ trợ hoặc đã chạy dạng app. */
+export function FullscreenButton({ className = '' }: { className?: string }) {
+  const { supported, active, toggle } = useFullscreen();
+  if (!supported) return null;
+  return (
+    <Button variant="ghost" onClick={toggle} aria-label={active ? 'Thoát toàn màn hình' : 'Toàn màn hình'} aria-pressed={active} className={`px-2 ${className}`}>
+      <Icon name={active ? 'minimize' : 'maximize'} />
+    </Button>
   );
 }
 

@@ -22,7 +22,7 @@ export function SettingsScreen() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-4xl px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-12">
+      <div className="mx-auto max-w-4xl px-6 pt-[calc(max(1.5rem,env(safe-area-inset-top))+var(--fullscreen-top-gap))] pb-12">
         <header className="mb-6 flex items-center gap-3">
           <Button variant="ghost" onClick={() => navigate({ name: 'library' })} aria-label="Quay lại" className="px-2">
             <Icon name="back" />
