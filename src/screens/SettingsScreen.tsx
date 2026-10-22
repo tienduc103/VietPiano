@@ -1,0 +1,312 @@
+import { useState } from 'react';
+import { microphoneInput } from '../core/input/MicrophoneInputProvider';
+import { midiToLabel } from '../core/music/notes';
+import {
+  DEFAULT_SETTINGS,
+  noiseGateFromAmbient,
+  noiseGateToSensitivity,
+  sensitivityToNoiseGate,
+} from '../core/settings/DeviceSettings';
+import { useSettings } from '../store/settingsStore';
+import { useMic } from '../store/micStore';
+import { useApp } from '../store/appStore';
+import { Button, Card, Icon, Segmented, Toggle } from '../components/ui';
+import { DetectedNote, LevelMeter, MicButton, MicError } from '../components/MicPanel';
+
+const CALIBRATION_MS = 2500;
+
+export function SettingsScreen() {
+  const navigate = useApp((s) => s.navigate);
+  const settings = useSettings((s) => s.settings);
+  const update = useSettings((s) => s.update);
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="mx-auto max-w-4xl px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-12">
+        <header className="mb-6 flex items-center gap-3">
+          <Button variant="ghost" onClick={() => navigate({ name: 'library' })} aria-label="Quay lại" className="px-2">
+            <Icon name="back" />
+          </Button>
+          <h1 className="text-3xl font-bold">Cài đặt</h1>
+        </header>
+
+        <div className="grid gap-5">
+          <Card>
+            <h2 className="text-xl font-semibold">Microphone</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Đặt iPad trên giá nhạc, cách loa đàn khoảng 30–80 cm. Âm lượng đàn ở mức vừa phải. Âm thanh chỉ được xử lý trên máy.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-5">
+              <MicButton />
+              <DetectedNote labelStyle={settings.labelStyle} />
+              <div className="min-w-48 flex-1">
+                <div className="mb-1 text-xs text-slate-500 dark:text-slate-400">Mức âm (vạch vàng = ngưỡng nhiễu)</div>
+                <LevelMeter />
+              </div>
+            </div>
+            <div className="mt-3">
+              <MicError />
+            </div>
+            <Calibration />
+          </Card>
+
+          <Card>
+            <h2 className="text-xl font-semibold">Nhận diện nốt</h2>
+            <Slider
+              label="Độ nhạy micro"
+              hint="Cao hơn = nghe được tiếng nhỏ hơn nhưng dễ bắt nhiễu."
+              min={0}
+              max={100}
+              step={1}
+              value={noiseGateToSensitivity(settings.noiseGate)}
+              format={(v) => `${v}`}
+              onChange={(v) => update({ noiseGate: sensitivityToNoiseGate(v) })}
+            />
+            <Slider
+              label="Thời gian giữ ổn định"
+              hint="Cao độ phải giữ nguyên bao lâu mới được chấp nhận. Tăng nếu hay nhận nhầm."
+              min={30}
+              max={300}
+              step={10}
+              value={settings.stableMs}
+              format={(v) => `${v} ms`}
+              onChange={(v) => update({ stableMs: v })}
+            />
+            <Slider
+              label="Độ tin cậy tối thiểu"
+              hint="Ngưỡng chất lượng cao độ (YIN). Giảm nếu nốt trầm khó nhận."
+              min={0.6}
+              max={0.97}
+              step={0.01}
+              value={settings.minConfidence}
+              format={(v) => v.toFixed(2)}
+              onChange={(v) => update({ minConfidence: v })}
+            />
+            <Slider
+              label="Ngưỡng nhận đánh lại cùng nốt"
+              hint="Mức tăng âm lượng để coi là phím được gõ lại. Giảm nếu đánh lặp nốt không được nhận; tăng nếu âm ngân làm nhảy nốt."
+              min={1.15}
+              max={2.5}
+              step={0.05}
+              value={settings.onsetRatio}
+              format={(v) => `×${v.toFixed(2)}`}
+              onChange={(v) => update({ onsetRatio: v })}
+            />
+            <Slider
+              label="Cao độ chuẩn A4"
+              hint="Clavinova mặc định 440 Hz. Chỉ đổi nếu bạn đã chỉnh Tuning trên đàn."
+              min={430}
+              max={450}
+              step={0.5}
+              value={settings.a4}
+              format={(v) => `${v.toFixed(1)} Hz`}
+              onChange={(v) => update({ a4: v })}
+            />
+            <div className="mt-2">
+              <Toggle
+                label={
+                  <span>
+                    Chấp nhận sai quãng tám
+                    <span className="block text-sm text-slate-500 dark:text-slate-400">Bật nếu micro hay nhận nốt trầm thành quãng 8 cao hơn.</span>
+                  </span>
+                }
+                checked={settings.octaveTolerant}
+                onChange={(v) => update({ octaveTolerant: v })}
+              />
+            </div>
+            <div className="mt-4">
+              <Button
+                variant="ghost"
+                onClick={() =>
+                  update({
+                    noiseGate: DEFAULT_SETTINGS.noiseGate,
+                    stableMs: DEFAULT_SETTINGS.stableMs,
+                    minConfidence: DEFAULT_SETTINGS.minConfidence,
+                    onsetRatio: DEFAULT_SETTINGS.onsetRatio,
+                    a4: DEFAULT_SETTINGS.a4,
+                    octaveTolerant: DEFAULT_SETTINGS.octaveTolerant,
+                  })
+                }
+              >
+                Khôi phục mặc định nhận diện
+              </Button>
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="text-xl font-semibold">Hiển thị</h2>
+            <div className="mt-2 divide-y divide-slate-200 dark:divide-slate-700">
+              <Toggle label="Hiện tên nốt dưới khuông" checked={settings.showNoteNames} onChange={(v) => update({ showNoteNames: v })} />
+              <Toggle label="Hiện bàn phím piano ảo" checked={settings.showKeyboard} onChange={(v) => update({ showKeyboard: v })} />
+              <Row label="Kiểu tên nốt">
+                <Segmented
+                  value={settings.labelStyle}
+                  onChange={(v) => update({ labelStyle: v })}
+                  options={[
+                    { value: 'letter', label: 'C D E (C4)' },
+                    { value: 'solfege', label: 'Đô Rê Mi' },
+                  ]}
+                />
+              </Row>
+              <Row label="Giao diện">
+                <Segmented
+                  value={settings.theme}
+                  onChange={(v) => update({ theme: v })}
+                  options={[
+                    { value: 'system', label: 'Theo máy' },
+                    { value: 'light', label: 'Sáng' },
+                    { value: 'dark', label: 'Tối' },
+                  ]}
+                />
+              </Row>
+            </div>
+          </Card>
+
+          <DataCard />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-14 items-center justify-between gap-4">
+      <span>{label}</span>
+      {children}
+    </div>
+  );
+}
+
+function Slider(props: {
+  label: string;
+  hint: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  format: (v: number) => string;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <label className="mt-4 block">
+      <div className="flex items-baseline justify-between">
+        <span className="font-medium">{props.label}</span>
+        <span className="text-sm font-semibold text-indigo-600 tabular-nums dark:text-indigo-300">{props.format(props.value)}</span>
+      </div>
+      <input
+        type="range"
+        className="w-full"
+        min={props.min}
+        max={props.max}
+        step={props.step}
+        value={props.value}
+        onChange={(e) => props.onChange(Number(e.target.value))}
+      />
+      <span className="text-sm text-slate-500 dark:text-slate-400">{props.hint}</span>
+    </label>
+  );
+}
+
+/** Hiệu chuẩn: đo nhiễu nền khi im lặng để đặt noise gate; sau đó đánh thử để kiểm tra. */
+function Calibration() {
+  const status = useMic((s) => s.status);
+  const update = useSettings((s) => s.update);
+  const labelStyle = useSettings((s) => s.settings.labelStyle);
+  const [phase, setPhase] = useState<'idle' | 'measuring' | 'done'>('idle');
+  const [result, setResult] = useState<{ ambient: number; gate: number } | null>(null);
+  const [heard, setHeard] = useState<number[]>([]);
+
+  const measure = async () => {
+    if (status !== 'running') {
+      await microphoneInput.start().catch(() => undefined);
+      if (!microphoneInput.isActive()) return;
+    }
+    setPhase('measuring');
+    const samples: number[] = [];
+    const off = microphoneInput.analysis.on((a) => samples.push(a.rms));
+    await new Promise((r) => setTimeout(r, CALIBRATION_MS));
+    off();
+    if (samples.length === 0) {
+      setPhase('idle');
+      return;
+    }
+    // Dùng phân vị 90% để bỏ qua vài tiếng động đột ngột.
+    samples.sort((a, b) => a - b);
+    const ambient = samples[Math.floor(samples.length * 0.9)];
+    const gate = noiseGateFromAmbient(ambient);
+    update({ noiseGate: gate });
+    setResult({ ambient, gate });
+    setPhase('done');
+    setHeard([]);
+  };
+
+  const listenTest = () => {
+    setHeard([]);
+    const off = microphoneInput.onNote((e) => setHeard((h) => [...h.slice(-7), e.midi]));
+    setTimeout(off, 15000);
+  };
+
+  return (
+    <div className="mt-5 rounded-xl bg-slate-50 p-4 dark:bg-slate-900/60">
+      <h3 className="font-semibold">Hiệu chuẩn micro</h3>
+      <ol className="mt-1 list-decimal pl-5 text-sm text-slate-600 dark:text-slate-300">
+        <li>Giữ yên lặng, không đánh đàn, bấm “Đo tiếng ồn nền” (khoảng 2–3 giây).</li>
+        <li>Bấm “Đánh thử” rồi lần lượt đánh vài nốt Đô4 – Rê4 – Mi4, kiểm tra ứng dụng nhận đúng từng nốt, mỗi phím đúng một lần.</li>
+      </ol>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <Button variant="primary" onClick={() => void measure()} disabled={phase === 'measuring'}>
+          {phase === 'measuring' ? 'Đang đo… hãy giữ yên lặng' : 'Đo tiếng ồn nền'}
+        </Button>
+        <Button onClick={listenTest} disabled={status !== 'running'}>
+          Đánh thử (15 giây)
+        </Button>
+        {result && (
+          <span className="text-sm text-slate-600 dark:text-slate-300">
+            Nhiễu nền: {result.ambient.toFixed(4)} → ngưỡng {result.gate.toFixed(4)} (độ nhạy {noiseGateToSensitivity(result.gate)})
+          </span>
+        )}
+      </div>
+      {heard.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2" data-testid="heard-notes">
+          {heard.map((m, i) => (
+            <span key={i} className="rounded-lg bg-indigo-100 px-3 py-1 text-lg font-bold text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+              {midiToLabel(m, labelStyle)}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DataCard() {
+  const clearProgress = useApp((s) => s.clearProgress);
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <Card>
+      <h2 className="text-xl font-semibold">Dữ liệu</h2>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        Tiến độ và lịch sử luyện tập lưu trong IndexedDB của trình duyệt trên máy này. Xoá dữ liệu Safari sẽ xoá cả tiến độ.
+      </p>
+      <div className="mt-3 flex gap-2">
+        {confirming ? (
+          <>
+            <Button
+              variant="danger"
+              onClick={() => {
+                void clearProgress();
+                setConfirming(false);
+              }}
+            >
+              Xác nhận xoá toàn bộ tiến độ
+            </Button>
+            <Button onClick={() => setConfirming(false)}>Huỷ</Button>
+          </>
+        ) : (
+          <Button onClick={() => setConfirming(true)}>Xoá tiến độ luyện tập…</Button>
+        )}
+      </div>
+    </Card>
+  );
+}

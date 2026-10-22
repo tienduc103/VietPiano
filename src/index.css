@@ -1,0 +1,130 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+  --score-ink: #0f172a;
+  --score-current: #4f46e5;
+  --score-cursor: rgb(79 70 229 / 0.14);
+  --score-correct: #16a34a;
+  --score-corrected: #d97706;
+  --score-skipped: #94a3b8;
+  --score-wrong-cursor: rgb(220 38 38 / 0.18);
+  --score-label: #475569;
+}
+
+.dark {
+  color-scheme: dark;
+  --score-ink: #e2e8f0;
+  --score-current: #a5b4fc;
+  --score-cursor: rgb(129 140 248 / 0.22);
+  --score-correct: #4ade80;
+  --score-corrected: #fbbf24;
+  --score-skipped: #64748b;
+  --score-wrong-cursor: rgb(248 113 113 / 0.25);
+  --score-label: #94a3b8;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* ── Khuông nhạc ─────────────────────────────────────────── */
+.score-svg {
+  color: var(--score-ink);
+  overflow: visible;
+  /* VexFlow gắn cứng fill/stroke="black" ở thẻ gốc và thân nốt → ghi đè bằng CSS. */
+  fill: currentColor;
+  stroke: currentColor;
+}
+.score-svg .vf-stem {
+  stroke: currentColor;
+}
+.score-note {
+  transition: color 150ms ease;
+}
+.score-note.is-correct {
+  color: var(--score-correct);
+}
+.score-note.is-corrected {
+  color: var(--score-corrected);
+}
+.score-note.is-skipped {
+  color: var(--score-skipped);
+}
+.score-note.is-current {
+  color: var(--score-current);
+}
+.score-cursor {
+  fill: var(--score-cursor);
+  stroke: none;
+  transition:
+    x 200ms ease,
+    fill 150ms ease;
+}
+.score-cursor.is-wrong {
+  fill: var(--score-wrong-cursor);
+}
+.score-label {
+  fill: var(--score-label);
+  stroke: none;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+}
+.score-label.is-current {
+  fill: var(--score-current);
+  font-weight: 800;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  75% {
+    transform: translateX(6px);
+  }
+}
+.animate-shake {
+  animation: shake 220ms ease-in-out 1;
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-pop {
+  animation: pop 220ms ease-out 1;
+}
+
+input[type='range'] {
+  accent-color: #4f46e5;
+  height: 2rem;
+}
