@@ -12,7 +12,7 @@ test('thư viện hiển thị đủ nhóm bài học', async ({ page }) => {
   for (const name of ['Nhận biết nốt', 'Gam', 'Bài tập tay phải', 'Bài tập tay trái', 'Bài hát']) {
     await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
   }
-  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(8);
+  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(23);
 });
 
 test('dòng phiên bản hiện ở cuối mọi màn hình', async ({ page }) => {

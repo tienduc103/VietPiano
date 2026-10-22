@@ -230,6 +230,233 @@ const defs: LessonDef[] = [
       'C5/8d E4/16 E5/16 D#5/16 | E5/16 D#5/16 E5/16 B4/16 D5/16 C5/16 | A4/8d C4/16 E4/16 A4/16 | ' +
       'B4/8d E4/16 C5/16 B4/16 | A4/qd',
   },
+  {
+    id: 'song-happy-birthday',
+    title: 'Happy Birthday (Chúc mừng sinh nhật)',
+    description: 'Bài hát chúc mừng sinh nhật (Đô trưởng, nhịp 3/4), bắt đầu bằng nhịp lấy đà.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [3, 4],
+    pickup: 1,
+    difficulty: 2,
+    hand: 'right',
+    source: 'Giai điệu "Good Morning to All", Mildred & Patty Hill (1893) — phạm vi công cộng',
+    notation:
+      'G4/8d G4/16 | A4 G4 C5 | B4/h G4/8d G4/16 | A4 G4 D5 | C5/h G4/8d G4/16 | ' +
+      'G5 E5 C5 | B4 A4 F5/8d F5/16 | E5 C5 D5 | C5/hd',
+  },
+  {
+    id: 'song-london-bridge',
+    title: 'London Bridge (Cây cầu London)',
+    description: 'Đồng dao Anh (Đô trưởng), các bước liền bậc dễ chơi.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'right',
+    source: 'Đồng dao Anh — phạm vi công cộng',
+    notation:
+      'G4/qd A4/8 G4 F4 | E4 F4 G4/h | D4 E4 F4/h | E4 F4 G4/h | ' +
+      'G4/qd A4/8 G4 F4 | E4 F4 G4/h | D4/h G4 E4 | C4/w',
+  },
+  {
+    id: 'song-au-clair',
+    title: 'Au clair de la lune (Dưới ánh trăng)',
+    description: 'Dân ca Pháp (Đô trưởng), đoạn giữa xuống tới Sol3.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'right',
+    source: 'Dân ca Pháp thế kỷ 18 — phạm vi công cộng',
+    notation:
+      'C4 C4 C4 D4 | E4/h D4/h | C4 E4 D4 D4 | C4/w | C4 C4 C4 D4 | E4/h D4/h | C4 E4 D4 D4 | C4/w | ' +
+      'D4 D4 D4 D4 | A3/h A3/h | D4 C4 B3 A3 | G3/w | C4 C4 C4 D4 | E4/h D4/h | C4 E4 D4 D4 | C4/w',
+  },
+  {
+    id: 'song-old-macdonald',
+    title: 'Old MacDonald Had a Farm',
+    description: 'Bài hát thiếu nhi (Sol trưởng) về nông trại của ông MacDonald.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    keySignature: 'G',
+    difficulty: 1,
+    hand: 'right',
+    source: 'Bài hát dân gian Mỹ — phạm vi công cộng',
+    notation: 'G4 G4 G4 D4 | E4 E4 D4/h | B4 B4 A4 A4 | G4/hd D4 | G4 G4 G4 D4 | E4 E4 D4/h | B4 B4 A4 A4 | G4/w',
+  },
+  {
+    id: 'song-row-boat',
+    title: 'Row, Row, Row Your Boat',
+    description: 'Bài hát thiếu nhi (Đô trưởng, nhịp 6/8) — luyện nhóm ba nốt móc đơn.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [6, 8],
+    difficulty: 2,
+    hand: 'right',
+    source: 'Bài hát dân gian Mỹ (1852) — phạm vi công cộng',
+    notation:
+      'C4/qd C4/qd | C4 D4/8 E4/qd | E4 D4/8 E4 F4/8 | G4/hd | ' +
+      'C5/8 C5/8 C5/8 G4/8 G4/8 G4/8 | E4/8 E4/8 E4/8 C4/8 C4/8 C4/8 | G4 F4/8 E4 D4/8 | C4/hd',
+  },
+  {
+    id: 'song-yankee-doodle',
+    title: 'Yankee Doodle',
+    description: 'Bài hát dân gian Mỹ (Sol trưởng), vui tươi.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    keySignature: 'G',
+    difficulty: 2,
+    hand: 'right',
+    source: 'Bài hát dân gian Mỹ thế kỷ 18 — phạm vi công cộng',
+    notation:
+      'G4 G4 A4 B4 | G4 B4 A4 D4 | G4 G4 A4 B4 | G4/h F#4/h | ' +
+      'G4 G4 A4 B4 | C5 B4 A4 G4 | F#4 D4 E4 F#4 | G4/h G4/h',
+  },
+  {
+    id: 'song-oh-susanna',
+    title: 'Oh! Susanna',
+    description: 'Bài hát của Stephen Foster (Đô trưởng), bắt đầu bằng nhịp lấy đà.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    pickup: 1,
+    difficulty: 2,
+    hand: 'right',
+    source: 'Stephen Foster (1848) — phạm vi công cộng',
+    notation:
+      'C4/8 D4/8 | E4 G4 G4/qd A4/8 | G4 E4 C4/qd D4/8 | E4 E4 D4 C4 | D4/hd C4/8 D4/8 | ' +
+      'E4 G4 G4/qd A4/8 | G4 E4 C4/qd D4/8 | E4 E4 D4 D4 | C4/w',
+  },
+  {
+    id: 'song-clementine',
+    title: 'Oh My Darling, Clementine',
+    description: 'Bài hát dân gian Mỹ (Đô trưởng, nhịp 3/4), xuống tới Sol3.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [3, 4],
+    pickup: 1,
+    difficulty: 2,
+    hand: 'right',
+    source: 'Percy Montrose (1884) — phạm vi công cộng',
+    notation:
+      'C4/8 C4/8 | C4 G3 E4/8 E4/8 | E4 C4 C4/8 E4/8 | G4/qd G4/8 F4/8 E4/8 | D4/h D4/8 E4/8 | ' +
+      'F4 F4 E4/8 D4/8 | E4 C4 C4/8 E4/8 | D4/qd G3/8 B3/8 D4/8 | C4/hd',
+  },
+  {
+    id: 'song-sakura',
+    title: 'Sakura Sakura (Hoa anh đào)',
+    description: 'Dân ca Nhật Bản, âm giai ngũ cung La – Si – Đô – Mi – Fa.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    keySignature: 'Am',
+    difficulty: 2,
+    hand: 'right',
+    source: 'Dân ca Nhật Bản (thời Edo) — phạm vi công cộng',
+    notation:
+      'A4 A4 B4/h | A4 A4 B4/h | A4 B4 C5 B4 | A4 B4/8 A4/8 F4/h | E4 C4 E4 F4 | E4 E4/8 C4/8 B3/h | ' +
+      'A4 B4 C5 B4 | A4 B4/8 A4/8 F4/h | E4 C4 E4 F4 | E4 E4/8 C4/8 B3/h | ' +
+      'A4 A4 B4/h | A4 A4 B4/h | E4 F4 B4/8 A4/8 F4 | E4/w',
+  },
+  {
+    id: 'song-auld-lang-syne',
+    title: 'Auld Lang Syne (Bài ca tạm biệt)',
+    description: 'Bài hát tiễn năm cũ của Scotland (Fa trưởng), bắt đầu bằng nhịp lấy đà.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    keySignature: 'F',
+    pickup: 1,
+    difficulty: 2,
+    hand: 'right',
+    source: 'Dân ca Scotland, lời Robert Burns (1788) — phạm vi công cộng',
+    notation:
+      'C4 | F4/qd F4/8 F4 A4 | G4/qd F4/8 G4 A4 | F4/qd F4/8 A4 C5 | D5/hd D5 | ' +
+      'C5/qd A4/8 A4 F4 | G4/qd F4/8 G4 A4 | F4/qd D4/8 D4 C4 | F4/w',
+  },
+  {
+    id: 'song-amazing-grace',
+    title: 'Amazing Grace',
+    description: 'Thánh ca (Sol trưởng, nhịp 3/4), giai điệu "New Britain".',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [3, 4],
+    keySignature: 'G',
+    pickup: 1,
+    difficulty: 2,
+    hand: 'right',
+    source: 'Giai điệu "New Britain" (1829), lời John Newton — phạm vi công cộng',
+    notation:
+      'D4 | G4/h B4/8 G4/8 | B4/h A4 | G4/h E4 | D4/h D4 | G4/h B4/8 G4/8 | B4/h A4/8 B4/8 | D5/hd | D5/h B4 | ' +
+      'D5/qd B4/8 D5/8 B4/8 | G4/h D4 | E4/qd G4/8 G4/8 E4/8 | D4/h D4 | G4/h B4/8 G4/8 | B4/h A4 | G4/hd',
+  },
+  {
+    id: 'song-silent-night',
+    title: 'Silent Night (Đêm thánh vô cùng)',
+    description: 'Bài hát Giáng sinh (Đô trưởng, nhịp 3/4).',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [3, 4],
+    difficulty: 2,
+    hand: 'right',
+    source: 'Franz Xaver Gruber (1818) — phạm vi công cộng',
+    notation:
+      'G4/qd A4/8 G4 | E4/hd | G4/qd A4/8 G4 | E4/hd | D5/h D5 | B4/hd | C5/h C5 | G4/hd | ' +
+      'A4/h A4 | C5/qd B4/8 A4 | G4/qd A4/8 G4 | E4/hd | A4/h A4 | C5/qd B4/8 A4 | G4/qd A4/8 G4 | E4/hd | ' +
+      'D5/h D5 | F5/qd D5/8 B4 | C5/hd | E5/hd | C5 G4 E4 | G4/qd F4/8 D4 | C4/hd',
+  },
+  {
+    id: 'song-greensleeves',
+    title: 'Greensleeves',
+    description: 'Dân ca Anh thời Phục hưng (La thứ, nhịp 3/4), có Sol thăng ở cuối câu.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [3, 4],
+    keySignature: 'Am',
+    pickup: 1,
+    difficulty: 3,
+    hand: 'right',
+    source: 'Dân ca Anh thế kỷ 16 — phạm vi công cộng',
+    notation:
+      'A4 | C5/h D5 | E5/qd F5/8 E5 | D5/h B4 | G4/qd A4/8 B4 | C5/h A4 | A4/qd G#4/8 A4 | B4/h G#4 | E4/h A4 | ' +
+      'C5/h D5 | E5/qd F5/8 E5 | D5/h B4 | G4/qd A4/8 B4 | C5/qd B4/8 A4 | G#4/qd F#4/8 G#4 | A4/hd',
+  },
+  {
+    id: 'song-minuet-g',
+    title: 'Minuet in G',
+    description: 'Minuet Sol trưởng trong sổ tay Anna Magdalena Bach — giai điệu tay phải, 16 ô nhịp.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [3, 4],
+    keySignature: 'G',
+    difficulty: 3,
+    hand: 'right',
+    source: 'Christian Petzold (khoảng 1725) — phạm vi công cộng',
+    notation:
+      'D5 G4/8 A4/8 B4/8 C5/8 | D5 G4 G4 | E5 C5/8 D5/8 E5/8 F#5/8 | G5 G4 G4 | ' +
+      'C5 D5/8 C5/8 B4/8 A4/8 | B4 C5/8 B4/8 A4/8 G4/8 | F#4 G4/8 A4/8 B4/8 G4/8 | A4/hd | ' +
+      'D5 G4/8 A4/8 B4/8 C5/8 | D5 G4 G4 | E5 C5/8 D5/8 E5/8 F#5/8 | G5 G4 G4 | ' +
+      'C5 D5/8 C5/8 B4/8 A4/8 | B4 C5/8 B4/8 A4/8 G4/8 | A4 B4/8 A4/8 G4/8 F#4/8 | G4/hd',
+  },
+  {
+    id: 'song-prelude-c',
+    title: 'Prelude in C (Bach)',
+    description: '4 ô nhịp đầu Prelude Đô trưởng BWV 846 — hợp âm rải từng nốt (bản gốc chơi bằng hai tay).',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    difficulty: 3,
+    hand: 'right',
+    source: 'J. S. Bach, Das Wohltemperierte Klavier I (1722) — phạm vi công cộng',
+    notation:
+      'C4/16 E4/16 G4/16 C5/16 E5/16 G4/16 C5/16 E5/16 C4/16 E4/16 G4/16 C5/16 E5/16 G4/16 C5/16 E5/16 | ' +
+      'C4/16 D4/16 A4/16 D5/16 F5/16 A4/16 D5/16 F5/16 C4/16 D4/16 A4/16 D5/16 F5/16 A4/16 D5/16 F5/16 | ' +
+      'B3/16 D4/16 G4/16 D5/16 F5/16 G4/16 D5/16 F5/16 B3/16 D4/16 G4/16 D5/16 F5/16 G4/16 D5/16 F5/16 | ' +
+      'C4/16 E4/16 G4/16 C5/16 E5/16 G4/16 C5/16 E5/16 C4/16 E4/16 G4/16 C5/16 E5/16 G4/16 C5/16 E5/16',
+  },
 ];
 
 export const LESSONS: Lesson[] = defs.map(({ notation, ...rest }) => ({ ...rest, notes: parseNotes(notation) }));
