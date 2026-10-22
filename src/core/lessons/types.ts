@@ -42,6 +42,15 @@ export interface Lesson {
   notes: LessonNote[];
   /** Ghi chú nguồn gốc bản nhạc (bản quyền). */
   source?: string;
+  /** Nhịp độ gợi ý cho chế độ chạy theo nhịp (nốt đen/phút); mặc định DEFAULT_TEMPO_BPM. */
+  tempo?: number;
+}
+
+/** Nhịp độ chậm, vừa sức người mới học. */
+export const DEFAULT_TEMPO_BPM = 72;
+
+export function lessonTempo(lesson: Pick<Lesson, 'tempo'>): number {
+  return lesson.tempo ?? DEFAULT_TEMPO_BPM;
 }
 
 /** Độ dài một ô nhịp đầy đủ, tính bằng nốt đen (3/8 → 1.5). */

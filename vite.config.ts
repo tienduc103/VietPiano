@@ -37,7 +37,7 @@ export default defineConfig({
         short_name: 'VietPiano',
         description: 'Học piano qua microphone, nhận diện nốt và tự chuyển khuông nhạc.',
         lang: 'vi',
-        theme_color: '#4f46e5',
+        theme_color: '#7c3aed',
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'landscape',

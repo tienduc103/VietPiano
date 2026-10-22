@@ -38,7 +38,7 @@ export function useTheme(): void {
     const apply = () => {
       const dark = theme === 'dark' || (theme === 'system' && mq.matches);
       document.documentElement.classList.toggle('dark', dark);
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0f172a' : '#4f46e5');
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0f172a' : '#7c3aed');
     };
     apply();
     mq.addEventListener('change', apply);

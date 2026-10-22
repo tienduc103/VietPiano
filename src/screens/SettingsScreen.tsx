@@ -196,7 +196,7 @@ function Slider(props: {
     <label className="mt-4 block">
       <div className="flex items-baseline justify-between">
         <span className="font-medium">{props.label}</span>
-        <span className="text-sm font-semibold text-indigo-600 tabular-nums dark:text-indigo-300">{props.format(props.value)}</span>
+        <span className="text-sm font-semibold text-fuchsia-600 tabular-nums dark:text-fuchsia-300">{props.format(props.value)}</span>
       </div>
       <input
         type="range"
@@ -255,7 +255,7 @@ function Calibration() {
   };
 
   return (
-    <div className="mt-5 rounded-xl bg-slate-50 p-4 dark:bg-slate-900/60">
+    <div className="mt-5 rounded-xl bg-violet-50 p-4 ring-1 ring-violet-100 dark:bg-slate-900/60 dark:ring-violet-900">
       <h3 className="font-semibold">Hiệu chuẩn micro</h3>
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
         <b>Tự căn chỉnh:</b> giữ yên lặng vài giây, sau đó ứng dụng hiện lần lượt từng nốt (từ quãng trầm tới quãng cao) —
@@ -281,7 +281,7 @@ function Calibration() {
       {heard.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2" data-testid="heard-notes">
           {heard.map((m, i) => (
-            <span key={i} className="rounded-lg bg-indigo-100 px-3 py-1 text-lg font-bold text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+            <span key={i} className="rounded-lg bg-violet-100 px-3 py-1 text-lg font-bold text-violet-800 dark:bg-violet-900 dark:text-violet-200">
               {midiToLabel(m, labelStyle)}
             </span>
           ))}

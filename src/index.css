@@ -8,14 +8,14 @@
 
 :root {
   color-scheme: light;
-  --score-ink: #0f172a;
-  --score-current: #4f46e5;
-  --score-cursor: rgb(79 70 229 / 0.14);
-  --score-correct: #16a34a;
-  --score-corrected: #d97706;
-  --score-skipped: #94a3b8;
-  --score-wrong-cursor: rgb(220 38 38 / 0.18);
-  --score-label: #475569;
+  --score-ink: #1e1b4b;
+  --score-current: #c026d3;
+  --score-cursor: rgb(217 70 239 / 0.16);
+  --score-correct: #059669;
+  --score-corrected: #ea580c;
+  --score-skipped: #a8a29e;
+  --score-wrong-cursor: rgb(244 63 94 / 0.22);
+  --score-label: #6d28d9;
   /* Khoảng trống thêm phía trên header khi toàn màn hình (Fullscreen API) */
   --fullscreen-top-gap: 0px;
 }
@@ -28,14 +28,14 @@
 
 .dark {
   color-scheme: dark;
-  --score-ink: #e2e8f0;
-  --score-current: #a5b4fc;
-  --score-cursor: rgb(129 140 248 / 0.22);
-  --score-correct: #4ade80;
-  --score-corrected: #fbbf24;
-  --score-skipped: #64748b;
-  --score-wrong-cursor: rgb(248 113 113 / 0.25);
-  --score-label: #94a3b8;
+  --score-ink: #ede9fe;
+  --score-current: #f0abfc;
+  --score-cursor: rgb(232 121 249 / 0.24);
+  --score-correct: #34d399;
+  --score-corrected: #fb923c;
+  --score-skipped: #78716c;
+  --score-wrong-cursor: rgb(251 113 133 / 0.28);
+  --score-label: #c4b5fd;
 }
 
 html,
@@ -133,6 +133,6 @@ body {
 }
 
 input[type='range'] {
-  accent-color: #4f46e5;
+  accent-color: #c026d3;
   height: 2rem;
 }

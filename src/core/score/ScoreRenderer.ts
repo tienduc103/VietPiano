@@ -7,7 +7,7 @@
  */
 import { Beam, Dot, Formatter, Renderer, Stave, StaveNote, Voice, BarlineType, Accidental } from 'vexflow/bravura';
 import { splitMeasures } from '../lessons/notation';
-import { measureLength, type Duration, type Lesson } from '../lessons/types';
+import { measureLength, type Duration, type Lesson, type LessonNote } from '../lessons/types';
 import { measureAccidentals } from '../music/keySignature';
 import { midiToLabel, type NoteLabelStyle } from '../music/notes';
 
@@ -36,11 +36,58 @@ const RIGHT_PAD = 40;
 export const SCORE_HEIGHT = 190;
 
 const NOTE_SPACE: Record<Duration, number> = { '16': 32, '8': 40, '8d': 46, q: 54, qd: 62, h: 72, hd: 84, w: 100 };
+/** Khoảng đệm cuối mỗi ô nhịp (ngoài phần dàn nốt). */
+export const MEASURE_PADDING = 24;
+const LEDGER_STYLE = { strokeStyle: 'currentColor', lineWidth: 2 };
 
 /** "C#4" → "c#/4" (định dạng khoá của VexFlow). */
 function toVexKey(pitch: string): string {
   const m = /^([A-G])([#b]?)(-?\d)$/.exec(pitch)!;
   return `${m[1].toLowerCase()}${m[2]}/${m[3]}`;
+}
+
+// Font Bravura (nhúng base64) được nạp bất đồng bộ; phải chờ trước khi vẽ lần đầu.
+let fontsPromise: Promise<unknown> | null = null;
+export function scoreFontsReady(): Promise<unknown> {
+  fontsPromise ??=
+    typeof document !== 'undefined' && document.fonts
+      ? Promise.all([document.fonts.load('30px Bravura'), document.fonts.load('12px Academico')]).catch(() => undefined)
+      : Promise.resolve();
+  return fontsPromise;
+}
+
+/** Bề rộng tự nhiên của phần nốt trong một ô nhịp (đã gồm khoảng đệm). */
+export function naturalNoteArea(items: readonly LessonNote[]): number {
+  return items.reduce((sum, n) => sum + NOTE_SPACE[n.duration], 0) + MEASURE_PADDING;
+}
+
+/** Tạo StaveNote cho một ô nhịp: chấm dôi, dấu hoá theo hoá biểu (bất thường, dấu hoàn). */
+export function createMeasureNotes(lesson: Lesson, items: readonly LessonNote[]): StaveNote[] {
+  const accidentals = measureAccidentals(items.map((n) => n.pitch), lesson.keySignature);
+  return items.map((n, ni) => {
+    const note = new StaveNote({ keys: [toVexKey(n.pitch)], duration: n.duration, clef: lesson.clef, autoStem: true });
+    if (n.duration.endsWith('d')) Dot.buildAndAttach([note], { all: true });
+    const accidental = accidentals[ni];
+    if (accidental) note.addModifier(new Accidental(accidental), 0);
+    note.setLedgerLineStyle(LEDGER_STYLE);
+    return note;
+  });
+}
+
+/** Ghép nốt vào stave: tạo voice, nối móc tự động và dàn nốt trong `noteArea`. */
+export function formatMeasure(lesson: Lesson, stave: Stave, notes: StaveNote[], noteArea: number) {
+  const [beats, beatValue] = lesson.timeSignature;
+  stave.setDefaultLedgerLineStyle(LEDGER_STYLE);
+  const voice = new Voice({ numBeats: beats, beatValue }).setStrict(false);
+  voice.addTickables(notes);
+  const beams = Beam.generateBeams(notes);
+  new Formatter().joinVoices([voice]).format([voice], noteArea - MEASURE_PADDING);
+  return { voice, beams };
+}
+
+/** Tâm đầu nốt theo trục x. */
+export function noteCenterX(note: StaveNote): number {
+  return (note.getNoteHeadBeginX() + note.getNoteHeadEndX()) / 2;
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -54,7 +101,6 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
 
   const [beats, beatValue] = lesson.timeSignature;
   const measures = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup);
-  const ledgerStyle = { strokeStyle: 'currentColor', lineWidth: 2 };
 
   type Built = { stave: Stave; voice: Voice; notes: StaveNote[]; beams: Beam[] };
   const built: Built[] = [];
@@ -68,26 +114,13 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
       stave.addTimeSignature(`${beats}/${beatValue}`);
     }
     if (mi === measures.length - 1) stave.setEndBarType(BarlineType.END);
-    stave.setDefaultLedgerLineStyle(ledgerStyle);
 
-    const accidentals = measureAccidentals(measure.items.map((n) => n.pitch), lesson.keySignature);
-    const notes = measure.items.map((n, ni) => {
-      const note = new StaveNote({ keys: [toVexKey(n.pitch)], duration: n.duration, clef: lesson.clef, autoStem: true });
-      if (n.duration.endsWith('d')) Dot.buildAndAttach([note], { all: true });
-      const accidental = accidentals[ni];
-      if (accidental) note.addModifier(new Accidental(accidental), 0);
-      note.setLedgerLineStyle(ledgerStyle);
-      return note;
-    });
-
-    const noteArea = measure.items.reduce((sum, n) => sum + NOTE_SPACE[n.duration], 0) + 24;
+    const notes = createMeasureNotes(lesson, measure.items);
+    const noteArea = naturalNoteArea(measure.items);
     const headerWidth = stave.getNoteStartX() - x;
     stave.setWidth(headerWidth + noteArea);
 
-    const voice = new Voice({ numBeats: beats, beatValue }).setStrict(false);
-    voice.addTickables(notes);
-    const beams = Beam.generateBeams(notes);
-    new Formatter().joinVoices([voice]).format([voice], noteArea - 24);
+    const { voice, beams } = formatMeasure(lesson, stave, notes, noteArea);
     built.push({ stave, voice, notes, beams });
     x += headerWidth + noteArea;
   });
@@ -110,7 +143,7 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
   svg.classList.add('score-svg');
 
   const allNotes = built.flatMap((b) => b.notes);
-  const noteCenters = allNotes.map((n) => (n.getNoteHeadBeginX() + n.getNoteHeadEndX()) / 2);
+  const noteCenters = allNotes.map(noteCenterX);
   const noteElements = allNotes.map((n, i) => {
     const el = n.getSVGElement() ?? null;
     el?.classList.add('score-note');

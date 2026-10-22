@@ -17,9 +17,9 @@ interface Props {
 }
 
 function keyClasses(midi: number, black: boolean, p: Props): string {
-  if (p.flash?.midi === midi) return p.flash.kind === 'correct' ? 'bg-green-500! text-white' : 'bg-red-500! text-white';
-  if (p.detected === midi) return black ? 'bg-sky-600!' : 'bg-sky-200! dark:bg-sky-700!';
-  if (p.expected === midi) return black ? 'bg-indigo-500! ring-4 ring-indigo-400' : 'bg-indigo-100! ring-4 ring-inset ring-indigo-500 dark:bg-indigo-900!';
+  if (p.flash?.midi === midi) return p.flash.kind === 'correct' ? 'bg-emerald-400! text-white' : 'bg-rose-500! text-white';
+  if (p.detected === midi) return black ? 'bg-cyan-500!' : 'bg-cyan-200! dark:bg-cyan-700!';
+  if (p.expected === midi) return black ? 'bg-fuchsia-500! ring-4 ring-fuchsia-300' : 'bg-fuchsia-100! ring-4 ring-inset ring-fuchsia-500 dark:bg-fuchsia-200!';
   return '';
 }
 
@@ -67,7 +67,7 @@ export const PianoKeyboard = memo(function PianoKeyboard(props: Props) {
           data-midi={midi}
           onPointerDown={press(midi)}
           style={{ left: `${whiteIndex * whiteWidth - whiteWidth * 0.32}%`, width: `${whiteWidth * 0.64}%` }}
-          className={`absolute top-0 flex h-[60%] items-end justify-center rounded-b-md bg-slate-900 pb-1 text-[10px] text-slate-400 shadow-md active:bg-slate-700 dark:bg-black ${keyClasses(midi, true, props)}`}
+          className={`absolute top-0 flex h-[60%] items-end justify-center rounded-b-md bg-gradient-to-b from-slate-700 to-slate-950 pb-1 text-[10px] text-slate-400 shadow-md active:bg-slate-700 dark:bg-black ${keyClasses(midi, true, props)}`}
         >
           {keyHints?.get(midi) && <span className="font-mono uppercase">{keyHints.get(midi)}</span>}
         </button>

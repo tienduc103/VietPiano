@@ -12,7 +12,7 @@ export function LevelMeter({ className = '' }: { className?: string }) {
   return (
     <div className={`relative h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700 ${className}`} aria-hidden>
       <div
-        className={`h-full rounded-full transition-[width] duration-75 ${rms >= gate ? 'bg-emerald-500' : 'bg-slate-400'}`}
+        className={`h-full rounded-full transition-[width] duration-75 ${rms >= gate ? 'bg-gradient-to-r from-emerald-400 to-lime-400' : 'bg-slate-400'}`}
         style={{ width: `${toPct(rms)}%` }}
       />
       <div className="absolute top-0 h-full w-0.5 bg-amber-500" style={{ left: `${toPct(gate)}%` }} title="Ngưỡng nhiễu" />
@@ -41,10 +41,10 @@ export function MicButton({ compact = false }: { compact?: boolean }) {
       aria-pressed={on}
       className={`inline-flex min-h-12 items-center gap-2 rounded-xl px-4 font-semibold transition-colors ${
         on
-          ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30 hover:brightness-110'
           : status === 'suspended' || paused
-            ? 'animate-pulse bg-amber-500 text-white'
-            : 'bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100'
+            ? 'animate-pulse bg-orange-500 text-white'
+            : 'bg-white text-violet-900 ring-1 ring-violet-200 hover:bg-violet-50 dark:bg-slate-700 dark:text-slate-100 dark:ring-violet-800'
       }`}
     >
       <Icon name={on ? 'mic' : 'micOff'} />
@@ -59,7 +59,7 @@ export function MicError() {
   const paused = useMic((s) => s.pausedByBackground);
   if (status === 'error' && error) {
     return (
-      <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+      <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-300">
         {error.message}
       </p>
     );
@@ -87,7 +87,7 @@ export function DetectedNote({ labelStyle }: { labelStyle: NoteLabelStyle }) {
         <div className="text-4xl font-bold tabular-nums">{live ? midiToLabel(live.midi, labelStyle) : status === 'running' ? '…' : '—'}</div>
       </div>
       <div className="w-36">
-        <div className="relative h-3 rounded-full bg-gradient-to-r from-red-300 via-emerald-300 to-red-300 dark:from-red-800 dark:via-emerald-700 dark:to-red-800">
+        <div className="relative h-3 rounded-full bg-gradient-to-r from-rose-300 via-emerald-300 to-rose-300 dark:from-rose-800 dark:via-emerald-700 dark:to-rose-800">
           <div
             className={`absolute top-1/2 h-5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full ${live ? (inTune ? 'bg-emerald-700 dark:bg-emerald-300' : 'bg-slate-800 dark:bg-white') : 'hidden'}`}
             style={{ left: `${50 + cents}%` }}

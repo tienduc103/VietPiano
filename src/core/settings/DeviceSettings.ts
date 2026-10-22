@@ -24,6 +24,10 @@ export interface DeviceSettings {
   labelStyle: NoteLabelStyle;
   theme: ThemeSetting;
   showKeyboard: boolean;
+  /** Chế độ khuông nhạc tự chạy theo nhịp (không xét đúng/sai cao độ). */
+  tempoMode: boolean;
+  /** Tốc độ chế độ chạy theo nhịp, % so với nhịp độ gợi ý của bài. */
+  tempoPercent: number;
 }
 
 export const DEFAULT_SETTINGS: DeviceSettings = {
@@ -37,7 +41,12 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
   labelStyle: 'letter',
   theme: 'system',
   showKeyboard: true,
+  tempoMode: false,
+  tempoPercent: 100,
 };
+
+export const TEMPO_PERCENT_MIN = 40;
+export const TEMPO_PERCENT_MAX = 160;
 
 export const NOISE_GATE_MIN = 0.0005;
 export const NOISE_GATE_MAX = 0.05;
@@ -97,6 +106,8 @@ function sanitize(s: DeviceSettings): DeviceSettings {
     labelStyle: s.labelStyle === 'solfege' ? 'solfege' : 'letter',
     theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system',
     showKeyboard: Boolean(s.showKeyboard),
+    tempoMode: Boolean(s.tempoMode),
+    tempoPercent: Math.round(num(s.tempoPercent, 100, TEMPO_PERCENT_MIN, TEMPO_PERCENT_MAX)),
   };
 }
 

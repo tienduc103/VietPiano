@@ -4,11 +4,11 @@ import { useFullscreen } from '../hooks/useFullscreen';
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-indigo-600 text-white hover:bg-indigo-500 active:bg-indigo-700 shadow-sm',
+  primary: 'bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white shadow-md shadow-fuchsia-500/30 hover:brightness-110 active:brightness-95',
   secondary:
-    'bg-white text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50 active:bg-slate-100 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-600 dark:hover:bg-slate-700',
-  ghost: 'text-slate-700 hover:bg-slate-200/70 active:bg-slate-300/70 dark:text-slate-200 dark:hover:bg-slate-700/70',
-  danger: 'bg-red-600 text-white hover:bg-red-500 active:bg-red-700',
+    'bg-white text-violet-900 ring-1 ring-violet-200 shadow-sm hover:bg-violet-50 active:bg-violet-100 dark:bg-slate-800 dark:text-violet-100 dark:ring-violet-800 dark:hover:bg-slate-700',
+  ghost: 'text-violet-800 hover:bg-violet-200/60 active:bg-violet-300/60 dark:text-violet-200 dark:hover:bg-violet-800/50',
+  danger: 'bg-rose-500 text-white shadow-md shadow-rose-500/30 hover:bg-rose-400 active:bg-rose-600',
 };
 
 export function Button({
@@ -37,7 +37,7 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${checked ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+        className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${checked ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500' : 'bg-slate-300 dark:bg-slate-600'}`}
       >
         <span
           className={`absolute top-1 left-1 h-6 w-6 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : ''}`}
@@ -57,14 +57,14 @@ export function Segmented<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="inline-flex rounded-xl bg-slate-200 p-1 dark:bg-slate-700">
+    <div className="inline-flex rounded-xl bg-violet-100 p-1 dark:bg-slate-700">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
           className={`min-h-10 rounded-lg px-4 text-sm font-semibold transition-colors ${
-            value === o.value ? 'bg-white text-slate-900 shadow dark:bg-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'
+            value === o.value ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'
           }`}
         >
           {o.label}
@@ -76,7 +76,7 @@ export function Segmented<T extends string>({
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700 ${className}`}>
+    <section className={`rounded-2xl bg-white/90 p-5 shadow-sm shadow-violet-200/60 ring-1 ring-violet-100 dark:bg-slate-800/90 dark:shadow-none dark:ring-violet-900 ${className}`}>
       {children}
     </section>
   );
@@ -98,6 +98,13 @@ const ICONS = {
   check: 'M20 6L9 17l-5-5',
   maximize: 'M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3',
   minimize: 'M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3',
+  close: 'M18 6L6 18M6 6l12 12',
+  download: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
+  share: 'M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13',
+  metronome: 'M9 3h6l4 18H5L9 3zM6 17h12M12 14l6-9',
+  play: 'M7 4l13 8-13 8V4z',
+  pause: 'M8 4v16M16 4v16',
+  image: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21',
 } as const;
 
 export type IconName = keyof typeof ICONS;

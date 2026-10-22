@@ -152,3 +152,52 @@ test('tự căn chỉnh: đo im lặng rồi hiện nốt cần đánh', async (
   await page.getByRole('button', { name: 'Huỷ' }).click();
   await expect(page.getByTestId('auto-calibrate')).toBeVisible();
 });
+
+test('xuất ảnh khuông nhạc từ thư viện', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('export-song-twinkle').click();
+  const dialog = page.getByRole('dialog', { name: 'Xuất ảnh khuông nhạc' });
+  await expect(dialog).toBeVisible();
+  const preview = dialog.getByTestId('score-sheet-preview');
+  await expect(preview).toBeVisible();
+  // Ảnh nhiều dòng: rộng 2200px (scale 2), cao hơn một dòng khuông.
+  const size = await preview.evaluate((img: HTMLImageElement) => ({ w: img.naturalWidth, h: img.naturalHeight }));
+  expect(size.w).toBe(2200);
+  expect(size.h).toBeGreaterThan(600);
+
+  const downloadPromise = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Tải ảnh PNG' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^vietpiano-.+\.png$/);
+
+  await dialog.getByRole('button', { name: 'Đóng' }).click();
+  await expect(dialog).toBeHidden();
+});
+
+test('chạy theo nhịp: khuông nhạc tự chạy, đánh nốt nào cũng được tính', async ({ page }) => {
+  await openLesson(page, 'scale-c-major');
+  await page.getByTestId('tempo-toggle').click();
+  await expect(page.getByTestId('tempo-status')).toHaveText('Sẵn sàng');
+  // Tăng tốc lên 160% (♩=72 → 115) cho test nhanh.
+  for (let i = 0; i < 12; i++) await page.getByRole('button', { name: 'Nhanh hơn' }).click();
+  await expect(page.getByTestId('tempo-bpm')).toHaveText('♩=115');
+
+  // Bài cần C4 nhưng đánh F4 (sai cao độ) → vẫn bắt đầu chạy và tính là đã đánh.
+  await page.keyboard.press('f');
+  await expect(page.getByTestId('tempo-status')).toHaveText('Đang chạy');
+  await expect(page.getByTestId('tempo-hits')).toHaveText('♪ 1');
+
+  // Không đánh gì nữa: con trỏ vẫn tự chạy, các nốt bị lỡ.
+  await expect(page.getByTestId('progress-text')).not.toHaveText('1/16', { timeout: 3000 });
+  await expect(page.getByTestId('tempo-missed')).not.toHaveText('lỡ 0');
+
+  // Tạm dừng rồi chơi lại từ đầu.
+  await page.getByTestId('tempo-run').click();
+  await expect(page.getByTestId('tempo-status')).toHaveText('Tạm dừng');
+  await page.getByRole('button', { name: 'Chơi lại từ đầu' }).click();
+  await expect(page.getByTestId('progress-text')).toHaveText('0/16');
+
+  // Tắt chế độ → quay về Wait Mode.
+  await page.getByTestId('tempo-toggle').click();
+  await expect(page.getByTestId('expected-note')).toHaveText('C4');
+});

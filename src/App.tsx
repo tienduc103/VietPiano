@@ -16,7 +16,7 @@ export function App() {
   }, [loadProgress]);
 
   return (
-    <div className="h-full bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="h-full bg-gradient-to-br from-sky-100 via-violet-50 to-pink-100 text-slate-900 dark:from-slate-950 dark:via-violet-950 dark:to-slate-950 dark:text-slate-100">
       {route.name === 'library' && <LibraryScreen />}
       {route.name === 'practice' && <PracticeScreen lessonId={route.lessonId} />}
       {route.name === 'settings' && <SettingsScreen />}

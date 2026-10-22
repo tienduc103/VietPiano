@@ -68,7 +68,7 @@ export function AutoCalibration({ labelStyle }: { labelStyle: NoteLabelStyle }) 
 
   const total = calibrator.steps.length;
   return (
-    <div className="w-full rounded-xl bg-white p-4 ring-1 ring-indigo-200 dark:bg-slate-800 dark:ring-indigo-800" data-testid="auto-calibration">
+    <div className="w-full rounded-xl bg-white p-4 ring-1 ring-violet-200 dark:bg-slate-800 dark:ring-violet-800" data-testid="auto-calibration">
       {state.phase === 'done' ? (
         <ResultView
           result={state.result}
@@ -124,7 +124,7 @@ function NoteStep({
     <div className="pt-2">
       <div className="flex flex-wrap items-end gap-x-4 gap-y-1">
         <p className="text-xl">{kind === 'repeat' ? 'Đánh hai lần nốt' : 'Đánh nốt'}</p>
-        <p className="text-5xl font-bold text-indigo-700 dark:text-indigo-300" data-testid="calibration-target">
+        <p className="text-5xl font-bold text-violet-700 dark:text-violet-300" data-testid="calibration-target">
           {midiToLabel(midi, labelStyle)}
         </p>
         <p className="text-lg text-slate-500 dark:text-slate-400">({midiToLabel(midi, other)})</p>
@@ -175,7 +175,7 @@ function issueText(issue: CalibrationIssue, target: number, style: NoteLabelStyl
 function Progress({ value }: { value: number }) {
   return (
     <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" aria-hidden>
-      <div className="h-full rounded-full bg-indigo-500 transition-[width] duration-100" style={{ width: `${value * 100}%` }} />
+      <div className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-[width] duration-100" style={{ width: `${value * 100}%` }} />
     </div>
   );
 }
@@ -231,7 +231,7 @@ function ResultView({
               <tr key={r.key} className="border-t border-slate-200 dark:border-slate-700">
                 <td className="py-1.5">{r.label}</td>
                 <td className="py-1.5 tabular-nums">{r.format(before[r.key])}</td>
-                <td className={`py-1.5 tabular-nums ${changed ? 'font-semibold text-indigo-700 dark:text-indigo-300' : ''}`}>
+                <td className={`py-1.5 tabular-nums ${changed ? 'font-semibold text-violet-700 dark:text-violet-300' : ''}`}>
                   {r.format(next)}
                 </td>
               </tr>

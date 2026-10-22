@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { renderScore, SCORE_HEIGHT, type RenderedScore } from '../core/score/ScoreRenderer';
+import { renderScore, scoreFontsReady, SCORE_HEIGHT, type RenderedScore } from '../core/score/ScoreRenderer';
 import type { Lesson } from '../core/lessons/types';
 import type { NoteResult, PracticeStatus } from '../core/practice/PracticeEngine';
 import type { NoteLabelStyle } from '../core/music/notes';
@@ -15,12 +15,6 @@ interface Props {
   labelStyle: NoteLabelStyle;
 }
 
-// Font Bravura (nhúng base64) được nạp bất đồng bộ; phải chờ trước khi vẽ lần đầu.
-const fontsReady: Promise<unknown> =
-  typeof document !== 'undefined' && document.fonts
-    ? Promise.all([document.fonts.load('30px Bravura'), document.fonts.load('12px Academico')]).catch(() => undefined)
-    : Promise.resolve();
-
 /** Vị trí nốt hiện tại trên màn hình (tỉ lệ chiều rộng). */
 const FOCUS_RATIO = 0.3;
 
@@ -34,7 +28,7 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
 
   useEffect(() => {
     let alive = true;
-    void fontsReady.then(() => alive && setReady(true));
+    void scoreFontsReady().then(() => alive && setReady(true));
     return () => {
       alive = false;
     };
