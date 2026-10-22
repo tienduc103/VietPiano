@@ -179,6 +179,20 @@ const defs: LessonDef[] = [
     source: 'J. L. Pierpont (1857) — phạm vi công cộng',
     notation: 'E4 E4 E4/h | E4 E4 E4/h | E4 G4 C4/qd D4/8 | E4/w | F4 F4 F4/qd F4/8 | F4 E4 E4 E4/8 E4/8 | E4 D4 D4 E4 | D4/h G4/h',
   },
+  {
+    id: 'song-romance',
+    title: "Romance d'Amour",
+    description: 'Giai điệu đoạn đầu (Mi thứ, nhịp 3/4) — nốt cao nhất của mỗi chùm rải hợp âm.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [3, 4],
+    difficulty: 3,
+    hand: 'right',
+    source: 'Khuyết danh, nhạc guitar Tây Ban Nha thế kỷ 19 — phạm vi công cộng',
+    notation:
+      'B4 B4 B4 | B4 A4 G4 | G4 F#4 E4 | E4 G4 B4 | E5 E5 E5 | E5 D5 C5 | C5 B4 A4 | A4 B4 C5 | ' +
+      'B4 C5 B4 | D#5 C5 B4 | B4 A4 G4 | G4 F#4 E4 | F#4 F#4 F#4 | F#4 G4 F#4 | E4/hd',
+  },
 ];
 
 export const LESSONS: Lesson[] = defs.map(({ notation, ...rest }) => ({ ...rest, notes: parseNotes(notation) }));
