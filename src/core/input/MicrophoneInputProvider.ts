@@ -1,9 +1,11 @@
 /**
- * MicrophoneInputProvider: AudioInput → PitchDetector (YIN) → NoteRecognizer → sự kiện nốt.
+ * MicrophoneInputProvider: AudioInput → PitchDetector (YIN) + AttackAnalyzer (nốt gõ đè âm ngân)
+ * → NoteRecognizer → sự kiện nốt.
  * Phân tích trên main thread (~47 khung/giây với hop 1024 @ 48 kHz).
  */
 import { AudioInput, type AudioInputError, type AudioInputStatus } from '../audio/AudioInput';
 import { PitchDetector } from '../audio/PitchDetector';
+import { AttackAnalyzer } from '../audio/AttackAnalyzer';
 import { NoteRecognizer, type NoteRecognizerConfig, type RecognizerOutput } from '../audio/NoteRecognizer';
 import { Emitter, type NoteInputEvent, type NoteInputProvider } from './NoteInputProvider';
 
@@ -24,6 +26,7 @@ export class MicrophoneInputProvider implements NoteInputProvider {
   private readonly notes = new Emitter<NoteInputEvent>();
   private readonly recognizer: NoteRecognizer;
   private detector: PitchDetector | null = null;
+  private attack: AttackAnalyzer | null = null;
   private readonly audio: AudioInput;
 
   constructor(audio = new AudioInput(), recognizerConfig: Partial<NoteRecognizerConfig> = {}) {
@@ -33,14 +36,15 @@ export class MicrophoneInputProvider implements NoteInputProvider {
     audio.frames.on(({ samples, sampleRate, time }) => {
       if (!this.detector || this.detector.options.sampleRate !== sampleRate) {
         this.detector = new PitchDetector({ sampleRate, frameSize: samples.length });
+        this.attack = new AttackAnalyzer({ sampleRate, frameSize: samples.length });
       }
       const pitch = this.detector.detect(samples);
-      const out = this.recognizer.process({ ...pitch, time });
+      const out = this.recognizer.process({ ...pitch, time, attack: this.attack!.process(samples, time) });
       this.analysis.emit({ ...out, time });
       if (out.noteOn) this.notes.emit({ midi: out.noteOn.midi, time: out.noteOn.time, source: 'microphone' });
     });
     audio.statusChanges.on(({ status }) => {
-      if (status !== 'running') this.recognizer.reset();
+      if (status !== 'running') this.resetRecognizer();
     });
   }
 
@@ -75,6 +79,7 @@ export class MicrophoneInputProvider implements NoteInputProvider {
   /** Gọi khi chuyển nốt/bài để không mang trạng thái âm ngân sang ngữ cảnh mới. */
   resetRecognizer(): void {
     this.recognizer.reset();
+    this.attack?.reset();
   }
 }
 

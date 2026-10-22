@@ -25,9 +25,11 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   audio/AudioInput.ts      getUserMedia + AudioContext + AudioWorklet (singleton, dọn dẹp đầy đủ)
   audio/capture-processor.js  AudioWorklet (JS thuần) gửi khung 2048 mẫu mỗi hop 1024
   audio/PitchDetector.ts   YIN → { frequency, confidence, rms }
+  audio/AttackAnalyzer.ts  FFT; onset phổ + cao độ của phần phổ MỚI → nhận nốt gõ đè âm ngân (pedal)
+  audio/fft.ts             FFT radix-2 → phổ biên độ
   audio/NoteRecognizer.ts  khung cao độ → sự kiện noteOn (ổn định + onset, chống âm ngân/hoạ âm)
   input/NoteInputProvider.ts  interface nguồn nốt (microphone | virtual | midi)
-  input/MicrophoneInputProvider.ts  AudioInput → PitchDetector → NoteRecognizer
+  input/MicrophoneInputProvider.ts  AudioInput → PitchDetector + AttackAnalyzer → NoteRecognizer
   input/VirtualInputProvider.ts     bàn phím ảo / bàn phím máy tính (demo mode)
   practice/PracticeEngine.ts  Wait Mode (máy trạng thái thuần)
   lessons/                 kiểu dữ liệu, ký hiệu gọn "C4 D4/h", thư viện bài, LessonManager
@@ -41,7 +43,7 @@ src/screens/         Library, Practice, Settings
 e2e/                 Playwright; global-setup sinh WAV gam Đô trưởng làm micro giả
 ```
 
-Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detect → NoteRecognizer.process → NoteInputEvent → PracticeEngine.handleNote → React (useSyncExternalStore)`.
+Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detect (+ AttackAnalyzer.process) → NoteRecognizer.process → NoteInputEvent → PracticeEngine.handleNote → React (useSyncExternalStore)`.
 
 ## Nguyên tắc
 
@@ -49,6 +51,10 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   1. `NoteRecognizer`: sau mỗi noteOn thì "tháo kíp"; chỉ nhận nốt mới khi có khoảng lặng hoặc onset
      (RMS tăng > `onsetRatio` so với 2 khung trước, ngoài thời gian refractory). Đổi nốt kiểu legato chỉ được
      nhận khi không phải quan hệ hoạ âm và ổn định ≥ `legatoStableMs`.
+     Pedal/âm ngân: YIN trên hỗn hợp nốt bị sai (A4+D4 → D3), nên khi có âm nền (`attackMinBackground`)
+     thì dùng cao độ của `AttackAnalyzer` (phần phổ tăng ≥ `noveltyRatio` lần so với phổ trước lúc gõ).
+     Onset phổ chỉ lên kíp nếu xảy ra SAU lần phát gần nhất. Không hạ `noveltyRatio` dưới ~1.6: beating
+     ±20% của âm ngân sẽ thành onset giả → nhảy nốt (test `NoteRecognizer.pedal.test.ts`).
   2. `PracticeEngine`: mỗi sự kiện tiến tối đa 1 nốt; bỏ qua sự kiện < `minAdvanceIntervalMs` sau lần chuyển nốt.
   Mọi thay đổi ở hai file này phải kèm test mô phỏng chuỗi khung (xem `NoteRecognizer.test.ts`, `PracticeEngine.test.ts`).
 - Chỉ nhận diện **một nốt tại một thời điểm**. Không giả vờ hỗ trợ hợp âm.

@@ -14,10 +14,17 @@
  *     Bỏ qua trong thời gian refractory ngay sau khi phát, vì pha attack vẫn đang lên.
  * Ngoại lệ legato: nếu cao độ đổi sang nốt KHÁC và không có quan hệ hoạ âm với nốt trước,
  * ổn định đủ lâu (legatoStableMs), vẫn được chấp nhận dù không phát hiện onset.
+ *
+ * Pedal / nốt cũ còn ngân: YIN trên hỗn hợp nhiều nốt cho kết quả sai (E4+D4 → không rõ,
+ * A4+D4 → D3). Khi khung có `attack` (AttackAnalyzer: cao độ của phần phổ MỚI xuất hiện)
+ * và đang có âm nền ngân (background ≥ attackMinBackground), cao độ attack thay cho YIN nếu YIN
+ * không rõ, trùng nốt vừa phát (âm ngân), hoặc là hoạ âm dưới của nốt attack. Gõ từ im lặng
+ * (không có âm nền) → chỉ dùng YIN như trước.
  */
 
 import { frequencyToNearestNote } from '../music/notes';
 import type { PitchFrame } from './PitchDetector';
+import type { AttackFrame } from './AttackAnalyzer';
 
 export interface NoteRecognizerConfig {
   /** Tần số chuẩn A4. */
@@ -43,6 +50,8 @@ export interface NoteRecognizerConfig {
   /** Phạm vi MIDI chấp nhận. */
   minMidi: number;
   maxMidi: number;
+  /** Âm nền tối thiểu (so với tổng phổ) để dùng cao độ attack thay YIN. */
+  attackMinBackground: number;
 }
 
 export const DEFAULT_RECOGNIZER_CONFIG: NoteRecognizerConfig = {
@@ -58,11 +67,14 @@ export const DEFAULT_RECOGNIZER_CONFIG: NoteRecognizerConfig = {
   legatoStableMs: 250,
   minMidi: 33,
   maxMidi: 96,
+  attackMinBackground: 0.2,
 };
 
 export interface TimedPitchFrame extends PitchFrame {
   /** Thời điểm của khung (ms, đơn điệu tăng). */
   time: number;
+  /** Phân tích phần âm mới gõ (tuỳ chọn). */
+  attack?: AttackFrame | null;
 }
 
 export interface LivePitch {
@@ -98,6 +110,7 @@ export class NoteRecognizer {
   private armed = true;
   private lastEmittedMidi: number | null = null;
   private lastEmitTime = -Infinity;
+  private attackOnsetTime = -Infinity;
   /** RMS của các khung gần nhất (cũ → mới), dùng để phát hiện onset. */
   private rmsHistory: number[] = [];
 
@@ -119,6 +132,7 @@ export class NoteRecognizer {
     this.armed = true;
     this.lastEmittedMidi = null;
     this.lastEmitTime = -Infinity;
+    this.attackOnsetTime = -Infinity;
     this.rmsHistory = [];
   }
 
@@ -153,8 +167,22 @@ export class NoteRecognizer {
       this.candidateFrames = 0;
     }
 
-    // 3. Cao độ của khung.
-    const live = this.toLivePitch(frame);
+    // 3. Cao độ của khung: YIN, hoặc cao độ attack khi YIN bị âm ngân che.
+    const yin = this.toLivePitch(frame);
+    const attack = this.toAttackPitch(frame);
+    const useAttack =
+      attack !== null &&
+      (yin === null ||
+        yin.midi === this.lastEmittedMidi ||
+        (yin.midi < attack.midi && isHarmonicallyRelated(yin.midi, attack.midi)));
+    const live = useAttack ? attack : yin;
+
+    // Nốt được gõ đè lên âm ngân: RMS có thể không tăng đủ để thành onset, nhưng onset phổ thì có.
+    // Chỉ tính onset phổ xảy ra SAU lần phát gần nhất → phần còn lại của pha attack vừa phát
+    // không thể kích hoạt lại cùng nốt.
+    if (frame.attack?.onset) this.attackOnsetTime = time;
+    if (useAttack && !inRefractory && !this.armed && this.attackOnsetTime > this.lastEmitTime) this.armed = true;
+
     if (!live) {
       this.candidateMidi = null;
       this.candidateFrames = 0;
@@ -188,12 +216,22 @@ export class NoteRecognizer {
   }
 
   private toLivePitch(frame: TimedPitchFrame): LivePitch | null {
+    if (frame.frequency === null || frame.confidence < this.config.minConfidence) return null;
+    return this.toNote(frame.frequency, frame.confidence);
+  }
+
+  private toAttackPitch(frame: TimedPitchFrame): LivePitch | null {
+    const a = frame.attack;
+    if (!a || a.frequency === null || a.background < this.config.attackMinBackground) return null;
+    return this.toNote(a.frequency, a.clarity);
+  }
+
+  private toNote(frequency: number, confidence: number): LivePitch | null {
     const c = this.config;
-    if (frame.frequency === null || frame.confidence < c.minConfidence) return null;
-    const note = frequencyToNearestNote(frame.frequency, c.a4);
+    const note = frequencyToNearestNote(frequency, c.a4);
     if (!note) return null;
     if (note.midi < c.minMidi || note.midi > c.maxMidi) return null;
     if (Math.abs(note.cents) > c.maxCentsDeviation) return null;
-    return { midi: note.midi, cents: note.cents, frequency: frame.frequency, confidence: frame.confidence };
+    return { midi: note.midi, cents: note.cents, frequency, confidence };
   }
 }
