@@ -181,7 +181,7 @@ const defs: LessonDef[] = [
   },
   {
     id: 'song-romance',
-    title: "Romance d'Amour",
+    title: "Romance d'Amour (bản 1)",
     description: 'Giai điệu đoạn đầu (Mi thứ, nhịp 3/4) — nốt cao nhất của mỗi chùm rải hợp âm.',
     category: 'song',
     clef: 'treble',
@@ -191,7 +191,25 @@ const defs: LessonDef[] = [
     source: 'Khuyết danh, nhạc guitar Tây Ban Nha thế kỷ 19 — phạm vi công cộng',
     notation:
       'B4 B4 B4 | B4 A4 G4 | G4 F#4 E4 | E4 G4 B4 | E5 E5 E5 | E5 D5 C5 | C5 B4 A4 | A4 B4 C5 | ' +
-      'B4 C5 B4 | D#5 C5 B4 | B4 A4 G4 | G4 F#4 E4 | F#4 F#4 F#4 | F#4 G4 F#4 | E4/hd',
+      'B4 C5 B4 | D#5 C5 B4 | B4 A4 G4 | G4 F#4 E4 | F#4 F#4 F#4 | F#4 G4 F#4 | E4 E4 E4 | E4/hd',
+  },
+  {
+    id: 'song-romance-2',
+    title: "Romance d'Amour (bản 2)",
+    description: 'Bản piano dễ (Rê thứ, nhịp 3/4) — giai điệu tay phải, đoạn A và đoạn B.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [3, 4],
+    difficulty: 3,
+    hand: 'right',
+    source: 'Khuyết danh, nhạc guitar Tây Ban Nha thế kỷ 19 — phạm vi công cộng; chuyển giọng Rê thứ',
+    notation:
+      // Đoạn A (ô 1–16)
+      'A4 A4 A4 | A4 G4 F4 | F4 E4 D4 | D4 F4 A4 | D5 D5 D5 | D5 C5 Bb4 | Bb4 A4 G4 | G4 A4 Bb4 | ' +
+      'A4 Bb4 A4 | C#5 Bb4 A4 | A4 G4 F4 | F4 E4 D4 | E4 E4 E4 | E4 F4 E4 | D4 D4 D4 | D4/hd | ' +
+      // Đoạn B (ô 17–32): giai điệu tay phải giống đoạn A, chỉ khác phần đệm tay trái
+      'A4 A4 A4 | A4 G4 F4 | F4 E4 D4 | D4 F4 A4 | D5 D5 D5 | D5 C5 Bb4 | Bb4 A4 G4 | G4 A4 Bb4 | ' +
+      'A4 Bb4 A4 | C#5 Bb4 A4 | A4 G4 F4 | F4 E4 D4 | E4 E4 E4 | E4 F4 E4 | D4 D4 D4 | D4/hd',
   },
   {
     id: 'song-fur-elise',

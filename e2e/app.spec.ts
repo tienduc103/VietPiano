@@ -12,7 +12,7 @@ test('thư viện hiển thị đủ nhóm bài học', async ({ page }) => {
   for (const name of ['Nhận biết nốt', 'Gam', 'Bài tập tay phải', 'Bài tập tay trái', 'Bài hát']) {
     await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
   }
-  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(7);
+  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(8);
 });
 
 test('khuông nhạc vẽ đúng số nốt, khoá Fa cho bài tay trái', async ({ page }) => {
