@@ -1,3 +1,5 @@
+import type { KeySignature } from '../music/keySignature';
+
 export type Clef = 'treble' | 'bass';
 
 /** Trường độ theo ký hiệu VexFlow: w=tròn, h=trắng, q=đen, 8=móc đơn, 16=móc kép; hậu tố d = có chấm. */
@@ -31,6 +33,8 @@ export interface Lesson {
   clef: Clef;
   /** [số phách mỗi ô nhịp, giá trị phách] — mẫu số 4 hoặc 8. */
   timeSignature: [number, 4 | 8];
+  /** Hoá biểu đầu khuông; mặc định Đô trưởng (không dấu hoá). */
+  keySignature?: KeySignature;
   /** Nhịp lấy đà: độ dài (tính bằng nốt đen) của ô nhịp đầu chưa đủ phách. */
   pickup?: number;
   difficulty: 1 | 2 | 3;

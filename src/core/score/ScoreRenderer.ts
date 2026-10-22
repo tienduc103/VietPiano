@@ -8,6 +8,7 @@
 import { Beam, Dot, Formatter, Renderer, Stave, StaveNote, Voice, BarlineType, Accidental } from 'vexflow/bravura';
 import { splitMeasures } from '../lessons/notation';
 import { measureLength, type Duration, type Lesson } from '../lessons/types';
+import { measureAccidentals } from '../music/keySignature';
 import { midiToLabel, type NoteLabelStyle } from '../music/notes';
 
 export interface ScoreRenderOptions {
@@ -61,14 +62,20 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
 
   measures.forEach((measure, mi) => {
     const stave = new Stave(x, STAVE_Y, 100);
-    if (mi === 0) stave.addClef(lesson.clef).addTimeSignature(`${beats}/${beatValue}`);
+    if (mi === 0) {
+      stave.addClef(lesson.clef);
+      if (lesson.keySignature) stave.addKeySignature(lesson.keySignature);
+      stave.addTimeSignature(`${beats}/${beatValue}`);
+    }
     if (mi === measures.length - 1) stave.setEndBarType(BarlineType.END);
     stave.setDefaultLedgerLineStyle(ledgerStyle);
 
-    const notes = measure.items.map((n) => {
+    const accidentals = measureAccidentals(measure.items.map((n) => n.pitch), lesson.keySignature);
+    const notes = measure.items.map((n, ni) => {
       const note = new StaveNote({ keys: [toVexKey(n.pitch)], duration: n.duration, clef: lesson.clef, autoStem: true });
       if (n.duration.endsWith('d')) Dot.buildAndAttach([note], { all: true });
-      if (n.pitch.length === 3) note.addModifier(new Accidental(n.pitch[1]), 0);
+      const accidental = accidentals[ni];
+      if (accidental) note.addModifier(new Accidental(accidental), 0);
       note.setLedgerLineStyle(ledgerStyle);
       return note;
     });

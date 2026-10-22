@@ -23,6 +23,7 @@ Trước khi báo xong việc: `npm test && npm run build && npm run test:e2e`.
 ```
 src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi thứ ở đây phải có unit test
   music/notes.ts           tần số ↔ MIDI ↔ tên nốt (C4, Đô4), cents
+  music/keySignature.ts    hoá biểu ("Dm", "Em"…) + dấu hoá cần vẽ trong ô nhịp (bất thường, dấu hoàn)
   audio/AudioInput.ts      getUserMedia + AudioContext + AudioWorklet (singleton, dọn dẹp đầy đủ)
   audio/capture-processor.js  AudioWorklet (JS thuần) gửi khung 2048 mẫu mỗi hop 1024
   audio/PitchDetector.ts   YIN → { frequency, confidence, rms }
