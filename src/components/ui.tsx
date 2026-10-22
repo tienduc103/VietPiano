@@ -119,13 +119,22 @@ export function Icon({ name, className = 'h-6 w-6' }: { name: IconName; classNam
   );
 }
 
-/** Nút bật/tắt toàn màn hình; tự ẩn khi trình duyệt không hỗ trợ hoặc đã chạy dạng app. */
+/**
+ * Nút bật/tắt toàn màn hình; tự ẩn khi trình duyệt không hỗ trợ hoặc đã chạy dạng app.
+ * Khi đang toàn màn hình thì thu nhỏ, mờ bớt để không chiếm chỗ trên header.
+ */
 export function FullscreenButton({ className = '' }: { className?: string }) {
   const { supported, active, toggle } = useFullscreen();
   if (!supported) return null;
   return (
-    <Button variant="ghost" onClick={toggle} aria-label={active ? 'Thoát toàn màn hình' : 'Toàn màn hình'} aria-pressed={active} className={`px-2 ${className}`}>
-      <Icon name={active ? 'minimize' : 'maximize'} />
+    <Button
+      variant="ghost"
+      onClick={toggle}
+      aria-label={active ? 'Thoát toàn màn hình' : 'Toàn màn hình'}
+      aria-pressed={active}
+      className={`${active ? 'min-h-9! rounded-lg px-1.5 opacity-60 hover:opacity-100' : 'px-2'} ${className}`}
+    >
+      <Icon name={active ? 'minimize' : 'maximize'} className={active ? 'h-4 w-4' : 'h-6 w-6'} />
     </Button>
   );
 }
