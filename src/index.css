@@ -22,9 +22,13 @@
 }
 
 /* Safari iPadOS toàn màn hình vẽ nút đóng/thanh trạng thái đè lên mép trên mà
-   không báo safe-area-inset-top → chừa thêm chỗ. */
+   không báo safe-area-inset-top → chừa thêm chỗ. Class `is-fullscreen` do useFullscreen gắn
+   (dự phòng cho Safari chỉ có API tiền tố webkit). */
 :root:fullscreen {
-  --fullscreen-top-gap: 1.5rem;
+  --fullscreen-top-gap: 3rem;
+}
+.is-fullscreen {
+  --fullscreen-top-gap: 3rem;
 }
 
 .dark {

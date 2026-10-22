@@ -23,6 +23,12 @@ function subscribe(cb: () => void): () => void {
   };
 }
 
+/** Gắn class `is-fullscreen` lên <html> để CSS chừa khoảng trống trên header (xem index.css). */
+function syncRootClass(): void {
+  document.documentElement.classList.toggle('is-fullscreen', fullscreenElement() !== null);
+}
+subscribe(syncRootClass);
+
 /** Đã mở dạng app (Thêm vào Màn hình chính) → vốn đã toàn màn hình. */
 function isStandalone(): boolean {
   return (
