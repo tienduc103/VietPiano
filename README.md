@@ -92,7 +92,8 @@ Cách ổn định hơn: deploy lên GitHub Pages (mục 5) rồi mở bằng HT
 
 ## 5. Deploy lên GitHub Pages (miễn phí, HTTPS)
 
-1. Tạo repository trên GitHub (vd `VietPiano`) và push code lên nhánh `main`.
+1. Tạo repository trên GitHub (vd `VietPiano`).
+   **Trước mỗi lần deploy, chạy lệnh phát hành** (xem mục *Phiên bản* bên dưới) rồi push code lên nhánh `main`.
 2. Trên GitHub: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 3. Workflow `.github/workflows/deploy.yml` sẽ chạy test, build với `BASE_PATH=/<tên-repo>/` và deploy.
 4. Ứng dụng có tại `https://<tài-khoản>.github.io/<tên-repo>/`.
@@ -105,6 +106,25 @@ npm run preview
 ```
 
 (Trong Git Bash cần `MSYS_NO_PATHCONV=1 BASE_PATH=/VietPiano/ npm run build`, vì Git Bash tự đổi đường dẫn bắt đầu bằng `/`.)
+
+### Phiên bản
+
+Phiên bản nằm ở **một nơi duy nhất**: file `VERSION` ở gốc repo, dạng `<major>.<minor>.<yymmdd>.<hhmmss>`
+(vd `1.07.261020.143507`). Ứng dụng đọc file này lúc build và hiển thị ở cuối màn hình **Cài đặt**;
+chưa có file thì hiện `dev`.
+
+```powershell
+npm run release -- --dry-run   # chỉ in phiên bản kế tiếp
+npm run release                # ghi VERSION, commit riêng file đó, gắn tag v<phiên bản>
+git push && git push origin v<phiên bản>
+npm run release -- --no-git    # chỉ ghi file, không commit/tag
+```
+
+- Bắt đầu từ `1.01`; mỗi lần phát hành minor +1 (luôn 2 chữ số, `01`–`99`); sau `.99` thì major +1, minor về `01`
+  (`1.99` → `2.01`).
+- `yymmdd.hhmmss` là thời điểm chạy lệnh phát hành theo **giờ Việt Nam** (UTC+7, 24 giờ), bất kể múi giờ máy.
+- Chỉ tăng khi chạy `npm run release` — không tăng khi dev/build/test/deploy lại. Không bao giờ giảm hay dùng lại số cũ.
+- Trường `version` trong `package.json` giữ nguyên, không liên quan.
 
 ## 6. Kiến trúc
 

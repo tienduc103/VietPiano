@@ -164,6 +164,10 @@ export function SettingsScreen() {
 
           <DataCard />
         </div>
+
+        <p className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400" data-testid="app-version">
+          VietPiano · phiên bản {__APP_VERSION__}
+        </p>
       </div>
     </div>
   );

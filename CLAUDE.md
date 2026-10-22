@@ -14,6 +14,7 @@ Không backend, không gửi âm thanh lên mạng, chạy offline.
 | `npm run build` | Typecheck + build production + service worker |
 | `npm run test:e2e` | Playwright (Chromium, viewport iPad ngang, micro giả bằng file WAV) |
 | `npm run icons` | Sinh lại icon PNG từ `public/favicon.svg` |
+| `npm run release` | Phát hành: tăng `VERSION`, commit riêng file đó + tag (`-- --dry-run`, `-- --no-git`) |
 
 Trước khi báo xong việc: `npm test && npm run build && npm run test:e2e`.
 
@@ -74,4 +75,8 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
 - TypeScript strict, comment/tên hiển thị bằng tiếng Việt, tên định danh bằng tiếng Anh.
 - File test cạnh file nguồn: `*.test.ts`. Tín hiệu tổng hợp cho test: `src/core/audio/testSignals.ts`.
 - Thêm cài đặt mới: cập nhật `DeviceSettings` (+ `sanitize`), `settingsStore.applyToRecognizer` nếu liên quan nhận diện.
+- Phiên bản: chỉ ở file `VERSION` (`<major>.<minor>.<yymmdd>.<hhmmss>`, giờ VN; minor 01–99, sau 99 → major+1).
+  Chỉ tăng bằng `npm run release` (logic thuần ở `scripts/version.ts` + test), chạy trước mỗi lần deploy.
+  `vite.config.ts` đọc VERSION → `__APP_VERSION__` (không có file → "dev"); không tự sinh phiên bản lúc build,
+  không ghi vào `version` của package.json.
 - Deploy: GitHub Actions `.github/workflows/deploy.yml` (đặt `BASE_PATH=/<repo>/`).
