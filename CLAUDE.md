@@ -33,7 +33,7 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   input/NoteInputProvider.ts  interface nguồn nốt (microphone | virtual | midi)
   input/MicrophoneInputProvider.ts  AudioInput → PitchDetector + AttackAnalyzer → NoteRecognizer
   input/VirtualInputProvider.ts     bàn phím ảo / bàn phím máy tính (demo mode)
-  practice/PracticeEngine.ts  Wait Mode (máy trạng thái thuần)
+  practice/PracticeEngine.ts  Wait Mode (máy trạng thái thuần); `advanceOnWrong` = chế độ Đếm nốt (sai vẫn đi tiếp, ghi 'wrong')
   practice/TempoFollower.ts   chế độ chạy theo nhịp: đồng hồ nhịp tự chạy, khớp pha + nhịp độ theo onset, KHÔNG xét cao độ
   lessons/                 kiểu dữ liệu, ký hiệu gọn "C4 D4/h", thư viện bài, LessonManager
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt

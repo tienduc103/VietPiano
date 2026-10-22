@@ -176,7 +176,7 @@ test('xuất ảnh khuông nhạc từ thư viện', async ({ page }) => {
 
 test('chạy theo nhịp: khuông nhạc tự chạy, đánh nốt nào cũng được tính', async ({ page }) => {
   await openLesson(page, 'scale-c-major');
-  await page.getByTestId('tempo-toggle').click();
+  await page.getByTestId('mode-tempo').click();
   await expect(page.getByTestId('tempo-status')).toHaveText('Sẵn sàng');
   // Tăng tốc lên 160% (♩=72 → 115) cho test nhanh.
   for (let i = 0; i < 12; i++) await page.getByRole('button', { name: 'Nhanh hơn' }).click();
@@ -197,7 +197,31 @@ test('chạy theo nhịp: khuông nhạc tự chạy, đánh nốt nào cũng đ
   await page.getByRole('button', { name: 'Chơi lại từ đầu' }).click();
   await expect(page.getByTestId('progress-text')).toHaveText('0/16');
 
-  // Tắt chế độ → quay về Wait Mode.
-  await page.getByTestId('tempo-toggle').click();
+  // Về chế độ Chờ nốt.
+  await page.getByTestId('mode-wait').click();
   await expect(page.getByTestId('expected-note')).toHaveText('C4');
+});
+
+test('đếm nốt: mỗi nốt nghe thấy đi một nốt, nốt sai tô đỏ', async ({ page }) => {
+  await openLesson(page, 'scale-c-major');
+  await page.getByTestId('mode-count').click();
+  await expect(page.getByTestId('mode-count')).toHaveAttribute('aria-checked', 'true');
+
+  // Cần C4 nhưng đánh F4 → vẫn chuyển sang D4, nốt đầu tô đỏ.
+  await page.keyboard.press('f');
+  await expect(page.getByTestId('status-title')).toHaveText('Sai');
+  await expect(page.getByTestId('expected-note')).toHaveText('D4');
+  await expect(page.locator('.score-note').first()).toHaveClass(/is-wrong/);
+
+  // D4 đúng → sang E4.
+  await page.waitForTimeout(150);
+  await page.keyboard.press('s');
+  await expect(page.getByTestId('expected-note')).toHaveText('E4');
+  await expect(page.getByTestId('progress-text')).toHaveText('2/16');
+  await expect(page.locator('.score-note').nth(1)).toHaveClass(/is-correct/);
+
+  // Lựa chọn được nhớ khi mở lại bài.
+  await openLesson(page, 'scale-c-major');
+  await expect(page.getByTestId('mode-count')).toHaveAttribute('aria-checked', 'true');
+  await page.getByTestId('mode-wait').click();
 });

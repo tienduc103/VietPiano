@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PracticeEngine, computeAccuracy } from './PracticeEngine';
+import { PracticeEngine, computeAccuracy, DEFAULT_PRACTICE_CONFIG } from './PracticeEngine';
 import { NoteRecognizer, type TimedPitchFrame } from '../audio/NoteRecognizer';
 import { midiToFrequency } from '../music/notes';
 
@@ -76,7 +76,7 @@ describe('PracticeEngine — Wait Mode', () => {
   it('octaveTolerant chấp nhận sai quãng tám', () => {
     const strict = new PracticeEngine([C4]);
     expect(strict.handleNote(C5, 1000)).toBe('wrong');
-    const tolerant = new PracticeEngine([C4], { minAdvanceIntervalMs: 0, octaveTolerant: true });
+    const tolerant = new PracticeEngine([C4], { minAdvanceIntervalMs: 0, octaveTolerant: true, advanceOnWrong: false });
     expect(tolerant.handleNote(C5, 1000)).toBe('finished');
   });
 
@@ -182,5 +182,40 @@ describe('Tích hợp NoteRecognizer + PracticeEngine: chống nhảy nhiều n�
     const recognizer = new NoteRecognizer();
     melody.forEach((m, i) => feed(engine, recognizer, sustained(m, i * 500, 500)));
     expect(engine.getState()).toMatchObject({ status: 'finished', correct: 4, wrong: 0 });
+  });
+});
+
+describe('PracticeEngine — Đếm nốt (advanceOnWrong)', () => {
+  const COUNT = { ...DEFAULT_PRACTICE_CONFIG, advanceOnWrong: true };
+
+  it('sai nốt vẫn chuyển sang nốt tiếp theo và ghi là "wrong"', () => {
+    const e = new PracticeEngine([C4, D4, E4], COUNT);
+    expect(e.handleNote(G4, 1000)).toBe('wrong');
+    expect(e.getState()).toMatchObject({ index: 1, wrong: 1, correct: 0, status: 'wrong', lastPlayedMidi: G4 });
+    expect(e.handleNote(D4, 2000)).toBe('correct');
+    expect(e.handleNote(C5, 3000)).toBe('finished');
+    const s = e.getState();
+    expect(s.results).toEqual(['wrong', 'correct', 'wrong']);
+    expect(s).toMatchObject({ status: 'finished', correct: 1, wrong: 2 });
+    expect(computeAccuracy(s)).toBeCloseTo(1 / 3);
+  });
+
+  it('mỗi sự kiện chỉ tiến một nốt; sự kiện quá sát bị bỏ qua', () => {
+    const e = new PracticeEngine([C4, D4, E4], COUNT);
+    e.handleNote(G4, 1000);
+    expect(e.handleNote(G4, 1050)).toBe('ignored');
+    expect(e.getState().index).toBe(1);
+  });
+
+  it('một nốt sai ngân 5 giây chỉ đi 1 nốt (chuỗi khung qua NoteRecognizer)', () => {
+    const HOP = (1024 / 48000) * 1000;
+    const e = new PracticeEngine([C4, D4, E4, G4], COUNT);
+    const recognizer = new NoteRecognizer();
+    for (let t = 0; t < 5000; t += HOP) {
+      const rms = 0.2 * Math.min(1, (t + HOP) / 30) * Math.exp((-0.6 * t) / 1000);
+      const out = recognizer.process({ time: t, frequency: midiToFrequency(C5), confidence: 0.95, rms });
+      if (out.noteOn) e.handleNote(out.noteOn.midi, out.noteOn.time);
+    }
+    expect(e.getState()).toMatchObject({ index: 1, wrong: 1 });
   });
 });

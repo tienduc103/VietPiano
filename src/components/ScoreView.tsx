@@ -65,6 +65,7 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
       el.classList.toggle('is-correct', res === 'correct');
       el.classList.toggle('is-corrected', res === 'corrected');
       el.classList.toggle('is-skipped', res === 'skipped');
+      el.classList.toggle('is-wrong', res === 'wrong');
     });
     r.labelElements.forEach((el, i) => el?.classList.toggle('is-current', i === index && status !== 'finished'));
     const cx = r.noteCenters[index] ?? 0;

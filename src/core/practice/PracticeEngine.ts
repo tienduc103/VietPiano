@@ -4,24 +4,29 @@
  * Quy tắc:
  *  - Đúng nốt cần đánh → chuyển sang nốt tiếp theo (mỗi sự kiện chỉ tiến TỐI ĐA một nốt).
  *  - Sai nốt → giữ nguyên vị trí, đếm một lỗi.
+ *    Chế độ "Đếm nốt" (advanceOnWrong): sai nốt vẫn chuyển sang nốt tiếp theo, nốt đó ghi là 'wrong'
+ *    — mỗi nốt nghe thấy đi đúng một nốt nhạc, người học thấy ngay mình sai ở đâu.
  *  - Không có sự kiện → tiếp tục chờ.
  *  - Sự kiện đến quá sát lần chuyển nốt trước (minAdvanceIntervalMs) bị bỏ qua,
  *    lớp bảo vệ thứ hai chống nhảy nhiều nốt (lớp thứ nhất là NoteRecognizer).
  */
 
 export type PracticeStatus = 'waiting' | 'correct' | 'wrong' | 'finished';
-export type NoteResult = 'pending' | 'correct' | 'corrected' | 'skipped';
+export type NoteResult = 'pending' | 'correct' | 'corrected' | 'wrong' | 'skipped';
 
 export interface PracticeConfig {
   /** Bỏ qua sự kiện đến sớm hơn khoảng này sau lần chuyển nốt (ms). */
   minAdvanceIntervalMs: number;
   /** Chấp nhận đúng tên nốt nhưng sai quãng tám (hữu ích khi micro nhầm quãng 8). */
   octaveTolerant: boolean;
+  /** Chế độ "Đếm nốt": sai nốt vẫn chuyển sang nốt tiếp theo. */
+  advanceOnWrong: boolean;
 }
 
 export const DEFAULT_PRACTICE_CONFIG: PracticeConfig = {
   minAdvanceIntervalMs: 120,
   octaveTolerant: false,
+  advanceOnWrong: false,
 };
 
 export interface PracticeState {
@@ -112,29 +117,31 @@ export class PracticeEngine {
     const startedAt = s.startedAt ?? time;
     const expected = s.expected[s.index];
 
-    if (!this.matches(midi, expected)) {
+    const ok = this.matches(midi, expected);
+    if (!ok && !this.config.advanceOnWrong) {
       this.hadWrongOnCurrent = true;
       this.setState({ status: 'wrong', wrong: s.wrong + 1, lastPlayedMidi: midi, lastEventTime: time, startedAt });
       return 'wrong';
     }
 
     const results = s.results.slice();
-    results[s.index] = this.hadWrongOnCurrent ? 'corrected' : 'correct';
+    results[s.index] = !ok ? 'wrong' : this.hadWrongOnCurrent ? 'corrected' : 'correct';
     this.hadWrongOnCurrent = false;
     this.lastAdvanceTime = time;
     const index = s.index + 1;
     const finished = index >= s.expected.length;
     this.setState({
       index: finished ? s.expected.length - 1 : index,
-      status: finished ? 'finished' : 'correct',
+      status: finished ? 'finished' : ok ? 'correct' : 'wrong',
       results,
-      correct: s.correct + 1,
+      correct: s.correct + (ok ? 1 : 0),
+      wrong: s.wrong + (ok ? 0 : 1),
       lastPlayedMidi: midi,
       lastEventTime: time,
       startedAt,
       finishedAt: finished ? time : null,
     });
-    return finished ? 'finished' : 'correct';
+    return finished ? 'finished' : ok ? 'correct' : 'wrong';
   }
 
   /** Bỏ qua nốt hiện tại. */

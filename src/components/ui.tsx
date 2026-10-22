@@ -101,6 +101,8 @@ const ICONS = {
   close: 'M18 6L6 18M6 6l12 12',
   download: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3',
   share: 'M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13',
+  hourglass: 'M6 2h12M6 22h12M7 2v4l5 6-5 6v4M17 2v4l-5 6 5 6v4',
+  count: 'M10 6h11M10 12h11M10 18h11M4 4v4M3 4h1M4 16h2l-2 3h2',
   metronome: 'M9 3h6l4 18H5L9 3zM6 17h12M12 14l6-9',
   play: 'M7 4l13 8-13 8V4z',
   pause: 'M8 4v16M16 4v16',

@@ -14,6 +14,7 @@
   --score-correct: #059669;
   --score-corrected: #ea580c;
   --score-skipped: #a8a29e;
+  --score-wrong: #e11d48;
   --score-wrong-cursor: rgb(244 63 94 / 0.22);
   --score-label: #6d28d9;
   /* Khoảng trống thêm phía trên header khi toàn màn hình (Fullscreen API) */
@@ -34,6 +35,7 @@
   --score-correct: #34d399;
   --score-corrected: #fb923c;
   --score-skipped: #78716c;
+  --score-wrong: #fb7185;
   --score-wrong-cursor: rgb(251 113 133 / 0.28);
   --score-label: #c4b5fd;
 }
@@ -75,6 +77,9 @@ body {
 }
 .score-note.is-skipped {
   color: var(--score-skipped);
+}
+.score-note.is-wrong {
+  color: var(--score-wrong);
 }
 .score-note.is-current {
   color: var(--score-current);

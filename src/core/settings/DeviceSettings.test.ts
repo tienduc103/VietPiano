@@ -34,8 +34,13 @@ describe('DeviceSettings', () => {
     expect(s.a4).toBe(480);
     expect(s.noiseGate).toBe(DEFAULT_SETTINGS.noiseGate);
     expect(s.theme).toBe('system');
-    st.setItem('vietpiano.settings.v1', JSON.stringify({ tempoPercent: 500, tempoMode: 1 }));
-    expect(loadSettings(st)).toMatchObject({ tempoPercent: 160, tempoMode: true });
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ tempoPercent: 500, practiceMode: 'fast' }));
+    expect(loadSettings(st)).toMatchObject({ tempoPercent: 160, practiceMode: 'wait' });
+    // Cài đặt cũ (v1.04) chỉ có tempoMode.
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ tempoMode: true }));
+    expect(loadSettings(st).practiceMode).toBe('tempo');
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ practiceMode: 'count' }));
+    expect(loadSettings(st).practiceMode).toBe('count');
     st.setItem('vietpiano.settings.v1', '{not json');
     expect(loadSettings(st)).toEqual(DEFAULT_SETTINGS);
   });

@@ -4,7 +4,7 @@ import { DURATION_BEATS, lessonTempo, measureLength, type Lesson } from '../core
 import { midiToLabel } from '../core/music/notes';
 import { computeAccuracy, PracticeEngine, DEFAULT_PRACTICE_CONFIG, type PracticeState } from '../core/practice/PracticeEngine';
 import { DEFAULT_TEMPO_CONFIG, TempoFollower, type TempoState } from '../core/practice/TempoFollower';
-import { TEMPO_PERCENT_MAX, TEMPO_PERCENT_MIN } from '../core/settings/DeviceSettings';
+import { TEMPO_PERCENT_MAX, TEMPO_PERCENT_MIN, type PracticeMode } from '../core/settings/DeviceSettings';
 import type { NoteInputEvent } from '../core/input/NoteInputProvider';
 import { microphoneInput } from '../core/input/MicrophoneInputProvider';
 import { virtualInput } from '../core/input/VirtualInputProvider';
@@ -12,7 +12,7 @@ import { chooseBaseC, keyboardRange, keyHintsFor, keyToMidi } from '../core/inpu
 import { ScoreView } from '../components/ScoreView';
 import { PianoKeyboard } from '../components/PianoKeyboard';
 import { DetectedNote, LevelMeter, MicButton, MicError } from '../components/MicPanel';
-import { Button, FullscreenButton, Icon, formatDuration } from '../components/ui';
+import { Button, FullscreenButton, Icon, formatDuration, type IconName } from '../components/ui';
 import { AppVersion } from '../components/AppVersion';
 import { useSettings } from '../store/settingsStore';
 import { useApp } from '../store/appStore';
@@ -62,7 +62,8 @@ function Practice({ lesson }: { lesson: Lesson }) {
   const { restart: restartWait } = useSessionRecorder(engine, lesson);
 
   // Chế độ chạy theo nhịp: khuông nhạc tự chạy, chỉ khớp thời điểm gõ phím, không xét cao độ.
-  const tempoMode = settings.tempoMode;
+  const mode = settings.practiceMode;
+  const tempoMode = mode === 'tempo';
   const baseBpm = Math.round((lessonTempo(lesson) * settings.tempoPercent) / 100);
   const follower = useMemo(
     () =>
@@ -112,7 +113,10 @@ function Practice({ lesson }: { lesson: Lesson }) {
   const toggleTempoRunRef = useRef(toggleTempoRun);
   toggleTempoRunRef.current = toggleTempoRun;
 
-  useEffect(() => engine.setConfig({ octaveTolerant: settings.octaveTolerant }), [engine, settings.octaveTolerant]);
+  useEffect(
+    () => engine.setConfig({ octaveTolerant: settings.octaveTolerant, advanceOnWrong: mode === 'count' }),
+    [engine, settings.octaveTolerant, mode],
+  );
   useWakeLock(true);
 
   // Nối mọi nguồn nốt (micro + bàn phím ảo) vào Wait Mode hoặc chế độ chạy theo nhịp.
@@ -221,17 +225,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
             </span>
           </div>
         )}
-        <Button
-          variant={tempoMode ? 'primary' : 'ghost'}
-          aria-label={tempoMode ? 'Tắt chạy theo nhịp' : 'Chạy theo nhịp'}
-          title="Khuông nhạc tự chạy theo nhịp, khớp theo lúc bạn gõ phím (không xét đúng/sai nốt)"
-          aria-pressed={tempoMode}
-          onClick={() => updateSettings({ tempoMode: !tempoMode })}
-          className="px-2"
-          data-testid="tempo-toggle"
-        >
-          <Icon name="metronome" />
-        </Button>
+        <ModePicker value={mode} onChange={(practiceMode) => updateSettings({ practiceMode })} />
         <Button
           variant="ghost"
           aria-label={settings.showNoteNames ? 'Ẩn tên nốt' : 'Hiện tên nốt'}
@@ -386,6 +380,37 @@ function StatusPanel({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const MODES: { value: PracticeMode; label: string; icon: IconName; hint: string }[] = [
+  { value: 'wait', label: 'Chờ nốt', icon: 'hourglass', hint: 'Chờ đánh đúng nốt mới chuyển sang nốt tiếp theo' },
+  { value: 'count', label: 'Đếm nốt', icon: 'count', hint: 'Mỗi nốt nghe thấy chuyển một nốt; nốt sai tô đỏ' },
+  { value: 'tempo', label: 'Theo nhịp', icon: 'metronome', hint: 'Khuông nhạc tự chạy theo nhịp, khớp lúc bạn gõ phím (không xét đúng/sai nốt)' },
+];
+
+function ModePicker({ value, onChange }: { value: PracticeMode; onChange: (m: PracticeMode) => void }) {
+  return (
+    <div className="inline-flex shrink-0 rounded-xl bg-violet-100 p-1 dark:bg-slate-700" role="radiogroup" aria-label="Chế độ luyện tập">
+      {MODES.map((m) => (
+        <button
+          key={m.value}
+          type="button"
+          role="radio"
+          aria-checked={value === m.value}
+          aria-label={m.label}
+          title={m.hint}
+          data-testid={`mode-${m.value}`}
+          onClick={() => onChange(m.value)}
+          className={`flex min-h-12 min-w-12 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors ${
+            value === m.value ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'
+          }`}
+        >
+          <Icon name={m.icon} className="h-5 w-5" />
+          <span className="hidden lg:inline">{m.label}</span>
+        </button>
+      ))}
     </div>
   );
 }

@@ -6,6 +6,8 @@ import type { NoteLabelStyle } from '../music/notes';
 import { DEFAULT_RECOGNIZER_CONFIG } from '../audio/NoteRecognizer';
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
+/** wait = chờ đánh đúng mới chuyển; count = mỗi nốt nghe thấy chuyển một nốt; tempo = chạy theo nhịp. */
+export type PracticeMode = 'wait' | 'count' | 'tempo';
 
 export interface DeviceSettings {
   /** Tần số chuẩn A4 (Clavinova cho phép chỉnh 414.8–466.8 Hz, mặc định 440). */
@@ -24,8 +26,7 @@ export interface DeviceSettings {
   labelStyle: NoteLabelStyle;
   theme: ThemeSetting;
   showKeyboard: boolean;
-  /** Chế độ khuông nhạc tự chạy theo nhịp (không xét đúng/sai cao độ). */
-  tempoMode: boolean;
+  practiceMode: PracticeMode;
   /** Tốc độ chế độ chạy theo nhịp, % so với nhịp độ gợi ý của bài. */
   tempoPercent: number;
 }
@@ -41,7 +42,7 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
   labelStyle: 'letter',
   theme: 'system',
   showKeyboard: true,
-  tempoMode: false,
+  practiceMode: 'wait',
   tempoPercent: 100,
 };
 
@@ -77,7 +78,9 @@ export function loadSettings(storage: Pick<Storage, 'getItem'> | undefined = saf
   try {
     const raw = storage?.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_SETTINGS };
-    const parsed = JSON.parse(raw) as Partial<DeviceSettings>;
+    const parsed = JSON.parse(raw) as Partial<DeviceSettings> & { tempoMode?: unknown };
+    // Bản v1.04 lưu cờ tempoMode thay vì practiceMode.
+    if (parsed.practiceMode === undefined && parsed.tempoMode === true) parsed.practiceMode = 'tempo';
     return sanitize({ ...DEFAULT_SETTINGS, ...parsed });
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -106,9 +109,13 @@ function sanitize(s: DeviceSettings): DeviceSettings {
     labelStyle: s.labelStyle === 'solfege' ? 'solfege' : 'letter',
     theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system',
     showKeyboard: Boolean(s.showKeyboard),
-    tempoMode: Boolean(s.tempoMode),
+    practiceMode: sanitizeMode(s),
     tempoPercent: Math.round(num(s.tempoPercent, 100, TEMPO_PERCENT_MIN, TEMPO_PERCENT_MAX)),
   };
+}
+
+function sanitizeMode({ practiceMode: m }: DeviceSettings): PracticeMode {
+  return m === 'count' || m === 'tempo' ? m : 'wait';
 }
 
 export function safeLocalStorage(): Storage | undefined {
