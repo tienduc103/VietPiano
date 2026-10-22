@@ -7,7 +7,7 @@
  */
 import { Beam, Dot, Formatter, Renderer, Stave, StaveNote, Voice, BarlineType, Accidental } from 'vexflow/bravura';
 import { splitMeasures } from '../lessons/notation';
-import type { Duration, Lesson } from '../lessons/types';
+import { measureLength, type Duration, type Lesson } from '../lessons/types';
 import { midiToLabel, type NoteLabelStyle } from '../music/notes';
 
 export interface ScoreRenderOptions {
@@ -34,7 +34,7 @@ const LEFT_PAD = 16;
 const RIGHT_PAD = 40;
 export const SCORE_HEIGHT = 190;
 
-const NOTE_SPACE: Record<Duration, number> = { '8': 40, q: 54, qd: 62, h: 72, hd: 84, w: 100 };
+const NOTE_SPACE: Record<Duration, number> = { '16': 32, '8': 40, '8d': 46, q: 54, qd: 62, h: 72, hd: 84, w: 100 };
 
 /** "C#4" → "c#/4" (định dạng khoá của VexFlow). */
 function toVexKey(pitch: string): string {
@@ -52,7 +52,7 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
   ctx.setStrokeStyle('currentColor');
 
   const [beats, beatValue] = lesson.timeSignature;
-  const measures = splitMeasures(lesson.notes, beats);
+  const measures = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup);
   const ledgerStyle = { strokeStyle: 'currentColor', lineWidth: 2 };
 
   type Built = { stave: Stave; voice: Voice; notes: StaveNote[]; beams: Beam[] };

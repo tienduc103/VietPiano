@@ -22,18 +22,26 @@ export interface Measure<T> {
   beats: number;
 }
 
-/** Chia nốt thành các ô nhịp. Ném lỗi nếu một nốt vắt qua vạch nhịp. */
-export function splitMeasures<T extends { duration: Duration }>(notes: T[], beatsPerMeasure: number): Measure<T>[] {
+/**
+ * Chia nốt thành các ô nhịp (độ dài tính bằng nốt đen). Ô đầu dài `pickup` nếu có nhịp lấy đà.
+ * Ném lỗi nếu một nốt vắt qua vạch nhịp.
+ */
+export function splitMeasures<T extends { duration: Duration }>(
+  notes: T[],
+  beatsPerMeasure: number,
+  pickup = 0,
+): Measure<T>[] {
   const measures: Measure<T>[] = [];
   let current: Measure<T> = { items: [], beats: 0 };
   for (const note of notes) {
     const b = DURATION_BEATS[note.duration];
-    if (current.beats + b > beatsPerMeasure + 1e-9) {
+    const limit = measures.length === 0 && pickup > 0 ? pickup : beatsPerMeasure;
+    if (current.beats + b > limit + 1e-9) {
       throw new Error(`Nốt vắt qua vạch nhịp ở ô nhịp ${measures.length + 1}`);
     }
     current.items.push(note);
     current.beats += b;
-    if (Math.abs(current.beats - beatsPerMeasure) < 1e-9) {
+    if (Math.abs(current.beats - limit) < 1e-9) {
       measures.push(current);
       current = { items: [], beats: 0 };
     }

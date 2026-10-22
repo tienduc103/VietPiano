@@ -193,6 +193,22 @@ const defs: LessonDef[] = [
       'B4 B4 B4 | B4 A4 G4 | G4 F#4 E4 | E4 G4 B4 | E5 E5 E5 | E5 D5 C5 | C5 B4 A4 | A4 B4 C5 | ' +
       'B4 C5 B4 | D#5 C5 B4 | B4 A4 G4 | G4 F#4 E4 | F#4 F#4 F#4 | F#4 G4 F#4 | E4/hd',
   },
+  {
+    id: 'song-fur-elise',
+    title: 'Für Elise',
+    description: 'Chủ đề mở đầu (La thứ, nhịp 3/8) — giai điệu tay phải, bắt đầu bằng nhịp lấy đà.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [3, 8],
+    pickup: 0.5,
+    difficulty: 3,
+    hand: 'right',
+    source: 'L. v. Beethoven (1810) — phạm vi công cộng',
+    notation:
+      'E5/16 D#5/16 | E5/16 D#5/16 E5/16 B4/16 D5/16 C5/16 | A4/8d C4/16 E4/16 A4/16 | B4/8d E4/16 G#4/16 B4/16 | ' +
+      'C5/8d E4/16 E5/16 D#5/16 | E5/16 D#5/16 E5/16 B4/16 D5/16 C5/16 | A4/8d C4/16 E4/16 A4/16 | ' +
+      'B4/8d E4/16 C5/16 B4/16 | A4/qd',
+  },
 ];
 
 export const LESSONS: Lesson[] = defs.map(({ notation, ...rest }) => ({ ...rest, notes: parseNotes(notation) }));

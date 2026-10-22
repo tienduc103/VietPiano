@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { LESSONS } from './library';
 import { parseNotes, splitMeasures } from './notation';
 import { lessonManager } from './LessonManager';
+import { measureLength } from './types';
 
 describe('ký hiệu bài học', () => {
   it('phân tích chuỗi nốt với trường độ mặc định', () => {
@@ -21,6 +22,14 @@ describe('ký hiệu bài học', () => {
     expect(splitMeasures(parseNotes('C4 C4 C4 C4 D4/w'), 4).map((m) => m.items.length)).toEqual([4, 1]);
     expect(() => splitMeasures(parseNotes('C4 C4 C4 D4/h'), 4)).toThrow();
   });
+
+  it('hỗ trợ nhịp 3/8, móc kép và nhịp lấy đà', () => {
+    expect(measureLength([3, 8])).toBe(1.5);
+    const m = splitMeasures(parseNotes('E5/16 D#5/16 | E5/16 D#5/16 E5/16 B4/16 D5/16 C5/16 | A4/8d C4/16 E4/16 A4/16'), 1.5, 0.5);
+    expect(m.map((x) => x.items.length)).toEqual([2, 6, 4]);
+    expect(m.map((x) => x.beats)).toEqual([0.5, 1.5, 1.5]);
+    expect(() => splitMeasures(parseNotes('E5/16 D5/8'), 1.5, 0.5)).toThrow();
+  });
 });
 
 describe('thư viện bài học', () => {
@@ -38,8 +47,9 @@ describe('thư viện bài học', () => {
   });
 
   it.each(LESSONS.map((l) => [l.id, l] as const))('%s: mọi ô nhịp đầy đủ phách', (_id, lesson) => {
-    const measures = splitMeasures(lesson.notes, lesson.timeSignature[0]);
-    for (const m of measures) expect(m.beats).toBeCloseTo(lesson.timeSignature[0], 9);
+    const full = measureLength(lesson.timeSignature);
+    const measures = splitMeasures(lesson.notes, full, lesson.pickup);
+    measures.forEach((m, i) => expect(m.beats).toBeCloseTo(i === 0 && lesson.pickup ? lesson.pickup : full, 9));
   });
 
   it.each(LESSONS.map((l) => [l.id, l] as const))('%s: nốt nằm trong tầm nhận diện micro', (_id, lesson) => {
