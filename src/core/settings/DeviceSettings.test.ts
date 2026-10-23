@@ -46,6 +46,12 @@ describe('DeviceSettings', () => {
     expect(loadSettings(st).showFloatingNote).toBe(true);
     st.setItem('vietpiano.settings.v1', JSON.stringify({ showFloatingNote: 0 }));
     expect(loadSettings(st).showFloatingNote).toBe(false);
+    // Vị trí nút tải lại: thiếu → null (góc mặc định), hỏng → null, ngoài phạm vi → kẹp.
+    expect(loadSettings(st).reloadButtonPos).toBeNull();
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ reloadButtonPos: { x: 'a' } }));
+    expect(loadSettings(st).reloadButtonPos).toBeNull();
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ reloadButtonPos: { x: 0.3, y: -1 } }));
+    expect(loadSettings(st).reloadButtonPos).toEqual({ x: 0.3, y: 0 });
     st.setItem('vietpiano.settings.v1', '{not json');
     expect(loadSettings(st)).toEqual(DEFAULT_SETTINGS);
   });

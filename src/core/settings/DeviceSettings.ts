@@ -4,6 +4,7 @@
  */
 import type { NoteLabelStyle } from '../music/notes';
 import { DEFAULT_RECOGNIZER_CONFIG } from '../audio/NoteRecognizer';
+import { sanitizePosition, type FloatingPosition } from './floatingPosition';
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
 /** wait = chờ đánh đúng mới chuyển; count = mỗi nốt nghe thấy chuyển một nốt; tempo = chạy theo nhịp. */
@@ -28,6 +29,8 @@ export interface DeviceSettings {
   showKeyboard: boolean;
   /** Nút micro nổi ở mọi màn hình: bấm bật/tắt micro, hiện nốt đang nghe khi micro bật. */
   showFloatingNote: boolean;
+  /** Vị trí nút nổi "Tải lại bản mới nhất" do người dùng kéo tới; null = góc trên bên trái. */
+  reloadButtonPos: FloatingPosition | null;
   practiceMode: PracticeMode;
   /** Tốc độ chế độ chạy theo nhịp, % so với nhịp độ gợi ý của bài. */
   tempoPercent: number;
@@ -45,6 +48,7 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
   theme: 'system',
   showKeyboard: true,
   showFloatingNote: true,
+  reloadButtonPos: null,
   practiceMode: 'wait',
   tempoPercent: 100,
 };
@@ -113,6 +117,7 @@ function sanitize(s: DeviceSettings): DeviceSettings {
     theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system',
     showKeyboard: Boolean(s.showKeyboard),
     showFloatingNote: Boolean(s.showFloatingNote),
+    reloadButtonPos: sanitizePosition(s.reloadButtonPos),
     practiceMode: sanitizeMode(s),
     tempoPercent: Math.round(num(s.tempoPercent, 100, TEMPO_PERCENT_MIN, TEMPO_PERCENT_MAX)),
   };

@@ -146,6 +146,11 @@ export function SettingsScreen() {
                 checked={settings.showFloatingNote}
                 onChange={(v) => update({ showFloatingNote: v })}
               />
+              <Row label="Nút nổi tải lại bản mới nhất (kéo để di chuyển)">
+                <Button disabled={settings.reloadButtonPos === null} onClick={() => update({ reloadButtonPos: null })}>
+                  Đưa về góc trên trái
+                </Button>
+              </Row>
               <Row label="Kiểu tên nốt">
                 <Segmented
                   value={settings.labelStyle}

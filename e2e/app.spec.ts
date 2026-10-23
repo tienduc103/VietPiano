@@ -383,3 +383,29 @@ test('nút nổi tải lại cứng: có trên mọi màn hình, gỡ service wo
   await expect(page.getByTestId('app-version')).toBeVisible();
   expect(await page.evaluate(() => caches.has('test-cache'))).toBe(false);
 });
+
+test('nút nổi tải lại kéo được: kéo không tải lại trang, vị trí được nhớ, đặt lại trong Cài đặt', async ({ page }) => {
+  await page.goto('/');
+  const fab = page.getByTestId('floating-reload');
+  await page.evaluate(() => ((window as unknown as { __marker: boolean }).__marker = true));
+  const start = (await fab.boundingBox())!;
+  await page.mouse.move(start.x + 24, start.y + 24);
+  await page.mouse.down();
+  await page.mouse.move(start.x + 200, start.y + 324, { steps: 8 });
+  await page.mouse.up();
+  const moved = (await fab.boundingBox())!;
+  expect(moved.x).toBeCloseTo(start.x + 176, -1);
+  expect(moved.y).toBeCloseTo(start.y + 300, -1);
+  // Kéo xong không phải bấm → trang không tải lại.
+  expect(await page.evaluate(() => (window as unknown as { __marker?: boolean }).__marker)).toBe(true);
+  // Vị trí giữ nguyên sau khi tải lại trang.
+  await page.reload();
+  const after = (await fab.boundingBox())!;
+  expect(after.x).toBeCloseTo(moved.x, -1);
+  expect(after.y).toBeCloseTo(moved.y, -1);
+  await page.getByRole('button', { name: 'Cài đặt' }).click();
+  await page.getByRole('button', { name: 'Đưa về góc trên trái' }).click();
+  const reset = (await fab.boundingBox())!;
+  expect(reset.x).toBeCloseTo(start.x, -1);
+  expect(reset.y).toBeCloseTo(start.y, -1);
+});
