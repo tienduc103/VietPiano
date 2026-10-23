@@ -8,14 +8,14 @@ export function AppVersion({ className = '' }: { className?: string }) {
 }
 
 /**
- * TẠM THỜI trong giai đoạn xây dựng site: dòng phiên bản mờ ở trên cùng mọi màn hình.
- * Xoá component này (và chỗ dùng trong App.tsx) khi không cần nữa.
+ * TẠM THỜI trong giai đoạn xây dựng site: dòng phiên bản mờ chạy dọc sát mép trái mọi màn hình
+ * (mép trên hay bị thanh công cụ che). Xoá component này (và chỗ dùng trong App.tsx) khi không cần nữa.
  */
-export function AppVersionTop() {
+export function AppVersionSide() {
   return (
     <p
-      className="pointer-events-none fixed inset-x-0 top-[calc(2px+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] z-50 text-center text-[10px] leading-none text-slate-400/70 select-none dark:text-slate-500/70"
-      data-testid="app-version-top"
+      className="pointer-events-none fixed top-1/2 left-[calc(2px+env(safe-area-inset-left,0px))] z-50 -translate-y-1/2 rotate-180 text-[10px] leading-none whitespace-nowrap text-slate-400/70 select-none [writing-mode:vertical-rl] dark:text-slate-500/70"
+      data-testid="app-version-side"
       aria-hidden="true"
     >
       VietPiano · phiên bản {__APP_VERSION__}

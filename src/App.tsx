@@ -4,7 +4,7 @@ import { useAppLifecycle, useTheme } from './hooks/useAppLifecycle';
 import { LibraryScreen } from './screens/LibraryScreen';
 import { PracticeScreen } from './screens/PracticeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
-import { AppVersionTop } from './components/AppVersion';
+import { AppVersionSide } from './components/AppVersion';
 
 export function App() {
   const route = useApp((s) => s.route);
@@ -22,7 +22,7 @@ export function App() {
       {route.name === 'practice' && <PracticeScreen lessonId={route.lessonId} />}
       {route.name === 'settings' && <SettingsScreen />}
       {/* TẠM THỜI trong giai đoạn xây dựng site — xoá khi không cần */}
-      <AppVersionTop />
+      <AppVersionSide />
     </div>
   );
 }
