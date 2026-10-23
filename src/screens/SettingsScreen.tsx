@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { microphoneInput } from '../core/input/MicrophoneInputProvider';
-import { midiToLabel } from '../core/music/notes';
+import { midiToLabel, type NoteLabelStyle } from '../core/music/notes';
 import {
   DEFAULT_SETTINGS,
   noiseGateFromAmbient,
@@ -223,7 +223,6 @@ function Calibration() {
   const labelStyle = useSettings((s) => s.settings.labelStyle);
   const [phase, setPhase] = useState<'idle' | 'measuring' | 'done'>('idle');
   const [result, setResult] = useState<{ ambient: number; gate: number } | null>(null);
-  const [heard, setHeard] = useState<number[]>([]);
   const [checking, setChecking] = useState(false);
 
   const measure = async () => {
@@ -247,13 +246,6 @@ function Calibration() {
     update({ noiseGate: gate });
     setResult({ ambient, gate });
     setPhase('done');
-    setHeard([]);
-  };
-
-  const listenTest = () => {
-    setHeard([]);
-    const off = microphoneInput.onNote((e) => setHeard((h) => [...h.slice(-7), e.midi]));
-    setTimeout(off, 15000);
   };
 
   return (
@@ -282,17 +274,66 @@ function Calibration() {
         <Button onClick={() => void measure()} disabled={phase === 'measuring'}>
           {phase === 'measuring' ? 'Đang đo… hãy giữ yên lặng' : 'Chỉ đo tiếng ồn nền'}
         </Button>
-        <Button onClick={listenTest} disabled={status !== 'running'}>
-          Đánh thử (15 giây)
-        </Button>
+        <ListenTest labelStyle={labelStyle} />
         {result && (
           <span className="text-sm text-slate-600 dark:text-slate-300">
             Nhiễu nền: {result.ambient.toFixed(4)} → ngưỡng {result.gate.toFixed(4)} (độ nhạy {noiseGateToSensitivity(result.gate)})
           </span>
         )}
       </div>
-      {heard.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2" data-testid="heard-notes">
+    </div>
+  );
+}
+
+const LISTEN_TEST_MS = 15_000;
+const LISTEN_TEST_MAX_NOTES = 16;
+
+/** Đánh thử: hiện các nốt NoteRecognizer nhận được trong 15 giây (mỗi phím phải hiện đúng một lần). */
+function ListenTest({ labelStyle }: { labelStyle: NoteLabelStyle }) {
+  const status = useMic((s) => s.status);
+  const [until, setUntil] = useState<number | null>(null);
+  const [heard, setHeard] = useState<number[] | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const listening = until !== null && status === 'running';
+
+  // Một bộ nghe duy nhất cho mỗi lượt; gỡ khi hết giờ, bấm dừng, tắt micro hoặc rời màn hình.
+  useEffect(() => {
+    if (!listening) return;
+    const off = microphoneInput.onNote((e) => setHeard((h) => [...(h ?? []).slice(-(LISTEN_TEST_MAX_NOTES - 1)), e.midi]));
+    const tick = () => {
+      const left = Math.ceil((until - performance.now()) / 1000);
+      if (left <= 0) setUntil(null);
+      else setSecondsLeft(left);
+    };
+    tick();
+    const id = setInterval(tick, 250);
+    return () => {
+      off();
+      clearInterval(id);
+    };
+  }, [listening, until]);
+
+  const start = async () => {
+    if (!microphoneInput.isActive()) {
+      await microphoneInput.start().catch(() => undefined);
+      if (!microphoneInput.isActive()) return;
+    }
+    microphoneInput.resetRecognizer();
+    setHeard([]);
+    setUntil(performance.now() + LISTEN_TEST_MS);
+  };
+
+  return (
+    <>
+      <Button onClick={() => (listening ? setUntil(null) : void start())} data-testid="listen-test">
+        {listening ? `Dừng (còn ${secondsLeft} giây)` : 'Đánh thử (15 giây)'}
+      </Button>
+      {heard !== null && (
+        <div className="flex w-full flex-wrap items-center gap-2" data-testid="heard-notes">
+          <span className="text-sm text-slate-500 dark:text-slate-400">
+            {listening ? 'Đang nghe — đánh vài nốt, mỗi phím phải hiện đúng một lần:' : `Đã nghe ${heard.length} nốt:`}
+          </span>
+          {heard.length === 0 && !listening && <span className="text-sm text-slate-400">không nghe thấy nốt nào</span>}
           {heard.map((m, i) => (
             <span key={i} className="rounded-lg bg-violet-100 px-3 py-1 text-lg font-bold text-violet-800 dark:bg-violet-900 dark:text-violet-200">
               {midiToLabel(m, labelStyle)}
@@ -300,7 +341,7 @@ function Calibration() {
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

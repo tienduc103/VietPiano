@@ -319,3 +319,21 @@ test('hồ sơ người học: gợi ý theo tuổi, đánh giá và tiến đ�
   await expect(page.getByTestId('profile-An')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('assess-skill')).toContainText('1 bài đạt');
 });
+
+test('đánh thử 15 giây: tự bật micro, mỗi nốt hiện một lần, bấm lại không bị nhân đôi', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Cài đặt' }).click();
+  const btn = page.getByTestId('listen-test');
+  await btn.click();
+  await expect(page.getByTestId('mic-button').first()).toHaveText(/Micro đang bật/);
+  await expect(btn).toHaveText(/Dừng \(còn \d+ giây\)/);
+  // Dừng rồi chạy lại: trước đây mỗi lần bấm gắn thêm một bộ nghe → mỗi nốt hiện hai lần.
+  await btn.click();
+  await expect(btn).toHaveText('Đánh thử (15 giây)');
+  await btn.click();
+  const notes = page.locator('[data-testid="heard-notes"] span.rounded-lg');
+  await expect(notes).toHaveCount(5, { timeout: 15_000 });
+  const labels = await notes.allTextContents();
+  // Micro giả phát gam đi lên → không có hai nốt liền nhau giống nhau.
+  for (let i = 1; i < labels.length; i++) expect(labels[i]).not.toBe(labels[i - 1]);
+});
