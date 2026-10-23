@@ -88,6 +88,8 @@ const ICONS = {
   prev: 'M19 20L9 12l10-8v16zM5 19V5',
   next: 'M5 4l10 8-10 8V4zM19 5v14',
   restart: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5',
+  // Mũi tên xoay theo chiều kim đồng hồ (tải lại) — ảnh gương của restart
+  reload: 'M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5',
   mic: 'M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3',
   micOff: 'M2 2l20 20M9 9v3a3 3 0 0 0 5.1 2.1M15 9.3V5a3 3 0 0 0-5.9-.6M17 16.9A7 7 0 0 1 5 12v-2M19 10v2c0 .8-.1 1.5-.4 2.2M12 19v3',
   settings:

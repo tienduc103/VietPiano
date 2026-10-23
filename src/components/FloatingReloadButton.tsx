@@ -82,7 +82,7 @@ export function FloatingReloadButton() {
         place ? '' : 'top-[calc(8px+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] left-[calc(8px+env(safe-area-inset-left,0px))]'
       } ${dragging ? 'scale-110 cursor-grabbing opacity-80 shadow-xl' : 'cursor-grab'}`}
     >
-      <Icon name="restart" className={`h-6 w-6 ${reloading ? 'animate-spin' : ''}`} />
+      <Icon name="reload" className={`h-6 w-6 ${reloading ? 'animate-spin' : ''}`} />
     </button>
   );
 }
