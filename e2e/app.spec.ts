@@ -9,7 +9,7 @@ async function openLesson(page: Page, id: string) {
 test('thư viện hiển thị đủ nhóm bài học', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'VietPiano' })).toBeVisible();
-  for (const name of ['Nhận biết nốt', 'Gam', 'Bài tập tay phải', 'Bài tập tay trái', 'Bé tự học theo số ngón tay', 'Bài hát']) {
+  for (const name of ['Nhận biết nốt', 'Gam', 'Bài tập tay phải', 'Bài tập tay trái', 'Bài tập hai tay', 'Bé tự học theo số ngón tay', 'Bài hát']) {
     await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
   }
   await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(23);
@@ -44,6 +44,22 @@ test('bài cho bé: số ngón tay trên khuông, ô trạng thái và bàn phí
   await page.keyboard.press('a'); // C4
   await expect(page.getByTestId('expected-finger')).toHaveText('ngón 2');
   await expect(page.locator('button[data-midi="62"] [data-testid="key-finger"]')).toHaveText('2');
+  if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
+});
+
+test('bài hai tay: khuông đôi, nhắc tay và ngón theo từng nốt', async ({ page }) => {
+  await openLesson(page, 'bh-echo');
+  await expect(page.locator('.score-note')).toHaveCount(24);
+  await expect(page.getByTestId('expected-hand')).toHaveText('Tay phải');
+  await expect(page.getByTestId('expected-finger')).toHaveText('ngón 1');
+
+  for (const midi of [60, 62, 64]) {
+    await page.locator(`button[data-midi="${midi}"]`).dispatchEvent('pointerdown'); // C4 D4 E4 (tay phải)
+    await page.waitForTimeout(150);
+  }
+  await expect(page.getByTestId('expected-note')).toHaveText('C3');
+  await expect(page.getByTestId('expected-hand')).toHaveText('Tay trái');
+  await expect(page.getByTestId('expected-finger')).toHaveText('ngón 5');
   if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
 });
 
