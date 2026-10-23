@@ -29,6 +29,17 @@ describe('SignalWatchdog', () => {
     expect(w.isDead(100 + NO_SIGNAL_MS)).toBe(true);
   });
 
+  it('hasSignal: chỉ true sau khung có tín hiệu', () => {
+    const w = new SignalWatchdog();
+    w.reset(100);
+    w.frame(zeros(), 120);
+    expect(w.hasSignal).toBe(false);
+    w.frame(noise(), 140);
+    expect(w.hasSignal).toBe(true);
+    w.reset(200);
+    expect(w.hasSignal).toBe(false);
+  });
+
   it('reset khi bật lại xoá trạng thái cũ', () => {
     const w = new SignalWatchdog();
     w.reset(0);

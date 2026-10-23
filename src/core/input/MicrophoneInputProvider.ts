@@ -72,6 +72,11 @@ export class MicrophoneInputProvider implements NoteInputProvider {
     return this.audio.resume();
   }
 
+  /** Micro đang chạy ở chế độ dự phòng (xem AudioInput.usingFallback). */
+  get usingFallback(): boolean {
+    return this.audio.usingFallback;
+  }
+
   isActive(): boolean {
     return this.audio.status === 'running';
   }

@@ -55,6 +55,7 @@ export function MicButton({ compact = false }: { compact?: boolean }) {
 
 export function MicError() {
   const error = useMic((s) => s.error);
+  const fallback = useMic((s) => s.fallback);
   const status = useMic((s) => s.status);
   const paused = useMic((s) => s.pausedByBackground);
   if (status === 'error' && error) {
@@ -68,6 +69,14 @@ export function MicError() {
     return (
       <p role="status" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
         Micro đã tạm dừng khi ứng dụng chạy nền hoặc bị hệ thống ngắt. Bấm “Bật lại micro” để tiếp tục.
+      </p>
+    );
+  }
+  if (fallback && status === 'running') {
+    return (
+      <p role="status" data-testid="mic-fallback" className="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-800 dark:bg-sky-950 dark:text-sky-200">
+        Micro đang chạy ở chế độ dự phòng: iOS không cho thu âm thô nên đã bật xử lý giọng nói của hệ thống. Nhận diện
+        vẫn dùng được nhưng có thể kém hơn một chút, nhất là nốt ngân dài.
       </p>
     );
   }

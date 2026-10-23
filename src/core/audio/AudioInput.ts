@@ -88,6 +88,10 @@ export class AudioInput {
   private generation = 0;
   /** Chẩn đoán lần thử đầu khi micro câm; đã có = đang/đã thử lại (chỉ thử lại một lần). */
   private firstFailure: string | null = null;
+  /** Lần bật đang chạy dùng chế độ dự phòng (bật echoCancellation, AudioContext tạo sau). */
+  private fallbackActive = false;
+  /** Chế độ dự phòng đã có tín hiệu trong phiên này → các lần bật sau dùng luôn (khỏi chờ bộ canh). */
+  private preferFallback = false;
 
   readonly frames = new Emitter<AudioFrameEvent>();
   readonly statusChanges = new Emitter<{ status: AudioInputStatus; error: AudioInputError | null }>();
@@ -118,22 +122,29 @@ export class AudioInput {
     if (this.statusValue === 'suspended' && this.context) return this.resume();
     if (this.startPromise) return this.startPromise;
     this.firstFailure = null;
-    return this.launch(false);
+    return this.launch(this.preferFallback);
   }
 
-  private launch(lateContext: boolean): Promise<void> {
-    this.startPromise = this.doStart(lateContext).finally(() => {
+  /** Đang chạy ở chế độ dự phòng (iOS bật xử lý giọng nói → tiếng đàn có thể bị nén nhẹ). */
+  get usingFallback(): boolean {
+    return this.fallbackActive;
+  }
+
+  private launch(fallback: boolean): Promise<void> {
+    this.fallbackActive = fallback;
+    this.startPromise = this.doStart(fallback).finally(() => {
       this.startPromise = null;
     });
     return this.startPromise;
   }
 
   /**
-   * `lateContext`: tạo AudioContext SAU khi đã có micro (lần thử lại khi micro câm). Mặc định tạo
-   * trước, ngay trong thao tác người dùng, để Safari cho chạy; nhưng trên iOS context tạo trước
-   * khi bắt đầu thu có thể không nhận được tiếng từ micro.
+   * `fallback` (lần thử lại khi micro câm): bật echoCancellation và tạo AudioContext SAU khi đã có
+   * micro. Chế độ thường tắt echoCancellation (tiếng đàn không bị nén) và tạo context ngay trong
+   * thao tác người dùng; nhưng trên iOS (nhất là app màn hình chính) bộ thu không qua xử lý giọng
+   * nói có lúc trả toàn mẫu 0 dù track vẫn "live".
    */
-  private async doStart(lateContext: boolean): Promise<void> {
+  private async doStart(fallback: boolean): Promise<void> {
     this.setStatus('starting');
     const generation = this.generation;
     try {
@@ -154,14 +165,14 @@ export class AudioInput {
         return ctx;
       };
       // Tạo AudioContext ngay trong thao tác người dùng (trước await) để Safari không chặn.
-      let context = lateContext ? null : createContext();
+      let context = fallback ? null : createContext();
 
       // Tắt xử lý giọng nói: AGC/khử ồn làm méo và nén tiếng đàn.
       let stream: MediaStream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           audio: {
-            echoCancellation: false,
+            echoCancellation: fallback,
             noiseSuppression: false,
             autoGainControl: false,
             channelCount: 1,
@@ -193,6 +204,7 @@ export class AudioInput {
       const sampleRate = context.sampleRate;
       worklet.port.onmessage = (e: MessageEvent<Float32Array>) => {
         this.watchdog.frame(e.data, performance.now());
+        if (fallback && !this.preferFallback && this.watchdog.hasSignal) this.preferFallback = true;
         this.frames.emit({ samples: e.data, sampleRate, time: performance.now() });
       };
       // Nối vào destination qua gain = 0 để Safari chắc chắn chạy graph mà không phát tiếng.
@@ -285,6 +297,7 @@ export class AudioInput {
       `${this.watchdog.frames} khung (${this.watchdog.silentFrames} toàn 0)`,
       `session ${nav.audioSession?.type ?? 'n/a'}`,
       standalone ? 'app màn hình chính' : 'tab trình duyệt',
+      this.fallbackActive ? 'dự phòng (echoCancellation)' : 'thường',
     ].join(' · ');
   }
 
@@ -295,7 +308,7 @@ export class AudioInput {
       if (this.statusValue !== 'running' || !this.watchdog.isDead(performance.now())) return;
       const details = this.diagnostics();
       if (this.firstFailure === null) {
-        // Thử lại một lần với AudioContext tạo sau khi đã có micro (quyền micro đã cấp → không hỏi lại).
+        // Thử lại một lần ở chế độ dự phòng (quyền micro đã cấp → không hỏi lại).
         this.firstFailure = details;
         void this.teardown().then(() => this.launch(true).catch(() => undefined));
         return;

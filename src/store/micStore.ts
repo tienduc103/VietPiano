@@ -11,6 +11,8 @@ interface MicStore {
   live: LivePitch | null;
   /** Nốt (MIDI) gần nhất NoteRecognizer nhận được — giữ tới nốt sau, xoá khi tắt micro. */
   lastNote: number | null;
+  /** Micro chạy ở chế độ dự phòng (iOS bật xử lý giọng nói vì chế độ thường trả toàn im lặng). */
+  fallback: boolean;
   rms: number;
   setPausedByBackground: (v: boolean) => void;
 }
@@ -20,12 +22,18 @@ export const useMic = create<MicStore>((set) => ({
   pausedByBackground: false,
   live: null,
   lastNote: null,
+  fallback: false,
   rms: 0,
   setPausedByBackground: (pausedByBackground) => set({ pausedByBackground }),
 }));
 
 microphoneInput.statusChanges.on(({ status, error }) => {
-  useMic.setState({ status, error, ...(status !== 'running' ? { live: null, lastNote: null, rms: 0 } : {}) });
+  useMic.setState({
+    status,
+    error,
+    fallback: status === 'running' && microphoneInput.usingFallback,
+    ...(status !== 'running' ? { live: null, lastNote: null, rms: 0 } : {}),
+  });
 });
 
 microphoneInput.onNote(({ midi }) => useMic.setState({ lastNote: midi }));

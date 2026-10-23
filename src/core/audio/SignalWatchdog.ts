@@ -33,6 +33,11 @@ export class SignalWatchdog {
     this.silentFrames++;
   }
 
+  /** Đã có ít nhất một khung có tín hiệu (khác 0) kể từ reset. */
+  get hasSignal(): boolean {
+    return this.lastSignal > this.since;
+  }
+
   /** true khi đã quá `timeoutMs` kể từ khung có tín hiệu gần nhất (hoặc từ lúc bắt đầu). */
   isDead(now: number): boolean {
     return now - Math.max(this.lastSignal, this.since) >= this.timeoutMs;

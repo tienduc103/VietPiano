@@ -409,3 +409,40 @@ test('nút nổi tải lại kéo được: kéo không tải lại trang, vị 
   expect(reset.x).toBeCloseTo(start.x, -1);
   expect(reset.y).toBeCloseTo(start.y, -1);
 });
+
+test('micro câm khi tắt echoCancellation (lỗi iOS PWA): tự chuyển chế độ dự phòng và nghe được nốt', async ({ page }) => {
+  // Mô phỏng iOS: bộ thu thô (echoCancellation: false) trả toàn mẫu 0; có xử lý giọng nói thì có tiếng.
+  await page.addInitScript(() => {
+    const md = navigator.mediaDevices;
+    const real = md.getUserMedia.bind(md);
+    const w = window as unknown as { __gumCalls: boolean[] };
+    w.__gumCalls = [];
+    md.getUserMedia = async (c?: MediaStreamConstraints) => {
+      const ec = typeof c?.audio === 'object' && (c.audio as MediaTrackConstraints).echoCancellation === true;
+      w.__gumCalls.push(ec);
+      if (ec) return real(c);
+      const ctx = new AudioContext();
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      const dest = ctx.createMediaStreamDestination();
+      ctx.createOscillator().connect(gain);
+      gain.connect(dest);
+      return dest.stream;
+    };
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Cài đặt' }).click();
+  await page.getByTestId('mic-button').click();
+  // Sau ~2.5 s im lặng → tự thử lại ở chế độ dự phòng, không báo lỗi.
+  await expect(page.getByTestId('mic-fallback')).toBeVisible({ timeout: 8000 });
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByTestId('floating-mic-note')).toContainText(/[A-G]\d/, { timeout: 10_000 });
+  expect(await page.evaluate(() => (window as unknown as { __gumCalls: boolean[] }).__gumCalls)).toEqual([false, true]);
+
+  // Tắt rồi bật lại: dùng ngay chế độ dự phòng, không phải chờ bộ canh.
+  await page.getByTestId('mic-button').click();
+  await expect(page.getByTestId('mic-button')).toHaveText(/Bật micro/);
+  await page.getByTestId('mic-button').click();
+  await expect(page.getByTestId('mic-fallback')).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __gumCalls: boolean[] }).__gumCalls)).toEqual([false, true, true]);
+});
