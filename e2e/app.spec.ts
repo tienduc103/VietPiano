@@ -238,3 +238,19 @@ test('đếm nốt: mỗi nốt nghe thấy đi một nốt, nốt sai tô đỏ
   await expect(page.getByTestId('mode-count')).toHaveAttribute('aria-checked', 'true');
   await page.getByTestId('mode-wait').click();
 });
+
+test('kiểm tra theo nhịp: khuông nhạc chờ nốt, ghi lại máy nghe đúng/sai', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Cài đặt' }).click();
+  await page.getByTestId('calibration-check-open').click();
+  await expect(page.locator('[data-testid="calibration-check"] [data-testid="score"] svg .score-note')).toHaveCount(15);
+  await page.getByTestId('calibration-check-start').click();
+  await expect(page.getByTestId('beat-indicator')).toBeVisible();
+  // Micro giả phát gam C4…C5: bài kiểm tra C4 E4 G4 C5 … → nhận C4, E4, G4, C5; D4, F4… là "sai".
+  const heard = page.getByTestId('calibration-check-heard');
+  await expect(heard).toContainText('đúng', { timeout: 20_000 });
+  await expect(heard).toContainText('sai', { timeout: 20_000 });
+  await expect(page.getByTestId('calibration-check-status')).toContainText('Đang chờ nốt', { timeout: 20_000 });
+  await page.getByRole('button', { name: 'Đóng' }).click();
+  await expect(page.getByTestId('calibration-check')).toHaveCount(0);
+});

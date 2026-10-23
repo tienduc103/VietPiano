@@ -28,7 +28,7 @@ const WARNING_TEXT: Record<CalibrationWarning, string> = {
 };
 
 /** Trình hướng dẫn tự căn chỉnh: máy hiện nốt → người chơi đánh → máy nghe và đề xuất cài đặt. */
-export function AutoCalibration({ labelStyle }: { labelStyle: NoteLabelStyle }) {
+export function AutoCalibration({ labelStyle, onCheck }: { labelStyle: NoteLabelStyle; onCheck: () => void }) {
   const [calibrator, setCalibrator] = useState<AutoCalibrator | null>(null);
   const [state, setState] = useState<CalibrationState | null>(null);
   const [applied, setApplied] = useState(false);
@@ -76,6 +76,10 @@ export function AutoCalibration({ labelStyle }: { labelStyle: NoteLabelStyle }) 
           onApply={() => setApplied(true)}
           onRestart={() => void start()}
           onClose={close}
+          onCheck={() => {
+            close();
+            onCheck();
+          }}
         />
       ) : (
         <>
@@ -197,12 +201,14 @@ function ResultView({
   onApply,
   onRestart,
   onClose,
+  onCheck,
 }: {
   result: CalibrationResult;
   applied: boolean;
   onApply: () => void;
   onRestart: () => void;
   onClose: () => void;
+  onCheck: () => void;
 }) {
   const settings = useSettings((s) => s.settings);
   const update = useSettings((s) => s.update);
@@ -249,6 +255,11 @@ function ResultView({
         </ul>
       )}
       <div className="mt-4 flex flex-wrap gap-2">
+        {applied && (
+          <Button variant="primary" onClick={onCheck} data-testid="calibration-result-check">
+            Kiểm tra theo nhịp
+          </Button>
+        )}
         {applied ? (
           <Button
             onClick={() => {
@@ -276,7 +287,11 @@ function ResultView({
           {applied ? 'Xong' : 'Bỏ qua'}
         </Button>
       </div>
-      {applied && <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Bấm “Đánh thử” bên dưới để kiểm tra lại vài nốt.</p>}
+      {applied && (
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          Bấm “Kiểm tra theo nhịp” để đánh một đoạn ngắn và xem máy có nghe đúng từng nốt không.
+        </p>
+      )}
     </div>
   );
 }
