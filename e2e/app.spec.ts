@@ -366,9 +366,14 @@ test('đánh thử 15 giây: tự bật micro, mỗi nốt hiện một lần, b
   for (let i = 1; i < labels.length; i++) expect(labels[i]).not.toBe(labels[i - 1]);
 });
 
-test('nút tải lại cứng trong Cài đặt: gỡ service worker, xoá cache, tải lại trang', async ({ page }) => {
+test('nút nổi tải lại cứng: có trên mọi màn hình, gỡ service worker, xoá cache, tải lại trang', async ({ page }) => {
   await page.goto('/');
+  await expect(page.getByTestId('floating-reload')).toBeVisible();
+  await openLesson(page, 'scale-c-major');
+  await expect(page.getByTestId('floating-reload')).toBeVisible();
+  await page.getByRole('button', { name: 'Về thư viện' }).click();
   await page.getByRole('button', { name: 'Cài đặt' }).click();
+  await expect(page.getByTestId('floating-reload')).toBeVisible();
   await page.evaluate(async () => {
     (window as unknown as { __beforeReload: boolean }).__beforeReload = true;
     await caches.open('test-cache');

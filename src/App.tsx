@@ -6,6 +6,7 @@ import { PracticeScreen } from './screens/PracticeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { AppVersionSide } from './components/AppVersion';
 import { FloatingMicNote } from './components/MicPanel';
+import { FloatingReloadButton } from './components/FloatingReloadButton';
 
 export function App() {
   const route = useApp((s) => s.route);
@@ -26,6 +27,7 @@ export function App() {
       {route.name !== 'practice' && (
         <FloatingMicNote className="fixed right-[calc(12px+env(safe-area-inset-right,0px))] bottom-[calc(12px+env(safe-area-inset-bottom,0px))]" />
       )}
+      <FloatingReloadButton />
       {/* TẠM THỜI trong giai đoạn xây dựng site — xoá khi không cần */}
       <AppVersionSide />
     </div>

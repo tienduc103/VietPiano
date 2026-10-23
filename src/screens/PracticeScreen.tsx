@@ -196,7 +196,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
   return (
     <div className="flex h-full flex-col">
       {/* ── Trên: tên bài, tiến độ ── */}
-      <header className="flex items-center gap-3 px-4 pt-[calc(1rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-2">
+      <header className="flex items-center gap-3 pr-4 pl-16 pt-[calc(1rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-2">
         <Button variant="ghost" onClick={() => navigate({ name: 'library' })} aria-label="Về thư viện" className="px-2">
           <Icon name="back" />
         </Button>

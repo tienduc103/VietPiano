@@ -15,7 +15,6 @@ import { DetectedNote, LevelMeter, MicButton, MicError } from '../components/Mic
 import { AutoCalibration } from '../components/AutoCalibration';
 import { CalibrationCheckView } from '../components/CalibrationCheckView';
 import { AppVersion } from '../components/AppVersion';
-import { hardReload } from '../hardReload';
 
 const CALIBRATION_MS = 2500;
 
@@ -27,7 +26,7 @@ export function SettingsScreen() {
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-4xl px-6 pt-[calc(1.5rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-12">
-        <header className="mb-6 flex items-center gap-3">
+        <header className="mb-6 flex items-center gap-3 max-[1040px]:pl-10">
           <Button variant="ghost" onClick={() => navigate({ name: 'library' })} aria-label="Quay lại" className="px-2">
             <Icon name="back" />
           </Button>
@@ -172,7 +171,6 @@ export function SettingsScreen() {
           </Card>
 
           <DataCard />
-          <AppUpdateCard />
         </div>
 
         <AppVersion className="mt-8" />
@@ -373,29 +371,6 @@ function ListenTest({ labelStyle }: { labelStyle: NoteLabelStyle }) {
         </div>
       )}
     </>
-  );
-}
-
-function AppUpdateCard() {
-  const [reloading, setReloading] = useState(false);
-  return (
-    <Card>
-      <h2 className="text-xl font-semibold">Ứng dụng</h2>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-        Phiên bản {__APP_VERSION__}. Tải lại cứng (như Ctrl+F5) để chắc chắn dùng bản mới nhất; tiến độ và cài đặt vẫn giữ nguyên.
-      </p>
-      <div className="mt-3 flex gap-2">
-        <Button
-          disabled={reloading}
-          onClick={() => {
-            setReloading(true);
-            void hardReload();
-          }}
-        >
-          {reloading ? 'Đang tải lại…' : 'Tải lại bản mới nhất'}
-        </Button>
-      </div>
-    </Card>
   );
 }
 
