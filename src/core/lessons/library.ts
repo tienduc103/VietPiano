@@ -112,6 +112,162 @@ const defs: LessonDef[] = [
     hand: 'left',
     notation: 'C3/h G3/h | F3/h C3/h | G3/h D3/h | C3/w | C3 E3 G3 E3 | F3 A3 C4 A3 | G3 B3 D3 G3 | C3/w',
   },
+  // ── Bé tự học theo số ngón tay ─────────────────────────────────
+  // Số trên khuông là ngón tay: 1 = ngón cái, 2 = trỏ, 3 = giữa, 4 = áp út, 5 = út.
+  // Tay đặt cố định ở thế Đô, mỗi ngón một phím (test kiểm tra ngón ↔ phím nhất quán).
+  {
+    id: 'kid-rh-123',
+    title: 'Bé tay phải: ngón 1 – 2 – 3',
+    description: 'Ngón cái (1) đặt ở Đô giữa. Ngón 1 Đô, ngón 2 Rê, ngón 3 Mi.',
+    category: 'kids',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'right',
+    tempo: 60,
+    notation:
+      'C4/h:1 D4/h:2 | E4/w:3 | E4/h:3 D4/h:2 | C4/w:1 | ' +
+      'C4:1 D4:2 E4:3 D4:2 | C4:1 D4:2 E4/h:3 | E4:3 D4:2 C4:1 D4:2 | C4/w:1',
+  },
+  {
+    id: 'kid-rh-five',
+    title: 'Bé tay phải: đủ 5 ngón',
+    description: 'Năm ngón trên năm phím Đô Rê Mi Fa Sol — lên rồi xuống như cầu thang.',
+    category: 'kids',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'right',
+    tempo: 60,
+    notation:
+      'C4/h:1 D4/h:2 | E4/h:3 F4/h:4 | G4/w:5 | G4/h:5 F4/h:4 | E4/h:3 D4/h:2 | ' +
+      'C4/w:1 | C4:1 D4:2 E4:3 F4:4 | G4:5 F4:4 E4:3 D4:2 | C4/w:1',
+  },
+  {
+    id: 'kid-rh-45',
+    title: 'Bé tay phải: ngón 4 và 5',
+    description: 'Luyện ngón áp út (4) và ngón út (5) — hai ngón yếu nhất.',
+    category: 'kids',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'right',
+    tempo: 60,
+    notation:
+      'E4:3 F4:4 G4/h:5 | G4:5 F4:4 E4/h:3 | F4:4 G4:5 F4:4 G4:5 | F4/w:4 | ' +
+      'E4:3 F4:4 G4:5 F4:4 | E4:3 D4:2 C4/h:1 | E4:3 G4:5 E4:3 G4:5 | C4/w:1',
+  },
+  {
+    id: 'kid-rh-skip',
+    title: 'Bé tay phải: nhảy ngón 1 – 3 – 5',
+    description: 'Bỏ cách một ngón: Đô (1), Mi (3), Sol (5).',
+    category: 'kids',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'right',
+    tempo: 60,
+    notation:
+      'C4/h:1 E4/h:3 | G4/w:5 | G4/h:5 E4/h:3 | C4/w:1 | ' +
+      'C4:1 E4:3 G4:5 E4:3 | C4:1 E4:3 G4/h:5 | G4:5 E4:3 C4:1 E4:3 | C4/w:1',
+  },
+  {
+    id: 'kid-rh-hot-cross-buns',
+    title: 'Bé chơi: Hot Cross Buns (tay phải)',
+    description: 'Bài hát đầu tiên chỉ với ngón 3 – 2 – 1.',
+    category: 'kids',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'right',
+    tempo: 60,
+    source: 'Đồng dao Anh "Hot Cross Buns" (thế kỷ 18) — phạm vi công cộng',
+    notation: 'E4:3 D4:2 C4/h:1 | E4:3 D4:2 C4/h:1 | C4:1 C4:1 C4:1 C4:1 | D4:2 D4:2 D4:2 D4:2 | E4:3 D4:2 C4/h:1',
+  },
+  {
+    id: 'kid-rh-mary',
+    title: 'Bé chơi: Mary Had a Little Lamb (tay phải)',
+    description: 'Bài hát quen thuộc với các ngón 1 – 2 – 3 và ngón 5.',
+    category: 'kids',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    difficulty: 2,
+    hand: 'right',
+    tempo: 60,
+    source: 'Lowell Mason (1830s) — phạm vi công cộng',
+    notation:
+      'E4:3 D4:2 C4:1 D4:2 | E4:3 E4:3 E4/h:3 | D4:2 D4:2 D4/h:2 | E4:3 G4:5 G4/h:5 | ' +
+      'E4:3 D4:2 C4:1 D4:2 | E4:3 E4:3 E4:3 E4:3 | D4:2 D4:2 E4:3 D4:2 | C4/w:1',
+  },
+  {
+    id: 'kid-lh-543',
+    title: 'Bé tay trái: ngón 5 – 4 – 3',
+    description: 'Ngón út (5) đặt ở Đô3. Ngón 5 Đô, ngón 4 Rê, ngón 3 Mi (khoá Fa).',
+    category: 'kids',
+    clef: 'bass',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'left',
+    tempo: 60,
+    notation:
+      'C3/h:5 D3/h:4 | E3/w:3 | E3/h:3 D3/h:4 | C3/w:5 | ' +
+      'C3:5 D3:4 E3:3 D3:4 | C3:5 D3:4 E3/h:3 | E3:3 D3:4 C3:5 D3:4 | C3/w:5',
+  },
+  {
+    id: 'kid-lh-five',
+    title: 'Bé tay trái: đủ 5 ngón',
+    description: 'Tay trái đi từ ngón 5 (Đô) lên ngón cái (Sol) rồi quay về.',
+    category: 'kids',
+    clef: 'bass',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'left',
+    tempo: 60,
+    notation:
+      'C3/h:5 D3/h:4 | E3/h:3 F3/h:2 | G3/w:1 | G3/h:1 F3/h:2 | E3/h:3 D3/h:4 | ' +
+      'C3/w:5 | C3:5 D3:4 E3:3 F3:2 | G3:1 F3:2 E3:3 D3:4 | C3/w:5',
+  },
+  {
+    id: 'kid-lh-12',
+    title: 'Bé tay trái: ngón 1 và 2',
+    description: 'Ngón cái (1) ở Sol3, ngón trỏ (2) ở Fa3 — tập ngón cái tay trái.',
+    category: 'kids',
+    clef: 'bass',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'left',
+    tempo: 60,
+    notation:
+      'G3/h:1 F3/h:2 | E3/w:3 | G3:1 F3:2 G3:1 F3:2 | G3/w:1 | ' +
+      'G3:1 F3:2 E3:3 F3:2 | G3:1 F3:2 E3/h:3 | E3:3 F3:2 G3:1 E3:3 | C3/w:5',
+  },
+  {
+    id: 'kid-lh-skip',
+    title: 'Bé tay trái: nhảy ngón 5 – 3 – 1',
+    description: 'Bỏ cách một ngón: Đô (5), Mi (3), Sol (1).',
+    category: 'kids',
+    clef: 'bass',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'left',
+    tempo: 60,
+    notation:
+      'C3/h:5 E3/h:3 | G3/w:1 | G3/h:1 E3/h:3 | C3/w:5 | ' +
+      'C3:5 E3:3 G3:1 E3:3 | C3:5 E3:3 G3/h:1 | G3:1 E3:3 C3:5 E3:3 | C3/w:5',
+  },
+  {
+    id: 'kid-lh-hot-cross-buns',
+    title: 'Bé chơi: Hot Cross Buns (tay trái)',
+    description: 'Cùng bài hát nhưng bằng tay trái: ngón 3 – 4 – 5.',
+    category: 'kids',
+    clef: 'bass',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'left',
+    tempo: 60,
+    source: 'Đồng dao Anh "Hot Cross Buns" (thế kỷ 18) — phạm vi công cộng',
+    notation: 'E3:3 D3:4 C3/h:5 | E3:3 D3:4 C3/h:5 | C3:5 C3:5 C3:5 C3:5 | D3:4 D3:4 D3:4 D3:4 | E3:3 D3:4 C3/h:5',
+  },
   // ── Bài hát ─────────────────────────────────────────────────────
   {
     id: 'song-twinkle',

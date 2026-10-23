@@ -68,6 +68,7 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
       el.classList.toggle('is-wrong', res === 'wrong');
     });
     r.labelElements.forEach((el, i) => el?.classList.toggle('is-current', i === index && status !== 'finished'));
+    r.fingerElements.forEach((el, i) => el?.classList.toggle('is-current', i === index && status !== 'finished'));
     const cx = r.noteCenters[index] ?? 0;
     r.cursor.setAttribute('x', String(cx - 17));
     r.cursor.style.display = status === 'finished' ? 'none' : '';

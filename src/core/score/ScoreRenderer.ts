@@ -26,6 +26,8 @@ export interface RenderedScore {
   noteElements: (SVGElement | null)[];
   /** Ô chữ tên nốt của từng nốt. */
   labelElements: (SVGTextElement | null)[];
+  /** Số ngón tay phía trên khuông (null nếu nốt không ghi ngón). */
+  fingerElements: (SVGTextElement | null)[];
   /** Hình chữ nhật tô nền nốt hiện tại. */
   cursor: SVGRectElement;
 }
@@ -39,6 +41,8 @@ const NOTE_SPACE: Record<Duration, number> = { '16': 32, '8': 40, '8d': 46, q: 5
 /** Khoảng đệm cuối mỗi ô nhịp (ngoài phần dàn nốt). */
 export const MEASURE_PADDING = 24;
 const LEDGER_STYLE = { strokeStyle: 'currentColor', lineWidth: 2 };
+/** Khoảng cách từ dòng kẻ trên cùng lên đường chân chữ của hàng số ngón tay. */
+export const FINGER_OFFSET = 12;
 
 /** "C#4" → "c#/4" (định dạng khoá của VexFlow). */
 function toVexKey(pitch: string): string {
@@ -176,5 +180,18 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     return t;
   });
 
-  return { width, height: SCORE_HEIGHT, noteCenters, noteElements, labelElements, cursor };
+  // Số ngón tay: một hàng cố định phía trên khuông (bài tập cho bé dùng thế tay cố định nên không đè nốt).
+  const fingerElements = lesson.notes.map((n, i) => {
+    if (!n.finger) return null;
+    const t = document.createElementNS(SVG_NS, 'text');
+    t.setAttribute('x', String(noteCenters[i]));
+    t.setAttribute('y', String(staveTop - FINGER_OFFSET));
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('class', 'score-finger');
+    t.textContent = String(n.finger);
+    svg.appendChild(t);
+    return t;
+  });
+
+  return { width, height: SCORE_HEIGHT, noteCenters, noteElements, labelElements, fingerElements, cursor };
 }

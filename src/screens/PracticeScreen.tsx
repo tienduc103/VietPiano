@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { lessonManager } from '../core/lessons/LessonManager';
-import { DURATION_BEATS, lessonTempo, measureLength, type Lesson } from '../core/lessons/types';
+import { DURATION_BEATS, lessonTempo, measureLength, type Finger, type Lesson } from '../core/lessons/types';
 import { midiToLabel } from '../core/music/notes';
 import { computeAccuracy, PracticeEngine, DEFAULT_PRACTICE_CONFIG, type PracticeState } from '../core/practice/PracticeEngine';
 import { DEFAULT_TEMPO_CONFIG, TempoFollower, type TempoState } from '../core/practice/TempoFollower';
@@ -181,6 +181,8 @@ function Practice({ lesson }: { lesson: Lesson }) {
     : state.status === 'finished'
       ? null
       : state.expected[state.index];
+  const currentIndex = tempoMode ? tempo.index : state.index;
+  const expectedFinger = expected === null ? undefined : lesson.notes[currentIndex]?.finger;
   const flash =
     !tempoMode && showFeedback && state.lastPlayedMidi !== null && (state.status === 'correct' || state.status === 'wrong')
       ? { midi: state.lastPlayedMidi, kind: state.status }
@@ -251,7 +253,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
       <main className="mx-3 min-h-0 flex-1 rounded-2xl bg-white shadow-md shadow-violet-200/60 ring-1 ring-violet-100 dark:bg-slate-900 dark:shadow-none dark:ring-violet-900">
         <ScoreView
           lesson={lesson}
-          index={tempoMode ? tempo.index : state.index}
+          index={currentIndex}
           results={tempoMode ? tempo.results : state.results}
           status={tempoMode ? (tempo.status === 'finished' ? 'finished' : 'waiting') : state.status}
           wrongPulse={tempoMode ? 0 : state.wrong}
@@ -276,7 +278,14 @@ function Practice({ lesson }: { lesson: Lesson }) {
             onToggleRun={toggleTempoRun}
           />
         ) : (
-          <StatusPanel state={state} expected={expected} showFeedback={showFeedback} labelStyle={settings.labelStyle} />
+          <StatusPanel
+            state={state}
+            expected={expected}
+            finger={expectedFinger}
+            hand={lesson.hand}
+            showFeedback={showFeedback}
+            labelStyle={settings.labelStyle}
+          />
         )}
         <div className="ml-auto flex gap-2">
           <Button onClick={restart} aria-label="Chơi lại từ đầu" title="Chơi lại từ đầu">
@@ -304,6 +313,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
             from={range.from}
             to={range.to}
             expected={expected}
+            expectedFinger={expectedFinger}
             detected={micLive?.midi ?? null}
             flash={flash}
             labelStyle={settings.labelStyle}
@@ -337,11 +347,15 @@ function Practice({ lesson }: { lesson: Lesson }) {
 function StatusPanel({
   state,
   expected,
+  finger,
+  hand,
   showFeedback,
   labelStyle,
 }: {
   state: PracticeState;
   expected: number | null;
+  finger?: Finger;
+  hand: Lesson['hand'];
   showFeedback: boolean;
   labelStyle: 'letter' | 'solfege';
 }) {
@@ -377,6 +391,16 @@ function StatusPanel({
           <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Cần đánh</div>
           <div className="text-4xl font-bold text-fuchsia-600 dark:text-fuchsia-300" data-testid="expected-note">
             {midiToLabel(expected, labelStyle)}
+          </div>
+        </div>
+      )}
+      {expected !== null && finger && (
+        <div className="text-center">
+          <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
+            {hand === 'right' ? 'Tay phải' : 'Tay trái'}
+          </div>
+          <div className="text-4xl font-bold text-orange-500 dark:text-orange-300" data-testid="expected-finger" aria-label={`Ngón ${finger}`}>
+            ngón {finger}
           </div>
         </div>
       )}

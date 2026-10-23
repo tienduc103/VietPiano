@@ -16,13 +16,18 @@ export const DURATION_BEATS: Record<Duration, number> = {
   '16': 0.25,
 };
 
-export type LessonCategory = 'notes' | 'scale' | 'right-hand' | 'left-hand' | 'song';
+export type LessonCategory = 'notes' | 'scale' | 'right-hand' | 'left-hand' | 'kids' | 'song';
+
+/** Số ngón tay: 1 = ngón cái, 2 = trỏ, 3 = giữa, 4 = áp út, 5 = út (cả hai tay). */
+export type Finger = 1 | 2 | 3 | 4 | 5;
 
 export interface LessonNote {
   /** Tên nốt khoa học, vd "C4", "F#3". */
   pitch: string;
   midi: number;
   duration: Duration;
+  /** Ngón tay gợi ý (vẽ trên khuông nhạc). */
+  finger?: Finger;
 }
 
 export interface Lesson {

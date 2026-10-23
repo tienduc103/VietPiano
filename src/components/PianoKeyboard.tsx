@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import type { Finger } from '../core/lessons/types';
 import { isBlackKey, midiToLabel, midiToPitchClass, type NoteLabelStyle } from '../core/music/notes';
 
 interface Props {
@@ -6,6 +7,8 @@ interface Props {
   to: number;
   /** Nốt cần đánh (tô viền). */
   expected: number | null;
+  /** Ngón tay gợi ý cho nốt cần đánh (bài cho bé). */
+  expectedFinger?: Finger;
   /** Nốt micro đang nghe thấy. */
   detected: number | null;
   /** Kết quả lần đánh gần nhất. */
@@ -55,6 +58,11 @@ export const PianoKeyboard = memo(function PianoKeyboard(props: Props) {
                 {keyHints.get(m)}
               </span>
             )}
+            {props.expected === m && props.expectedFinger && (
+              <span className="mb-1 grid size-7 place-items-center rounded-full bg-orange-500 text-base font-bold text-white" data-testid="key-finger">
+                {props.expectedFinger}
+              </span>
+            )}
             {midiToPitchClass(m) === 0 || props.expected === m ? midiToLabel(m, labelStyle) : ''}
           </button>
         ))}
@@ -69,6 +77,9 @@ export const PianoKeyboard = memo(function PianoKeyboard(props: Props) {
           style={{ left: `${whiteIndex * whiteWidth - whiteWidth * 0.32}%`, width: `${whiteWidth * 0.64}%` }}
           className={`absolute top-0 flex h-[60%] items-end justify-center rounded-b-md bg-gradient-to-b from-slate-700 to-slate-950 pb-1 text-[10px] text-slate-400 shadow-md active:bg-slate-700 dark:bg-black ${keyClasses(midi, true, props)}`}
         >
+          {props.expected === midi && props.expectedFinger && (
+            <span className="mb-1 grid size-6 place-items-center rounded-full bg-orange-500 text-sm font-bold text-white">{props.expectedFinger}</span>
+          )}
           {keyHints?.get(midi) && <span className="font-mono uppercase">{keyHints.get(midi)}</span>}
         </button>
       ))}

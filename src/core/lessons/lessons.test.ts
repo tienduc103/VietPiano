@@ -13,6 +13,15 @@ describe('ký hiệu bài học', () => {
     ]);
   });
 
+  it('phân tích số ngón tay', () => {
+    expect(parseNotes('C4:1 E4/h:3')).toEqual([
+      { pitch: 'C4', midi: 60, duration: 'q', finger: 1 },
+      { pitch: 'E4', midi: 64, duration: 'h', finger: 3 },
+    ]);
+    expect(() => parseNotes('C4:6')).toThrow();
+    expect(() => parseNotes('C4/h:')).toThrow();
+  });
+
   it('báo lỗi với nốt hoặc trường độ sai', () => {
     expect(() => parseNotes('X4')).toThrow();
     expect(() => parseNotes('C4/z')).toThrow();
@@ -57,6 +66,28 @@ describe('thư viện bài học', () => {
       expect(n.midi).toBeGreaterThanOrEqual(36);
       expect(n.midi).toBeLessThanOrEqual(84);
     }
+  });
+
+  const kids = LESSONS.filter((l) => l.category === 'kids');
+
+  it('có bài cho bé ở cả tay phải và tay trái', () => {
+    expect(kids.filter((l) => l.hand === 'right').length).toBeGreaterThanOrEqual(3);
+    expect(kids.filter((l) => l.hand === 'left').length).toBeGreaterThanOrEqual(3);
+  });
+
+  it.each(kids.map((l) => [l.id, l] as const))('%s: mọi nốt có số ngón, thế tay cố định', (_id, lesson) => {
+    // Mỗi ngón ứng với đúng một phím trong cả bài (bé không phải đổi thế tay).
+    const keyOf = new Map<number, number>();
+    for (const n of lesson.notes) {
+      expect(n.finger).toBeDefined();
+      const f = n.finger!;
+      expect(keyOf.get(f) ?? n.midi).toBe(n.midi);
+      keyOf.set(f, n.midi);
+    }
+    // Tay phải: ngón số lớn hơn ở phím cao hơn; tay trái ngược lại (ngón 5 ở phím thấp nhất).
+    const sorted = [...keyOf.entries()].sort(([a], [b]) => a - b).map(([, midi]) => midi);
+    const expected = [...sorted].sort((a, b) => (lesson.hand === 'right' ? a - b : b - a));
+    expect(sorted).toEqual(expected);
   });
 
   it('LessonManager tìm bài và bài kế tiếp', () => {

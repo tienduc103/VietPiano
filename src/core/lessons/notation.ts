@@ -1,9 +1,10 @@
 import { requireMidi } from '../music/notes';
-import { DURATION_BEATS, type Duration, type LessonNote } from './types';
+import { DURATION_BEATS, type Duration, type Finger, type LessonNote } from './types';
 
 /**
  * Phân tích chuỗi ký hiệu gọn: "C4 D4 E4/h | G4/qd A4/8".
- * Mặc định trường độ là nốt đen (q). Dấu "|" chỉ để dễ đọc, bị bỏ qua
+ * Mặc định trường độ là nốt đen (q). Hậu tố ":1"…":5" là số ngón tay ("C4:1", "E4/h:3").
+ * Dấu "|" chỉ để dễ đọc, bị bỏ qua
  * (ô nhịp được tính lại từ trường độ và được kiểm tra bằng unit test).
  */
 export function parseNotes(source: string): LessonNote[] {
@@ -11,9 +12,15 @@ export function parseNotes(source: string): LessonNote[] {
     .split(/\s+/)
     .filter((tok) => tok && tok !== '|')
     .map((tok) => {
-      const [pitch, dur = 'q'] = tok.split('/');
+      const [main, finger] = tok.split(':');
+      const [pitch, dur = 'q'] = main.split('/');
       if (!(dur in DURATION_BEATS)) throw new Error(`Trường độ không hợp lệ: "${tok}"`);
-      return { pitch, midi: requireMidi(pitch), duration: dur as Duration };
+      const note: LessonNote = { pitch, midi: requireMidi(pitch), duration: dur as Duration };
+      if (finger !== undefined) {
+        if (!/^[1-5]$/.test(finger)) throw new Error(`Số ngón tay không hợp lệ: "${tok}"`);
+        note.finger = Number(finger) as Finger;
+      }
+      return note;
     });
 }
 

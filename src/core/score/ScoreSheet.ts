@@ -9,7 +9,7 @@ import { BarlineType, CanvasContext, Stave } from 'vexflow/bravura';
 import { splitMeasures } from '../lessons/notation';
 import { measureLength, type Lesson } from '../lessons/types';
 import { midiToLabel, type NoteLabelStyle } from '../music/notes';
-import { createMeasureNotes, formatMeasure, naturalNoteArea, noteCenterX } from './ScoreRenderer';
+import { createMeasureNotes, FINGER_OFFSET, formatMeasure, naturalNoteArea, noteCenterX } from './ScoreRenderer';
 import { layoutSystems } from './sheetLayout';
 
 export interface ScoreSheetOptions {
@@ -106,6 +106,15 @@ export function renderScoreSheet(canvas: HTMLCanvasElement, lesson: Lesson, opts
         ctx2d.font = `italic 400 13px ${FONT}`;
         ctx2d.fillText(String(lesson.pickup ? mi : mi + 1), x, stave.getYForLine(0) - 14);
       }
+
+      // Số ngón tay phía trên khuông.
+      ctx2d.fillStyle = INK;
+      ctx2d.textAlign = 'center';
+      ctx2d.font = `700 16px ${FONT}`;
+      notes.forEach((note, ni) => {
+        const finger = lesson.notes[noteIndex + ni].finger;
+        if (finger) ctx2d.fillText(String(finger), noteCenterX(note), stave.getYForLine(0) - FINGER_OFFSET);
+      });
 
       if (opts.showNames) {
         ctx2d.fillStyle = MUTED;
