@@ -56,6 +56,22 @@ export const FRAME_SIZE = 2048;
 export const HOP_SIZE = 1024;
 
 type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext };
+/** Audio Session API của WebKit (Safari 16.4+/17); chưa có trong lib.dom. */
+type AudioSessionNavigator = Navigator & { audioSession?: { type: string }; standalone?: boolean };
+
+/**
+ * Báo iOS là trang vừa thu vừa phát. Ở app trên màn hình chính (PWA), audio session có thể ở
+ * chế độ chỉ phát → MediaStreamSource trả toàn mẫu 0 dù chấm cam micro vẫn sáng.
+ */
+function preferPlayAndRecord(): void {
+  const session = (navigator as AudioSessionNavigator).audioSession;
+  if (!session || session.type === 'play-and-record') return;
+  try {
+    session.type = 'play-and-record';
+  } catch {
+    // Trình duyệt không cho đổi → giữ nguyên.
+  }
+}
 
 export class AudioInput {
   private context: AudioContext | null = null;
@@ -68,6 +84,10 @@ export class AudioInput {
   private lastError: AudioInputError | null = null;
   private readonly watchdog = new SignalWatchdog();
   private watchdogTimer: ReturnType<typeof setInterval> | null = null;
+  /** Tăng mỗi lần teardown → doStart đang chờ biết mình đã bị huỷ. */
+  private generation = 0;
+  /** Chẩn đoán lần thử đầu khi micro câm; đã có = đang/đã thử lại (chỉ thử lại một lần). */
+  private firstFailure: string | null = null;
 
   readonly frames = new Emitter<AudioFrameEvent>();
   readonly statusChanges = new Emitter<{ status: AudioInputStatus; error: AudioInputError | null }>();
@@ -97,14 +117,25 @@ export class AudioInput {
     if (this.statusValue === 'running') return Promise.resolve();
     if (this.statusValue === 'suspended' && this.context) return this.resume();
     if (this.startPromise) return this.startPromise;
-    this.startPromise = this.doStart().finally(() => {
+    this.firstFailure = null;
+    return this.launch(false);
+  }
+
+  private launch(lateContext: boolean): Promise<void> {
+    this.startPromise = this.doStart(lateContext).finally(() => {
       this.startPromise = null;
     });
     return this.startPromise;
   }
 
-  private async doStart(): Promise<void> {
+  /**
+   * `lateContext`: tạo AudioContext SAU khi đã có micro (lần thử lại khi micro câm). Mặc định tạo
+   * trước, ngay trong thao tác người dùng, để Safari cho chạy; nhưng trên iOS context tạo trước
+   * khi bắt đầu thu có thể không nhận được tiếng từ micro.
+   */
+  private async doStart(lateContext: boolean): Promise<void> {
     this.setStatus('starting');
+    const generation = this.generation;
     try {
       if (typeof window !== 'undefined' && !window.isSecureContext) {
         throw new AudioInputError('insecure-context', AUDIO_ERROR_MESSAGES['insecure-context']);
@@ -115,12 +146,15 @@ export class AudioInput {
       const Ctor = window.AudioContext ?? (window as WebkitWindow).webkitAudioContext;
       if (!Ctor) throw new AudioInputError('unsupported', AUDIO_ERROR_MESSAGES.unsupported);
 
+      preferPlayAndRecord();
+      const createContext = () => {
+        const ctx = new Ctor({ latencyHint: 'interactive' });
+        this.context = ctx;
+        if (!ctx.audioWorklet) throw new AudioInputError('unsupported', AUDIO_ERROR_MESSAGES.unsupported);
+        return ctx;
+      };
       // Tạo AudioContext ngay trong thao tác người dùng (trước await) để Safari không chặn.
-      const context = new Ctor({ latencyHint: 'interactive' });
-      this.context = context;
-      if (!context.audioWorklet) {
-        throw new AudioInputError('unsupported', AUDIO_ERROR_MESSAGES.unsupported);
-      }
+      let context = lateContext ? null : createContext();
 
       // Tắt xử lý giọng nói: AGC/khử ồn làm méo và nén tiếng đàn.
       let stream: MediaStream;
@@ -137,11 +171,12 @@ export class AudioInput {
       } catch (err) {
         throw mapGetUserMediaError(err);
       }
-      if (this.context !== context) {
+      if (this.generation !== generation) {
         // stop() đã được gọi trong lúc chờ quyền.
         stream.getTracks().forEach((t) => t.stop());
         return;
       }
+      context ??= createContext();
       this.stream = stream;
       stream.getAudioTracks().forEach((track) => {
         track.addEventListener('ended', this.handleTrackEnded);
@@ -155,9 +190,10 @@ export class AudioInput {
         outputChannelCount: [1],
         processorOptions: { frameSize: FRAME_SIZE, hopSize: HOP_SIZE },
       });
+      const sampleRate = context.sampleRate;
       worklet.port.onmessage = (e: MessageEvent<Float32Array>) => {
         this.watchdog.frame(e.data, performance.now());
-        this.frames.emit({ samples: e.data, sampleRate: context.sampleRate, time: performance.now() });
+        this.frames.emit({ samples: e.data, sampleRate, time: performance.now() });
       };
       // Nối vào destination qua gain = 0 để Safari chắc chắn chạy graph mà không phát tiếng.
       const sink = context.createGain();
@@ -210,6 +246,7 @@ export class AudioInput {
   }
 
   private async teardown(): Promise<void> {
+    this.generation++;
     const ctx = this.context;
     this.context = null;
     if (this.worklet) {
@@ -240,10 +277,14 @@ export class AudioInput {
     const ctx = this.context;
     const track = this.stream?.getAudioTracks()[0];
     const trackRate = track?.getSettings?.().sampleRate;
+    const nav = navigator as AudioSessionNavigator;
+    const standalone = nav.standalone === true || window.matchMedia?.('(display-mode: standalone)').matches;
     return [
       ctx ? `AudioContext ${ctx.state} ${ctx.sampleRate} Hz` : 'không có AudioContext',
       track ? `track ${track.readyState}${track.muted ? ' muted' : ''}${trackRate ? ` ${trackRate} Hz` : ''}` : 'không có track',
       `${this.watchdog.frames} khung (${this.watchdog.silentFrames} toàn 0)`,
+      `session ${nav.audioSession?.type ?? 'n/a'}`,
+      standalone ? 'app màn hình chính' : 'tab trình duyệt',
     ].join(' · ');
   }
 
@@ -253,9 +294,14 @@ export class AudioInput {
     this.watchdogTimer = setInterval(() => {
       if (this.statusValue !== 'running' || !this.watchdog.isDead(performance.now())) return;
       const details = this.diagnostics();
-      void this.teardown().then(() =>
-        this.setStatus('error', new AudioInputError('no-signal', `${AUDIO_ERROR_MESSAGES['no-signal']} [${details}]`)),
-      );
+      if (this.firstFailure === null) {
+        // Thử lại một lần với AudioContext tạo sau khi đã có micro (quyền micro đã cấp → không hỏi lại).
+        this.firstFailure = details;
+        void this.teardown().then(() => this.launch(true).catch(() => undefined));
+        return;
+      }
+      const message = `${AUDIO_ERROR_MESSAGES['no-signal']} [lần 1: ${this.firstFailure}] [lần 2: ${details}]`;
+      void this.teardown().then(() => this.setStatus('error', new AudioInputError('no-signal', message)));
     }, 500);
   }
 
