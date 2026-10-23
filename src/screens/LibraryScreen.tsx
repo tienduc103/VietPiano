@@ -5,6 +5,7 @@ import { computeTotals, type LessonProgress } from '../core/storage/ProgressStor
 import { useApp } from '../store/appStore';
 import { Button, FullscreenButton, Icon, formatDuration } from '../components/ui';
 import { AppVersion } from '../components/AppVersion';
+import { MicError } from '../components/MicPanel';
 import { ScoreExportDialog } from '../components/ScoreExportDialog';
 import { useSettings } from '../store/settingsStore';
 import { LearnerPanel } from '../components/LearnerPanel';
@@ -56,6 +57,11 @@ export function LibraryScreen() {
             <span>Cài đặt & micro</span>
           </Button>
         </header>
+
+        {/* Micro bật được từ nút nổi ở thư viện → lỗi micro cũng phải hiện ở đây. */}
+        <div className="mt-4 empty:hidden">
+          <MicError />
+        </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
           <Summary tone="sky" label="Thời gian luyện" value={formatDuration(totals.totalPracticeMs)} />

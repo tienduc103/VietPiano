@@ -9,6 +9,7 @@
  */
 import workletUrl from './capture-processor.js?url&no-inline';
 import { Emitter } from '../input/NoteInputProvider';
+import { SignalWatchdog } from './SignalWatchdog';
 
 export type AudioInputStatus = 'idle' | 'starting' | 'running' | 'suspended' | 'error';
 
@@ -19,6 +20,7 @@ export type AudioInputErrorCode =
   | 'no-device'
   | 'device-busy'
   | 'device-lost'
+  | 'no-signal'
   | 'unknown';
 
 export class AudioInputError extends Error {
@@ -39,6 +41,8 @@ export const AUDIO_ERROR_MESSAGES: Record<AudioInputErrorCode, string> = {
   'no-device': 'Không tìm thấy micro trên thiết bị.',
   'device-busy': 'Micro đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó rồi thử lại.',
   'device-lost': 'Micro bị ngắt kết nối hoặc bị hệ thống tạm dừng.',
+  'no-signal':
+    'Micro đã bật nhưng không nhận được âm thanh nào (kể cả tiếng ồn). Hãy bấm bật lại micro; nếu vẫn vậy, đóng hẳn Safari/app rồi mở lại, và kiểm tra không có app khác (gọi điện, ghi âm) đang dùng micro.',
   unknown: 'Không thể khởi động micro.',
 };
 
@@ -62,6 +66,8 @@ export class AudioInput {
   private startPromise: Promise<void> | null = null;
   private statusValue: AudioInputStatus = 'idle';
   private lastError: AudioInputError | null = null;
+  private readonly watchdog = new SignalWatchdog();
+  private watchdogTimer: ReturnType<typeof setInterval> | null = null;
 
   readonly frames = new Emitter<AudioFrameEvent>();
   readonly statusChanges = new Emitter<{ status: AudioInputStatus; error: AudioInputError | null }>();
@@ -79,6 +85,8 @@ export class AudioInput {
   }
 
   private setStatus(status: AudioInputStatus, error: AudioInputError | null = null) {
+    if (status === 'running' && this.statusValue !== 'running') this.startWatchdog();
+    else if (status !== 'running') this.stopWatchdog();
     this.statusValue = status;
     this.lastError = error;
     this.statusChanges.emit({ status, error });
@@ -148,6 +156,7 @@ export class AudioInput {
         processorOptions: { frameSize: FRAME_SIZE, hopSize: HOP_SIZE },
       });
       worklet.port.onmessage = (e: MessageEvent<Float32Array>) => {
+        this.watchdog.frame(e.data, performance.now());
         this.frames.emit({ samples: e.data, sampleRate: context.sampleRate, time: performance.now() });
       };
       // Nối vào destination qua gain = 0 để Safari chắc chắn chạy graph mà không phát tiếng.
@@ -224,6 +233,35 @@ export class AudioInput {
       ctx.onstatechange = null;
       if (ctx.state !== 'closed') await ctx.close().catch(() => undefined);
     }
+  }
+
+  /** Tóm tắt trạng thái thu âm, để người dùng báo lại khi micro không nghe được. */
+  diagnostics(): string {
+    const ctx = this.context;
+    const track = this.stream?.getAudioTracks()[0];
+    const trackRate = track?.getSettings?.().sampleRate;
+    return [
+      ctx ? `AudioContext ${ctx.state} ${ctx.sampleRate} Hz` : 'không có AudioContext',
+      track ? `track ${track.readyState}${track.muted ? ' muted' : ''}${trackRate ? ` ${trackRate} Hz` : ''}` : 'không có track',
+      `${this.watchdog.frames} khung (${this.watchdog.silentFrames} toàn 0)`,
+    ].join(' · ');
+  }
+
+  private startWatchdog() {
+    this.stopWatchdog();
+    this.watchdog.reset(performance.now());
+    this.watchdogTimer = setInterval(() => {
+      if (this.statusValue !== 'running' || !this.watchdog.isDead(performance.now())) return;
+      const details = this.diagnostics();
+      void this.teardown().then(() =>
+        this.setStatus('error', new AudioInputError('no-signal', `${AUDIO_ERROR_MESSAGES['no-signal']} [${details}]`)),
+      );
+    }, 500);
+  }
+
+  private stopWatchdog() {
+    if (this.watchdogTimer !== null) clearInterval(this.watchdogTimer);
+    this.watchdogTimer = null;
   }
 
   private handleContextStateChange = () => {

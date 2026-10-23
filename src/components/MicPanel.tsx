@@ -112,19 +112,24 @@ export function FloatingMicNote({ className }: { className: string }) {
   if (!enabled) return null;
   const on = status === 'running';
   const resumable = status === 'suspended' || paused;
+  const failed = status === 'error';
   return (
     <button
       type="button"
       onClick={() => void toggleMicrophone()}
       data-testid="floating-mic"
       aria-pressed={on}
-      aria-label={on ? 'Tắt micro (nút nổi)' : resumable ? 'Bật lại micro (nút nổi)' : 'Bật micro (nút nổi)'}
+      aria-label={
+        on ? 'Tắt micro (nút nổi)' : resumable ? 'Bật lại micro (nút nổi)' : failed ? 'Lỗi micro — bấm để thử lại (nút nổi)' : 'Bật micro (nút nổi)'
+      }
       className={`z-10 flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-2xl px-3 py-1.5 shadow-lg ring-1 transition-colors select-none ${
         on
           ? 'bg-white/90 ring-emerald-400/60 dark:bg-slate-800/90'
           : resumable
             ? 'animate-pulse bg-orange-500 text-white ring-orange-600/40'
-            : 'bg-white/90 text-violet-900 ring-slate-900/10 dark:bg-slate-800/90 dark:text-slate-100 dark:ring-white/10'
+            : failed
+              ? 'bg-rose-600 text-white ring-rose-700/40'
+              : 'bg-white/90 text-violet-900 ring-slate-900/10 dark:bg-slate-800/90 dark:text-slate-100 dark:ring-white/10'
       } ${className}`}
     >
       {on ? <LiveNote /> : <Icon name={status === 'starting' ? 'mic' : 'micOff'} />}
@@ -134,9 +139,12 @@ export function FloatingMicNote({ className }: { className: string }) {
 
 function LiveNote() {
   // Chọn từng giá trị nguyên thuỷ (không lấy cả object `live`) để chỉ render lại khi nốt hoặc cents đổi.
-  const midi = useMic((s) => s.live?.midi ?? null);
+  const liveMidi = useMic((s) => s.live?.midi ?? null);
   const cents = useMic((s) => (s.live ? Math.round(s.live.cents) : null));
+  // Tiếng đàn tắt dần xuống dưới ngưỡng nhiễu rất nhanh → khi không còn cao độ thì giữ nốt vừa nhận được.
+  const lastNote = useMic((s) => s.lastNote);
   const labelStyle = useSettings((s) => s.settings.labelStyle);
+  const midi = liveMidi ?? lastNote;
   return (
     <>
       <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
@@ -144,9 +152,11 @@ function LiveNote() {
         <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
       </span>
       <span className="min-w-12 text-center leading-tight" data-testid="floating-mic-note">
-        <span className="block text-2xl font-bold tabular-nums">{midi === null ? '…' : midiToLabel(midi, labelStyle)}</span>
+        <span className={`block text-2xl font-bold tabular-nums ${liveMidi === null && midi !== null ? 'opacity-60' : ''}`}>
+          {midi === null ? '…' : midiToLabel(midi, labelStyle)}
+        </span>
         <span className="block text-[10px] text-slate-500 tabular-nums dark:text-slate-400">
-          {cents === null ? 'đang nghe' : `${cents > 0 ? '+' : ''}${cents} cents`}
+          {cents !== null ? `${cents > 0 ? '+' : ''}${cents} cents` : midi !== null ? 'vừa nghe' : 'đang nghe'}
         </span>
       </span>
     </>
