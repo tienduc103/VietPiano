@@ -2,10 +2,12 @@
  * Đánh giá người học từ lịch sử phiên luyện tập (hàm thuần, không phụ thuộc thời gian thực).
  *  - Thời gian học: tổng, 7 ngày gần nhất so với mục tiêu, số ngày tập, chuỗi ngày liên tiếp.
  *  - Khả năng chơi: điểm 0–100 từ trình độ khai báo + bài đã hoàn thành (theo độ khó) + độ chính xác.
- *  - Tiêu chí khác: đều đặn, độ chính xác gần đây, tiến bộ, đọc nốt, cân bằng hai tay, hoàn thành bài,
- *    độ phủ kỹ năng, độ dài buổi tập.
+ *  - Tiêu chí khác: đều đặn, độ chính xác gần đây, tiến bộ, đọc nốt, tốc độ đọc nốt, nốt hay sai,
+ *    cân bằng hai tay, hoàn thành bài, độ phủ kỹ năng, độ dài buổi tập.
  */
 import type { Lesson, LessonCategory } from '../lessons/types';
+import { midiToLabel, type NoteLabelStyle } from '../music/notes';
+import { mergeNoteTallies } from '../practice/NoteStats';
 import { applySession, emptyProgress, type LessonProgress, type PracticeSession } from '../storage/ProgressStorage';
 import { ageGroup, recommendedDailyMinutes, type Experience, type LearnerProfile } from './LearnerProfile';
 
@@ -15,7 +17,15 @@ export const PASS_ACCURACY = 0.8;
 /** Độ chính xác để coi một bài là đã thuộc (không cần gợi ý lại). */
 export const MASTERED_ACCURACY = 0.9;
 
-export type CriterionKey = 'regularity' | 'weeklyGoal' | 'accuracy' | 'improvement' | 'reading' | 'hands' | 'completion' | 'coverage' | 'sessionLength';
+export type CriterionKey =
+  | 'regularity'
+  | 'weeklyGoal'
+  | 'accuracy'
+  | 'improvement'
+  | 'reading'
+  | 'readingSpeed'
+  | 'troubleNotes'
+  | 'hands' | 'completion' | 'coverage' | 'sessionLength';
 
 export interface Criterion {
   key: CriterionKey;
@@ -26,6 +36,26 @@ export interface Criterion {
   /** Lời khuyên khi điểm còn thấp. */
   tip?: string;
 }
+
+/** Nốt hay đánh sai (tính trên 20 phiên gần nhất). */
+export interface TroubleNote {
+  midi: number;
+  label: string;
+  attempts: number;
+  missRate: number;
+  /** Nốt hay bị đánh nhầm sang nhất. */
+  confusedWith: number | null;
+}
+
+/** Tốc độ đọc nốt mục tiêu theo tuổi (ms từ lúc nốt hiện ra tới lần đánh đầu tiên). */
+export function targetReadingMs(age: number): number {
+  const g = ageGroup(age);
+  return g === 'preschool' ? 2000 : g === 'child' ? 1500 : 1000;
+}
+
+const NOTE_WINDOW = 20;
+const MIN_NOTE_ATTEMPTS = 3;
+const TROUBLE_RATE = 0.2;
 
 export type SkillLevel = 'Mới bắt đầu' | 'Cơ bản' | 'Khá' | 'Vững';
 
@@ -52,6 +82,12 @@ export interface Assessment {
     weakerHand: 'left' | 'right' | null;
   };
   criteria: Criterion[];
+  notes: {
+    /** Thời gian đọc trung bình mỗi nốt (10 phiên gần nhất có dữ liệu); null = chưa đủ. */
+    readingMs: number | null;
+    /** Tối đa 3 nốt hay sai nhất, sai nhiều trước. */
+    trouble: TroubleNote[];
+  };
   /** Tiến độ từng bài của riêng người học này. */
   progress: Record<string, LessonProgress>;
 }
@@ -86,6 +122,7 @@ export function assessLearner(
   lessons: Lesson[],
   now: number,
   tzOffsetMin = new Date(now).getTimezoneOffset(),
+  labelStyle: NoteLabelStyle = 'letter',
 ): Assessment {
   const sorted = [...sessions].sort((a, b) => a.startedAt - b.startedAt);
   const lessonById = new Map(lessons.map((l) => [l.id, l]));
@@ -169,6 +206,67 @@ export function assessLearner(
     tip: readingAcc === null || readingAcc < PASS_ACCURACY ? 'Tập bài “Nhận biết nốt” và tắt tên nốt để tự đọc.' : undefined,
   });
 
+  // Tốc độ đọc nốt: 10 phiên gần nhất có đo; so với 10 phiên trước đó.
+  const timed = sorted.filter((x) => (x.reading?.count ?? 0) > 0);
+  const avgReading = (list: PracticeSession[]) => {
+    const count = list.reduce((a, x) => a + (x.reading?.count ?? 0), 0);
+    return count >= 10 ? list.reduce((a, x) => a + (x.reading?.totalMs ?? 0), 0) / count : null;
+  };
+  const readingMs = avgReading(timed.slice(-10));
+  const earlierReadingMs = avgReading(timed.slice(-20, -10));
+  const targetMs = targetReadingMs(profile.age);
+  const sec = (ms: number) => (ms / 1000).toFixed(1).replace('.', ',');
+  const readingTrend =
+    readingMs !== null && earlierReadingMs !== null && Math.abs(earlierReadingMs - readingMs) >= 100
+      ? ` · ${readingMs < earlierReadingMs ? 'nhanh' : 'chậm'} hơn ${sec(Math.abs(earlierReadingMs - readingMs))} giây so với trước`
+      : '';
+  const readingScore = readingMs === null ? null : clamp100((100 * (4 * targetMs - readingMs)) / (3 * targetMs));
+  criteria.push({
+    key: 'readingSpeed',
+    label: 'Tốc độ đọc nốt',
+    score: readingScore,
+    detail:
+      readingMs === null
+        ? 'Cần thêm vài lượt tập ở chế độ Chờ hoặc Đếm nốt'
+        : `Trung bình ${sec(readingMs)} giây/nốt (mục tiêu ≤ ${sec(targetMs)} giây)${readingTrend}`,
+    tip: readingScore !== null && readingScore < 60 ? 'Tắt tên nốt, tập bài “Nhận biết nốt”; khi đánh, nhìn trước nốt kế tiếp.' : undefined,
+  });
+
+  // Nốt hay sai.
+  const tallies = mergeNoteTallies(sorted.slice(-NOTE_WINDOW).map((x) => x.noteTallies)).filter((t) => t.hits + t.misses >= MIN_NOTE_ATTEMPTS);
+  const tallyAttempts = tallies.reduce((a, t) => a + t.hits + t.misses, 0);
+  const rated = tallies.map((t) => {
+    const top = Object.entries(t.confusions).sort((a, b) => b[1] - a[1])[0];
+    return {
+      midi: t.midi,
+      label: midiToLabel(t.midi, labelStyle),
+      attempts: t.hits + t.misses,
+      missRate: t.misses / (t.hits + t.misses),
+      confusedWith: top ? Number(top[0]) : null,
+      misses: t.misses,
+    };
+  });
+  const trouble: TroubleNote[] = rated
+    .filter((t) => t.missRate >= TROUBLE_RATE)
+    .sort((a, b) => b.misses - a.misses || b.missRate - a.missRate)
+    .slice(0, 3)
+    .map(({ misses: _m, ...t }) => t);
+  const worstRate = rated.reduce((m, t) => Math.max(m, t.missRate), 0);
+  const enoughNotes = tallyAttempts >= 20;
+  criteria.push({
+    key: 'troubleNotes',
+    label: 'Nốt hay sai',
+    score: enoughNotes ? clamp100((1 - worstRate) * 100) : null,
+    detail: !enoughNotes
+      ? 'Cần thêm vài lượt tập ở chế độ Chờ hoặc Đếm nốt'
+      : trouble.length
+        ? trouble
+            .map((t) => `${t.label} sai ${pct(t.missRate)}${t.confusedWith !== null ? ` (hay nhầm ${midiToLabel(t.confusedWith, labelStyle)})` : ''}`)
+            .join(' · ')
+        : 'Không có nốt nào sai thường xuyên',
+    tip: enoughNotes && trouble.length ? `Tập chậm các bài có nốt ${trouble.map((t) => t.label).join(', ')}; nhìn vị trí phím trên bàn phím ảo.` : undefined,
+  });
+
   const correctByHand = { left: 0, right: 0 };
   for (const s of sorted) {
     // Bài hai tay không tính vào tay nào.
@@ -224,6 +322,7 @@ export function assessLearner(
     time: { totalMs, sessions: sorted.length, activeDays: days.size, streakDays: streak, last7DaysMs, weeklyGoalMs, avgSessionMs },
     skill: { score, level: skillLevel(score), targetDifficulty, accuracy, recentAccuracy, lessonsPassed: passed.length, hardestPassed, weakerHand },
     criteria,
+    notes: { readingMs, trouble },
     progress,
   };
 }

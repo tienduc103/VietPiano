@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { lessonManager } from '../core/lessons/LessonManager';
-import { DURATION_BEATS, lessonTempo, measureLength, type Finger, type Lesson } from '../core/lessons/types';
+import { DURATION_BEATS, lessonTempo, measureLength, HAND_LABEL, noteHand, type Finger, type Hand, type Lesson } from '../core/lessons/types';
 import { midiToLabel } from '../core/music/notes';
 import { computeAccuracy, PracticeEngine, DEFAULT_PRACTICE_CONFIG, type PracticeState } from '../core/practice/PracticeEngine';
 import { DEFAULT_TEMPO_CONFIG, TempoFollower, type TempoState } from '../core/practice/TempoFollower';
@@ -182,7 +182,10 @@ function Practice({ lesson }: { lesson: Lesson }) {
       ? null
       : state.expected[state.index];
   const currentIndex = tempoMode ? tempo.index : state.index;
-  const expectedFinger = expected === null ? undefined : lesson.notes[currentIndex]?.finger;
+  const currentNote = expected === null ? undefined : lesson.notes[currentIndex];
+  const expectedFinger = currentNote?.finger;
+  // Bài hai tay luôn nhắc tay nào; bài một tay chỉ nhắc khi có số ngón.
+  const expectedHand = currentNote && (lesson.hand === 'both' || expectedFinger) ? noteHand(lesson, currentNote) : undefined;
   const flash =
     !tempoMode && showFeedback && state.lastPlayedMidi !== null && (state.status === 'correct' || state.status === 'wrong')
       ? { midi: state.lastPlayedMidi, kind: state.status }
@@ -282,7 +285,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
             state={state}
             expected={expected}
             finger={expectedFinger}
-            hand={lesson.hand}
+            hand={expectedHand}
             showFeedback={showFeedback}
             labelStyle={settings.labelStyle}
           />
@@ -355,7 +358,7 @@ function StatusPanel({
   state: PracticeState;
   expected: number | null;
   finger?: Finger;
-  hand: Lesson['hand'];
+  hand?: Hand;
   showFeedback: boolean;
   labelStyle: 'letter' | 'solfege';
 }) {
@@ -394,14 +397,16 @@ function StatusPanel({
           </div>
         </div>
       )}
-      {expected !== null && finger && (
+      {expected !== null && hand && (
         <div className="text-center">
-          <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
-            {hand === 'right' ? 'Tay phải' : 'Tay trái'}
+          <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400" data-testid="expected-hand">
+            {HAND_LABEL[hand]}
           </div>
-          <div className="text-4xl font-bold text-orange-500 dark:text-orange-300" data-testid="expected-finger" aria-label={`Ngón ${finger}`}>
-            ngón {finger}
-          </div>
+          {finger && (
+            <div className="text-4xl font-bold text-orange-500 dark:text-orange-300" data-testid="expected-finger" aria-label={`Ngón ${finger}`}>
+              ngón {finger}
+            </div>
+          )}
         </div>
       )}
     </div>

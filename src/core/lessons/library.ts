@@ -112,6 +112,81 @@ const defs: LessonDef[] = [
     hand: 'left',
     notation: 'C3/h G3/h | F3/h C3/h | G3/h D3/h | C3/w | C3 E3 G3 E3 | F3 A3 C4 A3 | G3 B3 D3 G3 | C3/w',
   },
+  // ── Bài tập hai tay ─────────────────────────────────────────────
+  // Hai tay THAY PHIÊN (app chỉ nhận một nốt mỗi lúc), vẽ trên khuông đôi. "RH"/"LH" đổi tay cho các nốt sau.
+  // Thế Đô: tay phải ngón 1 ở Đô4, tay trái ngón 5 ở Đô3.
+  {
+    id: 'bh-echo',
+    title: 'Hai tay: hỏi – đáp',
+    description: 'Tay phải chơi một ô nhịp, tay trái nhắc lại thấp hơn một quãng tám.',
+    category: 'both-hands',
+    clef: 'grand',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'both',
+    tempo: 60,
+    notation:
+      'RH C4:1 D4:2 E4/h:3 | LH C3:5 D3:4 E3/h:3 | RH E4:3 D4:2 C4/h:1 | LH E3:3 D3:4 C3/h:5 | ' +
+      'RH C4:1 E4:3 G4/h:5 | LH C3:5 E3:3 G3/h:1 | RH G4:5 E4:3 C4/h:1 | LH G3:1 E3:3 C3/h:5',
+  },
+  {
+    id: 'bh-parallel',
+    title: 'Hai tay: đi song song',
+    description: 'Mỗi phím chơi tay trái trước rồi tay phải, cùng tên nốt, từ Đô lên Sol rồi về.',
+    category: 'both-hands',
+    clef: 'grand',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'both',
+    tempo: 60,
+    notation:
+      'LH C3/h:5 RH C4/h:1 | LH D3/h:4 RH D4/h:2 | LH E3/h:3 RH E4/h:3 | LH F3/h:2 RH F4/h:4 | ' +
+      'LH G3/h:1 RH G4/h:5 | LH F3/h:2 RH F4/h:4 | LH E3/h:3 RH E4/h:3 | LH C3/h:5 RH C4/h:1',
+  },
+  {
+    id: 'bh-hot-cross-buns',
+    title: 'Hai tay: Hot Cross Buns',
+    description: 'Bài hát quen thuộc, tay phải hát trước, tay trái đáp lại.',
+    category: 'both-hands',
+    clef: 'grand',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'both',
+    tempo: 60,
+    source: 'Đồng dao Anh "Hot Cross Buns" (thế kỷ 18) — phạm vi công cộng',
+    notation:
+      'RH E4:3 D4:2 C4/h:1 | LH E3:3 D3:4 C3/h:5 | RH C4:1 C4:1 C4:1 C4:1 | LH D3:4 D3:4 D3:4 D3:4 | ' +
+      'RH E4:3 D4:2 C4/h:1 | LH E3:3 D3:4 C3/h:5',
+  },
+  {
+    id: 'bh-relay',
+    title: 'Hai tay: tiếp sức',
+    description: 'Tay trái đi lên tới ngón cái rồi chuyền cho tay phải đi tiếp, sau đó quay về.',
+    category: 'both-hands',
+    clef: 'grand',
+    timeSignature: [4, 4],
+    difficulty: 2,
+    hand: 'both',
+    tempo: 60,
+    notation:
+      'LH C3:5 D3:4 E3:3 F3:2 | G3/h:1 RH C4/h:1 | D4:2 E4:3 F4:4 G4:5 | G4/w:5 | G4:5 F4:4 E4:3 D4:2 | ' +
+      'C4/h:1 LH G3/h:1 | F3:2 E3:3 D3:4 E3:3 | C3/w:5',
+  },
+  {
+    id: 'bh-ode-to-joy',
+    title: 'Hai tay: Ode to Joy',
+    description: 'Câu đầu tay phải, câu sau tay trái chơi thấp hơn một quãng tám.',
+    category: 'both-hands',
+    clef: 'grand',
+    timeSignature: [4, 4],
+    difficulty: 2,
+    hand: 'both',
+    tempo: 60,
+    source: 'L. v. Beethoven (1824) — phạm vi công cộng',
+    notation:
+      'RH E4:3 E4:3 F4:4 G4:5 | G4:5 F4:4 E4:3 D4:2 | C4:1 C4:1 D4:2 E4:3 | E4/qd:3 D4/8:2 D4/h:2 | ' +
+      'LH E3:3 E3:3 F3:2 G3:1 | G3:1 F3:2 E3:3 D3:4 | C3:5 C3:5 D3:4 E3:3 | D3/qd:4 C3/8:5 C3/h:5',
+  },
   // ── Bé tự học theo số ngón tay ─────────────────────────────────
   // Số trên khuông là ngón tay: 1 = ngón cái, 2 = trỏ, 3 = giữa, 4 = áp út, 5 = út.
   // Tay đặt cố định ở thế Đô, mỗi ngón một phím (test kiểm tra ngón ↔ phím nhất quán).

@@ -4,6 +4,8 @@
  *  - Fallback bộ nhớ tạm nếu IndexedDB không khả dụng (vd Safari private mode cũ).
  */
 
+import type { NoteTally } from '../practice/NoteStats';
+
 export interface PracticeSession {
   id?: number;
   lessonId: string;
@@ -19,6 +21,10 @@ export interface PracticeSession {
   completed: boolean;
   notesReached: number;
   totalNotes: number;
+  /** Tốc độ đọc nốt: tổng thời gian tới lần đánh đầu tiên mỗi nốt (chế độ Chờ / Đếm nốt; phiên cũ không có). */
+  reading?: { totalMs: number; count: number };
+  /** Đúng / sai theo từng nốt cần đánh. */
+  noteTallies?: NoteTally[];
 }
 
 export interface LessonProgress {

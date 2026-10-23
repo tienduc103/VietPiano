@@ -70,4 +70,13 @@ describe('recommendLessons', () => {
     const recs = recommend(p, [s('rh-five-finger', { correct: 200, wrong: 2 })]);
     expect(recs.some((r) => r.lesson.hand === 'left' && r.reason === 'Tập thêm tay trái')).toBe(true);
   });
+
+  it('ưu tiên bài có nhiều nốt hay sai', () => {
+    const p = newProfile({ name: 'An', age: 30 }, 0);
+    const tallies = [{ midi: 59, hits: 10, misses: 15, confusions: { '60': 15 } }]; // B3
+    const recs = recommend(p, [s('notes-seven', { completed: false, correct: 10, wrong: 15, noteTallies: tallies })]);
+    const hit = recs.find((r) => r.reason.startsWith('Luyện nốt hay sai'));
+    expect(hit?.reason).toBe('Luyện nốt hay sai: B3');
+    expect(hit!.lesson.notes.filter((n) => n.midi === 59).length).toBeGreaterThanOrEqual(2);
+  });
 });

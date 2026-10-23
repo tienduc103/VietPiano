@@ -16,7 +16,16 @@ export const DURATION_BEATS: Record<Duration, number> = {
   '16': 0.25,
 };
 
-export type LessonCategory = 'notes' | 'scale' | 'right-hand' | 'left-hand' | 'kids' | 'song';
+export type LessonCategory = 'notes' | 'scale' | 'right-hand' | 'left-hand' | 'both-hands' | 'kids' | 'song';
+
+export type Hand = 'right' | 'left';
+/** Tay chơi cả bài; 'both' = bài hai tay (mỗi nốt ghi tay riêng, vẽ trên khuông đôi). */
+export type LessonHand = Hand | 'both';
+/** Khoá của bài; 'grand' = khuông đôi (Sol trên cho tay phải, Fa dưới cho tay trái). */
+export type LessonClef = Clef | 'grand';
+
+export const HAND_LABEL: Record<LessonHand, string> = { right: 'Tay phải', left: 'Tay trái', both: 'Hai tay' };
+export const CLEF_LABEL: Record<LessonClef, string> = { treble: 'Khoá Sol', bass: 'Khoá Fa', grand: 'Khuông đôi' };
 
 /** Số ngón tay: 1 = ngón cái, 2 = trỏ, 3 = giữa, 4 = áp út, 5 = út (cả hai tay). */
 export type Finger = 1 | 2 | 3 | 4 | 5;
@@ -28,6 +37,8 @@ export interface LessonNote {
   duration: Duration;
   /** Ngón tay gợi ý (vẽ trên khuông nhạc). */
   finger?: Finger;
+  /** Tay chơi nốt này — chỉ có ở bài hai tay. */
+  hand?: Hand;
 }
 
 export interface Lesson {
@@ -35,7 +46,7 @@ export interface Lesson {
   title: string;
   description: string;
   category: LessonCategory;
-  clef: Clef;
+  clef: LessonClef;
   /** [số phách mỗi ô nhịp, giá trị phách] — mẫu số 4 hoặc 8. */
   timeSignature: [number, 4 | 8];
   /** Hoá biểu đầu khuông; mặc định Đô trưởng (không dấu hoá). */
@@ -43,12 +54,17 @@ export interface Lesson {
   /** Nhịp lấy đà: độ dài (tính bằng nốt đen) của ô nhịp đầu chưa đủ phách. */
   pickup?: number;
   difficulty: 1 | 2 | 3;
-  hand: 'right' | 'left';
+  hand: LessonHand;
   notes: LessonNote[];
   /** Ghi chú nguồn gốc bản nhạc (bản quyền). */
   source?: string;
   /** Nhịp độ gợi ý cho chế độ chạy theo nhịp (nốt đen/phút); mặc định DEFAULT_TEMPO_BPM. */
   tempo?: number;
+}
+
+/** Tay chơi một nốt của bài. */
+export function noteHand(lesson: Pick<Lesson, 'hand'>, note: Pick<LessonNote, 'hand'>): Hand {
+  return note.hand ?? (lesson.hand === 'left' ? 'left' : 'right');
 }
 
 /** Nhịp độ chậm, vừa sức người mới học. */

@@ -6,11 +6,12 @@ export const CATEGORY_LABELS: Record<LessonCategory, string> = {
   scale: 'Gam',
   'right-hand': 'Bài tập tay phải',
   'left-hand': 'Bài tập tay trái',
+  'both-hands': 'Bài tập hai tay',
   kids: 'Bé tự học theo số ngón tay',
   song: 'Bài hát',
 };
 
-export const CATEGORY_ORDER: LessonCategory[] = ['notes', 'scale', 'right-hand', 'left-hand', 'kids', 'song'];
+export const CATEGORY_ORDER: LessonCategory[] = ['notes', 'scale', 'right-hand', 'left-hand', 'both-hands', 'kids', 'song'];
 
 export class LessonManager {
   constructor(private readonly lessons: Lesson[] = LESSONS) {}

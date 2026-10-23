@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LESSONS } from '../lessons/library';
+import type { NoteTally } from '../practice/NoteStats';
 import type { PracticeSession } from '../storage/ProgressStorage';
 import { assessLearner, dayIndex, skillLevel } from './assessment';
 import { newProfile } from './LearnerProfile';
@@ -90,6 +91,49 @@ describe('assessLearner', () => {
     const ok = assessLearner(kid, [s({ durationMs: 12 * 60_000 })], LESSONS, NOW, 0).criteria.find((c) => c.key === 'sessionLength')!;
     expect(short.score).toBe(10);
     expect(ok.score).toBe(100);
+  });
+
+  it('tốc độ đọc nốt: trung bình 10 phiên gần nhất, so với mục tiêu theo tuổi và với trước đó', () => {
+    const early = Array.from({ length: 10 }, (_, i) => s({ startedAt: NOW - (30 - i) * DAY, reading: { totalMs: 2000 * 5, count: 5 } }));
+    const late = Array.from({ length: 10 }, (_, i) => s({ startedAt: NOW - (10 - i) * DAY, reading: { totalMs: 1000 * 5, count: 5 } }));
+    const a = assess([...early, ...late]); // người lớn: mục tiêu 1 giây
+    expect(a.notes.readingMs).toBe(1000);
+    const c = a.criteria.find((x) => x.key === 'readingSpeed')!;
+    expect(c.score).toBe(100);
+    expect(c.detail).toContain('1,0 giây/nốt');
+    expect(c.detail).toContain('nhanh hơn 1,0 giây');
+    // Trẻ 5 tuổi đọc 3 giây/nốt: mục tiêu 2 giây → điểm (8 − 3) / 6.
+    const kid = assessLearner(newProfile({ name: 'Bé', age: 5 }, 0), late.map((x) => ({ ...x, reading: { totalMs: 15000, count: 5 } })), LESSONS, NOW, 0);
+    expect(kid.criteria.find((x) => x.key === 'readingSpeed')?.score).toBe(83);
+  });
+
+  it('tốc độ đọc nốt: phiên cũ không có dữ liệu → chưa đánh giá', () => {
+    const a = assess([s(), s({ reading: { totalMs: 3000, count: 3 } })]);
+    expect(a.notes.readingMs).toBeNull();
+    expect(a.criteria.find((x) => x.key === 'readingSpeed')?.score).toBeNull();
+  });
+
+  it('nốt hay sai: gộp các phiên, xếp theo số lần sai, ghi nốt hay nhầm', () => {
+    const tallies: NoteTally[] = [
+      { midi: 64, hits: 6, misses: 4, confusions: { '65': 3, '62': 1 } },
+      { midi: 71, hits: 4, misses: 1, confusions: { '72': 1 } },
+      { midi: 60, hits: 20, misses: 0, confusions: {} },
+      { midi: 67, hits: 1, misses: 1, confusions: { '69': 1 } }, // < 3 lượt: bỏ qua
+    ];
+    const a = assessLearner(newProfile({ name: 'A', age: 30 }, 0), [s({ noteTallies: tallies })], LESSONS, NOW, 0, 'solfege');
+    expect(a.notes.trouble.map((t) => [t.label, t.missRate, t.confusedWith])).toEqual([
+      ['Mi4', 0.4, 65],
+      ['Si4', 0.2, 72],
+    ]);
+    const c = a.criteria.find((x) => x.key === 'troubleNotes')!;
+    expect(c.score).toBe(60);
+    expect(c.detail).toContain('Mi4 sai 40% (hay nhầm Fa4)');
+    expect(c.tip).toContain('Mi4, Si4');
+  });
+
+  it('nốt hay sai: chưa đủ 20 lượt đánh → chưa đánh giá', () => {
+    const a = assess([s({ noteTallies: [{ midi: 64, hits: 5, misses: 5, confusions: {} }] })]);
+    expect(a.criteria.find((x) => x.key === 'troubleNotes')?.score).toBeNull();
   });
 
   it('nhãn trình độ', () => {

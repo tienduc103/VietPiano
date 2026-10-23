@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { LESSONS } from './library';
 import { parseNotes, splitMeasures } from './notation';
 import { lessonManager } from './LessonManager';
-import { measureLength } from './types';
+import { measureLength, type Hand, type Lesson } from './types';
 
 describe('ký hiệu bài học', () => {
   it('phân tích chuỗi nốt với trường độ mặc định', () => {
@@ -68,6 +68,41 @@ describe('thư viện bài học', () => {
     }
   });
 
+  /** Thế tay cố định: mỗi ngón ứng với đúng một phím; tay phải ngón số lớn ở phím cao hơn, tay trái ngược lại. */
+  function expectFixedPosition(notes: Lesson['notes'], hand: Hand) {
+    const keyOf = new Map<number, number>();
+    for (const n of notes) {
+      expect(n.finger).toBeDefined();
+      const f = n.finger!;
+      expect(keyOf.get(f) ?? n.midi).toBe(n.midi);
+      keyOf.set(f, n.midi);
+    }
+    const sorted = [...keyOf.entries()].sort(([a], [b]) => a - b).map(([, midi]) => midi);
+    expect(sorted).toEqual([...sorted].sort((a, b) => (hand === 'right' ? a - b : b - a)));
+  }
+
+  const bothHands = LESSONS.filter((l) => l.category === 'both-hands');
+
+  it('ký hiệu RH / LH đặt tay cho các nốt phía sau', () => {
+    expect(parseNotes('LH C3:5 RH C4:1 E4').map((n) => n.hand)).toEqual(['left', 'right', 'right']);
+    expect(parseNotes('C4').map((n) => n.hand)).toEqual([undefined]);
+  });
+
+  it.each(bothHands.map((l) => [l.id, l] as const))('%s: khuông đôi, nốt nào cũng ghi tay, mỗi tay một thế cố định', (_id, lesson) => {
+    expect(lesson.clef).toBe('grand');
+    expect(lesson.hand).toBe('both');
+    const right = lesson.notes.filter((n) => n.hand === 'right');
+    const left = lesson.notes.filter((n) => n.hand === 'left');
+    expect(right.length + left.length).toBe(lesson.notes.length);
+    expect(right.length).toBeGreaterThan(0);
+    expect(left.length).toBeGreaterThan(0);
+    // Tay phải ở khoá Sol (từ Đô giữa trở lên), tay trái ở khoá Fa (dưới Đô giữa).
+    right.forEach((n) => expect(n.midi).toBeGreaterThanOrEqual(60));
+    left.forEach((n) => expect(n.midi).toBeLessThan(60));
+    expectFixedPosition(right, 'right');
+    expectFixedPosition(left, 'left');
+  });
+
   const kids = LESSONS.filter((l) => l.category === 'kids');
 
   it('có bài cho bé ở cả tay phải và tay trái', () => {
@@ -76,18 +111,8 @@ describe('thư viện bài học', () => {
   });
 
   it.each(kids.map((l) => [l.id, l] as const))('%s: mọi nốt có số ngón, thế tay cố định', (_id, lesson) => {
-    // Mỗi ngón ứng với đúng một phím trong cả bài (bé không phải đổi thế tay).
-    const keyOf = new Map<number, number>();
-    for (const n of lesson.notes) {
-      expect(n.finger).toBeDefined();
-      const f = n.finger!;
-      expect(keyOf.get(f) ?? n.midi).toBe(n.midi);
-      keyOf.set(f, n.midi);
-    }
-    // Tay phải: ngón số lớn hơn ở phím cao hơn; tay trái ngược lại (ngón 5 ở phím thấp nhất).
-    const sorted = [...keyOf.entries()].sort(([a], [b]) => a - b).map(([, midi]) => midi);
-    const expected = [...sorted].sort((a, b) => (lesson.hand === 'right' ? a - b : b - a));
-    expect(sorted).toEqual(expected);
+    // Bé không phải đổi thế tay trong cả bài.
+    expectFixedPosition(lesson.notes, lesson.hand === 'left' ? 'left' : 'right');
   });
 
   it('LessonManager tìm bài và bài kế tiếp', () => {

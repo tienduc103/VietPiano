@@ -279,8 +279,12 @@ test('hồ sơ người học: gợi ý theo tuổi, đánh giá và tiến đ�
   await page.getByRole('button', { name: 'Về thư viện' }).last().click();
   await expect(page.getByTestId('assess-skill')).toContainText('1 bài đạt');
   await expect(page.getByTestId('assess-time')).toContainText('1 phiên');
+  // 15 nốt được đo (trừ nốt đầu), bấm cách nhau ~140 ms.
+  await expect(page.getByTestId('reading-speed')).toHaveText(/Đọc nốt: 0,[1-9] giây\/nốt/);
   await page.getByRole('button', { name: /Xem các tiêu chí khác/ }).click();
   await expect(page.getByTestId('criteria')).toContainText('Đều đặn');
+  await expect(page.getByTestId('criteria')).toContainText('Tốc độ đọc nốt');
+  await expect(page.getByTestId('criteria')).toContainText('Nốt hay sai');
 
   // Hồ sơ thứ hai (5 tuổi): gợi ý bài cho bé, tiến độ tách riêng.
   await page.getByRole('button', { name: 'Thêm người học' }).click();

@@ -87,7 +87,8 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
   const r = renderedRef.current;
   // Phóng to theo chiều cao vùng hiển thị để đọc được từ giá nhạc.
   // Tối đa 2.4: khoảng dòng kẻ ~4 mm trên iPad, vẫn thấy đủ nốt phía trước để đọc trước.
-  const scale = size.h > 0 ? Math.max(1, Math.min(2.4, size.h / SCORE_HEIGHT)) : 1.6;
+  const height = r?.height ?? SCORE_HEIGHT;
+  const scale = size.h > 0 ? Math.max(1, Math.min(2.4, size.h / height)) : 1.6;
   const contentWidth = (r?.width ?? 0) * scale;
   const focusX = (r?.noteCenters[index] ?? 0) * scale;
   const maxOffset = Math.max(0, contentWidth - size.w);
@@ -105,7 +106,7 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
         className="absolute top-1/2 left-0"
         style={{
           width: contentWidth,
-          height: SCORE_HEIGHT * scale,
+          height: height * scale,
           transform: `translate(${-offset}px, -50%)`,
           transition: 'transform 350ms cubic-bezier(0.22, 1, 0.36, 1)',
         }}

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { lessonManager } from '../core/lessons/LessonManager';
-import type { Lesson } from '../core/lessons/types';
+import { CLEF_LABEL, HAND_LABEL, type Lesson } from '../core/lessons/types';
 import { computeTotals, type LessonProgress } from '../core/storage/ProgressStorage';
 import { useApp } from '../store/appStore';
 import { Button, FullscreenButton, Icon, formatDuration } from '../components/ui';
@@ -21,9 +21,13 @@ export function LibraryScreen() {
   const navigate = useApp((s) => s.navigate);
   const profiles = useProfiles((s) => s.profiles);
   const profile = useProfiles(activeProfile);
+  const labelStyle = useSettings((s) => s.settings.labelStyle);
   const assessment = useMemo(
-    () => (profile ? assessLearner(profile, sessionsForProfile(sessions, profile.id, profiles), lessonManager.all(), Date.now()) : null),
-    [profile, profiles, sessions],
+    () =>
+      profile
+        ? assessLearner(profile, sessionsForProfile(sessions, profile.id, profiles), lessonManager.all(), Date.now(), undefined, labelStyle)
+        : null,
+    [profile, profiles, sessions, labelStyle],
   );
   const recommendations = useMemo(() => (profile && assessment ? recommendLessons(profile, assessment, lessonManager.all()) : []), [profile, assessment]);
   // Có hồ sơ đang chọn → thống kê và dấu hoàn thành theo riêng người học đó.
@@ -32,7 +36,6 @@ export function LibraryScreen() {
   const groups = lessonManager.byCategory();
   const recentLessons = recent.map((id) => lessonManager.get(id)).filter((l): l is Lesson => !!l);
   const attempts = totals.totalCorrect + totals.totalWrong;
-  const labelStyle = useSettings((s) => s.settings.labelStyle);
   const [exporting, setExporting] = useState<Lesson | null>(null);
   const closeExport = useCallback(() => setExporting(null), []);
 
@@ -166,9 +169,9 @@ function LessonCard({
         </div>
         <p className="mt-1 flex-1 text-sm text-slate-500 dark:text-slate-400">{lesson.description}</p>
         <div className="mt-3 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-          <span className="rounded bg-violet-100 px-1.5 py-0.5 font-medium text-violet-700 dark:bg-violet-900 dark:text-violet-200">{lesson.clef === 'treble' ? 'Khoá Sol' : 'Khoá Fa'}</span>
+          <span className="rounded bg-violet-100 px-1.5 py-0.5 font-medium text-violet-700 dark:bg-violet-900 dark:text-violet-200">{CLEF_LABEL[lesson.clef]}</span>
           <span>{lesson.notes.length} nốt</span>
-          <span>{lesson.hand === 'right' ? 'Tay phải' : 'Tay trái'}</span>
+          <span>{HAND_LABEL[lesson.hand]}</span>
           <span className="ml-auto text-orange-400" aria-label={`Độ khó ${lesson.difficulty}`}>
             {'●'.repeat(lesson.difficulty)}
             <span className="text-slate-300 dark:text-slate-600">{'●'.repeat(3 - lesson.difficulty)}</span>

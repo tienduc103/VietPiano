@@ -3,6 +3,7 @@ import { AGE_GROUP_LABELS, EXPERIENCE_LABELS, ageGroup, type LearnerProfile } fr
 import type { Assessment, Criterion } from '../core/profile/assessment';
 import type { Recommendation } from '../core/profile/recommend';
 import { CATEGORY_LABELS } from '../core/lessons/LessonManager';
+import { HAND_LABEL } from '../core/lessons/types';
 import { useApp } from '../store/appStore';
 import { useProfiles } from '../store/profileStore';
 import { ProfileDialog } from './ProfileDialog';
@@ -125,7 +126,7 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
       </div>
       <p className="mt-1 text-sm font-medium text-fuchsia-700 dark:text-fuchsia-300">{rec.reason}</p>
       <p className="mt-auto pt-2 text-xs text-slate-500 dark:text-slate-400">
-        {CATEGORY_LABELS[lesson.category]} · {lesson.hand === 'right' ? 'Tay phải' : 'Tay trái'} · {lesson.notes.length} nốt
+        {CATEGORY_LABELS[lesson.category]} · {HAND_LABEL[lesson.hand]} · {lesson.notes.length} nốt
       </p>
     </button>
   );
@@ -187,7 +188,20 @@ function AssessmentCard({ profile, assessment }: { profile: LearnerProfile; asse
             <span>{skill.lessonsPassed} bài đạt ≥ 80%</span>
             <span>Bài khó nhất đã qua: {skill.hardestPassed ? `${skill.hardestPassed}/3` : '—'}</span>
             <span>Chính xác: {skill.accuracy === null ? '—' : `${Math.round(skill.accuracy * 100)}%`}</span>
+            <span data-testid="reading-speed">
+              Đọc nốt: {assessment.notes.readingMs === null ? '—' : `${(assessment.notes.readingMs / 1000).toFixed(1).replace('.', ',')} giây/nốt`}
+            </span>
           </div>
+          {assessment.notes.trouble.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-sm" data-testid="trouble-notes">
+              <span className="text-slate-600 dark:text-slate-300">Hay sai:</span>
+              {assessment.notes.trouble.map((t) => (
+                <span key={t.midi} className="rounded-full bg-rose-100 px-2 py-0.5 font-semibold text-rose-800 dark:bg-rose-950 dark:text-rose-200">
+                  {t.label} · {Math.round(t.missRate * 100)}%
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

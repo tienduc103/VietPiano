@@ -1,27 +1,34 @@
 import { requireMidi } from '../music/notes';
-import { DURATION_BEATS, type Duration, type Finger, type LessonNote } from './types';
+import { DURATION_BEATS, type Duration, type Finger, type Hand, type LessonNote } from './types';
 
 /**
  * Phân tích chuỗi ký hiệu gọn: "C4 D4 E4/h | G4/qd A4/8".
  * Mặc định trường độ là nốt đen (q). Hậu tố ":1"…":5" là số ngón tay ("C4:1", "E4/h:3").
+ * Bài hai tay: "RH" / "LH" đặt tay cho các nốt phía sau ("LH C3:5 D3:4 | RH E4:3").
  * Dấu "|" chỉ để dễ đọc, bị bỏ qua
  * (ô nhịp được tính lại từ trường độ và được kiểm tra bằng unit test).
  */
 export function parseNotes(source: string): LessonNote[] {
-  return source
-    .split(/\s+/)
-    .filter((tok) => tok && tok !== '|')
-    .map((tok) => {
-      const [main, finger] = tok.split(':');
-      const [pitch, dur = 'q'] = main.split('/');
-      if (!(dur in DURATION_BEATS)) throw new Error(`Trường độ không hợp lệ: "${tok}"`);
-      const note: LessonNote = { pitch, midi: requireMidi(pitch), duration: dur as Duration };
-      if (finger !== undefined) {
-        if (!/^[1-5]$/.test(finger)) throw new Error(`Số ngón tay không hợp lệ: "${tok}"`);
-        note.finger = Number(finger) as Finger;
-      }
-      return note;
-    });
+  const notes: LessonNote[] = [];
+  let hand: Hand | undefined;
+  for (const tok of source.split(/\s+/)) {
+    if (!tok || tok === '|') continue;
+    if (tok === 'RH' || tok === 'LH') {
+      hand = tok === 'RH' ? 'right' : 'left';
+      continue;
+    }
+    const [main, finger] = tok.split(':');
+    const [pitch, dur = 'q'] = main.split('/');
+    if (!(dur in DURATION_BEATS)) throw new Error(`Trường độ không hợp lệ: "${tok}"`);
+    const note: LessonNote = { pitch, midi: requireMidi(pitch), duration: dur as Duration };
+    if (finger !== undefined) {
+      if (!/^[1-5]$/.test(finger)) throw new Error(`Số ngón tay không hợp lệ: "${tok}"`);
+      note.finger = Number(finger) as Finger;
+    }
+    if (hand) note.hand = hand;
+    notes.push(note);
+  }
+  return notes;
 }
 
 export interface Measure<T> {
