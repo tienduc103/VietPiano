@@ -59,6 +59,23 @@ body {
   -webkit-touch-callout: none;
 }
 
+/* Dải nền dưới thanh trạng thái iPadOS (black-translucent) / nút của Safari khi toàn màn hình:
+   nội dung cuộn lên không lọt xuống dưới chữ giờ. Ngoài hai trường hợp đó chiều cao = 0. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;
+  height: calc(env(safe-area-inset-top, 0px) + var(--fullscreen-top-gap));
+  background: rgb(240 249 255 / 0.75);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+}
+.dark body::before {
+  background: rgb(2 6 23 / 0.75);
+}
+
 /* ── Khuông nhạc ─────────────────────────────────────────── */
 .score-svg {
   color: var(--score-ink);
