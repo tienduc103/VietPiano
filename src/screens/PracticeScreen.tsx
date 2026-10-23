@@ -11,7 +11,7 @@ import { virtualInput } from '../core/input/VirtualInputProvider';
 import { chooseBaseC, keyboardRange, keyHintsFor, keyToMidi } from '../core/input/keyMapping';
 import { ScoreView } from '../components/ScoreView';
 import { PianoKeyboard } from '../components/PianoKeyboard';
-import { DetectedNote, LevelMeter, MicButton, MicError } from '../components/MicPanel';
+import { DetectedNote, FloatingMicNote, LevelMeter, MicButton, MicError } from '../components/MicPanel';
 import { Button, FullscreenButton, Icon, formatDuration, type IconName } from '../components/ui';
 import { AppVersion } from '../components/AppVersion';
 import { useSettings } from '../store/settingsStore';
@@ -253,7 +253,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
       </header>
 
       {/* ── Giữa: khuông nhạc ── */}
-      <main className="mx-3 min-h-0 flex-1 rounded-2xl bg-white shadow-md shadow-violet-200/60 ring-1 ring-violet-100 dark:bg-slate-900 dark:shadow-none dark:ring-violet-900">
+      <main className="relative mx-3 min-h-0 flex-1 rounded-2xl bg-white shadow-md shadow-violet-200/60 ring-1 ring-violet-100 dark:bg-slate-900 dark:shadow-none dark:ring-violet-900">
         <ScoreView
           lesson={lesson}
           index={currentIndex}
@@ -263,6 +263,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
           showNames={settings.showNoteNames}
           labelStyle={settings.labelStyle}
         />
+        <FloatingMicNote className="absolute top-2 right-2" />
       </main>
 
       {/* ── Dưới: nhận diện, micro, điều khiển ── */}

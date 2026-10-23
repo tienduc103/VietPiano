@@ -158,26 +158,32 @@ test('micro (âm thanh giả lập gam Đô trưởng) → nhận diện và t�
   await expect(page.getByTestId('mic-button')).toHaveText(/Bật micro/);
 });
 
-test('ô nổi nốt micro: chỉ hiện ở thư viện khi micro bật, tắt được trong Cài đặt', async ({ page }) => {
+test('nút micro nổi: luôn hiển thị, bấm để bật/tắt micro, hiện nốt đang nghe; tắt được trong Cài đặt', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByTestId('floating-detected-note')).toHaveCount(0);
-  await openLesson(page, 'scale-c-major');
-  await page.getByTestId('mic-button').click();
-  await expect(page.getByTestId('mic-button')).toHaveText(/Micro đang bật/);
-  // Màn hình Luyện tập đã có ô "Nghe thấy" → không hiện trùng.
-  await expect(page.getByTestId('floating-detected-note')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Về thư viện' }).first().click();
-  const badge = page.getByTestId('floating-detected-note');
-  await expect(badge).toBeVisible();
-  // Micro giả phát gam Đô trưởng → ô hiện tên nốt.
-  await expect(badge).toContainText(/[A-G]\d/, { timeout: 10_000 });
+  const floating = page.getByTestId('floating-mic');
+  await expect(floating).toBeVisible();
+  await expect(floating).toHaveAttribute('aria-pressed', 'false');
+  // Bật micro ngay ở thư viện; micro giả phát gam Đô trưởng → nút hiện tên nốt.
+  await floating.click();
+  await expect(floating).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('floating-mic-note')).toContainText(/[A-G]\d/, { timeout: 10_000 });
 
+  // Luyện tập: nút nằm trong khung khuông nhạc, cùng trạng thái với nút micro chính.
+  await page.getByTestId('lesson-scale-c-major').click();
+  await expect(page.getByTestId('mic-button')).toHaveText(/Micro đang bật/);
+  await expect(page.locator('main [data-testid="floating-mic"]')).toBeVisible();
+  await page.getByTestId('floating-mic').click();
+  await expect(page.getByTestId('mic-button')).toHaveText(/Bật micro/);
+  await expect(page.getByTestId('floating-mic')).toHaveAttribute('aria-pressed', 'false');
+
+  await page.getByRole('button', { name: 'Về thư viện' }).first().click();
   await page.getByRole('button', { name: 'Cài đặt' }).click();
-  await expect(page.getByTestId('floating-detected-note')).toHaveCount(0);
-  await page.getByRole('switch', { name: /Hiện ô nốt micro đang nghe/ }).click();
+  await expect(page.getByTestId('floating-mic')).toBeVisible();
+  await page.getByRole('switch', { name: /Hiện nút micro nổi/ }).click();
+  await expect(page.getByTestId('floating-mic')).toHaveCount(0);
   await page.getByRole('button', { name: 'Quay lại' }).click();
   await expect(page.getByRole('heading', { name: 'VietPiano' })).toBeVisible();
-  await expect(page.getByTestId('floating-detected-note')).toHaveCount(0);
+  await expect(page.getByTestId('floating-mic')).toHaveCount(0);
 });
 
 test('ẩn trang (chạy nền) thì tự tắt micro và hiện nút bật lại', async ({ page }) => {

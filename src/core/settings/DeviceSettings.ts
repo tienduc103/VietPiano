@@ -26,7 +26,7 @@ export interface DeviceSettings {
   labelStyle: NoteLabelStyle;
   theme: ThemeSetting;
   showKeyboard: boolean;
-  /** Ô nổi góc phải dưới hiện nốt micro đang nghe (chỉ khi micro bật, ở màn hình chưa có ô "Nghe thấy"). */
+  /** Nút micro nổi ở mọi màn hình: bấm bật/tắt micro, hiện nốt đang nghe khi micro bật. */
   showFloatingNote: boolean;
   practiceMode: PracticeMode;
   /** Tốc độ chế độ chạy theo nhịp, % so với nhịp độ gợi ý của bài. */

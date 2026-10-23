@@ -142,7 +142,7 @@ export function SettingsScreen() {
               <Toggle label="Hiện tên nốt dưới khuông" checked={settings.showNoteNames} onChange={(v) => update({ showNoteNames: v })} />
               <Toggle label="Hiện bàn phím piano ảo" checked={settings.showKeyboard} onChange={(v) => update({ showKeyboard: v })} />
               <Toggle
-                label="Hiện ô nốt micro đang nghe (góc phải dưới, khi micro bật)"
+                label="Hiện nút micro nổi (bật/tắt micro, xem nốt đang nghe)"
                 checked={settings.showFloatingNote}
                 onChange={(v) => update({ showFloatingNote: v })}
               />
