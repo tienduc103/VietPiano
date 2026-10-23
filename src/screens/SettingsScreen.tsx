@@ -229,6 +229,16 @@ function Calibration() {
   const [phase, setPhase] = useState<'idle' | 'measuring' | 'done'>('idle');
   const [result, setResult] = useState<{ ambient: number; gate: number } | null>(null);
   const [checking, setChecking] = useState(false);
+  // Số lượt tự căn chỉnh (dùng làm key để "Làm lại" mount lượt mới); null = đang đóng.
+  const [autoRun, setAutoRun] = useState<number | null>(null);
+
+  const startAuto = async () => {
+    if (!microphoneInput.isActive()) {
+      await microphoneInput.start().catch(() => undefined);
+      if (!microphoneInput.isActive()) return;
+    }
+    setAutoRun((n) => (n ?? 0) + 1);
+  };
 
   const measure = async () => {
     if (status !== 'running') {
@@ -262,30 +272,44 @@ function Calibration() {
         Xong thì bấm <b>“Kiểm tra theo nhịp”</b>: khuông nhạc chạy theo nhịp và chờ bạn đánh từng nốt, cho biết máy nghe
         đúng, nghe sai hay nghe thừa ở nốt nào.
       </p>
+      {/* Một hàng nút theo thứ tự dùng; khung kết quả của từng nút hiện bên dưới hàng. */}
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <AutoCalibration labelStyle={labelStyle} onCheck={() => setChecking(true)} />
-        {!checking && (
-          <Button onClick={() => setChecking(true)} data-testid="calibration-check-open">
-            Kiểm tra theo nhịp
-          </Button>
-        )}
+        <Button variant="primary" onClick={() => void startAuto()} disabled={autoRun !== null} data-testid="auto-calibrate">
+          Tự căn chỉnh (khoảng 1 phút)
+        </Button>
+        <Button onClick={() => setChecking(true)} disabled={checking} data-testid="calibration-check-open">
+          Kiểm tra theo nhịp
+        </Button>
+        <Button onClick={() => void measure()} disabled={phase === 'measuring'}>
+          {phase === 'measuring' ? 'Đang đo… hãy giữ yên lặng' : 'Chỉ đo tiếng ồn nền'}
+        </Button>
+        {/* Đặt cuối hàng: danh sách nốt nghe được (w-full) tự xuống dòng ngay dưới các nút. */}
+        <ListenTest labelStyle={labelStyle} />
       </div>
+      {result && (
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+          Nhiễu nền: {result.ambient.toFixed(4)} → ngưỡng {result.gate.toFixed(4)} (độ nhạy {noiseGateToSensitivity(result.gate)})
+        </p>
+      )}
+      {autoRun !== null && (
+        <div className="mt-3">
+          <AutoCalibration
+            key={autoRun}
+            labelStyle={labelStyle}
+            onRestart={() => void startAuto()}
+            onClose={() => setAutoRun(null)}
+            onCheck={() => {
+              setAutoRun(null);
+              setChecking(true);
+            }}
+          />
+        </div>
+      )}
       {checking && (
         <div className="mt-3">
           <CalibrationCheckView labelStyle={labelStyle} onClose={() => setChecking(false)} />
         </div>
       )}
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <Button onClick={() => void measure()} disabled={phase === 'measuring'}>
-          {phase === 'measuring' ? 'Đang đo… hãy giữ yên lặng' : 'Chỉ đo tiếng ồn nền'}
-        </Button>
-        <ListenTest labelStyle={labelStyle} />
-        {result && (
-          <span className="text-sm text-slate-600 dark:text-slate-300">
-            Nhiễu nền: {result.ambient.toFixed(4)} → ngưỡng {result.gate.toFixed(4)} (độ nhạy {noiseGateToSensitivity(result.gate)})
-          </span>
-        )}
-      </div>
     </div>
   );
 }

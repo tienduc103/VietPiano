@@ -27,15 +27,26 @@ const WARNING_TEXT: Record<CalibrationWarning, string> = {
   'tuning-inconsistent': 'Cao độ các nốt lệch không đều nên giữ A4 = 440 Hz.',
 };
 
-/** Trình hướng dẫn tự căn chỉnh: máy hiện nốt → người chơi đánh → máy nghe và đề xuất cài đặt. */
-export function AutoCalibration({ labelStyle, onCheck }: { labelStyle: NoteLabelStyle; onCheck: () => void }) {
-  const [calibrator, setCalibrator] = useState<AutoCalibrator | null>(null);
-  const [state, setState] = useState<CalibrationState | null>(null);
+/**
+ * Trình hướng dẫn tự căn chỉnh: máy hiện nốt → người chơi đánh → máy nghe và đề xuất cài đặt.
+ * Mỗi lượt là một lần mount (micro phải bật trước); "Làm lại" nhờ cha mount lượt mới qua `onRestart`.
+ */
+export function AutoCalibration({
+  labelStyle,
+  onRestart,
+  onClose,
+  onCheck,
+}: {
+  labelStyle: NoteLabelStyle;
+  onRestart: () => void;
+  onClose: () => void;
+  onCheck: () => void;
+}) {
+  const [calibrator] = useState(() => new AutoCalibrator());
+  const [state, setState] = useState<CalibrationState>(() => calibrator.getState());
   const [applied, setApplied] = useState(false);
 
   useEffect(() => {
-    if (!calibrator) return;
-    setState(calibrator.getState());
     const offState = calibrator.subscribe(setState);
     const offFrames = microphoneInput.pitchFrames.on((f) => calibrator.process(f));
     return () => {
@@ -44,27 +55,7 @@ export function AutoCalibration({ labelStyle, onCheck }: { labelStyle: NoteLabel
     };
   }, [calibrator]);
 
-  const start = async () => {
-    if (!microphoneInput.isActive()) {
-      await microphoneInput.start().catch(() => undefined);
-      if (!microphoneInput.isActive()) return;
-    }
-    setApplied(false);
-    setCalibrator(new AutoCalibrator());
-  };
-
-  const close = () => {
-    setCalibrator(null);
-    setState(null);
-  };
-
-  if (!calibrator || !state) {
-    return (
-      <Button variant="primary" onClick={() => void start()} data-testid="auto-calibrate">
-        Tự căn chỉnh (khoảng 1 phút)
-      </Button>
-    );
-  }
+  const close = onClose;
 
   const total = calibrator.steps.length;
   return (
@@ -74,7 +65,7 @@ export function AutoCalibration({ labelStyle, onCheck }: { labelStyle: NoteLabel
           result={state.result}
           applied={applied}
           onApply={() => setApplied(true)}
-          onRestart={() => void start()}
+          onRestart={onRestart}
           onClose={close}
           onCheck={() => {
             close();
