@@ -15,6 +15,11 @@ export interface PitchDetectorOptions {
   maxFrequency: number;
   /** Ngưỡng tuyệt đối của YIN, thường 0.1–0.2. Thấp hơn = khắt khe hơn. */
   threshold: number;
+  /**
+   * Từ tần số này trở lên, tinh chỉnh F0 theo đỉnh phổ của âm cơ bản (Hz). Chu kỳ ở quãng cao chỉ
+   * vài chục mẫu và dây đàn lệch hoạ âm mạnh → YIN bị kéo cao (C7 đúng dây đo ra ~+22 cents).
+   */
+  refineAboveHz: number;
 }
 
 export interface PitchFrame {
@@ -29,10 +34,15 @@ export interface PitchFrame {
 export const DEFAULT_PITCH_OPTIONS: Omit<PitchDetectorOptions, 'sampleRate'> = {
   frameSize: 2048,
   minFrequency: 60,
-  // Tới C7 (2093 Hz) — khớp maxMidi 96 của NoteRecognizer. 1600 Hz cũ làm A6/B6/C7 bị nhận thành quãng 8 dưới.
-  maxFrequency: 2200,
+  // Tới C8 (4186 Hz) — khớp maxMidi 108 của NoteRecognizer; thấp hơn thì nốt cao bị nhận thành quãng 8 dưới.
+  maxFrequency: 4500,
   threshold: 0.15,
+  refineAboveHz: 1000,
 };
+
+/** Tinh chỉnh F0: tìm đỉnh phổ trong ±REFINE_SPAN_CENTS quanh ước lượng YIN, bước REFINE_STEP_CENTS. */
+const REFINE_SPAN_CENTS = 60;
+const REFINE_STEP_CENTS = 5;
 
 export function computeRms(buffer: Float32Array): number {
   let sum = 0;
@@ -46,6 +56,7 @@ export class PitchDetector {
   private readonly tauMax: number;
   private readonly window: number;
   private readonly diff: Float32Array;
+  private readonly hann: Float32Array;
 
   constructor(options: Partial<PitchDetectorOptions> & { sampleRate: number }) {
     this.options = { ...DEFAULT_PITCH_OPTIONS, ...options };
@@ -57,6 +68,8 @@ export class PitchDetector {
       throw new Error('frameSize quá nhỏ so với minFrequency');
     }
     this.diff = new Float32Array(this.tauMax + 1);
+    this.hann = new Float32Array(frameSize);
+    for (let i = 0; i < frameSize; i++) this.hann[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (frameSize - 1));
   }
 
   /** Phân tích một khung âm thanh. `buffer.length` phải ≥ frameSize. */
@@ -111,10 +124,50 @@ export class PitchDetector {
       if (denom !== 0) betterTau = tauEstimate + (s2 - s0) / denom;
     }
 
+    let frequency = this.options.sampleRate / betterTau;
+    if (frequency >= this.options.refineAboveHz) frequency = this.refine(buffer, frequency);
+
     return {
-      frequency: this.options.sampleRate / betterTau,
+      frequency,
       confidence: Math.max(0, Math.min(1, 1 - d[tauEstimate])),
       rms,
     };
+  }
+
+  /**
+   * Đỉnh phổ (DTFT, cửa sổ Hann) của âm cơ bản quanh `estimate`; nội suy parabol trên log biên độ.
+   * Ở quãng cao búp chính rộng ~±80 cents, hoạ âm 2 cách một quãng 8 → không lẫn với hoạ âm khác.
+   */
+  private refine(buffer: Float32Array, estimate: number): number {
+    const { sampleRate, frameSize } = this.options;
+    const steps = Math.round(REFINE_SPAN_CENTS / REFINE_STEP_CENTS);
+    const mags: number[] = [];
+    for (let k = -steps; k <= steps; k++) {
+      const f = estimate * Math.pow(2, (k * REFINE_STEP_CENTS) / 1200);
+      // Quay pha bằng phép nhân số phức (không gọi sin/cos mỗi mẫu).
+      const dc = Math.cos((2 * Math.PI * f) / sampleRate);
+      const ds = Math.sin((2 * Math.PI * f) / sampleRate);
+      let c = 1;
+      let s = 0;
+      let re = 0;
+      let im = 0;
+      for (let i = 0; i < frameSize; i++) {
+        const x = buffer[i] * this.hann[i];
+        re += x * c;
+        im -= x * s;
+        const nc = c * dc - s * ds;
+        s = s * dc + c * ds;
+        c = nc;
+      }
+      mags.push(Math.log(re * re + im * im + 1e-20));
+    }
+    let best = 0;
+    for (let i = 1; i < mags.length; i++) if (mags[i] > mags[best]) best = i;
+    // Đỉnh ở mép khoảng tìm → không chắc là âm cơ bản, giữ ước lượng YIN.
+    if (best === 0 || best === mags.length - 1) return estimate;
+    const [a, b, c] = [mags[best - 1], mags[best], mags[best + 1]];
+    const denom = a - 2 * b + c;
+    const offset = denom < 0 ? (0.5 * (a - c)) / denom : 0;
+    return estimate * Math.pow(2, ((best - steps + offset) * REFINE_STEP_CENTS) / 1200);
   }
 }

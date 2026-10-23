@@ -64,6 +64,9 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
      thì dùng cao độ của `AttackAnalyzer` (phần phổ tăng ≥ `noveltyRatio` lần so với phổ trước lúc gõ).
      Onset phổ chỉ lên kíp nếu xảy ra SAU lần phát gần nhất. Không hạ `noveltyRatio` dưới ~1.6: beating
      ±20% của âm ngân sẽ thành onset giả → nhảy nốt (test `NoteRecognizer.pedal.test.ts`).
+     Quãng cao tới C8 (`maxFrequency` 4500 Hz, `maxMidi` 108): từ 1 kHz lấy F0 theo đỉnh phổ âm cơ bản
+     (YIN bị dây lệch hoạ âm kéo cao); `AttackAnalyzer` nới độ lệch hoạ âm theo cao độ và bỏ ứng viên
+     ≥ 600 Hz thiếu hoạ âm 1 — thiếu một trong hai thì nốt cao bị nhận xuống quãng 8 dưới.
   2. `PracticeEngine`: mỗi sự kiện tiến tối đa 1 nốt; bỏ qua sự kiện < `minAdvanceIntervalMs` sau lần chuyển nốt.
   Mọi thay đổi ở hai file này phải kèm test mô phỏng chuỗi khung (xem `NoteRecognizer.test.ts`, `PracticeEngine.test.ts`).
 - Chỉ nhận diện **một nốt tại một thời điểm**. Không giả vờ hỗ trợ hợp âm.

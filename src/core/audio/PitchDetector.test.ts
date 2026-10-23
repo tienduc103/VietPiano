@@ -34,6 +34,31 @@ describe('PitchDetector (YIN)', () => {
     }
   });
 
+  // Dây quãng cao lệch hoạ âm mạnh → chu kỳ YIN bị kéo cao (C7 đúng dây đo ra +22 cents);
+  // cộng lên dây stretch (+25 cents) là vượt maxCentsDeviation. Cao độ phải lấy theo âm cơ bản.
+  it.each([
+    [48000, 96],
+    [48000, 100],
+    [48000, 103],
+    [48000, 105],
+    [48000, 108],
+    [44100, 96],
+    [44100, 101],
+    [44100, 108],
+  ])('quãng cao tới C8 (%i Hz, MIDI %i): hoạ âm lệch mạnh + stretch 25 cents', (sr, midi) => {
+    const d = new PitchDetector({ sampleRate: sr, frameSize: N });
+    for (const [inharmonicity, cents] of [
+      [0.002, 0],
+      [0.002, 25],
+      [0.008, 25],
+    ]) {
+      const f = midiToFrequency(midi) * Math.pow(2, cents / 1200);
+      const note = frequencyToNearestNote(d.detect(pianoLike(f, sr, N, { inharmonicity })).frequency!)!;
+      expect(note.midi).toBe(midi);
+      expect(Math.abs(note.cents - cents)).toBeLessThan(8);
+    }
+  });
+
   it('quãng cao ở 44.1 kHz (A6, B6, C7)', () => {
     const d = new PitchDetector({ sampleRate: 44100, frameSize: N });
     for (const midi of [93, 95, 96]) {

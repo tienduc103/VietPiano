@@ -66,7 +66,7 @@ export const DEFAULT_RECOGNIZER_CONFIG: NoteRecognizerConfig = {
   refractoryMs: 180,
   legatoStableMs: 250,
   minMidi: 33,
-  maxMidi: 96,
+  maxMidi: 108, // C8, phím cao nhất của piano 88 phím
   attackMinBackground: 0.2,
 };
 

@@ -40,6 +40,20 @@ describe('NoteRecognizer + AttackAnalyzer: quãng cao tới C7', () => {
     expect(recognize(melody(midis, SR, { decaySec: 0.6, velocities: VELOCITIES }))).toEqual(midis);
   });
 
+  // Quãng cao của đàn thật: hoạ âm lệch mạnh, lên dây stretch, tắt nhanh.
+  it.each(['C7 D7 E7 G7 C8', 'C8 B7 A7 G7 F7 E7 D7 C7', 'C6 C7 C6 C8', 'A6 C7 E7 A7'])('quãng cao tới C8: %s', (seq) => {
+    const midis = notes(seq);
+    for (const pedal of [false, true]) {
+      for (const [inharmonicity, detuneCents] of [
+        [0.002, 0],
+        [0.006, 25],
+      ]) {
+        const signal = melody(midis, SR, { pedal, decaySec: 0.4, inharmonicity, detuneCents, velocities: VELOCITIES });
+        expect(recognize(signal), `pedal=${pedal} B=${inharmonicity} +${detuneCents}c`).toEqual(midis);
+      }
+    }
+  });
+
   it.each(['A6 B6 C7', 'G6 A6 B6 A6'])('pedal: %s', (seq) => {
     const midis = notes(seq);
     expect(recognize(melody(midis, SR, { pedal: true, decaySec: 0.6, velocities: VELOCITIES }))).toEqual(midis);

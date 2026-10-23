@@ -61,13 +61,17 @@ export interface MelodyOptions {
   velocities?: number[];
   /** Thêm im lặng ở cuối (ms). */
   tailMs?: number;
+  /** Độ lệch hoạ âm của dây (quãng cao của piano thật: ~0.002–0.01). */
+  inharmonicity?: number;
+  /** Lệch cao độ so với chuẩn (cents) — mô phỏng lên dây "stretch" ở quãng cao. */
+  detuneCents?: number;
 }
 
 /**
  * Giai điệu giống piano. Không pedal: thả phím khi nốt sau bắt đầu (tắt trong ~60 ms).
  */
 export function melody(midis: number[], sampleRate: number, options: MelodyOptions = {}): Float32Array {
-  const { noteMs = 600, decaySec = 1.5, pedal = false, velocities = [], tailMs = 500 } = options;
+  const { noteMs = 600, decaySec = 1.5, pedal = false, velocities = [], tailMs = 500, inharmonicity, detuneCents = 0 } = options;
   const step = Math.round((sampleRate * noteMs) / 1000);
   const total = step * midis.length + Math.round((sampleRate * tailMs) / 1000);
   const out = new Float32Array(total);
@@ -75,7 +79,8 @@ export function melody(midis: number[], sampleRate: number, options: MelodyOptio
     const start = k * step;
     const nextSame = midis.indexOf(midi, k + 1);
     const end = Math.min(total, start + sampleRate * 5, nextSame === -1 ? total : nextSame * step + sampleRate / 100);
-    const tone = pianoLike(midiToFrequency(midi), sampleRate, end - start);
+    const f = midiToFrequency(midi) * Math.pow(2, detuneCents / 1200);
+    const tone = pianoLike(f, sampleRate, end - start, inharmonicity === undefined ? {} : { inharmonicity });
     const vel = velocities[k] ?? 1;
     for (let i = 0; i < end - start; i++) {
       let env = Math.min(1, i / (sampleRate * 0.005)) * Math.exp(-i / sampleRate / decaySec) * vel;

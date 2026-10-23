@@ -42,7 +42,7 @@ export interface AttackAnalyzerOptions {
   minClarity: number;
   /**
    * Hoạ âm 1 hoặc 2 của ứng viên phải đạt tỉ lệ này so với hoạ âm mạnh nhất. Nốt piano thật
-   * (MIDI 36–96) luôn có hoạ âm thấp rõ; kết quả "rác" (vd gõ lại nốt đang ngân, hai sóng cùng
+   * (MIDI 36–108) luôn có hoạ âm thấp rõ; kết quả "rác" (vd gõ lại nốt đang ngân, hai sóng cùng
    * tần số cộng lệch pha) thường là một ứng viên rất trầm gom các đỉnh rải rác.
    */
   minLowPartialRatio: number;
@@ -50,7 +50,7 @@ export interface AttackAnalyzerOptions {
 
 export const DEFAULT_ATTACK_OPTIONS: Omit<AttackAnalyzerOptions, 'sampleRate' | 'frameSize'> = {
   minFrequency: 60,
-  maxFrequency: 2200, // tới C7, cùng dải với PitchDetector
+  maxFrequency: 4500, // tới C8, cùng dải với PitchDetector
   harmonics: 8,
   // Pedal giữ nhiều nốt cùng ngân → phần năng lượng mới của mỗi lần gõ chỉ còn ~15–30% tổng phổ.
   onsetFluxRatio: 0.12,
@@ -81,7 +81,26 @@ const NO_ATTACK: AttackFrame = { onset: false, frequency: null, newRatio: 0, bac
 const GRID_CENTS = 20;
 /** Cửa sổ tìm mỗi hoạ âm: ±1.5% quanh vị trí lý thuyết, nới thêm phía trên cho độ lệch hoạ âm của dây đàn. */
 const PARTIAL_TOLERANCE = 0.015;
-const MAX_INHARMONICITY = 0.001;
+/**
+ * Độ lệch hoạ âm tối đa cho ứng viên tần số `f`. Dây piano càng cao càng lệch (≈0.0004 ở C4 tới
+ * ~0.01 ở C8); nếu cửa sổ quá hẹp ở quãng cao thì hoạ âm 3, 4 của nốt thật rơi ra ngoài, còn
+ * ứng viên quãng 8 dưới (cửa sổ bậc cao rộng hơn) lại bắt được → nhận nhầm xuống quãng 8.
+ */
+function maxInharmonicity(f: number): number {
+  return Math.min(0.02, Math.max(0.001, 0.001 * (f / 1000) ** 2));
+}
+/**
+ * Từ tần số này trở lên, báo tần số theo đỉnh phổ của hoạ âm 1 thay vì giá trị lưới 20 cents:
+ * cửa sổ hoạ âm chỉ nới về phía trên nên ứng viên cao hơn ~nửa cung vẫn bắt đủ hoạ âm của nốt
+ * lên dây stretch (C7 +25 cents → C#7). Ở quãng cao một bin phổ chỉ ~10 cents nên đỉnh đủ chính xác.
+ */
+const PEAK_FREQUENCY_ABOVE_HZ = 1000;
+/**
+ * Từ tần số này trở lên (~D5), nốt piano luôn có âm cơ bản mạnh → ứng viên mà hoạ âm 1 không có
+ * năng lượng mới thì không phải nốt vừa gõ. Cần ở quãng cao: hoạ âm bậc cao vượt Nyquist nên
+ * ứng viên thật (C8) và ứng viên quãng 8 dưới (C7, gom đúng các hoạ âm chẵn) có cùng số hoạ âm, hoà điểm.
+ */
+const STRONG_FUNDAMENTAL_ABOVE_HZ = 600;
 /** Bỏ phần phổ dưới tần số này (tiếng ù, rung bàn). */
 const LOW_CUT_HZ = 50;
 /** Nửa độ rộng búp chính của cửa sổ Hann khi zero-padding gấp đôi (số bin). */
@@ -117,7 +136,7 @@ export class AttackAnalyzer {
       const bins: [number, number][] = [];
       for (let h = 1; h <= harmonics; h++) {
         const lo = Math.max(this.lowBin, Math.floor((h * f * (1 - PARTIAL_TOLERANCE)) / this.binHz));
-        const hi = Math.ceil((h * f * (1 + PARTIAL_TOLERANCE) * Math.sqrt(1 + MAX_INHARMONICITY * h * h)) / this.binHz);
+        const hi = Math.ceil((h * f * (1 + PARTIAL_TOLERANCE) * Math.sqrt(1 + maxInharmonicity(f) * h * h)) / this.binHz);
         if (hi > this.highBin) break;
         bins.push([lo, Math.max(lo, hi)]);
       }
@@ -183,11 +202,16 @@ export class AttackAnalyzer {
     let bestScore = 0;
     for (let c = 0; c < this.candidates.length; c++) {
       let score = 0;
-      for (const [lo, hi] of this.candidates[c].bins) {
+      let first = 0;
+      let strongest = 0;
+      this.candidates[c].bins.forEach(([lo, hi], h) => {
         let peak = 0;
         for (let k = lo; k <= hi; k++) if (d[k] > peak) peak = d[k];
         score += peak;
-      }
+        if (h === 0) first = peak;
+        if (peak > strongest) strongest = peak;
+      });
+      if (this.candidates[c].frequency >= STRONG_FUNDAMENTAL_ABOVE_HZ && first < o.minLowPartialRatio * strongest) continue;
       if (score > bestScore) {
         bestScore = score;
         best = c;
@@ -213,11 +237,26 @@ export class AttackAnalyzer {
     return {
       onset,
       // Khung onset chỉ chứa một phần nốt (và tiếng gõ) → không dùng để kết luận cao độ.
-      frequency: !onset && plausible ? this.candidates[best].frequency : null,
+      frequency: !onset && plausible ? this.candidateFrequency(best) : null,
       newRatio,
       background: background / total,
       clarity,
     };
+  }
+
+  /** Tần số của ứng viên thắng; ở quãng cao lấy theo đỉnh phổ mới trong cửa sổ hoạ âm 1. */
+  private candidateFrequency(index: number): number {
+    const { frequency, bins } = this.candidates[index];
+    if (frequency < PEAK_FREQUENCY_ABOVE_HZ || bins.length === 0) return frequency;
+    const d = this.diff;
+    const [lo, hi] = bins[0];
+    let k = lo;
+    for (let i = lo + 1; i <= hi; i++) if (d[i] > d[k]) k = i;
+    if (k <= this.lowBin || k >= this.highBin || d[k] <= 0) return frequency;
+    const [a, b, c] = [d[k - 1], d[k], d[k + 1]];
+    const denom = a - 2 * b + c;
+    const offset = denom < 0 ? Math.max(-0.5, Math.min(0.5, (0.5 * (a - c)) / denom)) : 0;
+    return (k + offset) * this.binHz;
   }
 
   private novel(cur: number, base: number): number {
