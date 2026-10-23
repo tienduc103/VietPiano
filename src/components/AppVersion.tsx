@@ -14,7 +14,7 @@ export function AppVersion({ className = '' }: { className?: string }) {
 export function AppVersionTop() {
   return (
     <p
-      className="pointer-events-none fixed inset-x-0 top-[calc(2px+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] z-50 text-center text-[10px] leading-none text-slate-400/50 select-none dark:text-slate-500/50"
+      className="pointer-events-none fixed inset-x-0 top-[calc(2px+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] z-50 text-center text-[10px] leading-none text-slate-400/70 select-none dark:text-slate-500/70"
       data-testid="app-version-top"
       aria-hidden="true"
     >
