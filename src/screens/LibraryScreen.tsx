@@ -7,12 +7,27 @@ import { Button, FullscreenButton, Icon, formatDuration } from '../components/ui
 import { AppVersion } from '../components/AppVersion';
 import { ScoreExportDialog } from '../components/ScoreExportDialog';
 import { useSettings } from '../store/settingsStore';
+import { LearnerPanel } from '../components/LearnerPanel';
+import { activeProfile, useProfiles } from '../store/profileStore';
+import { sessionsForProfile } from '../core/profile/LearnerProfile';
+import { assessLearner } from '../core/profile/assessment';
+import { recommendLessons } from '../core/profile/recommend';
 
 export function LibraryScreen() {
-  const progress = useApp((s) => s.progress);
+  const allProgress = useApp((s) => s.progress);
+  const sessions = useApp((s) => s.sessions);
   const recent = useApp((s) => s.recent);
   const openLesson = useApp((s) => s.openLesson);
   const navigate = useApp((s) => s.navigate);
+  const profiles = useProfiles((s) => s.profiles);
+  const profile = useProfiles(activeProfile);
+  const assessment = useMemo(
+    () => (profile ? assessLearner(profile, sessionsForProfile(sessions, profile.id, profiles), lessonManager.all(), Date.now()) : null),
+    [profile, profiles, sessions],
+  );
+  const recommendations = useMemo(() => (profile && assessment ? recommendLessons(profile, assessment, lessonManager.all()) : []), [profile, assessment]);
+  // Có hồ sơ đang chọn → thống kê và dấu hoàn thành theo riêng người học đó.
+  const progress = assessment?.progress ?? allProgress;
   const totals = useMemo(() => computeTotals(progress), [progress]);
   const groups = lessonManager.byCategory();
   const recentLessons = recent.map((id) => lessonManager.get(id)).filter((l): l is Lesson => !!l);
@@ -45,6 +60,8 @@ export function LibraryScreen() {
           <Summary tone="amber" label="Độ chính xác" value={attempts ? `${Math.round((totals.totalCorrect / attempts) * 100)}%` : '—'} />
           <Summary tone="pink" label="Bài đã hoàn thành" value={`${totals.lessonsCompleted}/${lessonManager.all().length}`} />
         </div>
+
+        <LearnerPanel profile={profile} assessment={assessment} recommendations={recommendations} />
 
         {recentLessons.length > 0 && (
           <section className="mt-8">

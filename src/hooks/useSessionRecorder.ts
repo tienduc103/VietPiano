@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { PracticeEngine } from '../core/practice/PracticeEngine';
 import type { Lesson } from '../core/lessons/types';
 import { useApp } from '../store/appStore';
+import { useProfiles } from '../store/profileStore';
 
 /** Không tính thời gian nếu quá lâu không có thao tác nào (người học bỏ đi). */
 const IDLE_CUTOFF_MS = 60_000;
@@ -36,6 +37,7 @@ export function useSessionRecorder(engine: PracticeEngine, lesson: Lesson) {
     const completed = s.status === 'finished';
     void recordSession({
       lessonId: lesson.id,
+      profileId: useProfiles.getState().activeId ?? undefined,
       startedAt: r.wallStart,
       durationMs: Math.round(r.activeMs),
       correct: s.correct,

@@ -12,6 +12,8 @@ export type Route = { name: 'library' } | { name: 'practice'; lessonId: string }
 interface AppStore {
   route: Route;
   progress: Record<string, LessonProgress>;
+  /** Toàn bộ lịch sử phiên — để đánh giá và gợi ý bài theo từng hồ sơ người học. */
+  sessions: PracticeSession[];
   recent: string[];
   navigate: (route: Route) => void;
   openLesson: (lessonId: string) => void;
@@ -23,12 +25,14 @@ interface AppStore {
 export const useApp = create<AppStore>((set, get) => ({
   route: { name: 'library' },
   progress: {},
+  sessions: [],
   recent: loadRecentLessons(),
   navigate: (route) => set({ route }),
   openLesson: (lessonId) => set({ route: { name: 'practice', lessonId }, recent: pushRecentLesson(lessonId) }),
   loadProgress: async () => {
     try {
-      set({ progress: await progressStorage.getAllProgress() });
+      const [progress, sessions] = await Promise.all([progressStorage.getAllProgress(), progressStorage.getAllSessions()]);
+      set({ progress, sessions });
     } catch (err) {
       console.warn('[VietPiano] Không đọc được tiến độ', err);
     }
@@ -36,13 +40,13 @@ export const useApp = create<AppStore>((set, get) => ({
   recordSession: async (session) => {
     try {
       const updated = await progressStorage.recordSession(session);
-      set({ progress: { ...get().progress, [updated.lessonId]: updated } });
+      set({ progress: { ...get().progress, [updated.lessonId]: updated }, sessions: [...get().sessions, session] });
     } catch (err) {
       console.warn('[VietPiano] Không lưu được phiên luyện tập', err);
     }
   },
   clearProgress: async () => {
     await progressStorage.clearAll();
-    set({ progress: {} });
+    set({ progress: {}, sessions: [] });
   },
 }));

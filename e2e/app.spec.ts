@@ -254,3 +254,48 @@ test('kiểm tra theo nhịp: khuông nhạc chờ nốt, ghi lại máy nghe đ
   await page.getByRole('button', { name: 'Đóng' }).click();
   await expect(page.getByTestId('calibration-check')).toHaveCount(0);
 });
+
+test('hồ sơ người học: gợi ý theo tuổi, đánh giá và tiến độ riêng từng người', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('create-profile').click();
+  await page.getByTestId('profile-name').fill('An');
+  await page.getByTestId('profile-age').fill('30');
+  await page.getByRole('button', { name: 'Chơi được bài hát' }).click();
+  await page.getByTestId('profile-save').click();
+
+  await expect(page.getByTestId('profile-An')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('heading', { name: 'Gợi ý cho An' })).toBeVisible();
+  await expect(page.locator('[data-testid^="rec-"]')).toHaveCount(6);
+  await expect(page.locator('[data-testid^="rec-kid-"]')).toHaveCount(0);
+  await expect(page.getByTestId('assess-skill')).toContainText('0 bài đạt');
+
+  // Luyện một bài → đánh giá cập nhật cho An.
+  await openLesson(page, 'scale-c-major');
+  for (const key of 'asdfghjkkjhgfdsa') {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(140);
+  }
+  await expect(page.getByRole('dialog', { name: 'Kết quả' })).toBeVisible();
+  await page.getByRole('button', { name: 'Về thư viện' }).last().click();
+  await expect(page.getByTestId('assess-skill')).toContainText('1 bài đạt');
+  await expect(page.getByTestId('assess-time')).toContainText('1 phiên');
+  await page.getByRole('button', { name: /Xem các tiêu chí khác/ }).click();
+  await expect(page.getByTestId('criteria')).toContainText('Đều đặn');
+
+  // Hồ sơ thứ hai (5 tuổi): gợi ý bài cho bé, tiến độ tách riêng.
+  await page.getByRole('button', { name: 'Thêm người học' }).click();
+  await page.getByTestId('profile-name').fill('Na');
+  await page.getByTestId('profile-age').fill('5');
+  await page.getByTestId('profile-save').click();
+  await expect(page.getByTestId('profile-Na')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('[data-testid^="rec-"]').first()).toHaveAttribute('data-testid', /^rec-kid-/);
+  await expect(page.getByTestId('lesson-scale-c-major')).not.toContainText('100%');
+
+  await page.getByTestId('profile-An').click();
+  await expect(page.getByTestId('lesson-scale-c-major')).toContainText('100%');
+
+  // Tải lại: hồ sơ (localStorage) và phiên gắn hồ sơ (IndexedDB) vẫn còn.
+  await page.reload();
+  await expect(page.getByTestId('profile-An')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('assess-skill')).toContainText('1 bài đạt');
+});

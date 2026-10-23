@@ -67,6 +67,15 @@ describe.each([
     expect(recent.map((s) => s.startedAt)).toEqual([3000, 2000]);
   });
 
+  it('đọc toàn bộ phiên, giữ profileId', async () => {
+    const st = make();
+    await st.recordSession(session({ profileId: 'p1' }));
+    await st.recordSession(session({ startedAt: 2_000_000 }));
+    const all = await st.getAllSessions();
+    expect(all).toHaveLength(2);
+    expect(all.find((s) => s.startedAt === 1_000_000)?.profileId).toBe('p1');
+  });
+
   it('xoá toàn bộ dữ liệu', async () => {
     const st = make();
     await st.recordSession(session());

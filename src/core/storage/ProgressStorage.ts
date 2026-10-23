@@ -7,6 +7,8 @@
 export interface PracticeSession {
   id?: number;
   lessonId: string;
+  /** Hồ sơ người học (không có = phiên trước khi có hồ sơ). */
+  profileId?: string;
   /** Epoch ms lúc bắt đầu phiên. */
   startedAt: number;
   /** Thời gian luyện tập thực (không tính lúc ẩn app). */
@@ -43,6 +45,8 @@ export interface ProgressStorage {
   recordSession(session: PracticeSession): Promise<LessonProgress>;
   getAllProgress(): Promise<Record<string, LessonProgress>>;
   getRecentSessions(limit: number): Promise<PracticeSession[]>;
+  /** Toàn bộ lịch sử (vài nghìn bản ghi nhỏ — đủ để đánh giá từng người học). */
+  getAllSessions(): Promise<PracticeSession[]>;
   clearAll(): Promise<void>;
 }
 
@@ -168,6 +172,11 @@ export class IndexedDbProgressStorage implements ProgressStorage {
     });
   }
 
+  async getAllSessions(): Promise<PracticeSession[]> {
+    const db = await this.db();
+    return (await promisify(db.transaction(STORE_SESSIONS).objectStore(STORE_SESSIONS).getAll())) as PracticeSession[];
+  }
+
   async clearAll(): Promise<void> {
     const db = await this.db();
     const tx = db.transaction([STORE_PROGRESS, STORE_SESSIONS], 'readwrite');
@@ -195,6 +204,10 @@ export class MemoryProgressStorage implements ProgressStorage {
 
   async getRecentSessions(limit: number) {
     return [...this.sessions].sort((a, b) => b.startedAt - a.startedAt).slice(0, limit);
+  }
+
+  async getAllSessions() {
+    return [...this.sessions];
   }
 
   async clearAll() {
@@ -231,6 +244,9 @@ class ResilientProgressStorage implements ProgressStorage {
   }
   getRecentSessions(limit: number) {
     return this.run((impl) => impl.getRecentSessions(limit));
+  }
+  getAllSessions() {
+    return this.run((impl) => impl.getAllSessions());
   }
   clearAll() {
     return this.run((impl) => impl.clearAll());
