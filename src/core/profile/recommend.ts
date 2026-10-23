@@ -16,10 +16,10 @@ export interface Recommendation {
 
 /** Mức ưu tiên từng nhóm bài theo lứa tuổi. */
 const CATEGORY_WEIGHT: Record<AgeGroup, Record<LessonCategory, number>> = {
-  preschool: { kids: 3, notes: 1.5, song: 1, 'right-hand': 0.5, 'left-hand': 0.5, 'both-hands': 0.3, scale: 0.2 },
-  child: { kids: 2, notes: 2, song: 2, 'right-hand': 1.5, 'left-hand': 1.5, 'both-hands': 1.2, scale: 1 },
-  teen: { kids: 0.3, notes: 2, song: 2.5, 'right-hand': 1.5, 'left-hand': 1.5, 'both-hands': 1.5, scale: 1.5 },
-  adult: { kids: 0.2, notes: 2, song: 2.5, 'right-hand': 1.5, 'left-hand': 1.5, 'both-hands': 1.5, scale: 2 },
+  preschool: { kids: 3, notes: 1.5, song: 1, 'right-hand': 0.5, 'left-hand': 0.5, scale: 0.2 },
+  child: { kids: 2, notes: 2, song: 2, 'right-hand': 1.5, 'left-hand': 1.5, scale: 1 },
+  teen: { kids: 0.3, notes: 2, song: 2.5, 'right-hand': 1.5, 'left-hand': 1.5, scale: 1.5 },
+  adult: { kids: 0.2, notes: 2, song: 2.5, 'right-hand': 1.5, 'left-hand': 1.5, scale: 2 },
 };
 
 const GOAL_BONUS: Record<LearningGoal, Partial<Record<LessonCategory, number>>> = {
@@ -27,7 +27,7 @@ const GOAL_BONUS: Record<LearningGoal, Partial<Record<LessonCategory, number>>> 
   reading: { notes: 1.5 },
   songs: { song: 1.5 },
   technique: { scale: 1, 'right-hand': 1, 'left-hand': 1 },
-  'both-hands': { 'both-hands': 2, 'left-hand': 1.5, scale: 0.5 },
+  'both-hands': { 'left-hand': 1.5, scale: 0.5 },
 };
 
 const MAX_PER_CATEGORY = 2;

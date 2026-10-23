@@ -3,7 +3,6 @@ import { AGE_GROUP_LABELS, EXPERIENCE_LABELS, ageGroup, type LearnerProfile } fr
 import type { Assessment, Criterion } from '../core/profile/assessment';
 import type { Recommendation } from '../core/profile/recommend';
 import { CATEGORY_LABELS } from '../core/lessons/LessonManager';
-import { HAND_LABEL } from '../core/lessons/types';
 import { useApp } from '../store/appStore';
 import { useProfiles } from '../store/profileStore';
 import { ProfileDialog } from './ProfileDialog';
@@ -126,7 +125,7 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
       </div>
       <p className="mt-1 text-sm font-medium text-fuchsia-700 dark:text-fuchsia-300">{rec.reason}</p>
       <p className="mt-auto pt-2 text-xs text-slate-500 dark:text-slate-400">
-        {CATEGORY_LABELS[lesson.category]} · {HAND_LABEL[lesson.hand]} · {lesson.notes.length} nốt
+        {CATEGORY_LABELS[lesson.category]} · {lesson.hand === 'right' ? 'Tay phải' : 'Tay trái'} · {lesson.notes.length} nốt
       </p>
     </button>
   );
