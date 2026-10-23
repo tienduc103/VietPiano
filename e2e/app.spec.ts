@@ -365,3 +365,16 @@ test('đánh thử 15 giây: tự bật micro, mỗi nốt hiện một lần, b
   // Micro giả phát gam đi lên → không có hai nốt liền nhau giống nhau.
   for (let i = 1; i < labels.length; i++) expect(labels[i]).not.toBe(labels[i - 1]);
 });
+
+test('nút tải lại cứng trong Cài đặt: gỡ service worker, xoá cache, tải lại trang', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Cài đặt' }).click();
+  await page.evaluate(async () => {
+    (window as unknown as { __beforeReload: boolean }).__beforeReload = true;
+    await caches.open('test-cache');
+  });
+  await page.getByRole('button', { name: 'Tải lại bản mới nhất' }).click();
+  await page.waitForFunction(() => !(window as unknown as { __beforeReload?: boolean }).__beforeReload);
+  await expect(page.getByTestId('app-version')).toBeVisible();
+  expect(await page.evaluate(() => caches.has('test-cache'))).toBe(false);
+});
