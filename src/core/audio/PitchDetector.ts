@@ -29,7 +29,8 @@ export interface PitchFrame {
 export const DEFAULT_PITCH_OPTIONS: Omit<PitchDetectorOptions, 'sampleRate'> = {
   frameSize: 2048,
   minFrequency: 60,
-  maxFrequency: 1600,
+  // Tới C7 (2093 Hz) — khớp maxMidi 96 của NoteRecognizer. 1600 Hz cũ làm A6/B6/C7 bị nhận thành quãng 8 dưới.
+  maxFrequency: 2200,
   threshold: 0.15,
 };
 

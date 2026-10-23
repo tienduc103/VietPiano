@@ -24,6 +24,30 @@ describe('PitchDetector (YIN)', () => {
     expect(frequencyToNearestNote(res.frequency!)!.midi).toBe(midi);
   });
 
+  // Quãng cao tới C7 (2093 Hz): trước đây maxFrequency = 1600 Hz → A6/B6 bị nhận thành quãng 8 dưới.
+  it.each([88, 91, 93, 94, 95, 96])('quãng cao: nhận đúng sin + âm giống piano MIDI %i', (midi) => {
+    const f = midiToFrequency(midi);
+    for (const sig of [sine(f, SR, N), pianoLike(f, SR, N)]) {
+      const note = frequencyToNearestNote(detector.detect(sig).frequency!)!;
+      expect(note.midi).toBe(midi);
+      expect(Math.abs(note.cents)).toBeLessThan(15);
+    }
+  });
+
+  it('quãng cao ở 44.1 kHz (A6, B6, C7)', () => {
+    const d = new PitchDetector({ sampleRate: 44100, frameSize: N });
+    for (const midi of [93, 95, 96]) {
+      expect(frequencyToNearestNote(d.detect(pianoLike(midiToFrequency(midi), 44100, N)).frequency!)!.midi).toBe(midi);
+    }
+  });
+
+  it('nốt G5–D6 không bị nhận lên quãng 8 khi dải tìm mở rộng tới C7', () => {
+    for (let midi = 79; midi <= 86; midi++) {
+      const res = detector.detect(pianoLike(midiToFrequency(midi), SR, N, { fundamentalGain: 0.5 }));
+      expect(frequencyToNearestNote(res.frequency!)!.midi).toBe(midi);
+    }
+  });
+
   it('nhận đúng nốt trầm có hoạ âm cơ bản yếu (không nhảy quãng 8)', () => {
     for (const midi of [43, 45, 48, 50]) {
       const res = detector.detect(pianoLike(midiToFrequency(midi), SR, N, { fundamentalGain: 0.35 }));

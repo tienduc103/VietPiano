@@ -42,7 +42,7 @@ export interface AttackAnalyzerOptions {
   minClarity: number;
   /**
    * Hoạ âm 1 hoặc 2 của ứng viên phải đạt tỉ lệ này so với hoạ âm mạnh nhất. Nốt piano thật
-   * (MIDI 36–84) luôn có hoạ âm thấp rõ; kết quả "rác" (vd gõ lại nốt đang ngân, hai sóng cùng
+   * (MIDI 36–96) luôn có hoạ âm thấp rõ; kết quả "rác" (vd gõ lại nốt đang ngân, hai sóng cùng
    * tần số cộng lệch pha) thường là một ứng viên rất trầm gom các đỉnh rải rác.
    */
   minLowPartialRatio: number;
@@ -50,7 +50,7 @@ export interface AttackAnalyzerOptions {
 
 export const DEFAULT_ATTACK_OPTIONS: Omit<AttackAnalyzerOptions, 'sampleRate' | 'frameSize'> = {
   minFrequency: 60,
-  maxFrequency: 1600,
+  maxFrequency: 2200, // tới C7, cùng dải với PitchDetector
   harmonics: 8,
   // Pedal giữ nhiều nốt cùng ngân → phần năng lượng mới của mỗi lần gõ chỉ còn ~15–30% tổng phổ.
   onsetFluxRatio: 0.12,

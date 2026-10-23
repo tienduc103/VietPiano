@@ -34,6 +34,18 @@ function recognize(signal: Float32Array, { useAttack = true, from = 0 } = {}): n
 const notes = (s: string) => s.split(' ').map(requireMidi);
 const VELOCITIES = [0.9, 0.75, 1, 0.8, 0.7, 0.95, 0.85, 0.65, 1, 0.8, 0.9, 0.7];
 
+describe('NoteRecognizer + AttackAnalyzer: quãng cao tới C7', () => {
+  it.each(['A6 B6 C7', 'E6 G6 A6 B6 C7 B6 A6', 'C6 A6 C6 B6'])('không pedal: %s', (seq) => {
+    const midis = notes(seq);
+    expect(recognize(melody(midis, SR, { decaySec: 0.6, velocities: VELOCITIES }))).toEqual(midis);
+  });
+
+  it.each(['A6 B6 C7', 'G6 A6 B6 A6'])('pedal: %s', (seq) => {
+    const midis = notes(seq);
+    expect(recognize(melody(midis, SR, { pedal: true, decaySec: 0.6, velocities: VELOCITIES }))).toEqual(midis);
+  });
+});
+
 describe('NoteRecognizer + AttackAnalyzer: nốt gõ đè lên âm ngân (pedal)', () => {
   it.each(['E4 D4', 'F4 E4 D4', 'A4 D4', 'D4 F4 A4', 'C4 D4 E4', 'A4 G4 F4 E4 D4'])('pedal: %s', (seq) => {
     const midis = notes(seq);
