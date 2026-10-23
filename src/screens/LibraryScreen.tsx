@@ -23,7 +23,7 @@ export function LibraryScreen() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-6 pt-[calc(max(1.5rem,env(safe-area-inset-top))+var(--fullscreen-top-gap))] pb-10">
+      <div className="mx-auto max-w-6xl px-6 pt-[calc(1.5rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-10">
         <header className="flex items-center gap-4">
           <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-12 w-12" />
           <div className="flex-1">
