@@ -100,3 +100,40 @@ export function DetectedNote({ labelStyle }: { labelStyle: NoteLabelStyle }) {
     </div>
   );
 }
+
+/**
+ * Ô nổi góc phải dưới: nốt micro đang nghe. Chỉ hiện khi micro đang chạy và cài đặt cho phép;
+ * không nhận chạm (pointer-events-none) để không chắn nội dung bên dưới.
+ */
+export function FloatingDetectedNote() {
+  const status = useMic((s) => s.status);
+  const enabled = useSettings((s) => s.settings.showFloatingNote);
+  if (status !== 'running' || !enabled) return null;
+  return <FloatingDetectedNoteBadge />;
+}
+
+function FloatingDetectedNoteBadge() {
+  // Chọn từng giá trị nguyên thuỷ (không lấy cả object `live`) để chỉ render lại khi nốt hoặc cents đổi.
+  const midi = useMic((s) => s.live?.midi ?? null);
+  const cents = useMic((s) => (s.live ? Math.round(s.live.cents) : null));
+  const labelStyle = useSettings((s) => s.settings.labelStyle);
+  return (
+    <div
+      className="pointer-events-none fixed right-[calc(12px+env(safe-area-inset-right,0px))] bottom-[calc(12px+env(safe-area-inset-bottom,0px))] z-10 flex min-h-12 min-w-24 items-center gap-2 rounded-2xl bg-white/90 px-3 py-1.5 shadow-lg ring-1 ring-slate-900/10 select-none dark:bg-slate-800/90 dark:ring-white/10"
+      data-testid="floating-detected-note"
+      role="status"
+      aria-label={midi === null ? 'Micro đang nghe' : `Micro nghe thấy ${midiToLabel(midi, labelStyle)}`}
+    >
+      <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+      </span>
+      <div className="text-center leading-tight" aria-hidden>
+        <div className="text-2xl font-bold tabular-nums">{midi === null ? '…' : midiToLabel(midi, labelStyle)}</div>
+        <div className="text-[10px] text-slate-500 tabular-nums dark:text-slate-400">
+          {cents === null ? 'đang nghe' : `${cents > 0 ? '+' : ''}${cents} cents`}
+        </div>
+      </div>
+    </div>
+  );
+}

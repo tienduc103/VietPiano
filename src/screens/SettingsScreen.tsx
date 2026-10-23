@@ -141,6 +141,11 @@ export function SettingsScreen() {
             <div className="mt-2 divide-y divide-slate-200 dark:divide-slate-700">
               <Toggle label="Hiện tên nốt dưới khuông" checked={settings.showNoteNames} onChange={(v) => update({ showNoteNames: v })} />
               <Toggle label="Hiện bàn phím piano ảo" checked={settings.showKeyboard} onChange={(v) => update({ showKeyboard: v })} />
+              <Toggle
+                label="Hiện ô nốt micro đang nghe (góc phải dưới, khi micro bật)"
+                checked={settings.showFloatingNote}
+                onChange={(v) => update({ showFloatingNote: v })}
+              />
               <Row label="Kiểu tên nốt">
                 <Segmented
                   value={settings.labelStyle}

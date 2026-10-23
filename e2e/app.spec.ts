@@ -158,6 +158,28 @@ test('micro (âm thanh giả lập gam Đô trưởng) → nhận diện và t�
   await expect(page.getByTestId('mic-button')).toHaveText(/Bật micro/);
 });
 
+test('ô nổi nốt micro: chỉ hiện ở thư viện khi micro bật, tắt được trong Cài đặt', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('floating-detected-note')).toHaveCount(0);
+  await openLesson(page, 'scale-c-major');
+  await page.getByTestId('mic-button').click();
+  await expect(page.getByTestId('mic-button')).toHaveText(/Micro đang bật/);
+  // Màn hình Luyện tập đã có ô "Nghe thấy" → không hiện trùng.
+  await expect(page.getByTestId('floating-detected-note')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Về thư viện' }).first().click();
+  const badge = page.getByTestId('floating-detected-note');
+  await expect(badge).toBeVisible();
+  // Micro giả phát gam Đô trưởng → ô hiện tên nốt.
+  await expect(badge).toContainText(/[A-G]\d/, { timeout: 10_000 });
+
+  await page.getByRole('button', { name: 'Cài đặt' }).click();
+  await expect(page.getByTestId('floating-detected-note')).toHaveCount(0);
+  await page.getByRole('switch', { name: /Hiện ô nốt micro đang nghe/ }).click();
+  await page.getByRole('button', { name: 'Quay lại' }).click();
+  await expect(page.getByRole('heading', { name: 'VietPiano' })).toBeVisible();
+  await expect(page.getByTestId('floating-detected-note')).toHaveCount(0);
+});
+
 test('ẩn trang (chạy nền) thì tự tắt micro và hiện nút bật lại', async ({ page }) => {
   await openLesson(page, 'notes-seven');
   await page.getByTestId('mic-button').click();

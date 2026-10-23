@@ -41,6 +41,11 @@ describe('DeviceSettings', () => {
     expect(loadSettings(st).practiceMode).toBe('tempo');
     st.setItem('vietpiano.settings.v1', JSON.stringify({ practiceMode: 'count' }));
     expect(loadSettings(st).practiceMode).toBe('count');
+    // Cài đặt cũ chưa có showFloatingNote → mặc định bật; giá trị lạ → boolean.
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ a4: 442 }));
+    expect(loadSettings(st).showFloatingNote).toBe(true);
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ showFloatingNote: 0 }));
+    expect(loadSettings(st).showFloatingNote).toBe(false);
     st.setItem('vietpiano.settings.v1', '{not json');
     expect(loadSettings(st)).toEqual(DEFAULT_SETTINGS);
   });

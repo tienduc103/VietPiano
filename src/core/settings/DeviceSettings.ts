@@ -26,6 +26,8 @@ export interface DeviceSettings {
   labelStyle: NoteLabelStyle;
   theme: ThemeSetting;
   showKeyboard: boolean;
+  /** Ô nổi góc phải dưới hiện nốt micro đang nghe (chỉ khi micro bật, ở màn hình chưa có ô "Nghe thấy"). */
+  showFloatingNote: boolean;
   practiceMode: PracticeMode;
   /** Tốc độ chế độ chạy theo nhịp, % so với nhịp độ gợi ý của bài. */
   tempoPercent: number;
@@ -42,6 +44,7 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
   labelStyle: 'letter',
   theme: 'system',
   showKeyboard: true,
+  showFloatingNote: true,
   practiceMode: 'wait',
   tempoPercent: 100,
 };
@@ -109,6 +112,7 @@ function sanitize(s: DeviceSettings): DeviceSettings {
     labelStyle: s.labelStyle === 'solfege' ? 'solfege' : 'letter',
     theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system',
     showKeyboard: Boolean(s.showKeyboard),
+    showFloatingNote: Boolean(s.showFloatingNote),
     practiceMode: sanitizeMode(s),
     tempoPercent: Math.round(num(s.tempoPercent, 100, TEMPO_PERCENT_MIN, TEMPO_PERCENT_MAX)),
   };
