@@ -8,10 +8,12 @@ import { TEMPO_PERCENT_MAX, TEMPO_PERCENT_MIN, type PracticeMode } from '../core
 import type { NoteInputEvent } from '../core/input/NoteInputProvider';
 import { microphoneInput } from '../core/input/MicrophoneInputProvider';
 import { virtualInput } from '../core/input/VirtualInputProvider';
+import { midiInput } from '../core/input/MIDIInputProvider';
 import { chooseBaseC, keyboardRange, keyHintsFor, keyToMidi } from '../core/input/keyMapping';
 import { ScoreView } from '../components/ScoreView';
 import { PianoKeyboard } from '../components/PianoKeyboard';
 import { DetectedNote, FloatingMicNote, LevelMeter, MicButton, MicError } from '../components/MicPanel';
+import { MidiBadge } from '../components/MidiPanel';
 import { Button, FullscreenButton, Icon, formatDuration, type IconName } from '../components/ui';
 import { AppVersion } from '../components/AppVersion';
 import { useSettings } from '../store/settingsStore';
@@ -119,19 +121,23 @@ function Practice({ lesson }: { lesson: Lesson }) {
   );
   useWakeLock(true);
 
-  // Nối mọi nguồn nốt (micro + bàn phím ảo) vào Wait Mode hoặc chế độ chạy theo nhịp.
+  // Nối mọi nguồn nốt (micro + đàn MIDI + bàn phím ảo) vào Wait Mode hoặc chế độ chạy theo nhịp.
   const tempoModeRef = useRef(tempoMode);
   tempoModeRef.current = tempoMode;
   useEffect(() => {
     microphoneInput.resetRecognizer();
     const handle = (e: NoteInputEvent) => {
+      // Đàn MIDI đã nối thì micro cũng nghe chính tiếng đàn đó → bỏ để một phím không thành hai sự kiện.
+      if (e.source === 'microphone' && midiInput.hasDevice()) return;
       if (tempoModeRef.current) follower.handleOnset(e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time);
       else engine.handleNote(e.midi, e.time);
     };
     const offMic = microphoneInput.onNote(handle);
+    const offMidi = midiInput.onNote(handle);
     const offVirtual = virtualInput.onNote(handle);
     return () => {
       offMic();
+      offMidi();
       offVirtual();
     };
   }, [engine, follower]);
@@ -273,6 +279,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
           <LevelMeter className="w-full" />
         </div>
         <DetectedNote labelStyle={settings.labelStyle} />
+        <MidiBadge />
         {tempoMode ? (
           <TempoPanel
             tempo={tempo}

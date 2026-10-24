@@ -34,6 +34,8 @@ export interface DeviceSettings {
   practiceMode: PracticeMode;
   /** Tốc độ chế độ chạy theo nhịp, % so với nhịp độ gợi ý của bài. */
   tempoPercent: number;
+  /** Nhận nốt từ đàn nối dây MIDI (Web MIDI, Chrome/Edge máy tính); tự kết nối khi mở app. */
+  midiEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: DeviceSettings = {
@@ -51,6 +53,7 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
   reloadButtonPos: null,
   practiceMode: 'wait',
   tempoPercent: 100,
+  midiEnabled: false,
 };
 
 export const TEMPO_PERCENT_MIN = 40;
@@ -120,6 +123,7 @@ function sanitize(s: DeviceSettings): DeviceSettings {
     reloadButtonPos: sanitizePosition(s.reloadButtonPos),
     practiceMode: sanitizeMode(s),
     tempoPercent: Math.round(num(s.tempoPercent, 100, TEMPO_PERCENT_MIN, TEMPO_PERCENT_MAX)),
+    midiEnabled: s.midiEnabled === true,
   };
 }
 

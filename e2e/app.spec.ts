@@ -446,3 +446,66 @@ test('micro câm khi tắt echoCancellation (lỗi iOS PWA): tự chuyển chế
   await expect(page.getByTestId('mic-fallback')).toBeVisible();
   expect(await page.evaluate(() => (window as unknown as { __gumCalls: boolean[] }).__gumCalls)).toEqual([false, true, true]);
 });
+
+/** Web MIDI giả: một đàn "Test Piano"; `window.__midi.note(m)` gửi Note On, `.unplug()` rút dây. */
+async function fakeMidi(page: Page) {
+  await page.addInitScript(() => {
+    const input = { id: 'p1', name: 'Test Piano', manufacturer: 'Test', state: 'connected', onmidimessage: null as null | ((e: unknown) => void) };
+    const access = {
+      inputs: new Map([[input.id, input]]),
+      outputs: new Map(),
+      onstatechange: null as null | ((e: unknown) => void),
+    };
+    Object.defineProperty(Navigator.prototype, 'requestMIDIAccess', { configurable: true, value: () => Promise.resolve(access) });
+    (window as unknown as Record<string, unknown>).__midi = {
+      note: (midi: number) => {
+        input.onmidimessage?.({ data: new Uint8Array([0x90, midi, 90]), timeStamp: performance.now() });
+        input.onmidimessage?.({ data: new Uint8Array([0x80, midi, 0]), timeStamp: performance.now() });
+      },
+      unplug: () => {
+        input.state = 'disconnected';
+        access.onstatechange?.({ port: input });
+      },
+    };
+  });
+}
+
+const midiNote = (page: Page, midi: number) =>
+  page.evaluate((m) => (window as unknown as { __midi: { note(m: number): void } }).__midi.note(m), midi);
+
+test('đàn MIDI: bật trong Cài đặt, thấy tên đàn, nốt từ đàn chuyển nốt trong Wait Mode', async ({ page }) => {
+  await fakeMidi(page);
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Cài đặt' }).click();
+  await page.getByRole('switch', { name: /Dùng đàn MIDI/ }).click();
+  await expect(page.getByTestId('midi-status')).toContainText('Đã kết nối: Test Piano');
+  await midiNote(page, 60);
+  await expect(page.getByTestId('midi-last-note')).toHaveText('C4');
+
+  await page.getByRole('button', { name: 'Quay lại' }).click();
+  await openLesson(page, 'scale-c-major');
+  await expect(page.getByTestId('midi-badge')).toHaveText('MIDI: Test Piano');
+  await midiNote(page, 60);
+  await expect(page.getByTestId('expected-note')).toHaveText('D4');
+  await page.waitForTimeout(150);
+  await midiNote(page, 65);
+  await expect(page.getByTestId('status-title')).toHaveText('Sai');
+  await expect(page.getByTestId('progress-text')).toHaveText('1/16');
+
+  // Rút dây → nhãn báo chưa thấy đàn; cài đặt được nhớ sau khi tải lại.
+  await page.evaluate(() => (window as unknown as { __midi: { unplug(): void } }).__midi.unplug());
+  await expect(page.getByTestId('midi-badge')).toHaveText('Chưa thấy đàn MIDI');
+  await page.reload();
+  await page.getByTestId('lesson-scale-c-major').click();
+  await expect(page.getByTestId('midi-badge')).toHaveText('MIDI: Test Piano');
+});
+
+test('đàn MIDI: trình duyệt không có Web MIDI (như iPad) thì báo rõ', async ({ page }) => {
+  await page.addInitScript(() => {
+    delete (Navigator.prototype as unknown as Record<string, unknown>).requestMIDIAccess;
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Cài đặt' }).click();
+  await expect(page.getByTestId('midi-unsupported')).toContainText('không hỗ trợ MIDI');
+  await expect(page.getByRole('switch', { name: /Dùng đàn MIDI/ })).toHaveCount(0);
+});

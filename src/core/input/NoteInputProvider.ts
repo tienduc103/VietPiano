@@ -1,7 +1,7 @@
 /**
  * Nguồn nốt nhạc trừu tượng. PracticeEngine chỉ làm việc với interface này nên
- * có thể thay MicrophoneInputProvider bằng MIDIInputProvider (khi nền tảng hỗ trợ
- * MIDI thật, vd app native Swift/Core MIDI) mà không đổi logic Wait Mode.
+ * micro, đàn MIDI (Web MIDI; sau này có thể là app native Core MIDI) và bàn phím ảo
+ * đều đi vào cùng một logic Wait Mode.
  */
 
 export type InputSource = 'microphone' | 'virtual' | 'midi';

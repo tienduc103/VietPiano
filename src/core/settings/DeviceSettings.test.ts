@@ -52,6 +52,12 @@ describe('DeviceSettings', () => {
     expect(loadSettings(st).reloadButtonPos).toBeNull();
     st.setItem('vietpiano.settings.v1', JSON.stringify({ reloadButtonPos: { x: 0.3, y: -1 } }));
     expect(loadSettings(st).reloadButtonPos).toEqual({ x: 0.3, y: 0 });
+    // MIDI: mặc định tắt; chỉ bật khi đúng true.
+    expect(loadSettings(st).midiEnabled).toBe(false);
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ midiEnabled: 'yes' }));
+    expect(loadSettings(st).midiEnabled).toBe(false);
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ midiEnabled: true }));
+    expect(loadSettings(st).midiEnabled).toBe(true);
     st.setItem('vietpiano.settings.v1', '{not json');
     expect(loadSettings(st)).toEqual(DEFAULT_SETTINGS);
   });

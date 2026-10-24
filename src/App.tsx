@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useApp } from './store/appStore';
-import { useAppLifecycle, useTheme } from './hooks/useAppLifecycle';
+import { useAppLifecycle, useMidiConnection, useTheme } from './hooks/useAppLifecycle';
 import { LibraryScreen } from './screens/LibraryScreen';
 import { PracticeScreen } from './screens/PracticeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
@@ -12,6 +12,7 @@ export function App() {
   const route = useApp((s) => s.route);
   const loadProgress = useApp((s) => s.loadProgress);
   useAppLifecycle();
+  useMidiConnection();
   useTheme();
 
   useEffect(() => {

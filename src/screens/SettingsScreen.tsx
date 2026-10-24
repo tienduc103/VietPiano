@@ -13,6 +13,7 @@ import { useApp } from '../store/appStore';
 import { Button, Card, Icon, Segmented, Toggle } from '../components/ui';
 import { DetectedNote, LevelMeter, MicButton, MicError } from '../components/MicPanel';
 import { AutoCalibration } from '../components/AutoCalibration';
+import { MidiSettings } from '../components/MidiPanel';
 import { CalibrationCheckView } from '../components/CalibrationCheckView';
 import { AppVersion } from '../components/AppVersion';
 
@@ -51,6 +52,15 @@ export function SettingsScreen() {
               <MicError />
             </div>
             <Calibration />
+          </Card>
+
+          <Card>
+            <h2 className="text-xl font-semibold">Đàn MIDI (nối dây USB)</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Nối đàn điện vào máy tính bằng dây USB để nhận nốt chính xác thay cho micro. Chạy trên Chrome hoặc Edge
+              máy tính; không có trên iPad.
+            </p>
+            <MidiSettings labelStyle={settings.labelStyle} />
           </Card>
 
           <Card>

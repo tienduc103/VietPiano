@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { microphoneInput } from '../core/input/MicrophoneInputProvider';
+import { midiInput } from '../core/input/MIDIInputProvider';
 import { useMic } from '../store/micStore';
 import { useSettings } from '../store/settingsStore';
 
@@ -28,6 +29,19 @@ export function useAppLifecycle(): void {
       void microphoneInput.stop();
     };
   }, []);
+}
+
+/**
+ * Kết nối đàn MIDI theo cài đặt. Khác micro: MIDI không ghi âm nên giữ kết nối cả khi app vào nền,
+ * và Web MIDI không cần thao tác người dùng → tự kết nối lại khi mở app.
+ */
+export function useMidiConnection(): void {
+  const enabled = useSettings((s) => s.settings.midiEnabled);
+  useEffect(() => {
+    if (!enabled) return;
+    void midiInput.start();
+    return () => void midiInput.stop();
+  }, [enabled]);
 }
 
 /** Áp dụng giao diện sáng/tối theo cài đặt hoặc theo hệ thống. */
