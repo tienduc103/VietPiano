@@ -7,8 +7,8 @@
  */
 import { CanvasContext } from 'vexflow/bravura';
 import { splitMeasures } from '../lessons/notation';
-import { CLEF_LABEL, HAND_LABEL, measureLength, type Lesson } from '../lessons/types';
-import { midiToLabel, type NoteLabelStyle } from '../music/notes';
+import { CLEF_LABEL, fingerText, HAND_LABEL, measureLength, sectionAt, type Lesson } from '../lessons/types';
+import { pitchToLabel, type NoteLabelStyle } from '../music/notes';
 import {
   accompanimentFingerRows,
   accompanimentMeasures,
@@ -18,9 +18,13 @@ import {
   FINGER_OFFSET,
   formatMeasure,
   GRAND_STAFF_GAP,
+  LABEL_OFFSET,
+  labelOffset,
   lessonClefs,
   naturalNoteArea,
   noteCenterX,
+  SECTION_SPACE,
+  sectionBox,
   staffOf,
 } from './ScoreRenderer';
 import { layoutSystems } from './sheetLayout';
@@ -60,7 +64,9 @@ export function renderScoreSheet(canvas: HTMLCanvasElement, lesson: Lesson, opts
   );
 
   const staffCount = lessonClefs(lesson).length;
-  const systemHeight = SYSTEM_HEIGHT + (staffCount - 1) * GRAND_STAFF_GAP + (opts.showNames ? LABEL_EXTRA : 0);
+  const sectionSpace = lesson.sections?.length ? SECTION_SPACE : 0;
+  const lhFingerSpace = labelOffset(lesson) - LABEL_OFFSET;
+  const systemHeight = SYSTEM_HEIGHT + sectionSpace + lhFingerSpace + (staffCount - 1) * GRAND_STAFF_GAP + (opts.showNames ? LABEL_EXTRA : 0);
   const height = SYSTEMS_TOP + systems.length * systemHeight + FOOTER_HEIGHT;
 
   const ctx2d = canvas.getContext('2d');
@@ -82,7 +88,7 @@ export function renderScoreSheet(canvas: HTMLCanvasElement, lesson: Lesson, opts
   ctx2d.fillText(info.join(' · '), SHEET_WIDTH / 2, 84);
 
   systems.forEach((system, si) => {
-    const y = SYSTEMS_TOP + si * systemHeight;
+    const y = SYSTEMS_TOP + sectionSpace + si * systemHeight;
     let x = MARGIN_X;
     const ys = Array.from({ length: staffCount }, (_, i) => y + i * GRAND_STAFF_GAP);
     system.measures.forEach((mi, k) => {
@@ -113,18 +119,33 @@ export function renderScoreSheet(canvas: HTMLCanvasElement, lesson: Lesson, opts
         ctx2d.fillText(String(lesson.pickup ? mi : mi + 1), x, staves[0].getYForLine(0) - 14);
       }
 
+      // Chữ đánh dấu đoạn (A, B…) trong khung vuông.
+      const section = sectionAt(lesson, mi);
+      if (section) {
+        const box = sectionBox(staves[0]);
+        ctx2d.strokeStyle = INK;
+        ctx2d.lineWidth = 1.5;
+        ctx2d.strokeRect(box.x, box.y, box.size, box.size);
+        ctx2d.fillStyle = INK;
+        ctx2d.textAlign = 'center';
+        ctx2d.textBaseline = 'middle';
+        ctx2d.font = `700 17px ${FONT}`;
+        ctx2d.fillText(section, box.x + box.size / 2, box.y + box.size / 2 + 1);
+        ctx2d.textBaseline = 'alphabetic';
+      }
+
       // Số ngón tay phía trên khuông của nốt.
       ctx2d.fillStyle = INK;
       ctx2d.textAlign = 'center';
       ctx2d.font = `700 16px ${FONT}`;
       measure.items.forEach((n, ni) => {
-        if (n.finger) ctx2d.fillText(String(n.finger), noteCenterX(played[ni]), staves[staffOf(lesson, n)].getYForLine(0) - FINGER_OFFSET);
+        if (n.finger) ctx2d.fillText(fingerText(n.finger, n.fingerCircled), noteCenterX(played[ni]), staves[staffOf(lesson, n)].getYForLine(0) - FINGER_OFFSET);
       });
 
       // Số ngón tay phần đệm: chồng dưới khuông Fa.
       ctx2d.font = `700 13px ${FONT}`;
       accItems?.forEach((n, ai) => {
-        for (const row of accompanimentFingerRows(n, staveBottom)) ctx2d.fillText(String(row.finger), noteCenterX(accompaniment[ai]), row.y);
+        for (const row of accompanimentFingerRows(n, accompaniment[ai], staveBottom)) ctx2d.fillText(row.text, noteCenterX(accompaniment[ai]), row.y);
       });
 
       if (opts.showNames) {
@@ -132,7 +153,7 @@ export function renderScoreSheet(canvas: HTMLCanvasElement, lesson: Lesson, opts
         ctx2d.textAlign = 'center';
         ctx2d.font = `600 15px ${FONT}`;
         measure.items.forEach((n, ni) => {
-          ctx2d.fillText(midiToLabel(n.midi, opts.labelStyle), noteCenterX(played[ni]), staveBottom + 58);
+          ctx2d.fillText(pitchToLabel(n.pitch, opts.labelStyle), noteCenterX(played[ni]), staveBottom + labelOffset(lesson));
         });
       }
       x += header + noteArea;

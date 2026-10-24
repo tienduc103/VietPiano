@@ -37,6 +37,8 @@ export interface LessonNote {
   duration: Duration;
   /** Ngón tay gợi ý (vẽ trên khuông nhạc). */
   finger?: Finger;
+  /** Số ngón vẽ khoanh tròn (③) như bản in — thường đánh dấu ngón 3 trên phím đen. */
+  fingerCircled?: boolean;
   /** Tay chơi nốt này — chỉ có ở bài hai tay. */
   hand?: Hand;
 }
@@ -52,6 +54,15 @@ export interface AccompanimentNote {
   duration: Duration;
   /** Ngón tay cho từng nốt (cùng thứ tự `pitches`). */
   fingers: (Finger | undefined)[];
+  /** Số ngón nào vẽ khoanh tròn (cùng thứ tự `pitches`). */
+  fingersCircled: boolean[];
+}
+
+/** Chữ đánh dấu đoạn (A, B…) vẽ trong khung vuông ở đầu ô nhịp. */
+export interface LessonSection {
+  /** Số ô nhịp như trên bản nhạc (bắt đầu từ 1, ô lấy đà không đánh số). */
+  measure: number;
+  label: string;
 }
 
 export interface Lesson {
@@ -71,6 +82,8 @@ export interface Lesson {
   notes: LessonNote[];
   /** Phần đệm tay trái đánh cùng lúc với `notes` (chỉ ở bài khuông đôi); có phần đệm thì `notes` là giai điệu tay phải. */
   accompaniment?: AccompanimentNote[];
+  /** Chữ đánh dấu đoạn (A, B…) như bản in. */
+  sections?: LessonSection[];
   /** Ghi chú nguồn gốc bản nhạc (bản quyền). */
   source?: string;
   /** Nhịp độ gợi ý cho chế độ chạy theo nhịp (nốt đen/phút); mặc định DEFAULT_TEMPO_BPM. */
@@ -89,6 +102,19 @@ export function noteHand(lesson: Pick<Lesson, 'hand'>, note: Pick<LessonNote, 'h
 export function isAccompanimentMidi(lesson: Pick<Lesson, 'notes' | 'accompaniment'>, midi: number): boolean {
   if (!lesson.accompaniment?.length) return false;
   return midi < Math.min(...lesson.notes.map((n) => n.midi));
+}
+
+const CIRCLED_DIGITS = ['①', '②', '③', '④', '⑤'];
+
+/** Chữ hiển thị số ngón tay: "3" hoặc "③". */
+export function fingerText(finger: Finger, circled = false): string {
+  return circled ? CIRCLED_DIGITS[finger - 1] : String(finger);
+}
+
+/** Chữ đánh dấu đoạn ở ô nhịp thứ `measureIndex` (chỉ số từ 0, gồm cả ô lấy đà). */
+export function sectionAt(lesson: Pick<Lesson, 'sections' | 'pickup'>, measureIndex: number): string | undefined {
+  const number = lesson.pickup ? measureIndex : measureIndex + 1;
+  return lesson.sections?.find((s) => s.measure === number)?.label;
 }
 
 /** Nhịp độ chậm, vừa sức người mới học. */

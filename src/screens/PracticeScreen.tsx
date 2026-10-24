@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { lessonManager } from '../core/lessons/LessonManager';
 import { DURATION_BEATS, isAccompanimentMidi, lessonTempo, measureLength, HAND_LABEL, noteHand, type Finger, type Hand, type Lesson } from '../core/lessons/types';
-import { midiToLabel } from '../core/music/notes';
+import { midiToLabel, pitchToLabel } from '../core/music/notes';
 import { computeAccuracy, PracticeEngine, DEFAULT_PRACTICE_CONFIG, type PracticeState } from '../core/practice/PracticeEngine';
 import { DEFAULT_TEMPO_CONFIG, TempoFollower, type TempoState } from '../core/practice/TempoFollower';
 import { TEMPO_PERCENT_MAX, TEMPO_PERCENT_MIN, type PracticeMode } from '../core/settings/DeviceSettings';
@@ -294,6 +294,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
           <StatusPanel
             state={state}
             expected={expected}
+            expectedPitch={currentNote?.midi === expected ? currentNote?.pitch : undefined}
             finger={expectedFinger}
             hand={expectedHand}
             showFeedback={showFeedback}
@@ -360,6 +361,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
 function StatusPanel({
   state,
   expected,
+  expectedPitch,
   finger,
   hand,
   showFeedback,
@@ -367,6 +369,8 @@ function StatusPanel({
 }: {
   state: PracticeState;
   expected: number | null;
+  /** Tên nốt như viết trong bài ("Bb4") để hiện đúng dấu giáng. */
+  expectedPitch?: string;
   finger?: Finger;
   hand?: Hand;
   showFeedback: boolean;
@@ -403,7 +407,7 @@ function StatusPanel({
         <div className="text-center">
           <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Cần đánh</div>
           <div className="text-4xl font-bold text-fuchsia-600 dark:text-fuchsia-300" data-testid="expected-note">
-            {midiToLabel(expected, labelStyle)}
+            {expectedPitch ? pitchToLabel(expectedPitch, labelStyle) : midiToLabel(expected, labelStyle)}
           </div>
         </div>
       )}

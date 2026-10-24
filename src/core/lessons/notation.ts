@@ -3,11 +3,17 @@ import { DURATION_BEATS, type AccompanimentNote, type Duration, type Finger, typ
 
 /**
  * Phân tích chuỗi ký hiệu gọn: "C4 D4 E4/h | G4/qd A4/8".
- * Mặc định trường độ là nốt đen (q). Hậu tố ":1"…":5" là số ngón tay ("C4:1", "E4/h:3").
+ * Mặc định trường độ là nốt đen (q). Hậu tố ":1"…":5" là số ngón tay ("C4:1", "E4/h:3"); ":(3)" = ngón vẽ khoanh tròn.
  * Bài hai tay: "RH" / "LH" đặt tay cho các nốt phía sau ("LH C3:5 D3:4 | RH E4:3").
  * Dấu "|" chỉ để dễ đọc, bị bỏ qua
  * (ô nhịp được tính lại từ trường độ và được kiểm tra bằng unit test).
  */
+function parseFinger(text: string, tok: string): { finger: Finger; circled: boolean } {
+  const m = /^([1-5])$|^\(([1-5])\)$/.exec(text);
+  if (!m) throw new Error(`Số ngón tay không hợp lệ: "${tok}"`);
+  return { finger: Number(m[1] ?? m[2]) as Finger, circled: m[2] !== undefined };
+}
+
 export function parseNotes(source: string): LessonNote[] {
   const notes: LessonNote[] = [];
   let hand: Hand | undefined;
@@ -22,8 +28,9 @@ export function parseNotes(source: string): LessonNote[] {
     if (!(dur in DURATION_BEATS)) throw new Error(`Trường độ không hợp lệ: "${tok}"`);
     const note: LessonNote = { pitch, midi: requireMidi(pitch), duration: dur as Duration };
     if (finger !== undefined) {
-      if (!/^[1-5]$/.test(finger)) throw new Error(`Số ngón tay không hợp lệ: "${tok}"`);
-      note.finger = Number(finger) as Finger;
+      const f = parseFinger(finger, tok);
+      note.finger = f.finger;
+      if (f.circled) note.fingerCircled = true;
     }
     if (hand) note.hand = hand;
     notes.push(note);
@@ -33,7 +40,7 @@ export function parseNotes(source: string): LessonNote[] {
 
 /**
  * Phân tích phần đệm: "D3+F3+A3/hd:5+3+1 | G2:5 Bb2:3 D3:1".
- * Các nốt hợp âm nối bằng "+", ngón tay ghi theo đúng thứ tự đó ("+" để trống = không ghi ngón).
+ * Các nốt hợp âm nối bằng "+", ngón tay ghi theo đúng thứ tự đó ("+" để trống = không ghi ngón, "(3)" = khoanh tròn).
  */
 export function parseAccompaniment(source: string): AccompanimentNote[] {
   const result: AccompanimentNote[] = [];
@@ -44,9 +51,8 @@ export function parseAccompaniment(source: string): AccompanimentNote[] {
     if (!(dur in DURATION_BEATS)) throw new Error(`Trường độ không hợp lệ: "${tok}"`);
     const fingerToks = fingerPart === undefined ? [] : fingerPart.split('+');
     const notes = chord.split('+').map((pitch, i) => {
-      const f = fingerToks[i];
-      if (f && !/^[1-5]$/.test(f)) throw new Error(`Số ngón tay không hợp lệ: "${tok}"`);
-      return { pitch, midi: requireMidi(pitch), finger: f ? (Number(f) as Finger) : undefined };
+      const f = fingerToks[i] ? parseFinger(fingerToks[i], tok) : undefined;
+      return { pitch, midi: requireMidi(pitch), finger: f?.finger, circled: f?.circled ?? false };
     });
     if (fingerToks.length > notes.length) throw new Error(`Thừa số ngón tay: "${tok}"`);
     notes.sort((a, b) => a.midi - b.midi);
@@ -55,6 +61,7 @@ export function parseAccompaniment(source: string): AccompanimentNote[] {
       midis: notes.map((n) => n.midi),
       duration: dur as Duration,
       fingers: notes.map((n) => n.finger),
+      fingersCircled: notes.map((n) => n.circled),
     });
   }
   return result;

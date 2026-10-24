@@ -133,6 +133,19 @@ body::before {
   font-weight: 700;
   font-family: var(--font-sans);
 }
+.score-section-box {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.score-section {
+  fill: currentColor;
+  stroke: none;
+  font-size: 17px;
+  font-weight: 700;
+}
+
 .score-finger-lh {
   font-size: 13px;
 }

@@ -21,9 +21,9 @@ import {
   type RenderContext,
 } from 'vexflow/bravura';
 import { splitMeasures, type Measure } from '../lessons/notation';
-import { measureLength, noteHand, type AccompanimentNote, type Clef, type Duration, type Lesson, type LessonNote } from '../lessons/types';
+import { fingerText, measureLength, noteHand, sectionAt, type AccompanimentNote, type Clef, type Duration, type Lesson, type LessonNote } from '../lessons/types';
 import { measureAccidentals } from '../music/keySignature';
-import { midiToLabel, type NoteLabelStyle } from '../music/notes';
+import { pitchToLabel, type NoteLabelStyle } from '../music/notes';
 
 export interface ScoreRenderOptions {
   showNames: boolean;
@@ -62,9 +62,22 @@ export const MEASURE_PADDING = 24;
 const LEDGER_STYLE = { strokeStyle: 'currentColor', lineWidth: 2 };
 /** Khoảng cách từ dòng kẻ trên cùng lên đường chân chữ của hàng số ngón tay. */
 export const FINGER_OFFSET = 12;
-/** Số ngón tay phần đệm: chồng dưới khuông Fa, dòng đầu cách dòng kẻ dưới cùng `LH_FINGER_TOP`. */
-export const LH_FINGER_TOP = 16;
+/** Số ngón tay phần đệm: chồng dưới nốt (dưới cả đuôi nốt quay xuống), dòng đầu cách điểm thấp nhất `LH_FINGER_TOP`. */
+export const LH_FINGER_TOP = 15;
 export const LH_FINGER_STEP = 13;
+/** Hàng tên nốt: cách dòng kẻ dưới cùng của khuông dưới; bài có phần đệm chừa thêm chỗ cho số ngón tay trái. */
+export const LABEL_OFFSET = 58;
+export const LABEL_OFFSET_ACCOMPANIMENT = 84;
+/** Khoảng trống thêm phía trên khi bài có chữ đánh dấu đoạn (khung chữ nằm trên hàng số ngón tay). */
+export const SECTION_SPACE = 24;
+/** Khung chữ đánh dấu đoạn: cạnh vuông, khoảng cách từ đáy khung tới dòng kẻ trên cùng (trên hàng số ngón tay). */
+export const SECTION_BOX = 24;
+const SECTION_BOX_GAP = 36;
+
+/** Khung chữ đánh dấu đoạn ở đầu phần nốt của ô nhịp (khuông trên cùng). */
+export function sectionBox(stave: Stave): { x: number; y: number; size: number } {
+  return { x: stave.getNoteStartX() + 2, y: stave.getYForLine(0) - SECTION_BOX_GAP - SECTION_BOX, size: SECTION_BOX };
+}
 
 /** "C#4" → "c#/4" (định dạng khoá của VexFlow). */
 function toVexKey(pitch: string): string {
@@ -94,13 +107,25 @@ export function accompanimentMeasures(lesson: Lesson): Measure<AccompanimentNote
   return splitMeasures(lesson.accompaniment, measureLength(lesson.timeSignature), lesson.pickup);
 }
 
-/** Toạ độ y (đường chân chữ) của từng số ngón tay phần đệm, nốt cao ở trên như bản in. */
-export function accompanimentFingerRows(note: AccompanimentNote, staveBottom: number): { finger: number; y: number }[] {
-  const rows: { finger: number; y: number }[] = [];
-  [...note.fingers].reverse().forEach((f, i) => {
-    if (f) rows.push({ finger: f, y: staveBottom + LH_FINGER_TOP + i * LH_FINGER_STEP });
-  });
+/**
+ * Toạ độ y (đường chân chữ) của từng số ngón tay phần đệm, nốt cao ở trên như bản in.
+ * Bắt đầu dưới điểm thấp nhất của nốt (đầu nốt, đuôi nốt quay xuống) để số không đè lên đuôi nốt.
+ */
+export function accompanimentFingerRows(note: AccompanimentNote, staveNote: StaveNote, staveBottom: number): { text: string; y: number }[] {
+  const { topY, baseY } = staveNote.getStemExtents();
+  const lowest = Math.max(staveBottom, ...staveNote.getYs(), staveNote.getStemDirection() < 0 ? Math.max(topY, baseY) : -Infinity);
+  const rows: { text: string; y: number }[] = [];
+  let row = 0;
+  for (let i = note.fingers.length - 1; i >= 0; i--) {
+    const f = note.fingers[i];
+    if (f) rows.push({ text: fingerText(f, note.fingersCircled[i]), y: lowest + LH_FINGER_TOP + row++ * LH_FINGER_STEP });
+  }
   return rows;
+}
+
+/** Khoảng cách từ dòng kẻ dưới cùng xuống hàng tên nốt. */
+export function labelOffset(lesson: Lesson): number {
+  return lesson.accompaniment?.length ? LABEL_OFFSET_ACCOMPANIMENT : LABEL_OFFSET;
 }
 
 /** Các khuông của bài (trên xuống dưới): bài hai tay → [Sol, Fa]. */
@@ -259,8 +284,9 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
   ctx.setStrokeStyle('currentColor');
 
   const clefs = lessonClefs(lesson);
-  const ys = clefs.map((_, si) => STAVE_Y + si * GRAND_STAFF_GAP);
-  const height = SCORE_HEIGHT + (clefs.length - 1) * GRAND_STAFF_GAP;
+  const top = STAVE_Y + (lesson.sections?.length ? SECTION_SPACE : 0);
+  const ys = clefs.map((_, si) => top + si * GRAND_STAFF_GAP);
+  const height = SCORE_HEIGHT + (top - STAVE_Y) + (labelOffset(lesson) - LABEL_OFFSET) + (clefs.length - 1) * GRAND_STAFF_GAP;
   const measures = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup);
   const accMeasures = accompanimentMeasures(lesson);
 
@@ -313,7 +339,7 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
   svg.insertBefore(cursor, svg.firstChild);
 
   // Tên nốt: một hàng chữ cố định dưới khuông, dễ đọc từ xa.
-  const labelY = staveBottom + 58;
+  const labelY = staveBottom + labelOffset(lesson);
   const labelElements = lesson.notes.map((n, i) => {
     if (!opts.showNames) return null;
     const t = document.createElementNS(SVG_NS, 'text');
@@ -321,7 +347,7 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     t.setAttribute('y', String(labelY));
     t.setAttribute('text-anchor', 'middle');
     t.setAttribute('class', 'score-label');
-    t.textContent = midiToLabel(n.midi, opts.labelStyle);
+    t.textContent = pitchToLabel(n.pitch, opts.labelStyle);
     svg.appendChild(t);
     return t;
   });
@@ -334,22 +360,43 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     t.setAttribute('y', String(staffTops[staffOf(lesson, n)] - FINGER_OFFSET));
     t.setAttribute('text-anchor', 'middle');
     t.setAttribute('class', 'score-finger');
-    t.textContent = String(n.finger);
+    t.textContent = fingerText(n.finger, n.fingerCircled);
     svg.appendChild(t);
     return t;
+  });
+
+  // Chữ đánh dấu đoạn (A, B…) trong khung vuông như bản in.
+  built.forEach((b, mi) => {
+    const label = sectionAt(lesson, mi);
+    if (!label) return;
+    const box = sectionBox(b.staves[0]);
+    const rect = document.createElementNS(SVG_NS, 'rect');
+    rect.setAttribute('x', String(box.x));
+    rect.setAttribute('y', String(box.y));
+    rect.setAttribute('width', String(box.size));
+    rect.setAttribute('height', String(box.size));
+    rect.setAttribute('class', 'score-section-box');
+    const t = document.createElementNS(SVG_NS, 'text');
+    t.setAttribute('x', String(box.x + box.size / 2));
+    t.setAttribute('y', String(box.y + box.size / 2));
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('dominant-baseline', 'central');
+    t.setAttribute('class', 'score-section');
+    t.textContent = label;
+    svg.append(rect, t);
   });
 
   // Số ngón tay phần đệm: chồng dưới khuông Fa, không tô sáng vì app không chấm phần đệm.
   if (accMeasures) {
     const accStaveNotes = built.flatMap((b) => b.accompaniment);
     accMeasures.flatMap((m) => m.items).forEach((n, i) => {
-      for (const row of accompanimentFingerRows(n, staveBottom)) {
+      for (const row of accompanimentFingerRows(n, accStaveNotes[i], staveBottom)) {
         const t = document.createElementNS(SVG_NS, 'text');
         t.setAttribute('x', String(noteCenterX(accStaveNotes[i])));
         t.setAttribute('y', String(row.y));
         t.setAttribute('text-anchor', 'middle');
         t.setAttribute('class', 'score-finger score-finger-lh');
-        t.textContent = String(row.finger);
+        t.textContent = row.text;
         svg.appendChild(t);
       }
     });

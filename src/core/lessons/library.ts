@@ -10,8 +10,8 @@ type LessonDef = Omit<Lesson, 'notes' | 'accompaniment'> & { notation: string; a
 
 /** Giai điệu tay phải Romance d'Amour bản piano dễ Rê thứ (16 ô nhịp, có số ngón tay). */
 const ROMANCE_MELODY =
-  'A4:5 A4 A4 | A4 G4 F4 | F4 E4 D4 | D4:1 F4:2 A4:3 | D5:5 D5 D5 | D5 C5:4 Bb4:3 | Bb4:3 A4:2 G4:1 | G4 A4 Bb4:3 | ' +
-  'A4 Bb4:3 A4 | C#5:4 Bb4:3 A4:2 | A4:3 G4 F4:1 | F4:3 E4 D4 | E4 E4 E4 | E4 F4 E4 | D4 D4 D4 | D4/hd';
+  'A4:5 A4 A4 | A4 G4 F4 | F4 E4 D4 | D4:1 F4:2 A4:3 | D5:5 D5 D5 | D5 C5:4 Bb4:(3) | Bb4:(3) A4:2 G4:1 | G4 A4 Bb4:(3) | ' +
+  'A4 Bb4:(3) A4 | C#5:4 Bb4:(3) A4:2 | A4:3 G4 F4:1 | F4:3 E4 D4 | E4 E4 E4 | E4 F4 E4 | D4 D4 D4 | D4/hd';
 
 const defs: LessonDef[] = [
   // ── Nhận biết nốt ────────────────────────────────────────────────
@@ -462,6 +462,10 @@ const defs: LessonDef[] = [
     difficulty: 3,
     hand: 'both',
     tempo: 100,
+    sections: [
+      { measure: 1, label: 'A' },
+      { measure: 17, label: 'B' },
+    ],
     source: 'Khuyết danh, nhạc guitar Tây Ban Nha thế kỷ 19 — phạm vi công cộng; bản piano dễ Rê thứ',
     notation:
       // Đoạn A (ô 1–16) và đoạn B (ô 17–32): giai điệu tay phải giống nhau.
@@ -469,11 +473,11 @@ const defs: LessonDef[] = [
     accompanimentNotation:
       // Đoạn A: hợp âm giữ cả ô nhịp.
       'D3+F3+A3/hd:5+3+1 | D3+F3+A3/hd | D3+F3+A3/hd | D3+F3+A3/hd | D3+F3+A3/hd | D3+F3+A3/hd | ' +
-      'G2+Bb2+D3/hd:5+3+1 | G2+Bb2+D3/hd | A2+C#3+E3/hd:5+3+1 | A2+C#3+E3/hd | D3+F3+A3/hd:5+3+1 | D3+F3+A3/hd | ' +
+      'G2+Bb2+D3/hd:5+(3)+1 | G2+Bb2+D3/hd | A2+C#3+E3/hd:5+(3)+1 | A2+C#3+E3/hd | D3+F3+A3/hd:5+3+1 | D3+F3+A3/hd | ' +
       'A2+C#3+E3/hd | A2+C#3+E3/hd | D3+F3+A3/hd | D3+F3+A3/hd | ' +
       // Đoạn B: rải hợp âm từng nốt đen.
       'D3:5 F3:3 A3:1 | D3 F3 A3 | D3 F3 A3 | D3 F3 A3 | D3 F3 A3 | D3 F3 A3 | ' +
-      'G2:5 Bb2:3 D3:1 | G2 Bb2 D3 | A2:5 C#3:3 E3:1 | A2 C#3 E3 | D3 F3 A3 | D3 F3 A3 | ' +
+      'G2:5 Bb2:(3) D3:1 | G2 Bb2 D3 | A2:5 C#3:(3) E3:1 | A2 C#3 E3 | D3 F3 A3 | D3 F3 A3 | ' +
       'A2 C#3 E3 | A2 C#3 E3 | D3 F3 A3 | D3/hd',
   },
   {

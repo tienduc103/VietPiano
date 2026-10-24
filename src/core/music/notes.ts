@@ -54,6 +54,19 @@ export function midiToLabel(midi: number, style: NoteLabelStyle): string {
   return `${SOLFEGE_NAMES[midiToPitchClass(midi)]}${midiToOctave(midi)}`;
 }
 
+const LETTER_TO_SOLFEGE: Record<string, string> = { C: 'Đô', D: 'Rê', E: 'Mi', F: 'Fa', G: 'Sol', A: 'La', B: 'Si' };
+
+/**
+ * Tên nốt theo đúng cách viết trong bài ("Bb4" → "B♭4" / "Si♭4"), không quy về dấu thăng như `midiToLabel`
+ * — nốt giáng trên khuông phải có tên giáng.
+ */
+export function pitchToLabel(pitch: string, style: NoteLabelStyle): string {
+  const m = /^([A-G])([#b]?)(-?\d)$/.exec(pitch);
+  if (!m) throw new Error(`Tên nốt không hợp lệ: "${pitch}"`);
+  const accidental = m[2] === 'b' ? '♭' : m[2];
+  return `${style === 'letter' ? m[1] : LETTER_TO_SOLFEGE[m[1]]}${accidental}${m[3]}`;
+}
+
 export function isBlackKey(midi: number): boolean {
   return [1, 3, 6, 8, 10].includes(midiToPitchClass(midi));
 }

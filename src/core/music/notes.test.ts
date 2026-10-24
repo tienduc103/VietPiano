@@ -3,6 +3,7 @@ import {
   frequencyToNearestNote,
   isBlackKey,
   midiToFrequency,
+  pitchToLabel,
   midiToLabel,
   midiToName,
   nameToMidi,
@@ -68,5 +69,18 @@ describe('chuyển đổi tần số ↔ nốt', () => {
     expect(isBlackKey(61)).toBe(true);
     expect(isBlackKey(70)).toBe(true);
     expect(isBlackKey(71)).toBe(false);
+  });
+});
+
+describe('pitchToLabel', () => {
+  it('giữ đúng dấu hoá như cách viết trong bài', () => {
+    expect(pitchToLabel('Bb4', 'letter')).toBe('B♭4');
+    expect(pitchToLabel('Bb4', 'solfege')).toBe('Si♭4');
+    expect(pitchToLabel('C#5', 'letter')).toBe('C#5');
+    expect(pitchToLabel('C#5', 'solfege')).toBe('Đô#5');
+    expect(pitchToLabel('D4', 'solfege')).toBe('Rê4');
+    // Nốt không dấu hoá trùng với tên theo MIDI.
+    expect(pitchToLabel('A4', 'letter')).toBe(midiToLabel(69, 'letter'));
+    expect(() => pitchToLabel('H4', 'letter')).toThrow();
   });
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { LESSONS } from './library';
 import { parseAccompaniment, parseNotes, splitMeasures } from './notation';
 import { lessonManager } from './LessonManager';
-import { isAccompanimentMidi, measureLength, type Hand, type Lesson } from './types';
+import { fingerText, isAccompanimentMidi, measureLength, sectionAt, type Hand, type Lesson } from './types';
 
 describe('ký hiệu bài học', () => {
   it('phân tích chuỗi nốt với trường độ mặc định', () => {
@@ -20,6 +20,11 @@ describe('ký hiệu bài học', () => {
     ]);
     expect(() => parseNotes('C4:6')).toThrow();
     expect(() => parseNotes('C4/h:')).toThrow();
+    expect(parseNotes('Bb4:(3)')[0]).toMatchObject({ finger: 3, fingerCircled: true });
+    expect(() => parseNotes('C4:(6)')).toThrow();
+    expect(() => parseNotes('C4:(3')).toThrow();
+    expect(fingerText(3)).toBe('3');
+    expect(fingerText(3, true)).toBe('③');
   });
 
   it('báo lỗi với nốt hoặc trường độ sai', () => {
@@ -34,10 +39,11 @@ describe('ký hiệu bài học', () => {
 
   it('phân tích phần đệm: hợp âm, trường độ, số ngón tay', () => {
     expect(parseAccompaniment('A3+D3+F3/hd:1+5+3 | G2:5 C#3')).toEqual([
-      { pitches: ['D3', 'F3', 'A3'], midis: [50, 53, 57], duration: 'hd', fingers: [5, 3, 1] },
-      { pitches: ['G2'], midis: [43], duration: 'q', fingers: [5] },
-      { pitches: ['C#3'], midis: [49], duration: 'q', fingers: [undefined] },
+      { pitches: ['D3', 'F3', 'A3'], midis: [50, 53, 57], duration: 'hd', fingers: [5, 3, 1], fingersCircled: [false, false, false] },
+      { pitches: ['G2'], midis: [43], duration: 'q', fingers: [5], fingersCircled: [false] },
+      { pitches: ['C#3'], midis: [49], duration: 'q', fingers: [undefined], fingersCircled: [false] },
     ]);
+    expect(parseAccompaniment('G2+Bb2/h:5+(3)')[0].fingersCircled).toEqual([false, true]);
     expect(parseAccompaniment('D3+F3/h:+3')[0].fingers).toEqual([undefined, 3]);
     expect(() => parseAccompaniment('D3+F3:1+2+3')).toThrow();
     expect(() => parseAccompaniment('D3:7')).toThrow();
@@ -130,6 +136,23 @@ describe('thư viện bài học', () => {
     expect(Math.max(...accMidis)).toBeLessThan(Math.min(...lesson.notes.map((n) => n.midi)));
     accMidis.forEach((m) => expect(isAccompanimentMidi(lesson, m)).toBe(true));
     lesson.notes.forEach((n) => expect(isAccompanimentMidi(lesson, n.midi)).toBe(false));
+  });
+
+  it('chữ đánh dấu đoạn theo số ô nhịp in trên bản nhạc (ô lấy đà không đánh số)', () => {
+    const sections = [{ measure: 1, label: 'A' }, { measure: 17, label: 'B' }];
+    expect(sectionAt({ sections }, 0)).toBe('A');
+    expect(sectionAt({ sections }, 16)).toBe('B');
+    expect(sectionAt({ sections }, 1)).toBeUndefined();
+    expect(sectionAt({ sections, pickup: 1 }, 1)).toBe('A');
+    expect(sectionAt({}, 0)).toBeUndefined();
+  });
+
+  it.each(LESSONS.filter((l) => l.sections).map((l) => [l.id, l] as const))('%s: chữ đánh dấu đoạn nằm trong bài', (_id, lesson) => {
+    const count = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup).length;
+    for (const s of lesson.sections!) {
+      expect(s.measure).toBeGreaterThanOrEqual(1);
+      expect(s.measure).toBeLessThanOrEqual(lesson.pickup ? count - 1 : count);
+    }
   });
 
   it('bài không có phần đệm không lọc nốt nào', () => {
