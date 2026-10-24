@@ -3,10 +3,15 @@
  * Các bài hát đều là giai điệu dân gian / thuộc phạm vi công cộng (public domain),
  * được chép lại đơn giản hoá cho người mới học, chỉ dùng tay phải hoặc tay trái.
  */
-import { parseNotes } from './notation';
+import { parseAccompaniment, parseNotes } from './notation';
 import type { Lesson } from './types';
 
-type LessonDef = Omit<Lesson, 'notes'> & { notation: string };
+type LessonDef = Omit<Lesson, 'notes' | 'accompaniment'> & { notation: string; accompanimentNotation?: string };
+
+/** Giai điệu tay phải Romance d'Amour bản piano dễ Rê thứ (16 ô nhịp, có số ngón tay). */
+const ROMANCE_MELODY =
+  'A4:5 A4 A4 | A4 G4 F4 | F4 E4 D4 | D4:1 F4:2 A4:3 | D5:5 D5 D5 | D5 C5:4 Bb4:3 | Bb4:3 A4:2 G4:1 | G4 A4 Bb4:3 | ' +
+  'A4 Bb4:3 A4 | C#5:4 Bb4:3 A4:2 | A4:3 G4 F4:1 | F4:3 E4 D4 | E4 E4 E4 | E4 F4 E4 | D4 D4 D4 | D4/hd';
 
 const defs: LessonDef[] = [
   // ── Nhận biết nốt ────────────────────────────────────────────────
@@ -448,33 +453,28 @@ const defs: LessonDef[] = [
     id: 'song-romance-2-hands',
     title: "Romance d'Amour (hai tay)",
     description:
-      'Bản piano dễ (Rê thứ, nhịp 3/4) hai tay đánh xen kẽ. Đoạn A: tay trái bấm nốt trầm của hợp âm ở đầu ô nhịp; ' +
-      'đoạn B: tay trái rải hợp âm, xen từng nốt với tay phải.',
+      'Bản piano dễ (Rê thứ, nhịp 3/4) đúng như bản in: tay phải giai điệu, tay trái đệm hợp âm (đoạn A) và rải hợp âm (đoạn B). ' +
+      'App chấm giai điệu tay phải; tay trái đánh kèm theo khuông Fa.',
     category: 'song',
     clef: 'grand',
     timeSignature: [3, 4],
     keySignature: 'Dm',
     difficulty: 3,
     hand: 'both',
-    tempo: 80,
-    source:
-      'Khuyết danh, nhạc guitar Tây Ban Nha thế kỷ 19 — phạm vi công cộng; phỏng theo bản piano dễ Rê thứ, ' +
-      'hai tay đổi thành xen kẽ (app chỉ nhận một nốt mỗi lúc)',
+    tempo: 100,
+    source: 'Khuyết danh, nhạc guitar Tây Ban Nha thế kỷ 19 — phạm vi công cộng; bản piano dễ Rê thứ',
     notation:
-      // Đoạn A (ô 1–16): hợp âm giữ cả ô → tay trái chỉ bấm nốt trầm (móc đơn), tay phải vào ngay sau.
-      'LH D3/8:5 RH A4/8:5 A4 A4 | LH D3/8:5 RH A4/8 G4 F4 | LH D3/8:5 RH F4/8 E4 D4 | LH D3/8:5 RH D4/8:1 F4:2 A4:3 | ' +
-      'LH D3/8:5 RH D5/8:5 D5 D5 | LH D3/8:5 RH D5/8 C5:4 Bb4:3 | LH G2/8:5 RH Bb4/8:3 A4:2 G4:1 | LH G2/8:5 RH G4/8:1 A4:2 Bb4:3 | ' +
-      'LH A2/8:5 RH A4/8:2 Bb4:3 A4:2 | LH A2/8:5 RH C#5/8:4 Bb4:3 A4:2 | LH D3/8:5 RH A4/8:3 G4:2 F4:1 | LH D3/8:5 RH F4/8:3 E4:2 D4:1 | ' +
-      'LH A2/8:5 RH E4/8 E4 E4 | LH A2/8:5 RH E4/8 F4 E4 | LH D3/8:5 RH D4/8 D4 D4 | LH D3:5 RH D4/h | ' +
-      // Đoạn B (ô 17–32): mỗi phách tay trái một nốt rải hợp âm rồi tay phải một nốt giai điệu.
-      'LH D3/8:5 RH A4/8:5 LH F3/8:3 RH A4/8 LH A3/8:1 RH A4/8 | LH D3/8:5 RH A4/8 LH F3/8:3 RH G4/8 LH A3/8:1 RH F4/8 | ' +
-      'LH D3/8:5 RH F4/8 LH F3/8:3 RH E4/8 LH A3/8:1 RH D4/8 | LH D3/8:5 RH D4/8:1 LH F3/8:3 RH F4/8:2 LH A3/8:1 RH A4/8:3 | ' +
-      'LH D3/8:5 RH D5/8:5 LH F3/8:3 RH D5/8 LH A3/8:1 RH D5/8 | LH D3/8:5 RH D5/8 LH F3/8:3 RH C5/8:4 LH A3/8:1 RH Bb4/8:3 | ' +
-      'LH G2/8:5 RH Bb4/8:3 LH Bb2/8:3 RH A4/8:2 LH D3/8:1 RH G4/8:1 | LH G2/8:5 RH G4/8:1 LH Bb2/8:3 RH A4/8:2 LH D3/8:1 RH Bb4/8:3 | ' +
-      'LH A2/8:5 RH A4/8:2 LH C#3/8:3 RH Bb4/8:3 LH E3/8:1 RH A4/8:2 | LH A2/8:5 RH C#5/8:4 LH C#3/8:3 RH Bb4/8:3 LH E3/8:1 RH A4/8:2 | ' +
-      'LH D3/8:5 RH A4/8:3 LH F3/8:3 RH G4/8:2 LH A3/8:1 RH F4/8:1 | LH D3/8:5 RH F4/8:3 LH F3/8:3 RH E4/8:2 LH A3/8:1 RH D4/8:1 | ' +
-      'LH A2/8:5 RH E4/8 LH C#3/8:3 RH E4/8 LH E3/8:1 RH E4/8 | LH A2/8:5 RH E4/8 LH C#3/8:3 RH F4/8 LH E3/8:1 RH E4/8 | ' +
-      'LH D3/8:5 RH D4/8 LH F3/8:3 RH D4/8 LH A3/8:1 RH D4/8 | LH D3:5 RH D4/h',
+      // Đoạn A (ô 1–16) và đoạn B (ô 17–32): giai điệu tay phải giống nhau.
+      ROMANCE_MELODY + ' | ' + ROMANCE_MELODY,
+    accompanimentNotation:
+      // Đoạn A: hợp âm giữ cả ô nhịp.
+      'D3+F3+A3/hd:5+3+1 | D3+F3+A3/hd | D3+F3+A3/hd | D3+F3+A3/hd | D3+F3+A3/hd | D3+F3+A3/hd | ' +
+      'G2+Bb2+D3/hd:5+3+1 | G2+Bb2+D3/hd | A2+C#3+E3/hd:5+3+1 | A2+C#3+E3/hd | D3+F3+A3/hd:5+3+1 | D3+F3+A3/hd | ' +
+      'A2+C#3+E3/hd | A2+C#3+E3/hd | D3+F3+A3/hd | D3+F3+A3/hd | ' +
+      // Đoạn B: rải hợp âm từng nốt đen.
+      'D3:5 F3:3 A3:1 | D3 F3 A3 | D3 F3 A3 | D3 F3 A3 | D3 F3 A3 | D3 F3 A3 | ' +
+      'G2:5 Bb2:3 D3:1 | G2 Bb2 D3 | A2:5 C#3:3 E3:1 | A2 C#3 E3 | D3 F3 A3 | D3 F3 A3 | ' +
+      'A2 C#3 E3 | A2 C#3 E3 | D3 F3 A3 | D3/hd',
   },
   {
     id: 'song-fur-elise',
@@ -722,4 +722,8 @@ const defs: LessonDef[] = [
   },
 ];
 
-export const LESSONS: Lesson[] = defs.map(({ notation, ...rest }) => ({ ...rest, notes: parseNotes(notation) }));
+export const LESSONS: Lesson[] = defs.map(({ notation, accompanimentNotation, ...rest }) => ({
+  ...rest,
+  notes: parseNotes(notation),
+  ...(accompanimentNotation ? { accompaniment: parseAccompaniment(accompanimentNotation) } : {}),
+}));

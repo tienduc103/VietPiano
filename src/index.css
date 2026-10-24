@@ -133,6 +133,10 @@ body::before {
   font-weight: 700;
   font-family: var(--font-sans);
 }
+.score-finger-lh {
+  font-size: 13px;
+}
+
 .score-finger.is-current {
   fill: var(--score-current);
   font-weight: 800;

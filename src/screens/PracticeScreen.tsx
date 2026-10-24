@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { lessonManager } from '../core/lessons/LessonManager';
-import { DURATION_BEATS, lessonTempo, measureLength, HAND_LABEL, noteHand, type Finger, type Hand, type Lesson } from '../core/lessons/types';
+import { DURATION_BEATS, isAccompanimentMidi, lessonTempo, measureLength, HAND_LABEL, noteHand, type Finger, type Hand, type Lesson } from '../core/lessons/types';
 import { midiToLabel } from '../core/music/notes';
 import { computeAccuracy, PracticeEngine, DEFAULT_PRACTICE_CONFIG, type PracticeState } from '../core/practice/PracticeEngine';
 import { DEFAULT_TEMPO_CONFIG, TempoFollower, type TempoState } from '../core/practice/TempoFollower';
@@ -129,6 +129,8 @@ function Practice({ lesson }: { lesson: Lesson }) {
     const handle = (e: NoteInputEvent) => {
       // Đàn MIDI đã nối thì micro cũng nghe chính tiếng đàn đó → bỏ để một phím không thành hai sự kiện.
       if (e.source === 'microphone' && midiInput.hasDevice()) return;
+      // Bài có phần đệm: nốt tay trái đánh kèm không bị tính là sai.
+      if (isAccompanimentMidi(lesson, e.midi)) return;
       if (tempoModeRef.current) follower.handleOnset(e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time);
       else engine.handleNote(e.midi, e.time);
     };
@@ -140,7 +142,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
       offMidi();
       offVirtual();
     };
-  }, [engine, follower]);
+  }, [engine, follower, lesson]);
 
   // Hiện Đúng/Sai trong chốc lát rồi quay về "Đang chờ".
   const [showFeedback, setShowFeedback] = useState(false);

@@ -10,6 +10,8 @@ import { splitMeasures } from '../lessons/notation';
 import { CLEF_LABEL, HAND_LABEL, measureLength, type Lesson } from '../lessons/types';
 import { midiToLabel, type NoteLabelStyle } from '../music/notes';
 import {
+  accompanimentFingerRows,
+  accompanimentMeasures,
   createMeasureNotes,
   createMeasureStaves,
   drawMeasure,
@@ -49,10 +51,11 @@ function headerWidthFor(lesson: Lesson, withTime: boolean): number {
 /** Vẽ bản nhạc vào `canvas` (tự đặt kích thước). Phải gọi sau khi font Bravura đã nạp. */
 export function renderScoreSheet(canvas: HTMLCanvasElement, lesson: Lesson, opts: ScoreSheetOptions): void {
   const measures = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup);
+  const accMeasures = accompanimentMeasures(lesson);
   const firstHeader = headerWidthFor(lesson, true);
   const otherHeader = headerWidthFor(lesson, false);
   const systems = layoutSystems(
-    measures.map((m) => naturalNoteArea(m.items)),
+    measures.map((m, mi) => naturalNoteArea(m.items, accMeasures?.[mi]?.items)),
     { lineWidth: SHEET_WIDTH - 2 * MARGIN_X, headerWidth: (li) => (li === 0 ? firstHeader : otherHeader) },
   );
 
@@ -93,7 +96,8 @@ export function renderScoreSheet(canvas: HTMLCanvasElement, lesson: Lesson, opts
         { clef: k === 0, time: k === 0 && si === 0 },
         mi === measures.length - 1,
       );
-      const { staves: staffNotes, played } = createMeasureNotes(lesson, measure.items, !(mi === 0 && lesson.pickup));
+      const accItems = accMeasures?.[mi]?.items;
+      const { staves: staffNotes, played, accompaniment } = createMeasureNotes(lesson, measure.items, !(mi === 0 && lesson.pickup), accItems);
       const { voices, beams } = formatMeasure(lesson, staves, staffNotes, noteArea);
       // Phần chữ bên dưới đổi màu tô của canvas → đặt lại màu mực trước mỗi ô nhịp.
       ctx.setFillStyle(INK);
@@ -115,6 +119,12 @@ export function renderScoreSheet(canvas: HTMLCanvasElement, lesson: Lesson, opts
       ctx2d.font = `700 16px ${FONT}`;
       measure.items.forEach((n, ni) => {
         if (n.finger) ctx2d.fillText(String(n.finger), noteCenterX(played[ni]), staves[staffOf(lesson, n)].getYForLine(0) - FINGER_OFFSET);
+      });
+
+      // Số ngón tay phần đệm: chồng dưới khuông Fa.
+      ctx2d.font = `700 13px ${FONT}`;
+      accItems?.forEach((n, ai) => {
+        for (const row of accompanimentFingerRows(n, staveBottom)) ctx2d.fillText(String(row.finger), noteCenterX(accompaniment[ai]), row.y);
       });
 
       if (opts.showNames) {

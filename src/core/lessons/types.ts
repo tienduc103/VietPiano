@@ -41,6 +41,19 @@ export interface LessonNote {
   hand?: Hand;
 }
 
+/**
+ * Một nốt hoặc hợp âm của phần đệm tay trái, vẽ trên khuông Fa CÙNG LÚC với giai điệu.
+ * App không chấm phần đệm (chỉ nhận một nốt mỗi lúc) — người học đánh kèm, app chấm giai điệu tay phải.
+ */
+export interface AccompanimentNote {
+  /** Các nốt của hợp âm, từ thấp lên cao. */
+  pitches: string[];
+  midis: number[];
+  duration: Duration;
+  /** Ngón tay cho từng nốt (cùng thứ tự `pitches`). */
+  fingers: (Finger | undefined)[];
+}
+
 export interface Lesson {
   id: string;
   title: string;
@@ -56,6 +69,8 @@ export interface Lesson {
   difficulty: 1 | 2 | 3;
   hand: LessonHand;
   notes: LessonNote[];
+  /** Phần đệm tay trái đánh cùng lúc với `notes` (chỉ ở bài khuông đôi); có phần đệm thì `notes` là giai điệu tay phải. */
+  accompaniment?: AccompanimentNote[];
   /** Ghi chú nguồn gốc bản nhạc (bản quyền). */
   source?: string;
   /** Nhịp độ gợi ý cho chế độ chạy theo nhịp (nốt đen/phút); mặc định DEFAULT_TEMPO_BPM. */
@@ -65,6 +80,15 @@ export interface Lesson {
 /** Tay chơi một nốt của bài. */
 export function noteHand(lesson: Pick<Lesson, 'hand'>, note: Pick<LessonNote, 'hand'>): Hand {
   return note.hand ?? (lesson.hand === 'left' ? 'left' : 'right');
+}
+
+/**
+ * Nốt thuộc phần đệm (thấp hơn mọi nốt giai điệu) ở bài có phần đệm → bỏ qua, không chấm sai:
+ * đàn MIDI gửi cả nốt hợp âm tay trái, micro có thể nghe ra nốt trầm.
+ */
+export function isAccompanimentMidi(lesson: Pick<Lesson, 'notes' | 'accompaniment'>, midi: number): boolean {
+  if (!lesson.accompaniment?.length) return false;
+  return midi < Math.min(...lesson.notes.map((n) => n.midi));
 }
 
 /** Nhịp độ chậm, vừa sức người mới học. */

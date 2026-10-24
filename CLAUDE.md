@@ -71,6 +71,8 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   2. `PracticeEngine`: mỗi sự kiện tiến tối đa 1 nốt; bỏ qua sự kiện < `minAdvanceIntervalMs` sau lần chuyển nốt.
   Mọi thay đổi ở hai file này phải kèm test mô phỏng chuỗi khung (xem `NoteRecognizer.test.ts`, `PracticeEngine.test.ts`).
 - Chỉ nhận diện **một nốt tại một thời điểm**. Không giả vờ hỗ trợ hợp âm.
+  Bài có `accompaniment` (ký hiệu "D3+F3+A3/hd:5+3+1"): phần đệm tay trái vẽ trên khuông Fa cùng lúc với giai điệu,
+  app chỉ chấm giai điệu tay phải; nốt thấp hơn giai điệu bị bỏ qua (`isAccompanimentMidi`).
 - Không tạo MIDI giả. `MIDIInputProvider` dùng Web MIDI thật (bật ở Cài đặt → `midiEnabled`, tự kết nối khi mở app).
   Safari và mọi trình duyệt trên iPad (WebKit) không có Web MIDI → báo "không hỗ trợ", dùng micro. MIDI trên iPad
   chỉ có qua app native (Core MIDI). Khi đàn MIDI đã nối, màn Luyện tập bỏ nốt từ micro (micro nghe chính tiếng đàn đó).

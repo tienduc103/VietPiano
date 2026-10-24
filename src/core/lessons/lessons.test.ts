@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { LESSONS } from './library';
-import { parseNotes, splitMeasures } from './notation';
+import { parseAccompaniment, parseNotes, splitMeasures } from './notation';
 import { lessonManager } from './LessonManager';
-import { measureLength, type Hand, type Lesson } from './types';
+import { isAccompanimentMidi, measureLength, type Hand, type Lesson } from './types';
 
 describe('ký hiệu bài học', () => {
   it('phân tích chuỗi nốt với trường độ mặc định', () => {
@@ -30,6 +30,17 @@ describe('ký hiệu bài học', () => {
   it('chia ô nhịp và phát hiện nốt vắt vạch nhịp', () => {
     expect(splitMeasures(parseNotes('C4 C4 C4 C4 D4/w'), 4).map((m) => m.items.length)).toEqual([4, 1]);
     expect(() => splitMeasures(parseNotes('C4 C4 C4 D4/h'), 4)).toThrow();
+  });
+
+  it('phân tích phần đệm: hợp âm, trường độ, số ngón tay', () => {
+    expect(parseAccompaniment('A3+D3+F3/hd:1+5+3 | G2:5 C#3')).toEqual([
+      { pitches: ['D3', 'F3', 'A3'], midis: [50, 53, 57], duration: 'hd', fingers: [5, 3, 1] },
+      { pitches: ['G2'], midis: [43], duration: 'q', fingers: [5] },
+      { pitches: ['C#3'], midis: [49], duration: 'q', fingers: [undefined] },
+    ]);
+    expect(parseAccompaniment('D3+F3/h:+3')[0].fingers).toEqual([undefined, 3]);
+    expect(() => parseAccompaniment('D3+F3:1+2+3')).toThrow();
+    expect(() => parseAccompaniment('D3:7')).toThrow();
   });
 
   it('hỗ trợ nhịp 3/8, móc kép và nhịp lấy đà', () => {
@@ -101,6 +112,28 @@ describe('thư viện bài học', () => {
     left.forEach((n) => expect(n.midi).toBeLessThan(60));
     expectFixedPosition(right, 'right');
     expectFixedPosition(left, 'left');
+  });
+
+  const withAccompaniment = LESSONS.filter((l) => l.accompaniment);
+
+  it.each(withAccompaniment.map((l) => [l.id, l] as const))('%s: phần đệm khớp ô nhịp với giai điệu, nằm dưới giai điệu', (_id, lesson) => {
+    expect(lesson.clef).toBe('grand');
+    const full = measureLength(lesson.timeSignature);
+    const melody = splitMeasures(lesson.notes, full, lesson.pickup);
+    const acc = splitMeasures(lesson.accompaniment!, full, lesson.pickup);
+    expect(acc.length).toBe(melody.length);
+    acc.forEach((m, i) => expect(m.beats).toBeCloseTo(i === 0 && lesson.pickup ? lesson.pickup : full, 9));
+    const accMidis = lesson.accompaniment!.flatMap((n) => n.midis);
+    accMidis.forEach((m) => expect(m).toBeGreaterThanOrEqual(36));
+    // Giai điệu là tay phải; mọi nốt đệm thấp hơn giai điệu để lọc được nốt tay trái khi chấm.
+    lesson.notes.forEach((n) => expect(n.hand ?? 'right').toBe('right'));
+    expect(Math.max(...accMidis)).toBeLessThan(Math.min(...lesson.notes.map((n) => n.midi)));
+    accMidis.forEach((m) => expect(isAccompanimentMidi(lesson, m)).toBe(true));
+    lesson.notes.forEach((n) => expect(isAccompanimentMidi(lesson, n.midi)).toBe(false));
+  });
+
+  it('bài không có phần đệm không lọc nốt nào', () => {
+    expect(isAccompanimentMidi(LESSONS[0], 36)).toBe(false);
   });
 
   const kids = LESSONS.filter((l) => l.category === 'kids');

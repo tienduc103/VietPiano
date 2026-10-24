@@ -1,6 +1,7 @@
 /**
  * ScoreRenderer — vẽ bài học thành MỘT dòng khuông nhạc dài bằng VexFlow (SVG).
  * Bài hai tay vẽ trên khuông đôi: nốt tay phải ở khoá Sol, tay trái ở khoá Fa, khuông còn lại hiện dấu lặng.
+ * Bài có phần đệm (`lesson.accompaniment`): khuông Fa vẽ phần đệm (cả hợp âm) cùng lúc với giai điệu.
  *
  * Vẽ một lần cho mỗi bài; việc tô sáng nốt hiện tại/đúng/sai được làm bằng CSS class
  * trên từng nhóm SVG của nốt (mọi nét vẽ dùng `currentColor`), nên chuyển nốt rất nhẹ.
@@ -19,8 +20,8 @@ import {
   Voice,
   type RenderContext,
 } from 'vexflow/bravura';
-import { splitMeasures } from '../lessons/notation';
-import { measureLength, noteHand, type Clef, type Duration, type Lesson, type LessonNote } from '../lessons/types';
+import { splitMeasures, type Measure } from '../lessons/notation';
+import { measureLength, noteHand, type AccompanimentNote, type Clef, type Duration, type Lesson, type LessonNote } from '../lessons/types';
 import { measureAccidentals } from '../music/keySignature';
 import { midiToLabel, type NoteLabelStyle } from '../music/notes';
 
@@ -61,6 +62,9 @@ export const MEASURE_PADDING = 24;
 const LEDGER_STYLE = { strokeStyle: 'currentColor', lineWidth: 2 };
 /** Khoảng cách từ dòng kẻ trên cùng lên đường chân chữ của hàng số ngón tay. */
 export const FINGER_OFFSET = 12;
+/** Số ngón tay phần đệm: chồng dưới khuông Fa, dòng đầu cách dòng kẻ dưới cùng `LH_FINGER_TOP`. */
+export const LH_FINGER_TOP = 16;
+export const LH_FINGER_STEP = 13;
 
 /** "C#4" → "c#/4" (định dạng khoá của VexFlow). */
 function toVexKey(pitch: string): string {
@@ -78,9 +82,25 @@ export function scoreFontsReady(): Promise<unknown> {
   return fontsPromise;
 }
 
-/** Bề rộng tự nhiên của phần nốt trong một ô nhịp (đã gồm khoảng đệm). */
-export function naturalNoteArea(items: readonly LessonNote[]): number {
-  return items.reduce((sum, n) => sum + NOTE_SPACE[n.duration], 0) + MEASURE_PADDING;
+/** Bề rộng tự nhiên của phần nốt trong một ô nhịp (đã gồm khoảng đệm); có phần đệm thì lấy bè dày hơn. */
+export function naturalNoteArea(items: readonly { duration: Duration }[], accompaniment: readonly { duration: Duration }[] = []): number {
+  const area = (xs: readonly { duration: Duration }[]) => xs.reduce((sum, n) => sum + NOTE_SPACE[n.duration], 0);
+  return Math.max(area(items), area(accompaniment)) + MEASURE_PADDING;
+}
+
+/** Các ô nhịp của phần đệm (cùng cách chia với giai điệu); không có phần đệm → undefined. */
+export function accompanimentMeasures(lesson: Lesson): Measure<AccompanimentNote>[] | undefined {
+  if (!lesson.accompaniment?.length) return undefined;
+  return splitMeasures(lesson.accompaniment, measureLength(lesson.timeSignature), lesson.pickup);
+}
+
+/** Toạ độ y (đường chân chữ) của từng số ngón tay phần đệm, nốt cao ở trên như bản in. */
+export function accompanimentFingerRows(note: AccompanimentNote, staveBottom: number): { finger: number; y: number }[] {
+  const rows: { finger: number; y: number }[] = [];
+  [...note.fingers].reverse().forEach((f, i) => {
+    if (f) rows.push({ finger: f, y: staveBottom + LH_FINGER_TOP + i * LH_FINGER_STEP });
+  });
+  return rows;
 }
 
 /** Các khuông của bài (trên xuống dưới): bài hai tay → [Sol, Fa]. */
@@ -106,15 +126,42 @@ export interface MeasureNotes {
   staves: StaveNote[][];
   /** StaveNote của từng nốt bài học trong ô nhịp (cùng thứ tự với `items`). */
   played: StaveNote[];
+  /** StaveNote của từng nốt/hợp âm phần đệm trong ô nhịp. */
+  accompaniment: StaveNote[];
+}
+
+function createAccompanimentNotes(lesson: Lesson, items: readonly AccompanimentNote[]): StaveNote[] {
+  const accidentals = measureAccidentals(items.flatMap((n) => n.pitches), lesson.keySignature);
+  let k = 0;
+  return items.map((n) => {
+    const note = new StaveNote({ keys: n.pitches.map(toVexKey), duration: n.duration, clef: 'bass', autoStem: true });
+    if (n.duration.endsWith('d')) Dot.buildAndAttach([note], { all: true });
+    n.pitches.forEach((_, pi) => {
+      const accidental = accidentals[k++];
+      if (accidental) note.addModifier(new Accidental(accidental), pi);
+    });
+    note.setLedgerLineStyle(LEDGER_STYLE);
+    return note;
+  });
 }
 
 /**
  * Tạo StaveNote cho một ô nhịp: chấm dôi, dấu hoá theo hoá biểu (bất thường, dấu hoàn).
  * Khuông đôi: khi tay kia đang chơi thì khuông này có dấu lặng cùng trường độ; cả ô không chơi → dấu lặng tròn.
  */
-export function createMeasureNotes(lesson: Lesson, items: readonly LessonNote[], fullMeasure = true): MeasureNotes {
+export function createMeasureNotes(
+  lesson: Lesson,
+  items: readonly LessonNote[],
+  fullMeasure = true,
+  accompanimentItems?: readonly AccompanimentNote[],
+): MeasureNotes {
   const played: StaveNote[] = [];
+  let accompaniment: StaveNote[] = [];
   const staves = lessonClefs(lesson).map((clef, si) => {
+    if (si === 1 && accompanimentItems) {
+      accompaniment = createAccompanimentNotes(lesson, accompanimentItems);
+      return accompaniment;
+    }
     const own = items.filter((n) => staffOf(lesson, n) === si);
     if (own.length === 0 && fullMeasure) {
       return [new StaveNote({ keys: [REST_KEY[clef]], duration: 'w', type: 'r', clef, alignCenter: true })];
@@ -132,7 +179,7 @@ export function createMeasureNotes(lesson: Lesson, items: readonly LessonNote[],
       return note;
     });
   });
-  return { staves, played };
+  return { staves, played, accompaniment };
 }
 
 /**
@@ -215,18 +262,20 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
   const ys = clefs.map((_, si) => STAVE_Y + si * GRAND_STAFF_GAP);
   const height = SCORE_HEIGHT + (clefs.length - 1) * GRAND_STAFF_GAP;
   const measures = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup);
+  const accMeasures = accompanimentMeasures(lesson);
 
-  type Built = { staves: Stave[]; voices: Voice[]; played: StaveNote[]; beams: Beam[] };
+  type Built = { staves: Stave[]; voices: Voice[]; played: StaveNote[]; beams: Beam[]; accompaniment: StaveNote[] };
   const built: Built[] = [];
   let x = LEFT_PAD + (clefs.length > 1 ? BRACE_PAD : 0);
 
   measures.forEach((measure, mi) => {
     const first = mi === 0;
-    const noteArea = naturalNoteArea(measure.items);
+    const accItems = accMeasures?.[mi]?.items;
+    const noteArea = naturalNoteArea(measure.items, accItems);
     const { staves, headerWidth } = createMeasureStaves(lesson, x, ys, noteArea, { clef: first, time: first }, mi === measures.length - 1);
-    const { staves: notes, played } = createMeasureNotes(lesson, measure.items, !(first && lesson.pickup));
+    const { staves: notes, played, accompaniment } = createMeasureNotes(lesson, measure.items, !(first && lesson.pickup), accItems);
     const { voices, beams } = formatMeasure(lesson, staves, notes, noteArea);
-    built.push({ staves, voices, played, beams });
+    built.push({ staves, voices, played, beams, accompaniment });
     x += headerWidth + noteArea;
   });
 
@@ -289,6 +338,22 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     svg.appendChild(t);
     return t;
   });
+
+  // Số ngón tay phần đệm: chồng dưới khuông Fa, không tô sáng vì app không chấm phần đệm.
+  if (accMeasures) {
+    const accStaveNotes = built.flatMap((b) => b.accompaniment);
+    accMeasures.flatMap((m) => m.items).forEach((n, i) => {
+      for (const row of accompanimentFingerRows(n, staveBottom)) {
+        const t = document.createElementNS(SVG_NS, 'text');
+        t.setAttribute('x', String(noteCenterX(accStaveNotes[i])));
+        t.setAttribute('y', String(row.y));
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('class', 'score-finger score-finger-lh');
+        t.textContent = String(row.finger);
+        svg.appendChild(t);
+      }
+    });
+  }
 
   return { width, height, noteCenters, noteElements, labelElements, fingerElements, cursor };
 }

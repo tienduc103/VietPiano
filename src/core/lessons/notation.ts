@@ -1,5 +1,5 @@
 import { requireMidi } from '../music/notes';
-import { DURATION_BEATS, type Duration, type Finger, type Hand, type LessonNote } from './types';
+import { DURATION_BEATS, type AccompanimentNote, type Duration, type Finger, type Hand, type LessonNote } from './types';
 
 /**
  * Phân tích chuỗi ký hiệu gọn: "C4 D4 E4/h | G4/qd A4/8".
@@ -29,6 +29,35 @@ export function parseNotes(source: string): LessonNote[] {
     notes.push(note);
   }
   return notes;
+}
+
+/**
+ * Phân tích phần đệm: "D3+F3+A3/hd:5+3+1 | G2:5 Bb2:3 D3:1".
+ * Các nốt hợp âm nối bằng "+", ngón tay ghi theo đúng thứ tự đó ("+" để trống = không ghi ngón).
+ */
+export function parseAccompaniment(source: string): AccompanimentNote[] {
+  const result: AccompanimentNote[] = [];
+  for (const tok of source.split(/\s+/)) {
+    if (!tok || tok === '|') continue;
+    const [main, fingerPart] = tok.split(':');
+    const [chord, dur = 'q'] = main.split('/');
+    if (!(dur in DURATION_BEATS)) throw new Error(`Trường độ không hợp lệ: "${tok}"`);
+    const fingerToks = fingerPart === undefined ? [] : fingerPart.split('+');
+    const notes = chord.split('+').map((pitch, i) => {
+      const f = fingerToks[i];
+      if (f && !/^[1-5]$/.test(f)) throw new Error(`Số ngón tay không hợp lệ: "${tok}"`);
+      return { pitch, midi: requireMidi(pitch), finger: f ? (Number(f) as Finger) : undefined };
+    });
+    if (fingerToks.length > notes.length) throw new Error(`Thừa số ngón tay: "${tok}"`);
+    notes.sort((a, b) => a.midi - b.midi);
+    result.push({
+      pitches: notes.map((n) => n.pitch),
+      midis: notes.map((n) => n.midi),
+      duration: dur as Duration,
+      fingers: notes.map((n) => n.finger),
+    });
+  }
+  return result;
 }
 
 export interface Measure<T> {
