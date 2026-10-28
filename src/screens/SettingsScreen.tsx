@@ -18,6 +18,7 @@ import { AutoCalibration } from '../components/AutoCalibration';
 import { MidiSettings } from '../components/MidiPanel';
 import { CalibrationCheckView } from '../components/CalibrationCheckView';
 import { AppVersion } from '../components/AppVersion';
+import { listModels, normalizeOllamaUrl, OllamaError } from '../core/feedback/OllamaClient';
 
 const CALIBRATION_MS = 2500;
 
@@ -181,6 +182,8 @@ export function SettingsScreen() {
             </div>
           </Card>
 
+          <AiCoachSettings />
+
           <Card>
             <h2 className="text-xl font-semibold">Hiển thị</h2>
             <div className="mt-2 divide-y divide-slate-200 dark:divide-slate-700">
@@ -226,6 +229,107 @@ export function SettingsScreen() {
         <AppVersion className="mt-8" />
       </div>
     </div>
+  );
+}
+
+function AiCoachSettings() {
+  const { aiCoachEnabled, ollamaUrl, ollamaModel } = useSettings((s) => s.settings);
+  const update = useSettings((s) => s.update);
+  const [url, setUrl] = useState(ollamaUrl);
+  const [models, setModels] = useState<string[] | null>(null);
+  const [check, setCheck] = useState<{ ok: boolean; text: string } | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  const saveUrl = () => {
+    const u = normalizeOllamaUrl(url);
+    if (u) update({ ollamaUrl: u });
+    setUrl(u ?? ollamaUrl);
+  };
+
+  const testConnection = async () => {
+    const u = normalizeOllamaUrl(url) ?? ollamaUrl;
+    setChecking(true);
+    try {
+      const list = await listModels(u);
+      setModels(list);
+      if (list.length === 0) setCheck({ ok: false, text: 'Kết nối được nhưng chưa có model nào. Chạy "ollama pull gemma4:12b".' });
+      else {
+        const has = list.includes(ollamaModel);
+        setCheck({ ok: has, text: has ? `Kết nối tốt — ${list.length} model.` : `Kết nối tốt, nhưng chưa có model "${ollamaModel}" — chọn một model bên dưới.` });
+      }
+    } catch (e) {
+      setModels(null);
+      setCheck({
+        ok: false,
+        text:
+          e instanceof OllamaError && e.kind === 'http'
+            ? `Ollama báo lỗi: ${e.message}`
+            : `Không kết nối được ${u}. Kiểm tra Ollama đang chạy; mở app từ tên miền khác localhost thì cần đặt OLLAMA_ORIGINS.`,
+      });
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const inputClass = 'min-h-12 rounded-xl bg-white px-3 ring-1 ring-violet-200 dark:bg-slate-900 dark:ring-violet-800';
+
+  return (
+    <Card>
+      <h2 className="text-xl font-semibold">Nhận xét bằng AI (Ollama trên máy này)</h2>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        Sau mỗi bài, AI chạy cục bộ bằng Ollama viết vài câu nhận xét từ điểm và lỗi của bài. Chỉ gửi số liệu dạng chữ tới
+        địa chỉ bên dưới, không gửi âm thanh. Dùng trên Chrome máy tính có cài Ollama; không bật thì app chạy như cũ.
+      </p>
+      <div className="mt-2 divide-y divide-slate-200 dark:divide-slate-700">
+        <Toggle label="Bật nhận xét bằng AI sau mỗi bài" checked={aiCoachEnabled} onChange={(v) => update({ aiCoachEnabled: v })} />
+        <Row label="Địa chỉ Ollama">
+          <input
+            className={`${inputClass} w-64`}
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onBlur={saveUrl}
+            onKeyDown={(e) => e.key === 'Enter' && saveUrl()}
+            spellCheck={false}
+            aria-label="Địa chỉ Ollama"
+            data-testid="ollama-url"
+          />
+        </Row>
+        <Row label="Model">
+          {models && models.length > 0 ? (
+            <select className={inputClass} value={models.includes(ollamaModel) ? ollamaModel : ''} onChange={(e) => update({ ollamaModel: e.target.value })} aria-label="Model">
+              {!models.includes(ollamaModel) && <option value="">— chọn model —</option>}
+              {models.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              className={`${inputClass} w-64`}
+              defaultValue={ollamaModel}
+              onBlur={(e) => e.target.value.trim() && update({ ollamaModel: e.target.value.trim() })}
+              spellCheck={false}
+              aria-label="Model"
+              data-testid="ollama-model"
+            />
+          )}
+        </Row>
+        <div className="flex min-h-14 flex-wrap items-center gap-4 py-2">
+          <Button onClick={() => void testConnection()} disabled={checking} data-testid="ollama-test">
+            {checking ? 'Đang kiểm tra…' : 'Kiểm tra kết nối'}
+          </Button>
+          {check && (
+            <span className={`text-sm ${check.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-300'}`} role="status">
+              {check.text}
+            </span>
+          )}
+        </div>
+      </div>
+      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+        Gợi ý: gemma4:12b (nhanh, ~6 giây), qwen3.8:27b (kỹ hơn, ~10 giây). Model nhỏ hay bịa lời khuyên. Tải bằng lệnh "ollama pull &lt;tên model&gt;".
+      </p>
+    </Card>
   );
 }
 

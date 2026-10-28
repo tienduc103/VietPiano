@@ -21,6 +21,9 @@ import { useApp } from '../store/appStore';
 import { useMic } from '../store/micStore';
 import { useWakeLock } from '../hooks/useAppLifecycle';
 import { useSessionRecorder } from '../hooks/useSessionRecorder';
+import { useUiMode } from '../hooks/useUiMode';
+import { AiCoachCard } from '../components/AiCoachCard';
+import { practiceReport } from '../core/feedback/coachPrompt';
 
 const FEEDBACK_MS = 900;
 /**
@@ -348,6 +351,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
       )}
       {!tempoMode && state.status === 'finished' && (
         <FinishDialog
+          title={lesson.title}
           state={state}
           onRetry={restart}
           onNext={nextLesson ? () => openLesson(nextLesson.id) : undefined}
@@ -573,16 +577,20 @@ function TempoFinishDialog({
 }
 
 function FinishDialog({
+  title,
   state,
   onRetry,
   onNext,
   onLibrary,
 }: {
+  title: string;
   state: PracticeState;
   onRetry: () => void;
   onNext?: () => void;
   onLibrary: () => void;
 }) {
+  const labelStyle = useSettings((s) => s.settings.labelStyle);
+  const uiMode = useUiMode();
   const accuracy = Math.round(computeAccuracy(state) * 100);
   const elapsed = state.finishedAt !== null && state.startedAt !== null ? state.finishedAt - state.startedAt : 0;
   const stars = accuracy >= 95 ? 3 : accuracy >= 80 ? 2 : 1;
@@ -600,6 +608,9 @@ function FinishDialog({
           <Stat label="Đúng" value={String(state.correct)} />
           <Stat label="Sai / Bỏ qua" value={`${state.wrong} / ${state.skipped}`} />
         </dl>
+        <div className="mt-4 text-left">
+          <AiCoachCard report={practiceReport(title, state, labelStyle)} mode={uiMode} />
+        </div>
         <div className="mt-8 flex flex-col gap-2">
           {onNext && (
             <Button variant="primary" onClick={onNext}>

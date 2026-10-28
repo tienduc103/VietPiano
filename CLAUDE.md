@@ -1,7 +1,7 @@
 # VietPiano — hướng dẫn cho Claude Code
 
 PWA học piano trên iPad (Safari): nghe tiếng đàn qua micro, nhận diện nốt đơn, Wait Mode tự chuyển nốt khi đánh đúng.
-Không backend, không gửi âm thanh lên mạng, chạy offline.
+Không backend, không gửi âm thanh lên mạng, chạy offline. Tuỳ chọn: nhận xét bằng AI cục bộ (Ollama trên máy người dùng).
 
 ## Lệnh
 
@@ -53,6 +53,9 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   storage/CurriculumStorage.ts  IndexedDB riêng "vietpiano-curriculum": tiến độ giáo trình theo hồ sơ, ghi ngay sau mỗi bài tập
   audio/SoundOutput.ts     tiếng đàn mẫu + click metronome (WebAudio tổng hợp, offline); micro bỏ nốt trong lúc phát mẫu
   settings/DeviceSettings.ts  cài đặt micro/hiển thị ở localStorage
+  feedback/OllamaClient.ts   gọi Ollama cục bộ (`/api/tags`, `/api/chat` stream NDJSON, Content-Type text/plain → không preflight CORS)
+  feedback/coachPrompt.ts    báo cáo bài (`lessonReport` giáo trình / `practiceReport` màn Luyện tập) → prompt tiếng Việt;
+                             UI: `components/AiCoachCard` ở màn kết quả buổi học + hộp thoại hoàn thành bài
   calibration/AutoCalibrator.ts  tự căn chỉnh: đo im lặng → hiện nốt đo → nghe khung cao độ thô → đề xuất cài đặt
   calibration/CalibrationCheck.ts  kiểm tra sau căn chỉnh: đồng hồ nhịp dừng chờ từng nốt; ghi nghe sai / nghe thừa (âm ngân)
   profile/LearnerProfile.ts  hồ sơ người học (tuổi, trình độ, mục tiêu) ở localStorage; phiên cũ không profileId → hồ sơ tạo sớm nhất
@@ -94,7 +97,12 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   chỉ có qua app native (Core MIDI). Khi đàn MIDI đã nối, màn Luyện tập bỏ nốt từ micro (micro nghe chính tiếng đàn đó).
 - Micro: chỉ một stream (`microphoneInput` singleton), tắt AGC/khử ồn/khử vọng, phải `stop()` để giải phóng track +
   đóng AudioContext. Khi app vào nền → tắt micro, người dùng bấm để bật lại (Safari cần user gesture).
-- Không gửi âm thanh hay dữ liệu ra ngoài; không thêm backend/AI API.
+- Không gửi âm thanh hay dữ liệu ra ngoài; không thêm backend hay AI API trên mạng (dịch vụ đám mây).
+  Ngoại lệ duy nhất: **AI cục bộ qua Ollama** (`aiCoachEnabled`, mặc định TẮT; `ollamaUrl` mặc định `http://localhost:11434`).
+  Chỉ gửi số liệu tóm tắt dạng chữ (điểm, tiêu chí, lỗi, tên/tuổi/trình độ hồ sơ), KHÔNG gửi âm thanh.
+  App phải chạy đầy đủ khi tắt hoặc không có Ollama; lỗi kết nối chỉ hiện trong thẻ nhận xét, không chặn luồng học.
+  Hiện chỉ hỗ trợ Chrome trên máy Windows cài Ollama (iPad cần proxy HTTPS — chưa làm). Prompt yêu cầu model chỉ dựa
+  vào số liệu được cung cấp; e2e giả lập Ollama bằng `page.route` (`e2e/ai-coach.spec.ts`).
 - Bài hát mới phải là giai điệu tự biên soạn hoặc thuộc phạm vi công cộng; ghi `source`.
   Test `lessons.test.ts` kiểm tra mọi ô nhịp đủ phách và nốt nằm trong tầm micro (MIDI 36–84).
 - VexFlow dùng entry `vexflow/bravura` (font nhúng → offline). Màu khuông nhạc qua `currentColor` + CSS

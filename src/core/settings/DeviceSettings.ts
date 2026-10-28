@@ -5,6 +5,7 @@
 import type { NoteLabelStyle } from '../music/notes';
 import { DEFAULT_RECOGNIZER_CONFIG } from '../audio/NoteRecognizer';
 import { sanitizePosition, type FloatingPosition } from './floatingPosition';
+import { DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_URL, normalizeOllamaUrl } from '../feedback/OllamaClient';
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
 /** wait = chờ đánh đúng mới chuyển; count = mỗi nốt nghe thấy chuyển một nốt; tempo = chạy theo nhịp. */
@@ -44,6 +45,10 @@ export interface DeviceSettings {
   inputSource: InputSourceSetting;
   /** Tiếng metronome khi dùng micro (mặc định tắt: micro có thể nghe nhầm tiếng click — dùng tai nghe thì bật). */
   metronomeWithMic: boolean;
+  /** Nhận xét sau mỗi bài bằng AI cục bộ (Ollama trên máy này). Mặc định tắt. */
+  aiCoachEnabled: boolean;
+  ollamaUrl: string;
+  ollamaModel: string;
 }
 
 export const DEFAULT_SETTINGS: DeviceSettings = {
@@ -65,6 +70,9 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
   uiMode: 'auto',
   inputSource: 'auto',
   metronomeWithMic: false,
+  aiCoachEnabled: false,
+  ollamaUrl: DEFAULT_OLLAMA_URL,
+  ollamaModel: DEFAULT_OLLAMA_MODEL,
 };
 
 export const TEMPO_PERCENT_MIN = 40;
@@ -138,6 +146,9 @@ function sanitize(s: DeviceSettings): DeviceSettings {
     uiMode: s.uiMode === 'kids' || s.uiMode === 'adult' ? s.uiMode : 'auto',
     inputSource: s.inputSource === 'microphone' || s.inputSource === 'midi' ? s.inputSource : 'auto',
     metronomeWithMic: s.metronomeWithMic === true,
+    aiCoachEnabled: s.aiCoachEnabled === true,
+    ollamaUrl: (typeof s.ollamaUrl === 'string' && normalizeOllamaUrl(s.ollamaUrl)) || DEFAULT_OLLAMA_URL,
+    ollamaModel: typeof s.ollamaModel === 'string' && s.ollamaModel.trim() ? s.ollamaModel.trim().slice(0, 100) : DEFAULT_OLLAMA_MODEL,
   };
 }
 

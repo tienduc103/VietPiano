@@ -71,6 +71,14 @@ describe('DeviceSettings', () => {
     expect(loadSettings(st)).toMatchObject({ uiMode: 'auto', inputSource: 'auto', metronomeWithMic: false });
   });
 
+  it('AI cục bộ: mặc định tắt; địa chỉ hỏng → mặc định, địa chỉ được chuẩn hoá', () => {
+    const st = memoryStorage();
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ aiCoachEnabled: 'yes', ollamaUrl: 'ftp://x', ollamaModel: '  ' }));
+    expect(loadSettings(st)).toMatchObject({ aiCoachEnabled: false, ollamaUrl: 'http://localhost:11434', ollamaModel: 'gemma4:12b' });
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ aiCoachEnabled: true, ollamaUrl: '127.0.0.1:11434/', ollamaModel: ' gemma2:9b ' }));
+    expect(loadSettings(st)).toMatchObject({ aiCoachEnabled: true, ollamaUrl: 'http://127.0.0.1:11434', ollamaModel: 'gemma2:9b' });
+  });
+
   it('ánh xạ độ nhạy ↔ noise gate hai chiều', () => {
     expect(sensitivityToNoiseGate(0)).toBeCloseTo(0.05);
     expect(sensitivityToNoiseGate(100)).toBeCloseTo(0.0005);

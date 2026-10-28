@@ -15,6 +15,8 @@ import { InputSourceBar, IllustrationView } from '../components/curriculum/commo
 import { ExerciseView } from '../components/curriculum/ExerciseView';
 import { ReviewSession } from '../components/curriculum/ReviewSession';
 import { GameStage } from '../components/games/GameStage';
+import { AiCoachCard } from '../components/AiCoachCard';
+import { lessonReport } from '../core/feedback/coachPrompt';
 
 /** Thời gian một bước tối đa được tính là luyện tập (bỏ đi giữa chừng thì không cộng cả buổi chiều). */
 const MAX_STEP_MS = 15 * 60_000;
@@ -493,6 +495,8 @@ function LessonResult({
           </p>
         ))}
       </div>
+
+      {done.length > 0 && <AiCoachCard report={lessonReport(lesson, scores, labelStyle)} mode={mode} />}
 
       <ul className="grid gap-2">
         {list.map(({ e, s }) => (
