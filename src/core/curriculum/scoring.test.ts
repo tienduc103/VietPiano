@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { PerformanceResult } from '../practice/PerformanceTracker';
 import { IndexedDbCurriculumStorage, MemoryCurriculumStorage } from '../storage/CurriculumStorage';
 import { CURRICULUM } from './content/curriculum';
-import { addPracticeTime, applyExerciseScore, applyLessonRun, emptyRecord, markActivitiesDone, sanitizeRecord, topMistakes } from './progress';
+import { addPracticeTime, applyAiNote, applyExerciseScore, applyLessonRun, emptyRecord, markActivitiesDone, MAX_AI_NOTES, sanitizeRecord, topMistakes } from './progress';
 import { checkPass, EXTRA_KEY, formatMistake, missedNoteKey, questionKey, scoreLesson, scorePerformance, scoreQuiz, scoreRhythm, scoreWait, starsFor, weightedScore, wrongNoteKey } from './scoring';
 import type { CurriculumLesson, Exercise } from './types';
 import { achievements, currentLevel, lessonStatus, levelProgress, missingPrerequisites, nextLessonAfter } from './unlock';
@@ -152,6 +152,23 @@ describe('tiến độ (lưu ngay sau mỗi bài tập)', () => {
   it('buổi chỉ có giới thiệu đạt khi đánh dấu xem xong', () => {
     const intro = { ...lesson, exercises: [] };
     expect(markActivitiesDone(emptyRecord('p', intro), intro, 9)).toMatchObject({ passed: true, activitiesDone: true, passedAt: 9 });
+  });
+
+  it('nhận xét AI: lưu theo lần làm, "Viết lại" ghi đè cùng lần, giữ tối đa MAX_AI_NOTES bản mới nhất', () => {
+    let rec = emptyRecord('p', lesson);
+    rec = applyAiNote(rec, { at: 1, score: 70, text: ' Lần đầu ', model: 'm' });
+    rec = applyAiNote(rec, { at: 2, score: 85, text: 'Lần hai', model: 'm' });
+    rec = applyAiNote(rec, { at: 1, score: 70, text: 'Lần đầu (viết lại)', model: 'm' });
+    expect(rec.aiNotes.map((n) => n.text)).toEqual(['Lần đầu (viết lại)', 'Lần hai']);
+    expect(applyAiNote(rec, { at: 3, score: 0, text: '  ', model: 'm' })).toBe(rec);
+    for (let i = 10; i < 30; i++) rec = applyAiNote(rec, { at: i, score: i, text: `n${i}`, model: 'm' });
+    expect(rec.aiNotes).toHaveLength(MAX_AI_NOTES);
+    expect(rec.aiNotes.at(-1)?.text).toBe('n29');
+    // Bản ghi cũ không có aiNotes / dữ liệu hỏng → bỏ qua phần hỏng.
+    expect(sanitizeRecord({ profileKey: 'p', lessonId: 'x' })?.aiNotes).toEqual([]);
+    expect(
+      sanitizeRecord({ profileKey: 'p', lessonId: 'x', aiNotes: [{ at: 5, score: 80, text: 'ok' }, { at: 'x', text: 'hỏng' }, null, { at: 1, score: 1, text: '' }] })?.aiNotes,
+    ).toEqual([{ at: 5, score: 80, text: 'ok', model: '' }]);
   });
 
   it('đọc bản ghi hỏng an toàn', () => {

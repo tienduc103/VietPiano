@@ -2,12 +2,14 @@ import { create } from 'zustand';
 import {
   addPracticeTime,
   applyExerciseScore,
+  applyAiNote,
   applyGameResult,
   applyLessonRun,
   applyReview,
   emptyRecord,
   GUEST_PROFILE,
   markActivitiesDone,
+  type AiNote,
   type LessonRecord,
 } from '../core/curriculum/progress';
 import type { ExerciseScore } from '../core/curriculum/scoring';
@@ -28,6 +30,7 @@ interface CurriculumStore {
   addTime: (lesson: CurriculumLesson, ms: number) => Promise<void>;
   recordReview: (lesson: CurriculumLesson, practiceMs: number) => Promise<void>;
   recordGame: (lesson: CurriculumLesson, game: { score: number; stars: number }, practiceMs: number) => Promise<void>;
+  recordAiNote: (lesson: CurriculumLesson, note: AiNote) => Promise<void>;
   clear: () => Promise<void>;
 }
 
@@ -81,6 +84,9 @@ export const useCurriculum = create<CurriculumStore>((set, get) => {
     },
     recordGame: async (lesson, game, practiceMs) => {
       await update(lesson, (r) => applyGameResult(r, game, Math.round(practiceMs), Date.now()));
+    },
+    recordAiNote: async (lesson, note) => {
+      await update(lesson, (r) => applyAiNote(r, note));
     },
     clear: async () => {
       await curriculumStorage.clear(get().profileKey);

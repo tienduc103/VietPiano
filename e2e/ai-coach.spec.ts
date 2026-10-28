@@ -54,3 +54,44 @@ test('nhận xét bằng AI: mặc định tắt, không gọi Ollama', async ({
   await expect(page.getByTestId('ai-coach')).toHaveCount(0);
   expect(called).toBe(false);
 });
+
+test('nhận xét AI của buổi học được lưu vào lịch sử buổi, còn sau khi tải lại', async ({ page }) => {
+  await page.addInitScript(() => {
+    const key = 'vietpiano.settings.v1';
+    const s = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<string, unknown>;
+    localStorage.setItem(key, JSON.stringify({ ...s, aiCoachEnabled: true }));
+  });
+  await page.route('http://localhost:11434/api/chat', (route) =>
+    route.fulfill({
+      contentType: 'application/x-ndjson',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: { content: 'Nhóm 2 phím đen còn nhầm, tập thêm nhé.' } }) + '\n',
+    }),
+  );
+
+  await page.goto('/');
+  await page.getByTestId('continue-learning').click();
+  await page.getByTestId('start-lesson').click();
+  for (let i = 0; i < 3; i++) await page.getByTestId('intro-next').click();
+  const press = async (midi: number) => {
+    await page.locator(`[data-testid="key-quiz"] [data-midi="${midi}"]`).click();
+    await page.waitForTimeout(320);
+  };
+  for (const m of [61, 60, 61, 66]) await press(m);
+  await page.getByTestId('exercise-next').click();
+  for (const m of [61, 66, 60, 68, 63]) await press(m);
+  await page.getByTestId('exercise-next').click();
+
+  await expect(page.getByTestId('lesson-score')).toHaveText('80/100');
+  await expect(page.getByTestId('ai-coach-text')).toHaveText('Nhóm 2 phím đen còn nhầm, tập thêm nhé.');
+  await page.getByRole('button', { name: 'Viết lại nhận xét' }).click();
+  await expect(page.getByTestId('ai-coach-text')).toHaveText('Nhóm 2 phím đen còn nhầm, tập thêm nhé.');
+
+  // Tải lại: lịch sử đọc từ IndexedDB; "Viết lại" ghi đè cùng lần làm, không thêm bản mới.
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('cur-lesson-l1-01-keyboard').click();
+  const history = page.getByTestId('ai-note-history');
+  await expect(history).toContainText('80/100');
+  await expect(history.getByTestId('ai-note-text')).toHaveCount(1);
+  await expect(history.getByTestId('ai-note-text')).toHaveText('Nhóm 2 phím đen còn nhầm, tập thêm nhé.');
+});

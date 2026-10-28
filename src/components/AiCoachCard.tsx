@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildCoachMessages, type CoachReport } from '../core/feedback/coachPrompt';
 import { OllamaError, streamChat } from '../core/feedback/OllamaClient';
 import type { UiMode } from '../core/curriculum/types';
@@ -11,14 +11,17 @@ type Status = 'loading' | 'done' | 'error';
 /**
  * Nhận xét của "thầy AI" (Ollama cục bộ) sau mỗi bài. Chỉ hiện khi bật ở Cài đặt;
  * tự viết khi mở, chữ hiện dần theo stream. Lỗi không chặn luồng học.
+ * `onDone` nhận nhận xét đã viết xong (mỗi lần viết / viết lại) để lưu vào lịch sử.
  */
-export function AiCoachCard({ report, mode }: { report: CoachReport; mode: UiMode }) {
+export function AiCoachCard({ report, mode, onDone }: { report: CoachReport; mode: UiMode; onDone?: (text: string, model: string) => void }) {
   const { aiCoachEnabled, ollamaUrl, ollamaModel } = useSettings((s) => s.settings);
   const profile = useProfiles(activeProfile);
   const [run, setRun] = useState(0);
   const [textOut, setTextOut] = useState('');
   const [status, setStatus] = useState<Status>('loading');
   const [error, setError] = useState<OllamaError | null>(null);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
 
   // Báo cáo mới tạo mỗi lần render → so theo nội dung để không gọi lại AI vô ích.
   const reportKey = JSON.stringify(report);
@@ -34,7 +37,10 @@ export function AiCoachCard({ report, mode }: { report: CoachReport; mode: UiMod
     setError(null);
     setStatus('loading');
     streamChat({ baseUrl: ollamaUrl, model: ollamaModel, messages, signal: ctrl.signal, onToken: (t) => setTextOut((s) => s + t) })
-      .then(() => setStatus('done'))
+      .then((full) => {
+        setStatus('done');
+        if (full.trim()) onDoneRef.current?.(full, ollamaModel);
+      })
       .catch((e: unknown) => {
         if (e instanceof OllamaError && e.kind === 'aborted') return;
         setError(e instanceof OllamaError ? e : new OllamaError(String(e), 'http'));

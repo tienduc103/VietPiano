@@ -55,7 +55,9 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   settings/DeviceSettings.ts  cài đặt micro/hiển thị ở localStorage
   feedback/OllamaClient.ts   gọi Ollama cục bộ (`/api/tags`, `/api/chat` stream NDJSON, Content-Type text/plain → không preflight CORS)
   feedback/coachPrompt.ts    báo cáo bài (`lessonReport` giáo trình / `practiceReport` màn Luyện tập) → prompt tiếng Việt;
-                             UI: `components/AiCoachCard` ở màn kết quả buổi học + hộp thoại hoàn thành bài
+                             UI: `components/AiCoachCard` ở màn kết quả buổi học + hộp thoại hoàn thành bài.
+                             Nhận xét của buổi giáo trình lưu ở `LessonRecord.aiNotes` (khoá `at` = lần làm, "Viết lại" ghi đè,
+                             tối đa `MAX_AI_NOTES`), hiện ở màn tổng quan buổi; nhận xét ở màn Luyện tập không lưu
   calibration/AutoCalibrator.ts  tự căn chỉnh: đo im lặng → hiện nốt đo → nghe khung cao độ thô → đề xuất cài đặt
   calibration/CalibrationCheck.ts  kiểm tra sau căn chỉnh: đồng hồ nhịp dừng chờ từng nốt; ghi nghe sai / nghe thừa (âm ngân)
   profile/LearnerProfile.ts  hồ sơ người học (tuổi, trình độ, mục tiêu) ở localStorage; phiên cũ không profileId → hồ sơ tạo sớm nhất
