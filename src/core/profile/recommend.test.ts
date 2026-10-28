@@ -37,6 +37,14 @@ describe('recommendLessons', () => {
     expect(recs.some((r) => r.lesson.difficulty === 3)).toBe(false);
   });
 
+  it('bài tiếp theo của nhóm: người mới bắt đầu từ bài đầu; đã tập bài sau thì không quay lại bài trước', () => {
+    const p = newProfile({ name: 'An', age: 30 }, 0);
+    const next = (sessions: PracticeSession[]) =>
+      recommend(p, sessions).find((r) => r.reason === 'Bài tiếp theo của nhóm' && r.lesson.category === 'notes')?.lesson.id;
+    expect(next([])).toBe('notes-middle-c');
+    expect(next([s('notes-seven')])).toBe('notes-lines');
+  });
+
   it('mục tiêu đọc nốt đưa bài nhận biết nốt lên đầu', () => {
     const recs = recommend(newProfile({ name: 'An', age: 20, goals: ['reading'] }, 0));
     expect(recs[0].lesson.category).toBe('notes');

@@ -39,11 +39,17 @@ export function recommendLessons(profile: LearnerProfile, assessment: Assessment
   const isPassed = (p?: LessonProgress) => !!p && p.completions > 0 && p.bestAccuracy >= PASS_ACCURACY;
   const isMastered = (p?: LessonProgress) => !!p && p.completions > 0 && p.bestAccuracy >= MASTERED_ACCURACY;
 
-  // Bài đầu tiên chưa qua trong mỗi nhóm = "bài tiếp theo" theo thứ tự thư viện.
+  // "Bài tiếp theo" của mỗi nhóm = bài đầu tiên chưa qua theo thứ tự thư viện, tính từ bài xa nhất đã tập
+  // trong nhóm (người học đã bỏ qua các bài dễ phía trước thì không gợi ý quay lại).
+  const furthest = new Map<LessonCategory, number>();
+  lessons.forEach((l, i) => {
+    if ((progress[l.id]?.sessions ?? 0) > 0) furthest.set(l.category, i);
+  });
   const nextInCategory = new Map<LessonCategory, string>();
-  for (const l of lessons) {
+  lessons.forEach((l, i) => {
+    if (i < (furthest.get(l.category) ?? 0)) return;
     if (!nextInCategory.has(l.category) && !isPassed(progress[l.id])) nextInCategory.set(l.category, l.id);
-  }
+  });
 
   const scored: Recommendation[] = [];
   for (const lesson of lessons) {

@@ -38,6 +38,7 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   practice/TempoFollower.ts   chế độ chạy theo nhịp: đồng hồ nhịp tự chạy, khớp pha + nhịp độ theo onset, KHÔNG xét cao độ
   practice/NoteStats.ts       thống kê từng nốt trong phiên (suy từ PracticeState): tốc độ đọc nốt, đúng/sai + nốt nhầm
   lessons/                 kiểu dữ liệu, ký hiệu gọn "C4 D4/h", thư viện bài, LessonManager
+  lessons/courses.ts       khoá học = chuỗi bài theo thứ tự + mẹo; tiến độ suy từ tiến độ bài (qua = PASS_ACCURACY); `next()` đi theo khoá
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt
   storage/ProgressStorage.ts  IndexedDB (phiên + tổng hợp theo bài), fallback bộ nhớ; bài gần đây ở localStorage
   settings/DeviceSettings.ts  cài đặt micro/hiển thị ở localStorage

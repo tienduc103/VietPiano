@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { lessonManager } from '../core/lessons/LessonManager';
+import { COURSES, courseProgress, type Course } from '../core/lessons/courses';
 import { CLEF_LABEL, HAND_LABEL, type Lesson } from '../core/lessons/types';
 import { computeTotals, type LessonProgress } from '../core/storage/ProgressStorage';
 import { useApp } from '../store/appStore';
@@ -85,6 +86,10 @@ export function LibraryScreen() {
           </section>
         )}
 
+        {COURSES.map((c) => (
+          <CourseSection key={c.id} course={c} progress={progress} onOpen={openLesson} />
+        ))}
+
         {groups.map((g, gi) => (
           <section key={g.category} className="mt-8">
             <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
@@ -137,6 +142,82 @@ function Summary({ label, value, tone }: { label: string; value: string; tone: k
     <section className={`rounded-2xl px-5 py-4 shadow-sm ring-1 ${SUMMARY_TONES[tone]}`}>
       <div className="text-sm font-medium opacity-75">{label}</div>
       <div className="mt-1 text-2xl font-bold tabular-nums">{value}</div>
+    </section>
+  );
+}
+
+/** Khoá học: các bước theo thứ tự, đánh dấu bước đã qua và bước nên học tiếp. */
+function CourseSection({
+  course,
+  progress,
+  onOpen,
+}: {
+  course: Course;
+  progress: Record<string, LessonProgress | undefined>;
+  onOpen: (lessonId: string) => void;
+}) {
+  const { passed, passedCount, nextIndex } = courseProgress(course, progress);
+  const total = course.steps.length;
+  return (
+    <section className="mt-8 rounded-3xl bg-gradient-to-br from-violet-50 to-fuchsia-50 p-5 ring-1 ring-violet-100 dark:from-slate-800 dark:to-slate-800/60 dark:ring-violet-900" data-testid={course.id}>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-semibold">{course.title}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{course.description}</p>
+        </div>
+        <div className="flex w-56 items-center gap-3">
+          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-violet-100 dark:bg-slate-700">
+            <div className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-orange-400" style={{ width: `${(passedCount / total) * 100}%` }} />
+          </div>
+          <span className="text-sm text-slate-500 tabular-nums dark:text-slate-400" data-testid={`${course.id}-progress`}>
+            {passedCount}/{total}
+          </span>
+        </div>
+      </div>
+      {nextIndex === null && <p className="mt-3 font-semibold text-emerald-700 dark:text-emerald-300">🎉 Đã hoàn thành cả khoá học!</p>}
+      <ol className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+        {course.steps.map((step, i) => {
+          const lesson = lessonManager.get(step.lessonId);
+          if (!lesson) return null;
+          const isNext = i === nextIndex;
+          return (
+            <li key={step.lessonId} className="flex">
+              <button
+                type="button"
+                onClick={() => onOpen(step.lessonId)}
+                data-testid={`course-step-${step.lessonId}`}
+                className={`flex min-h-16 flex-1 items-start gap-3 rounded-2xl bg-white p-3 text-left shadow-sm transition hover:ring-fuchsia-300 active:scale-[0.99] dark:bg-slate-900/60 dark:hover:ring-fuchsia-500 ${
+                  isNext ? 'ring-2 ring-fuchsia-400 dark:ring-fuchsia-500' : 'ring-1 ring-violet-100 dark:ring-violet-900'
+                }`}
+              >
+                <span
+                  className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold ${
+                    passed[i]
+                      ? 'bg-emerald-500 text-white'
+                      : isNext
+                        ? 'bg-fuchsia-500 text-white'
+                        : 'bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-200'
+                  }`}
+                  aria-label={passed[i] ? `Bước ${i + 1}: đã qua` : `Bước ${i + 1}`}
+                >
+                  {passed[i] ? <Icon name="check" className="h-5 w-5" /> : i + 1}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="font-semibold">{lesson.title}</span>
+                    {isNext && (
+                      <span className="rounded-full bg-fuchsia-100 px-2 py-0.5 text-xs font-semibold text-fuchsia-700 dark:bg-fuchsia-950 dark:text-fuchsia-300">
+                        Học tiếp
+                      </span>
+                    )}
+                  </span>
+                  <span className="mt-0.5 block text-sm text-slate-500 dark:text-slate-400">{step.tip}</span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
     </section>
   );
 }

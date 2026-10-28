@@ -1,3 +1,4 @@
+import { nextInCourse } from './courses';
 import { LESSONS } from './library';
 import type { Lesson, LessonCategory } from './types';
 
@@ -32,8 +33,10 @@ export class LessonManager {
     })).filter((g) => g.lessons.length > 0);
   }
 
-  /** Bài kế tiếp trong thư viện (để gợi ý sau khi hoàn thành). */
+  /** Bài kế tiếp (để gợi ý sau khi hoàn thành): theo khoá học nếu bài thuộc một khoá, không thì theo thư viện. */
   next(id: string): Lesson | undefined {
+    const inCourse = nextInCourse(id);
+    if (inCourse) return this.get(inCourse);
     const idx = this.lessons.findIndex((l) => l.id === id);
     return idx >= 0 ? this.lessons[idx + 1] : undefined;
   }

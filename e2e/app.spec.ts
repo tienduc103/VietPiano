@@ -15,6 +15,26 @@ test('thư viện hiển thị đủ nhóm bài học', async ({ page }) => {
   await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(24);
 });
 
+test('khoá học nốt cơ bản: học từng bước, tiến độ khoá tăng khi qua bài', async ({ page }) => {
+  await page.goto('/');
+  const course = page.getByTestId('course-basic-notes');
+  await expect(course.getByRole('heading', { name: 'Khoá học: Nốt nhạc cơ bản' })).toBeVisible();
+  await expect(page.getByTestId('course-basic-notes-progress')).toHaveText('0/12');
+  await expect(page.getByTestId('course-step-notes-middle-c')).toContainText('Học tiếp');
+
+  await page.getByTestId('course-step-notes-middle-c').click();
+  await expect(page.getByTestId('expected-note')).toHaveText('C4');
+  // Đô giữa: 8 nốt C4 (phím "a").
+  for (let i = 0; i < 8; i++) {
+    await page.keyboard.press('a');
+    await page.waitForTimeout(140); // > minAdvanceIntervalMs
+  }
+  await expect(page.getByRole('dialog', { name: 'Kết quả' })).toBeVisible();
+  await page.getByRole('button', { name: 'Về thư viện' }).last().click();
+  await expect(page.getByTestId('course-basic-notes-progress')).toHaveText('1/12');
+  await expect(page.getByTestId('course-step-notes-c-d')).toContainText('Học tiếp');
+});
+
 test('dòng phiên bản hiện ở cuối mọi màn hình', async ({ page }) => {
   // Đọc từ file VERSION lúc build; chưa phát hành thì là "dev".
   const version = /VietPiano · phiên bản (dev|[1-9]\d*\.\d{2}\.\d{6}\.\d{6})$/;
