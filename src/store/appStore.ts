@@ -7,10 +7,13 @@ import {
   type PracticeSession,
 } from '../core/storage/ProgressStorage';
 
+export type LessonStage = 'review' | 'game';
+
 export type Route =
   | { name: 'dashboard' }
   | { name: 'curriculum'; levelId?: string }
-  | { name: 'lesson'; lessonId: string }
+  /** `stage`: mở thẳng phần Luyện tập / Trò chơi sau buổi (nút trên thẻ buổi học). */
+  | { name: 'lesson'; lessonId: string; stage?: LessonStage }
   | { name: 'library' }
   | { name: 'practice'; lessonId: string }
   | { name: 'settings' };

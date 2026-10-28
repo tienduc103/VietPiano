@@ -34,6 +34,12 @@ export interface LessonRecord {
   exercises: Record<string, ExerciseRecord>;
   /** Lỗi hay gặp: khoá như "C4→D4" (cần C4, đánh D4) → số lần. */
   mistakes: Record<string, number>;
+  /** Số lần làm xong phần Luyện tập sau buổi (không ảnh hưởng điểm / trạng thái đạt). */
+  reviewCount: number;
+  /** Trò chơi sau buổi: số ván, điểm và số sao cao nhất. */
+  gamePlays: number;
+  gameBestScore: number;
+  gameBestStars: number;
 }
 
 /** Người học chưa có hồ sơ dùng chung khoá này. */
@@ -59,6 +65,10 @@ export function emptyRecord(profileKey: string, lesson: Pick<CurriculumLesson, '
     lastPracticedAt: 0,
     exercises: {},
     mistakes: {},
+    reviewCount: 0,
+    gamePlays: 0,
+    gameBestScore: 0,
+    gameBestStars: 0,
   };
 }
 
@@ -107,6 +117,23 @@ export function addPracticeTime(rec: LessonRecord, ms: number, now: number): Les
   return { ...rec, practiceMs: rec.practiceMs + ms, lastPracticedAt: now };
 }
 
+/** Làm xong phần Luyện tập sau buổi. */
+export function applyReview(rec: LessonRecord, practiceMs: number, now: number): LessonRecord {
+  return { ...rec, reviewCount: rec.reviewCount + 1, practiceMs: rec.practiceMs + Math.max(0, practiceMs), lastPracticedAt: now };
+}
+
+/** Chơi xong một ván trò chơi sau buổi. */
+export function applyGameResult(rec: LessonRecord, game: { score: number; stars: number }, practiceMs: number, now: number): LessonRecord {
+  return {
+    ...rec,
+    gamePlays: rec.gamePlays + 1,
+    gameBestScore: Math.max(rec.gameBestScore, game.score),
+    gameBestStars: Math.max(rec.gameBestStars, game.stars),
+    practiceMs: rec.practiceMs + Math.max(0, practiceMs),
+    lastPracticedAt: now,
+  };
+}
+
 /** Lỗi hay gặp nhất, nhiều nhất trước. */
 export function topMistakes(rec: Pick<LessonRecord, 'mistakes'> | undefined, limit = 5): { key: string; count: number }[] {
   if (!rec) return [];
@@ -144,5 +171,9 @@ export function sanitizeRecord(raw: unknown): LessonRecord | null {
     lastPracticedAt: num(r.lastPracticedAt),
     exercises,
     mistakes,
+    reviewCount: num(r.reviewCount),
+    gamePlays: num(r.gamePlays),
+    gameBestScore: num(r.gameBestScore),
+    gameBestStars: Math.min(3, num(r.gameBestStars)),
   };
 }

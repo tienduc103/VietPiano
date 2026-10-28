@@ -662,7 +662,7 @@ test('tiết tấu: metronome đếm vào rồi chạy, hiện phách, chấm th
   await expect(page.getByTestId('beat-indicator')).toBeVisible({ timeout: 6000 });
   await page.keyboard.press('a');
   await expect(page.getByTestId('timing-label')).toBeVisible();
-  await page.getByRole('button', { name: 'Luyện tập' }).click();
+  await page.getByRole('button', { name: 'Luyện tập', exact: true }).click();
   await page.getByRole('button', { name: 'Theo nhịp' }).click();
   await expect(page.getByTestId('tempo-control')).toContainText('♩ = 60');
   await page.getByRole('button', { name: 'Chậm hơn' }).click();

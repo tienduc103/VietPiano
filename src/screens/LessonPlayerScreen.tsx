@@ -4,7 +4,7 @@ import { lessonFeedback } from '../core/curriculum/feedback';
 import { formatMistake, scoreLesson, starsFor, type ExerciseScore } from '../core/curriculum/scoring';
 import { text, type Activity, type CurriculumLesson, type Exercise, type UiMode } from '../core/curriculum/types';
 import { findLesson, missingPrerequisites, nextLessonAfter } from '../core/curriculum/unlock';
-import { useApp } from '../store/appStore';
+import { useApp, type LessonStage } from '../store/appStore';
 import { useCurriculum } from '../store/curriculumStore';
 import { useSettings } from '../store/settingsStore';
 import { useUiMode } from '../hooks/useUiMode';
@@ -12,15 +12,19 @@ import { useWakeLock } from '../hooks/useAppLifecycle';
 import { Button, FullscreenButton, Icon } from '../components/ui';
 import { AppVersion } from '../components/AppVersion';
 import { InputSourceBar, IllustrationView } from '../components/curriculum/common';
-import { ChoiceQuizStep, KeyQuizStep, NoteReadingStep } from '../components/curriculum/QuizSteps';
-import { PlayStep } from '../components/curriculum/PlayStep';
+import { ExerciseView } from '../components/curriculum/ExerciseView';
+import { ReviewSession } from '../components/curriculum/ReviewSession';
+import { GameStage } from '../components/games/GameStage';
 
 /** Thời gian một bước tối đa được tính là luyện tập (bỏ đi giữa chừng thì không cộng cả buổi chiều). */
 const MAX_STEP_MS = 15 * 60_000;
 
 type Step = { type: 'overview' } | { type: 'activity'; activity: Activity } | { type: 'exercise'; exercise: Exercise };
 
-export function LessonPlayerScreen({ lessonId }: { lessonId: string }) {
+/** Luồng một buổi: các bước của buổi → kết quả → Luyện tập → Trò chơi → buổi tiếp theo. */
+type Phase = 'steps' | 'result' | LessonStage;
+
+export function LessonPlayerScreen({ lessonId, stage }: { lessonId: string; stage?: LessonStage }) {
   const lesson = findLesson(CURRICULUM, lessonId);
   const navigate = useApp((s) => s.navigate);
   if (!lesson) {
@@ -35,15 +39,15 @@ export function LessonPlayerScreen({ lessonId }: { lessonId: string }) {
       </div>
     );
   }
-  return <Player key={lesson.lessonId} lesson={lesson} />;
+  return <Player key={`${lesson.lessonId}-${stage ?? ''}`} lesson={lesson} stage={stage} />;
 }
 
-function Player({ lesson }: { lesson: CurriculumLesson }) {
+function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonStage }) {
   const navigate = useApp((s) => s.navigate);
   const mode = useUiMode();
   const records = useCurriculum((s) => s.records);
   const saveError = useCurriculum((s) => s.saveError);
-  const { recordExercise, recordRun, markIntroDone, addTime } = useCurriculum.getState();
+  const { recordExercise, recordRun, markIntroDone, addTime, recordReview, recordGame } = useCurriculum.getState();
   useWakeLock(true);
 
   const steps = useMemo<Step[]>(
@@ -52,7 +56,7 @@ function Player({ lesson }: { lesson: CurriculumLesson }) {
   );
   const firstExercise = steps.findIndex((s) => s.type === 'exercise');
   const [stepIndex, setStepIndex] = useState(0);
-  const [phase, setPhase] = useState<'steps' | 'result'>('steps');
+  const [phase, setPhase] = useState<Phase>(stage ?? 'steps');
   const [attempt, setAttempt] = useState(0);
   /** Điểm các bài tập trong lần học này (màn kết quả chấm theo lần này). */
   const [runScores, setRunScores] = useState<Record<string, ExerciseScore>>({});
@@ -75,7 +79,7 @@ function Player({ lesson }: { lesson: CurriculumLesson }) {
 
   const step = steps[stepIndex];
   const goTo = (i: number) => {
-    if (step.type !== 'exercise') void addTime(lesson, takeElapsed());
+    if (step.type !== 'exercise' || phase !== 'steps') void addTime(lesson, takeElapsed());
     // Đã xem hết phần giới thiệu khi đi tới bài tập đầu tiên (hoặc hết buổi).
     if (lesson.activities.length && (i >= firstExercise || firstExercise < 0)) void markIntroDone(lesson);
     setJustDone(null);
@@ -91,6 +95,13 @@ function Player({ lesson }: { lesson: CurriculumLesson }) {
     setRunScores((r) => ({ ...r, [exercise.id]: score }));
     setJustDone(score);
     void recordExercise(lesson, score, takeElapsed());
+  };
+
+  /** Sang Luyện tập / Trò chơi: thời gian trước đó cộng vào buổi, phần mới đo lại từ đầu. */
+  const enterStage = (p: LessonStage) => {
+    void addTime(lesson, takeElapsed());
+    setJustDone(null);
+    setPhase(p);
   };
 
   const retryLesson = () => {
@@ -158,6 +169,32 @@ function Player({ lesson }: { lesson: CurriculumLesson }) {
               </button>
             );
           })}
+          <span className="mx-1 w-px self-stretch bg-violet-200 dark:bg-violet-800" aria-hidden />
+          {(
+            [
+              { p: 'review', icon: '🎯', label: 'Luyện tập sau buổi', done: (record?.reviewCount ?? 0) > 0 },
+              { p: 'game', icon: '🎮', label: 'Trò chơi', done: (record?.gamePlays ?? 0) > 0 },
+            ] as const
+          ).map((x) => (
+            <button
+              key={x.p}
+              type="button"
+              onClick={() => phase !== x.p && enterStage(x.p)}
+              aria-current={phase === x.p ? 'step' : undefined}
+              title={x.label}
+              aria-label={x.label}
+              data-testid={`nav-${x.p}`}
+              className={`grid size-11 place-items-center rounded-full text-lg ring-2 ${
+                phase === x.p
+                  ? 'bg-fuchsia-500 ring-fuchsia-300'
+                  : x.done
+                    ? 'bg-emerald-100 ring-emerald-300 dark:bg-emerald-950 dark:ring-emerald-700'
+                    : 'bg-white ring-violet-200 dark:bg-slate-800 dark:ring-violet-800'
+              }`}
+            >
+              {x.icon}
+            </button>
+          ))}
         </nav>
         <FullscreenButton />
       </header>
@@ -170,8 +207,27 @@ function Player({ lesson }: { lesson: CurriculumLesson }) {
 
       <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <div className="mx-auto max-w-6xl">
-          {phase === 'result' ? (
-            <LessonResult lesson={lesson} mode={mode} scores={runScores} passedEver={record?.passed ?? false} onRetry={retryLesson} onNext={next ? () => navigate({ name: 'lesson', lessonId: next.lessonId }) : undefined} onBack={() => navigate({ name: 'curriculum' })} />
+          {phase === 'review' ? (
+            <ReviewSession lesson={lesson} mode={mode} tempoPercent={tempoPercent} onComplete={() => void recordReview(lesson, takeElapsed())} onGame={() => enterStage('game')} />
+          ) : phase === 'game' ? (
+            <GameStage
+              lesson={lesson}
+              mode={mode}
+              onResult={(r) => void recordGame(lesson, r, takeElapsed())}
+              onNext={next ? () => navigate({ name: 'lesson', lessonId: next.lessonId }) : undefined}
+              onBack={() => navigate({ name: 'curriculum' })}
+            />
+          ) : phase === 'result' ? (
+            <LessonResult
+              lesson={lesson}
+              mode={mode}
+              scores={runScores}
+              passedEver={record?.passed ?? false}
+              onRetry={retryLesson}
+              onReview={() => enterStage('review')}
+              onNext={next ? () => navigate({ name: 'lesson', lessonId: next.lessonId }) : undefined}
+              onBack={() => navigate({ name: 'curriculum' })}
+            />
           ) : step.type === 'overview' ? (
             <Overview lesson={lesson} mode={mode} onStart={() => goTo(1)} />
           ) : step.type === 'activity' ? (
@@ -209,19 +265,6 @@ function stepLabel(s: Step): string {
   if (s.type === 'overview') return 'Giới thiệu buổi học';
   if (s.type === 'activity') return text(s.activity.title);
   return text(s.exercise.title);
-}
-
-function ExerciseView({ exercise, mode, tempoPercent, onDone }: { exercise: Exercise; mode: UiMode; tempoPercent: number; onDone: (s: ExerciseScore) => void }) {
-  switch (exercise.kind) {
-    case 'key-quiz':
-      return <KeyQuizStep exercise={exercise} mode={mode} onDone={onDone} />;
-    case 'choice-quiz':
-      return <ChoiceQuizStep exercise={exercise} mode={mode} onDone={onDone} />;
-    case 'note-reading':
-      return <NoteReadingStep exercise={exercise} mode={mode} onDone={onDone} />;
-    case 'play':
-      return <PlayStep exercise={exercise} mode={mode} tempoPercent={tempoPercent} onDone={onDone} />;
-  }
 }
 
 function Overview({ lesson, mode, onStart }: { lesson: CurriculumLesson; mode: UiMode; onStart: () => void }) {
@@ -392,6 +435,7 @@ function LessonResult({
   scores,
   passedEver,
   onRetry,
+  onReview,
   onNext,
   onBack,
 }: {
@@ -400,6 +444,8 @@ function LessonResult({
   scores: Record<string, ExerciseScore>;
   passedEver: boolean;
   onRetry: () => void;
+  /** Sang phần Luyện tập (rồi Trò chơi) trước khi học buổi tiếp theo. */
+  onReview: () => void;
   onNext?: () => void;
   onBack: () => void;
 }) {
@@ -480,9 +526,12 @@ function LessonResult({
         <Button onClick={onRetry} data-testid="lesson-retry">
           <Icon name="restart" /> Luyện lại
         </Button>
+        <Button variant="primary" className="text-lg" onClick={onReview} data-testid="go-review">
+          🎯 Tiếp: Luyện tập → Trò chơi
+        </Button>
         {onNext && (
-          <Button variant="primary" onClick={onNext} data-testid="lesson-next">
-            Bài tiếp theo
+          <Button variant="ghost" onClick={onNext} data-testid="lesson-next">
+            Bỏ qua, sang bài tiếp
           </Button>
         )}
         <Button variant="ghost" onClick={onBack}>

@@ -80,28 +80,57 @@ export function CurriculumScreen({ levelId }: { levelId?: string }) {
                 const rec = records[id];
                 const missing = missingPrerequisites(l, records).length > 0;
                 return (
-                  <button
+                  <div
                     key={id}
-                    type="button"
-                    onClick={() => navigate({ name: 'lesson', lessonId: id })}
-                    data-testid={`cur-lesson-${id}`}
-                    data-status={status}
-                    className={`flex min-h-28 flex-col rounded-2xl bg-white/90 p-4 text-left shadow-sm ring-1 ring-violet-100 transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-800/90 dark:ring-violet-900 ${status === 'suggest-later' ? 'opacity-70' : ''}`}
+                    className={`flex min-h-28 flex-col rounded-2xl bg-white/90 shadow-sm ring-1 ring-violet-100 transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-800/90 dark:ring-violet-900 ${status === 'suggest-later' ? 'opacity-70' : ''}`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-sm text-slate-500 dark:text-slate-400">
-                        Buổi {l.number}
-                        {l.assessment.checkpoint ? ' · Kiểm tra' : ''}
+                    <button
+                      type="button"
+                      onClick={() => navigate({ name: 'lesson', lessonId: id })}
+                      data-testid={`cur-lesson-${id}`}
+                      data-status={status}
+                      className="flex flex-1 flex-col rounded-t-2xl p-4 pb-2 text-left"
+                    >
+                      <div className="flex w-full items-start justify-between gap-2">
+                        <span className="text-sm text-slate-500 dark:text-slate-400">
+                          Buổi {l.number}
+                          {l.assessment.checkpoint ? ' · Kiểm tra' : ''}
+                        </span>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS[status].tone}`}>{STATUS[status].label}</span>
+                      </div>
+                      <span className="mt-1 text-lg font-semibold">{text(l.title)}</span>
+                      <span className="mt-auto pt-2 text-sm text-slate-500 dark:text-slate-400">
+                        ~{l.estimatedDuration} phút
+                        {rec && rec.attempts > 0 ? ` · cao nhất ${rec.bestScore}` : ''}
+                        {missing && status !== 'completed' ? ' · nên học buổi trước' : ''}
                       </span>
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS[status].tone}`}>{STATUS[status].label}</span>
+                    </button>
+                    <div className="grid grid-cols-2 gap-2 px-3 pb-3">
+                      <button
+                        type="button"
+                        onClick={() => navigate({ name: 'lesson', lessonId: id, stage: 'review' })}
+                        data-testid={`cur-review-${id}`}
+                        className="min-h-12 rounded-xl bg-amber-50 px-2 text-sm font-semibold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-900"
+                      >
+                        🎯 Luyện tập{rec && rec.reviewCount > 0 ? ` ×${rec.reviewCount}` : ''}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate({ name: 'lesson', lessonId: id, stage: 'game' })}
+                        data-testid={`cur-game-${id}`}
+                        aria-label={`Trò chơi${rec && rec.gamePlays > 0 ? ` — ${rec.gameBestStars} sao` : ''}`}
+                        className="min-h-12 rounded-xl bg-sky-50 px-2 text-sm font-semibold text-sky-900 ring-1 ring-sky-200 hover:bg-sky-100 dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-900"
+                      >
+                        🎮 Trò chơi
+                        {rec && rec.gamePlays > 0 && (
+                          <span className="ml-1 text-amber-500">
+                            {'★'.repeat(rec.gameBestStars)}
+                            <span className="text-slate-300 dark:text-slate-600">{'★'.repeat(3 - rec.gameBestStars)}</span>
+                          </span>
+                        )}
+                      </button>
                     </div>
-                    <span className="mt-1 text-lg font-semibold">{text(l.title)}</span>
-                    <span className="mt-auto pt-2 text-sm text-slate-500 dark:text-slate-400">
-                      ~{l.estimatedDuration} phút
-                      {rec && rec.attempts > 0 ? ` · cao nhất ${rec.bestScore}` : ''}
-                      {missing && status !== 'completed' ? ' · nên học buổi trước' : ''}
-                    </span>
-                  </button>
+                  </div>
                 );
               })}
             </div>

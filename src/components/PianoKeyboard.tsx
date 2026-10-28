@@ -35,6 +35,19 @@ function keyClasses(midi: number, black: boolean, p: Props): string {
   return '';
 }
 
+/** Tâm phím `midi` theo % bề ngang bàn phím [from, to] — cùng cách chia như PianoKeyboard (để căn làn nốt rơi). */
+export function keyCenterPercent(midi: number, from: number, to: number): number {
+  let whites = 0;
+  let before = 0;
+  for (let m = from; m <= to; m++) {
+    if (isBlackKey(m)) continue;
+    if (m < midi) before++;
+    whites++;
+  }
+  const w = 100 / whites;
+  return isBlackKey(midi) ? before * w : (before + 0.5) * w;
+}
+
 export const PianoKeyboard = memo(function PianoKeyboard(props: Props) {
   const { from, to, labelStyle, keyHints, onPress, onRelease, fingers, allLabels } = props;
   const whites: number[] = [];
