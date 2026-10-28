@@ -153,6 +153,7 @@ export function renderScoreSheet(canvas: HTMLCanvasElement, lesson: Lesson, opts
         ctx2d.textAlign = 'center';
         ctx2d.font = `600 15px ${FONT}`;
         measure.items.forEach((n, ni) => {
+          if (n.rest) return;
           ctx2d.fillText(pitchToLabel(n.pitch, opts.labelStyle), noteCenterX(played[ni]), staveBottom + labelOffset(lesson));
         });
       }

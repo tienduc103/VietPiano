@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MIDIInputProvider, parseNoteOn, type MidiAccessLike, type MidiInputLike } from './MIDIInputProvider';
-import type { NoteInputEvent } from './NoteInputProvider';
+import { MIDIInputProvider, parseNoteMessage, parseNoteOn, type MidiAccessLike, type MidiInputLike } from './MIDIInputProvider';
+import type { NoteInputEvent, NoteOffEvent } from './NoteInputProvider';
 
 function fakeInput(id: string, name = `Piano ${id}`): MidiInputLike {
   return { id, name, manufacturer: 'Yamaha', state: 'connected', onmidimessage: null };
@@ -36,6 +36,16 @@ describe('parseNoteOn', () => {
   });
 });
 
+describe('parseNoteMessage', () => {
+  it('phân biệt Note On / Note Off (0x8n hoặc 0x9n velocity 0)', () => {
+    expect(parseNoteMessage([0x90, 60, 100])).toEqual({ type: 'on', midi: 60, velocity: 100, channel: 0 });
+    expect(parseNoteMessage([0x82, 60, 64])).toEqual({ type: 'off', midi: 60, velocity: 64, channel: 2 });
+    expect(parseNoteMessage([0x90, 60, 0])).toMatchObject({ type: 'off', midi: 60 });
+    expect(parseNoteMessage([0xb0, 64, 127])).toBeNull();
+    expect(parseNoteMessage([0x80, 60])).toBeNull();
+  });
+});
+
 describe('MIDIInputProvider', () => {
   it('không hỗ trợ khi trình duyệt không có Web MIDI', async () => {
     const p = new MIDIInputProvider(null);
@@ -58,7 +68,25 @@ describe('MIDIInputProvider', () => {
     send(input, [0x90, 64, 80], 1234);
     send(input, [0x80, 64, 0], 1300);
     send(input, [0x90, 64, 0], 1300);
-    expect(events).toEqual([{ midi: 64, time: 1234, source: 'midi' }]);
+    expect(events).toEqual([{ midi: 64, time: 1234, source: 'midi', velocity: 80 }]);
+  });
+
+  it('phát Note Off riêng (để chấm trường độ) và velocity trong noteOn', async () => {
+    const input = fakeInput('a');
+    const p = new MIDIInputProvider(async () => fakeAccess([input]));
+    const ons: NoteInputEvent[] = [];
+    const offs: NoteOffEvent[] = [];
+    p.onNote((e) => ons.push(e));
+    p.onNoteOff((e) => offs.push(e));
+    await p.start();
+    send(input, [0x90, 62, 90], 2000);
+    send(input, [0x80, 62, 0], 2500);
+    send(input, [0x90, 62, 0], 2600);
+    expect(ons).toEqual([{ midi: 62, time: 2000, source: 'midi', velocity: 90 }]);
+    expect(offs).toEqual([
+      { midi: 62, time: 2500, source: 'midi' },
+      { midi: 62, time: 2600, source: 'midi' },
+    ]);
   });
 
   it('mỗi lần gõ chỉ một sự kiện, kể cả gõ lại cùng phím', async () => {

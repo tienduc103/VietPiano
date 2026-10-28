@@ -7,15 +7,32 @@ import {
   type PracticeSession,
 } from '../core/storage/ProgressStorage';
 
-export type Route = { name: 'library' } | { name: 'practice'; lessonId: string } | { name: 'settings' };
+export type Route =
+  | { name: 'dashboard' }
+  | { name: 'curriculum'; levelId?: string }
+  | { name: 'lesson'; lessonId: string }
+  | { name: 'library' }
+  | { name: 'practice'; lessonId: string }
+  | { name: 'settings' };
+
+/** Màn hình mở đầu: Dashboard giáo trình; "?screen=library" / "?screen=curriculum" mở thẳng màn đó (đường tắt, dùng cả trong e2e). */
+export function initialRoute(search = typeof location === 'undefined' ? '' : location.search): Route {
+  const screen = new URLSearchParams(search).get('screen');
+  if (screen === 'library') return { name: 'library' };
+  if (screen === 'curriculum') return { name: 'curriculum' };
+  return { name: 'dashboard' };
+}
 
 interface AppStore {
   route: Route;
+  /** Màn trước đó (nút "Quay lại" ở Cài đặt). */
+  previous: Route | null;
   progress: Record<string, LessonProgress>;
   /** Toàn bộ lịch sử phiên — để đánh giá và gợi ý bài theo từng hồ sơ người học. */
   sessions: PracticeSession[];
   recent: string[];
   navigate: (route: Route) => void;
+  back: () => void;
   openLesson: (lessonId: string) => void;
   loadProgress: () => Promise<void>;
   recordSession: (session: PracticeSession) => Promise<void>;
@@ -23,12 +40,14 @@ interface AppStore {
 }
 
 export const useApp = create<AppStore>((set, get) => ({
-  route: { name: 'library' },
+  route: initialRoute(),
+  previous: null,
   progress: {},
   sessions: [],
   recent: loadRecentLessons(),
-  navigate: (route) => set({ route }),
-  openLesson: (lessonId) => set({ route: { name: 'practice', lessonId }, recent: pushRecentLesson(lessonId) }),
+  navigate: (route) => set({ route, previous: get().route }),
+  back: () => set({ route: get().previous ?? { name: 'dashboard' }, previous: null }),
+  openLesson: (lessonId) => set({ route: { name: 'practice', lessonId }, previous: get().route, recent: pushRecentLesson(lessonId) }),
   loadProgress: async () => {
     try {
       const [progress, sessions] = await Promise.all([progressStorage.getAllProgress(), progressStorage.getAllSessions()]);

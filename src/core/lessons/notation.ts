@@ -1,10 +1,11 @@
 import { requireMidi } from '../music/notes';
-import { DURATION_BEATS, type AccompanimentNote, type Duration, type Finger, type Hand, type LessonNote } from './types';
+import { DURATION_BEATS, REST_PITCH, type AccompanimentNote, type Duration, type Finger, type Hand, type LessonNote } from './types';
 
 /**
  * Phân tích chuỗi ký hiệu gọn: "C4 D4 E4/h | G4/qd A4/8".
  * Mặc định trường độ là nốt đen (q). Hậu tố ":1"…":5" là số ngón tay ("C4:1", "E4/h:3"); ":(3)" = ngón vẽ khoanh tròn.
  * Bài hai tay: "RH" / "LH" đặt tay cho các nốt phía sau ("LH C3:5 D3:4 | RH E4:3").
+ * Dấu lặng: "R" ("R/h" = lặng trắng), không ghi ngón.
  * Dấu "|" chỉ để dễ đọc, bị bỏ qua
  * (ô nhịp được tính lại từ trường độ và được kiểm tra bằng unit test).
  */
@@ -26,6 +27,11 @@ export function parseNotes(source: string): LessonNote[] {
     const [main, finger] = tok.split(':');
     const [pitch, dur = 'q'] = main.split('/');
     if (!(dur in DURATION_BEATS)) throw new Error(`Trường độ không hợp lệ: "${tok}"`);
+    if (pitch === REST_PITCH) {
+      if (finger !== undefined) throw new Error(`Dấu lặng không có số ngón: "${tok}"`);
+      notes.push({ pitch, midi: -1, duration: dur as Duration, rest: true, ...(hand ? { hand } : {}) });
+      continue;
+    }
     const note: LessonNote = { pitch, midi: requireMidi(pitch), duration: dur as Duration };
     if (finger !== undefined) {
       const f = parseFinger(finger, tok);

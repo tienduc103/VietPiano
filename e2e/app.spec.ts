@@ -1,13 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 
 async function openLesson(page: Page, id: string) {
-  await page.goto('/');
+  await page.goto('/?screen=library');
   await page.getByTestId(`lesson-${id}`).click();
   await expect(page.locator('[data-testid="score"] svg .score-note').first()).toBeVisible();
 }
 
 test('thư viện hiển thị đủ nhóm bài học', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?screen=library');
   await expect(page.getByRole('heading', { name: 'VietPiano' })).toBeVisible();
   for (const name of ['Nhận biết nốt', 'Gam', 'Bài tập tay phải', 'Bài tập tay trái', 'Bài tập hai tay', 'Bé tự học theo số ngón tay', 'Bài hát']) {
     await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
@@ -15,30 +15,10 @@ test('thư viện hiển thị đủ nhóm bài học', async ({ page }) => {
   await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(24);
 });
 
-test('khoá học nốt cơ bản: học từng bước, tiến độ khoá tăng khi qua bài', async ({ page }) => {
-  await page.goto('/');
-  const course = page.getByTestId('course-basic-notes');
-  await expect(course.getByRole('heading', { name: 'Khoá học: Nốt nhạc cơ bản' })).toBeVisible();
-  await expect(page.getByTestId('course-basic-notes-progress')).toHaveText('0/12');
-  await expect(page.getByTestId('course-step-notes-middle-c')).toContainText('Học tiếp');
-
-  await page.getByTestId('course-step-notes-middle-c').click();
-  await expect(page.getByTestId('expected-note')).toHaveText('C4');
-  // Đô giữa: 8 nốt C4 (phím "a").
-  for (let i = 0; i < 8; i++) {
-    await page.keyboard.press('a');
-    await page.waitForTimeout(140); // > minAdvanceIntervalMs
-  }
-  await expect(page.getByRole('dialog', { name: 'Kết quả' })).toBeVisible();
-  await page.getByRole('button', { name: 'Về thư viện' }).last().click();
-  await expect(page.getByTestId('course-basic-notes-progress')).toHaveText('1/12');
-  await expect(page.getByTestId('course-step-notes-c-d')).toContainText('Học tiếp');
-});
-
 test('dòng phiên bản hiện ở cuối mọi màn hình', async ({ page }) => {
   // Đọc từ file VERSION lúc build; chưa phát hành thì là "dev".
   const version = /VietPiano · phiên bản (dev|[1-9]\d*\.\d{2}\.\d{6}\.\d{6})$/;
-  await page.goto('/');
+  await page.goto('/?screen=library');
   await expect(page.getByTestId('app-version')).toHaveText(version);
   await page.getByRole('button', { name: 'Cài đặt' }).click();
   await expect(page.getByTestId('app-version')).toHaveText(version);
@@ -179,7 +159,7 @@ test('micro (âm thanh giả lập gam Đô trưởng) → nhận diện và t�
 });
 
 test('nút micro nổi: luôn hiển thị, bấm để bật/tắt micro, hiện nốt đang nghe; tắt được trong Cài đặt', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?screen=library');
   const floating = page.getByTestId('floating-mic');
   await expect(floating).toBeVisible();
   await expect(floating).toHaveAttribute('aria-pressed', 'false');
@@ -219,7 +199,7 @@ test('ẩn trang (chạy nền) thì tự tắt micro và hiện nút bật lạ
 });
 
 test('tự căn chỉnh: đo im lặng rồi hiện nốt cần đánh', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?screen=library');
   await page.getByRole('button', { name: 'Cài đặt' }).click();
   await page.getByTestId('auto-calibrate').click();
   await expect(page.getByTestId('auto-calibration')).toContainText('Giữ yên lặng');
@@ -231,7 +211,7 @@ test('tự căn chỉnh: đo im lặng rồi hiện nốt cần đánh', async (
 });
 
 test('xuất ảnh khuông nhạc từ thư viện', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?screen=library');
   await page.getByTestId('export-song-twinkle').click();
   const dialog = page.getByRole('dialog', { name: 'Xuất ảnh khuông nhạc' });
   await expect(dialog).toBeVisible();
@@ -304,7 +284,7 @@ test('đếm nốt: mỗi nốt nghe thấy đi một nốt, nốt sai tô đỏ
 });
 
 test('kiểm tra theo nhịp: khuông nhạc chờ nốt, ghi lại máy nghe đúng/sai', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?screen=library');
   await page.getByRole('button', { name: 'Cài đặt' }).click();
   await page.getByTestId('calibration-check-open').click();
   await expect(page.locator('[data-testid="calibration-check"] [data-testid="score"] svg .score-note')).toHaveCount(15);
@@ -320,7 +300,7 @@ test('kiểm tra theo nhịp: khuông nhạc chờ nốt, ghi lại máy nghe đ
 });
 
 test('hồ sơ người học: gợi ý theo tuổi, đánh giá và tiến độ riêng từng người', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?screen=library');
   await page.getByTestId('create-profile').click();
   await page.getByTestId('profile-name').fill('An');
   await page.getByTestId('profile-age').fill('30');
@@ -369,7 +349,7 @@ test('hồ sơ người học: gợi ý theo tuổi, đánh giá và tiến đ�
 });
 
 test('đánh thử 15 giây: tự bật micro, mỗi nốt hiện một lần, bấm lại không bị nhân đôi', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?screen=library');
   await page.getByRole('button', { name: 'Cài đặt' }).click();
   const btn = page.getByTestId('listen-test');
   await btn.click();
@@ -387,7 +367,7 @@ test('đánh thử 15 giây: tự bật micro, mỗi nốt hiện một lần, b
 });
 
 test('nút nổi tải lại cứng: có trên mọi màn hình, gỡ service worker, xoá cache, tải lại trang', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?screen=library');
   await expect(page.getByTestId('floating-reload')).toBeVisible();
   await openLesson(page, 'scale-c-major');
   await expect(page.getByTestId('floating-reload')).toBeVisible();
@@ -405,7 +385,7 @@ test('nút nổi tải lại cứng: có trên mọi màn hình, gỡ service wo
 });
 
 test('nút nổi tải lại kéo được: kéo không tải lại trang, vị trí được nhớ, đặt lại trong Cài đặt', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?screen=library');
   const fab = page.getByTestId('floating-reload');
   await page.evaluate(() => ((window as unknown as { __marker: boolean }).__marker = true));
   const start = (await fab.boundingBox())!;
@@ -450,7 +430,7 @@ test('micro câm khi tắt echoCancellation (lỗi iOS PWA): tự chuyển chế
       return dest.stream;
     };
   });
-  await page.goto('/');
+  await page.goto('/?screen=library');
   await page.getByRole('button', { name: 'Cài đặt' }).click();
   await page.getByTestId('mic-button').click();
   // Sau ~2.5 s im lặng → tự thử lại ở chế độ dự phòng, không báo lỗi.
@@ -495,7 +475,7 @@ const midiNote = (page: Page, midi: number) =>
 
 test('đàn MIDI: bật trong Cài đặt, thấy tên đàn, nốt từ đàn chuyển nốt trong Wait Mode', async ({ page }) => {
   await fakeMidi(page);
-  await page.goto('/');
+  await page.goto('/?screen=library');
   await page.getByRole('button', { name: 'Cài đặt' }).click();
   await page.getByRole('switch', { name: /Dùng đàn MIDI/ }).click();
   await expect(page.getByTestId('midi-status')).toContainText('Đã kết nối: Test Piano');
@@ -524,8 +504,129 @@ test('đàn MIDI: trình duyệt không có Web MIDI (như iPad) thì báo rõ',
   await page.addInitScript(() => {
     delete (Navigator.prototype as unknown as Record<string, unknown>).requestMIDIAccess;
   });
-  await page.goto('/');
+  await page.goto('/?screen=library');
   await page.getByRole('button', { name: 'Cài đặt' }).click();
   await expect(page.getByTestId('midi-unsupported')).toContainText('không hỗ trợ MIDI');
   await expect(page.getByRole('switch', { name: /Dùng đàn MIDI/ })).toHaveCount(0);
+});
+
+// ── Giáo trình ───────────────────────────────────────────────────────
+
+test('trang chủ là Dashboard giáo trình; Curriculum Browser có 6 cấp, cấp 1 có 20 buổi', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await expect(page.getByTestId('current-level')).toHaveText('Cấp 1 — Làm quen Piano');
+  await expect(page.getByTestId('level-progress')).toContainText('0/20 buổi');
+  await expect(page.getByTestId('next-lesson')).toHaveText('Buổi 1: Khám phá bàn phím');
+  await page.getByTestId('open-curriculum').click();
+  for (let n = 1; n <= 6; n++) await expect(page.getByTestId(`level-${n}`)).toBeVisible();
+  await expect(page.locator('[data-testid^="cur-lesson-"]')).toHaveCount(20);
+  await expect(page.getByTestId('cur-lesson-l1-01-keyboard')).toHaveAttribute('data-status', 'available');
+  await expect(page.getByTestId('cur-lesson-l1-02-find-c')).toHaveAttribute('data-status', 'suggest-later');
+  await page.getByTestId('level-3').click();
+  await expect(page.getByTestId('coming-soon')).toBeVisible();
+  // Thư viện bài cũ vẫn còn, vào từ Dashboard.
+  await page.getByRole('button', { name: 'Về trang chủ' }).click();
+  await page.getByTestId('open-library').click();
+  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(24);
+});
+
+test('buổi 1: giới thiệu → luyện tập → kiểm tra 5 lượt → kết quả; tiến độ còn sau khi tải lại, buổi 2 mở ra', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('continue-learning').click();
+  await expect(page.getByTestId('lesson-title')).toHaveText('Khám phá bàn phím');
+  await page.getByTestId('start-lesson').click();
+  // 3 trang giới thiệu, có bàn phím minh hoạ tô sáng nhóm phím đen.
+  await expect(page.locator('[data-testid="illustration-keyboard"] [data-highlighted]').first()).toBeVisible();
+  for (let i = 0; i < 3; i++) await page.getByTestId('intro-next').click();
+
+  const press = async (midi: number) => {
+    await page.locator(`[data-testid="key-quiz"] [data-midi="${midi}"]`).click();
+    await page.waitForTimeout(320); // > minIntervalMs của QuizEngine
+  };
+  // Khởi động (thử lại tới khi đúng): phím đen, phím trắng, nhóm 2, nhóm 3 — đánh sai một lần ở lượt đầu.
+  await expect(page.getByTestId('quiz-prompt')).toHaveText('Bấm một phím đen bất kỳ');
+  await press(60);
+  await expect(page.getByTestId('feedback')).toContainText('Chưa đúng');
+  await expect(page.getByTestId('quiz-prompt')).toHaveText('Bấm một phím đen bất kỳ');
+  for (const m of [61, 60, 61, 66]) await press(m);
+  await expect(page.getByTestId('exercise-verdict')).toHaveText('Xong bài luyện tập (không tính điểm)');
+  await page.getByTestId('exercise-next').click();
+
+  // Kiểm tra: nhóm 2, nhóm 3, nhóm 2, nhóm 3, nhóm 2 — sai 1 lượt vẫn đạt (4/5).
+  for (const m of [61, 66, 60, 68, 63]) await press(m);
+  await expect(page.getByTestId('exercise-score')).toHaveText('80/100');
+  await expect(page.getByTestId('exercise-verdict')).toHaveText('Đạt');
+  await page.getByTestId('exercise-next').click();
+
+  await expect(page.getByTestId('lesson-score')).toHaveText('80/100');
+  await expect(page.getByTestId('lesson-verdict')).toHaveText('Đạt');
+  await expect(page.getByTestId('lesson-mistakes')).toContainText('Bấm một phím trong nhóm 2 phím đen');
+  await expect(page.getByTestId('lesson-next')).toBeVisible();
+
+  // Tải lại trang: tiến độ đọc lại từ IndexedDB.
+  await page.goto('/');
+  await expect(page.getByTestId('level-progress')).toContainText('1/20 buổi');
+  await expect(page.getByTestId('next-lesson')).toHaveText('Buổi 2: Tìm nốt Đô');
+  await expect(page.getByTestId('achievements').locator('[data-earned="true"]').first()).toContainText('Buổi học đầu tiên');
+  await page.getByTestId('open-curriculum').click();
+  await expect(page.getByTestId('cur-lesson-l1-01-keyboard')).toHaveAttribute('data-status', 'completed');
+  await expect(page.getByTestId('cur-lesson-l1-02-find-c')).toHaveAttribute('data-status', 'available');
+});
+
+test('buổi chưa đủ điều kiện vẫn mở được (chỉ gợi ý); Kids Mode đổi lời giới thiệu', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('radio', { name: 'Trẻ em' }).click();
+  await expect(page.getByTestId('dashboard')).toHaveAttribute('data-ui-mode', 'kids');
+  await page.getByTestId('open-curriculum').click();
+  await page.getByTestId('cur-lesson-l1-06-staff').click();
+  await expect(page.getByTestId('suggest-before')).toContainText('Buổi 5');
+  await page.getByTestId('start-lesson').click();
+  await expect(page.getByTestId('lesson-player')).toHaveAttribute('data-ui-mode', 'kids');
+  await page.getByTestId('intro-next').click();
+  await page.getByTestId('intro-next').click();
+  await expect(page.getByText('Mi ngồi trên dòng 1, Fa nằm trong khe, Sol ôm dòng 2!')).toBeVisible();
+});
+
+test('buổi 3: trắc nghiệm số ngón rồi chơi C–D–E ở Wait Mode bằng bàn phím máy tính', async ({ page }) => {
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('cur-lesson-l1-03-fingers').click();
+  await page.getByTestId('start-lesson').click();
+  await expect(page.getByTestId('hand-figure')).toBeVisible();
+  for (let i = 0; i < 3; i++) await page.getByTestId('intro-next').click();
+  // Đáp án: 1, 2, 3, 5 → chỉ số 0, 1, 2, 4.
+  for (const i of [0, 1, 2, 4]) {
+    await page.getByTestId(`choice-${i}`).click();
+    await page.waitForTimeout(1000);
+  }
+  await expect(page.getByTestId('exercise-score')).toHaveText('100/100');
+  await page.getByTestId('exercise-next').click();
+  await expect(page.getByTestId('play-kind')).toContainText('Chờ nốt');
+  await expect(page.getByTestId('expected-note')).toHaveText('C4');
+  // C D E E D C: phím a s d d s a.
+  for (const k of ['a', 's', 'd', 'd', 's', 'a']) {
+    await page.keyboard.press(k);
+    await page.waitForTimeout(160);
+  }
+  await expect(page.getByTestId('exercise-verdict')).toHaveText('Đạt');
+  await page.getByTestId('exercise-next').click();
+  await expect(page.getByTestId('lesson-verdict')).toHaveText('Đạt');
+});
+
+test('tiết tấu: metronome đếm vào rồi chạy, hiện phách, chấm thời điểm gõ phím; luyện tập chỉnh được BPM', async ({ page }) => {
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('cur-lesson-l1-11-quarter').click();
+  await page.getByTestId('start-lesson').click();
+  await page.getByTestId('intro-next').click();
+  await expect(page.getByTestId('play-kind')).toContainText('Tiết tấu');
+  await page.getByTestId('timed-run').click();
+  await expect(page.getByTestId('count-in')).toBeVisible();
+  await expect(page.getByTestId('beat-indicator')).toBeVisible({ timeout: 6000 });
+  await page.keyboard.press('a');
+  await expect(page.getByTestId('timing-label')).toBeVisible();
+  await page.getByRole('button', { name: 'Luyện tập' }).click();
+  await page.getByRole('button', { name: 'Theo nhịp' }).click();
+  await expect(page.getByTestId('tempo-control')).toContainText('♩ = 60');
+  await page.getByRole('button', { name: 'Chậm hơn' }).click();
+  await expect(page.getByTestId('tempo-control')).toContainText('♩ = 54');
 });

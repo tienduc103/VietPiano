@@ -191,10 +191,16 @@ export function createMeasureNotes(
     if (own.length === 0 && fullMeasure) {
       return [new StaveNote({ keys: [REST_KEY[clef]], duration: 'w', type: 'r', clef, alignCenter: true })];
     }
-    const accidentals = measureAccidentals(own.map((n) => n.pitch), lesson.keySignature);
+    const accidentals = measureAccidentals(own.filter((n) => !n.rest).map((n) => n.pitch), lesson.keySignature);
     let k = 0;
     return items.map((n, ni) => {
       if (staffOf(lesson, n) !== si) return createRest(n.duration, clef);
+      if (n.rest) {
+        // Dấu lặng của bài (tiết tấu): cũng có con trỏ và tô trạng thái như một nốt.
+        const rest = createRest(n.duration, clef);
+        played[ni] = rest;
+        return rest;
+      }
       const note = new StaveNote({ keys: [toVexKey(n.pitch)], duration: n.duration, clef, autoStem: true });
       if (n.duration.endsWith('d')) Dot.buildAndAttach([note], { all: true });
       const accidental = accidentals[k++];
@@ -341,7 +347,7 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
   // Tên nốt: một hàng chữ cố định dưới khuông, dễ đọc từ xa.
   const labelY = staveBottom + labelOffset(lesson);
   const labelElements = lesson.notes.map((n, i) => {
-    if (!opts.showNames) return null;
+    if (!opts.showNames || n.rest) return null;
     const t = document.createElementNS(SVG_NS, 'text');
     t.setAttribute('x', String(noteCenters[i]));
     t.setAttribute('y', String(labelY));

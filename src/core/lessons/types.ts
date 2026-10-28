@@ -41,7 +41,14 @@ export interface LessonNote {
   fingerCircled?: boolean;
   /** Tay chơi nốt này — chỉ có ở bài hai tay. */
   hand?: Hand;
+  /**
+   * Dấu lặng (ký hiệu "R", `pitch` = "R", `midi` = -1). Chỉ dùng ở bài tiết tấu của giáo trình
+   * (chấm bằng PerformanceTracker); bài thư viện không có dấu lặng vì PracticeEngine chờ từng nốt.
+   */
+  rest?: boolean;
 }
+
+export const REST_PITCH = 'R';
 
 /**
  * Một nốt hoặc hợp âm của phần đệm tay trái, vẽ trên khuông Fa CÙNG LÚC với giai điệu.
@@ -101,7 +108,7 @@ export function noteHand(lesson: Pick<Lesson, 'hand'>, note: Pick<LessonNote, 'h
  */
 export function isAccompanimentMidi(lesson: Pick<Lesson, 'notes' | 'accompaniment'>, midi: number): boolean {
   if (!lesson.accompaniment?.length) return false;
-  return midi < Math.min(...lesson.notes.map((n) => n.midi));
+  return midi < Math.min(...lesson.notes.filter((n) => !n.rest).map((n) => n.midi));
 }
 
 const CIRCLED_DIGITS = ['①', '②', '③', '④', '⑤'];

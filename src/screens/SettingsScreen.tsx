@@ -10,6 +10,8 @@ import {
 import { useSettings } from '../store/settingsStore';
 import { useMic } from '../store/micStore';
 import { useApp } from '../store/appStore';
+import { useCurriculum } from '../store/curriculumStore';
+import { curriculumStorage } from '../core/storage/CurriculumStorage';
 import { Button, Card, Icon, Segmented, Toggle } from '../components/ui';
 import { DetectedNote, LevelMeter, MicButton, MicError } from '../components/MicPanel';
 import { AutoCalibration } from '../components/AutoCalibration';
@@ -20,7 +22,7 @@ import { AppVersion } from '../components/AppVersion';
 const CALIBRATION_MS = 2500;
 
 export function SettingsScreen() {
-  const navigate = useApp((s) => s.navigate);
+  const back = useApp((s) => s.back);
   const settings = useSettings((s) => s.settings);
   const update = useSettings((s) => s.update);
 
@@ -28,7 +30,7 @@ export function SettingsScreen() {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-4xl px-6 pt-[calc(1.5rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-12">
         <header className="mb-6 flex items-center gap-3 max-[1040px]:pl-10">
-          <Button variant="ghost" onClick={() => navigate({ name: 'library' })} aria-label="Quay lại" className="px-2">
+          <Button variant="ghost" onClick={back} aria-label="Quay lại" className="px-2">
             <Icon name="back" />
           </Button>
           <h1 className="text-3xl font-bold">Cài đặt</h1>
@@ -143,6 +145,39 @@ export function SettingsScreen() {
               >
                 Khôi phục mặc định nhận diện
               </Button>
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="text-xl font-semibold">Giáo trình</h2>
+            <div className="mt-2 divide-y divide-slate-200 dark:divide-slate-700">
+              <Row label="Giao diện học (Tự động: ≤ 11 tuổi theo hồ sơ → Trẻ em)">
+                <Segmented
+                  value={settings.uiMode}
+                  onChange={(v) => update({ uiMode: v })}
+                  options={[
+                    { value: 'auto', label: 'Tự động' },
+                    { value: 'kids', label: 'Trẻ em' },
+                    { value: 'adult', label: 'Người lớn' },
+                  ]}
+                />
+              </Row>
+              <Row label="Nguồn nốt (bàn phím ảo luôn dùng được)">
+                <Segmented
+                  value={settings.inputSource}
+                  onChange={(v) => update({ inputSource: v })}
+                  options={[
+                    { value: 'auto', label: 'Tự động' },
+                    { value: 'microphone', label: 'Micro' },
+                    { value: 'midi', label: 'Đàn MIDI' },
+                  ]}
+                />
+              </Row>
+              <Toggle
+                label="Bật tiếng metronome cả khi dùng micro (nên đeo tai nghe — micro có thể nghe nhầm tiếng click)"
+                checked={settings.metronomeWithMic}
+                onChange={(v) => update({ metronomeWithMic: v })}
+              />
             </div>
           </Card>
 
@@ -391,12 +426,16 @@ function ListenTest({ labelStyle }: { labelStyle: NoteLabelStyle }) {
 
 function DataCard() {
   const clearProgress = useApp((s) => s.clearProgress);
+  const clearCurriculum = async () => {
+    await curriculumStorage.clear();
+    useCurriculum.setState({ records: {} });
+  };
   const [confirming, setConfirming] = useState(false);
   return (
     <Card>
       <h2 className="text-xl font-semibold">Dữ liệu</h2>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-        Tiến độ và lịch sử luyện tập lưu trong IndexedDB của trình duyệt trên máy này. Xoá dữ liệu Safari sẽ xoá cả tiến độ.
+        Tiến độ, lịch sử luyện tập và tiến độ giáo trình lưu trong IndexedDB của trình duyệt trên máy này. Xoá dữ liệu Safari sẽ xoá cả tiến độ.
       </p>
       <div className="mt-3 flex gap-2">
         {confirming ? (
@@ -405,6 +444,7 @@ function DataCard() {
               variant="danger"
               onClick={() => {
                 void clearProgress();
+                void clearCurriculum();
                 setConfirming(false);
               }}
             >

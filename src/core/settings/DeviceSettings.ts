@@ -9,6 +9,10 @@ import { sanitizePosition, type FloatingPosition } from './floatingPosition';
 export type ThemeSetting = 'system' | 'light' | 'dark';
 /** wait = chờ đánh đúng mới chuyển; count = mỗi nốt nghe thấy chuyển một nốt; tempo = chạy theo nhịp. */
 export type PracticeMode = 'wait' | 'count' | 'tempo';
+/** Giao diện giáo trình: auto = theo tuổi hồ sơ người học (≤ 11 tuổi → Kids). */
+export type UiModeSetting = 'auto' | 'kids' | 'adult';
+/** Nguồn nốt cho giáo trình: auto = đàn MIDI nếu đã nối, không thì micro. Bàn phím ảo luôn dùng được. */
+export type InputSourceSetting = 'auto' | 'microphone' | 'midi';
 
 export interface DeviceSettings {
   /** Tần số chuẩn A4 (Clavinova cho phép chỉnh 414.8–466.8 Hz, mặc định 440). */
@@ -36,6 +40,10 @@ export interface DeviceSettings {
   tempoPercent: number;
   /** Nhận nốt từ đàn nối dây MIDI (Web MIDI, Chrome/Edge máy tính); tự kết nối khi mở app. */
   midiEnabled: boolean;
+  uiMode: UiModeSetting;
+  inputSource: InputSourceSetting;
+  /** Tiếng metronome khi dùng micro (mặc định tắt: micro có thể nghe nhầm tiếng click — dùng tai nghe thì bật). */
+  metronomeWithMic: boolean;
 }
 
 export const DEFAULT_SETTINGS: DeviceSettings = {
@@ -54,6 +62,9 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
   practiceMode: 'wait',
   tempoPercent: 100,
   midiEnabled: false,
+  uiMode: 'auto',
+  inputSource: 'auto',
+  metronomeWithMic: false,
 };
 
 export const TEMPO_PERCENT_MIN = 40;
@@ -124,6 +135,9 @@ function sanitize(s: DeviceSettings): DeviceSettings {
     practiceMode: sanitizeMode(s),
     tempoPercent: Math.round(num(s.tempoPercent, 100, TEMPO_PERCENT_MIN, TEMPO_PERCENT_MAX)),
     midiEnabled: s.midiEnabled === true,
+    uiMode: s.uiMode === 'kids' || s.uiMode === 'adult' ? s.uiMode : 'auto',
+    inputSource: s.inputSource === 'microphone' || s.inputSource === 'midi' ? s.inputSource : 'auto',
+    metronomeWithMic: s.metronomeWithMic === true,
   };
 }
 

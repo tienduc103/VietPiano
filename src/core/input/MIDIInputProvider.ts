@@ -4,7 +4,7 @@
  * iPad (đều dùng WebKit) không có Web MIDI → `isSupported()` = false, app dùng micro như cũ.
  * MIDI cho biết chính xác phím nào được gõ nên không qua NoteRecognizer.
  */
-import { Emitter, type NoteInputEvent, type NoteInputProvider } from './NoteInputProvider';
+import { Emitter, type NoteInputEvent, type NoteInputProvider, type NoteOffEvent } from './NoteInputProvider';
 
 export type MidiStatus = 'idle' | 'connecting' | 'ready' | 'denied' | 'unsupported' | 'error';
 
@@ -33,16 +33,26 @@ export interface MidiNoteOn {
  * (không có running status) nên chỉ cần xét byte đầu.
  */
 export function parseNoteOn(data: ArrayLike<number> | null | undefined): MidiNoteOn | null {
-  if (!data || data.length < 3) return null;
-  const status = data[0];
-  if ((status & 0xf0) !== 0x90) return null;
-  const midi = data[1] & 0x7f;
-  const velocity = data[2] & 0x7f;
-  if (velocity === 0) return null;
-  return { midi, velocity, channel: status & 0x0f };
+  const m = parseNoteMessage(data);
+  return m?.type === 'on' ? { midi: m.midi, velocity: m.velocity, channel: m.channel } : null;
 }
 
-/** Phần nhỏ của MIDIAccess mà provider dùng — để test bằng đối tượng giả. */
+export interface MidiNoteMessage extends MidiNoteOn {
+  type: 'on' | 'off';
+}
+
+/** Note On (0x9n, velocity > 0) hoặc Note Off (0x8n, hoặc 0x9n velocity 0); thông điệp khác → null. */
+export function parseNoteMessage(data: ArrayLike<number> | null | undefined): MidiNoteMessage | null {
+  if (!data || data.length < 3) return null;
+  const status = data[0];
+  const kind = status & 0xf0;
+  if (kind !== 0x90 && kind !== 0x80) return null;
+  const midi = data[1] & 0x7f;
+  const velocity = data[2] & 0x7f;
+  const type = kind === 0x90 && velocity > 0 ? 'on' : 'off';
+  return { type, midi, velocity, channel: status & 0x0f };
+}
+
 export interface MidiAccessLike {
   inputs: { forEach(cb: (input: MidiInputLike) => void): void };
   onstatechange: ((e: unknown) => void) | null;
@@ -67,6 +77,7 @@ export class MIDIInputProvider implements NoteInputProvider {
   readonly kind = 'midi' as const;
   readonly stateChanges = new Emitter<MidiState>();
   private readonly notes = new Emitter<NoteInputEvent>();
+  private readonly noteOffs = new Emitter<NoteOffEvent>();
   private readonly request: RequestMidiAccess | null;
   private access: MidiAccessLike | null = null;
   private attached = new Set<MidiInputLike>();
@@ -132,6 +143,11 @@ export class MIDIInputProvider implements NoteInputProvider {
     return this.notes.on(listener);
   }
 
+  /** Thả phím — đàn MIDI báo chính xác, dùng để chấm trường độ. */
+  onNoteOff(listener: (event: NoteOffEvent) => void) {
+    return this.noteOffs.on(listener);
+  }
+
   /** Gắn bộ nghe vào mọi cổng đang kết nối; gọi lại khi cắm/rút dây. */
   private refresh(): void {
     if (!this.access) return;
@@ -151,11 +167,12 @@ export class MIDIInputProvider implements NoteInputProvider {
   }
 
   private handleMessage(data: Uint8Array | null, timeStamp: number): void {
-    const note = parseNoteOn(data);
+    const note = parseNoteMessage(data);
     if (!note) return;
     // timeStamp của Web MIDI cùng gốc với performance.now(); một số bản cũ trả 0.
     const time = timeStamp > 0 ? timeStamp : performance.now();
-    this.notes.emit({ midi: note.midi, time, source: 'midi' });
+    if (note.type === 'off') this.noteOffs.emit({ midi: note.midi, time, source: 'midi' });
+    else this.notes.emit({ midi: note.midi, time, source: 'midi', velocity: note.velocity });
   }
 
   private detachAll(): void {

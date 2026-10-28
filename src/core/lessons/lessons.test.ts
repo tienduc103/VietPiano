@@ -27,6 +27,16 @@ describe('ký hiệu bài học', () => {
     expect(fingerText(3, true)).toBe('③');
   });
 
+  it('phân tích dấu lặng (R), không cho ghi ngón trên dấu lặng', () => {
+    expect(parseNotes('C4 R | LH R/h')).toEqual([
+      { pitch: 'C4', midi: 60, duration: 'q' },
+      { pitch: 'R', midi: -1, duration: 'q', rest: true },
+      { pitch: 'R', midi: -1, duration: 'h', rest: true, hand: 'left' },
+    ]);
+    expect(() => parseNotes('R:1')).toThrow();
+    expect(splitMeasures(parseNotes('C4 R C4/h'), 4)[0].beats).toBe(4);
+  });
+
   it('báo lỗi với nốt hoặc trường độ sai', () => {
     expect(() => parseNotes('X4')).toThrow();
     expect(() => parseNotes('C4/z')).toThrow();
@@ -78,8 +88,10 @@ describe('thư viện bài học', () => {
     measures.forEach((m, i) => expect(m.beats).toBeCloseTo(i === 0 && lesson.pickup ? lesson.pickup : full, 9));
   });
 
-  it.each(LESSONS.map((l) => [l.id, l] as const))('%s: nốt nằm trong tầm nhận diện micro', (_id, lesson) => {
+  it.each(LESSONS.map((l) => [l.id, l] as const))('%s: nốt nằm trong tầm nhận diện micro, không có dấu lặng', (_id, lesson) => {
     for (const n of lesson.notes) {
+      // Màn Luyện tập (PracticeEngine) chờ từng nốt — dấu lặng chỉ dùng ở bài tiết tấu của giáo trình.
+      expect(n.rest).toBeUndefined();
       expect(n.midi).toBeGreaterThanOrEqual(36);
       expect(n.midi).toBeLessThanOrEqual(84);
     }

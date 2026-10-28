@@ -62,6 +62,15 @@ describe('DeviceSettings', () => {
     expect(loadSettings(st)).toEqual(DEFAULT_SETTINGS);
   });
 
+  it('giao diện giáo trình và nguồn nốt: giá trị lạ → auto', () => {
+    const st = memoryStorage();
+    expect(loadSettings(st)).toMatchObject({ uiMode: 'auto', inputSource: 'auto', metronomeWithMic: false });
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ uiMode: 'kids', inputSource: 'midi', metronomeWithMic: true }));
+    expect(loadSettings(st)).toMatchObject({ uiMode: 'kids', inputSource: 'midi', metronomeWithMic: true });
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ uiMode: 'baby', inputSource: 'usb', metronomeWithMic: 'yes' }));
+    expect(loadSettings(st)).toMatchObject({ uiMode: 'auto', inputSource: 'auto', metronomeWithMic: false });
+  });
+
   it('ánh xạ độ nhạy ↔ noise gate hai chiều', () => {
     expect(sensitivityToNoiseGate(0)).toBeCloseTo(0.05);
     expect(sensitivityToNoiseGate(100)).toBeCloseTo(0.0005);

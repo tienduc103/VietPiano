@@ -11,6 +11,18 @@ export interface NoteInputEvent {
   /** Thời điểm (ms, cùng gốc với performance.now()). */
   time: number;
   source: InputSource;
+  /** Lực gõ 1–127 (chỉ đàn MIDI có). */
+  velocity?: number;
+}
+
+/**
+ * Thả phím. Chỉ nguồn biết chính xác lúc thả mới phát (đàn MIDI, bàn phím ảo); micro không phát —
+ * không đo được trường độ đáng tin từ âm ngân.
+ */
+export interface NoteOffEvent {
+  midi: number;
+  time: number;
+  source: InputSource;
 }
 
 export type Unsubscribe = () => void;
@@ -21,6 +33,8 @@ export interface NoteInputProvider {
   stop(): Promise<void>;
   isActive(): boolean;
   onNote(listener: (event: NoteInputEvent) => void): Unsubscribe;
+  /** Có ở nguồn đo được lúc thả phím. */
+  onNoteOff?(listener: (event: NoteOffEvent) => void): Unsubscribe;
 }
 
 /** Tiện ích phát sự kiện dùng chung cho các provider. */
