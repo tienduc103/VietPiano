@@ -525,10 +525,22 @@ test('trang chủ là Dashboard giáo trình; Curriculum Browser có 6 cấp, c�
   await expect(page.getByTestId('cur-lesson-l1-02-find-c')).toHaveAttribute('data-status', 'suggest-later');
   await page.getByTestId('level-3').click();
   await expect(page.getByTestId('coming-soon')).toBeVisible();
-  // Thư viện bài cũ vẫn còn, vào từ Dashboard.
+  // Thư viện bài nằm ngay dưới phần giáo trình của trang chủ; nút "Thư viện bài" cuộn xuống.
   await page.getByRole('button', { name: 'Về trang chủ' }).click();
-  await page.getByTestId('open-library').click();
+  await expect(page.getByTestId('dashboard').getByTestId('library')).toBeAttached();
   await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(24);
+  await expect(page.getByTestId('library')).not.toBeInViewport();
+  await page.getByTestId('open-library').click();
+  await expect(page.getByTestId('library')).toBeInViewport();
+});
+
+test('?screen=library mở trang chủ, cuộn sẵn tới thư viện; "Về thư viện" từ bài luyện cũng vậy', async ({ page }) => {
+  await page.goto('/?screen=library');
+  await expect(page.getByTestId('current-level')).toBeAttached();
+  await expect(page.getByTestId('library')).toBeInViewport();
+  await page.getByTestId('lesson-scale-c-major').click();
+  await page.getByRole('button', { name: 'Về thư viện' }).first().click();
+  await expect(page.getByTestId('library')).toBeInViewport();
 });
 
 test('tạo hồ sơ người học ngay ở trang chủ và trang giáo trình', async ({ page }) => {

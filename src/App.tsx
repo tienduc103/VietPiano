@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useApp } from './store/appStore';
 import { useAppLifecycle, useMidiConnection, useTheme } from './hooks/useAppLifecycle';
-import { LibraryScreen } from './screens/LibraryScreen';
 import { PracticeScreen } from './screens/PracticeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
@@ -35,7 +34,7 @@ export function App() {
       {route.name === 'dashboard' && <DashboardScreen />}
       {route.name === 'curriculum' && <CurriculumScreen levelId={route.levelId} />}
       {route.name === 'lesson' && <LessonPlayerScreen lessonId={route.lessonId} />}
-      {route.name === 'library' && <LibraryScreen />}
+      {route.name === 'library' && <DashboardScreen focus="library" />}
       {route.name === 'practice' && <PracticeScreen lessonId={route.lessonId} />}
       {route.name === 'settings' && <SettingsScreen />}
       {/* Màn hình Luyện tập tự đặt nút trong khung khuông nhạc (góc phải dưới có bàn phím ảo + nút điều khiển). */}

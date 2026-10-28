@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { CURRICULUM } from '../core/curriculum/content/curriculum';
 import { text } from '../core/curriculum/types';
 import { achievements, currentLevel, lessonStatus, levelProgress } from '../core/curriculum/unlock';
@@ -11,9 +11,15 @@ import { Button, FullscreenButton, Icon, formatDuration } from '../components/ui
 import { AppVersion } from '../components/AppVersion';
 import { MicError } from '../components/MicPanel';
 import { ProfileSwitcher } from '../components/ProfileSwitcher';
+import { LessonLibrary } from '../components/LessonLibrary';
 
-/** Learning Dashboard — trang chủ: cấp đang học, tiến độ, buổi tiếp theo, thành tích. */
-export function DashboardScreen() {
+const scrollToLibrary = (behavior: ScrollBehavior) => document.getElementById('library')?.scrollIntoView({ behavior, block: 'start' });
+
+/**
+ * Trang chủ: phía trên là giáo trình (cấp đang học, tiến độ, buổi tiếp theo, thành tích),
+ * phía dưới là Thư viện bài. `focus="library"` (route `library`) cuộn thẳng xuống thư viện.
+ */
+export function DashboardScreen({ focus }: { focus?: 'library' }) {
   const navigate = useApp((s) => s.navigate);
   const records = useCurriculum((s) => s.records);
   const loaded = useCurriculum((s) => s.loaded);
@@ -32,6 +38,10 @@ export function DashboardScreen() {
   const nextStatus = next ? lessonStatus(next, records) : null;
   const recent = [...all].filter((r) => r.lastPracticedAt > 0).sort((a, b) => b.lastPracticedAt - a.lastPracticedAt)[0];
   const pct = progress ? Math.round((progress.completed / progress.total) * 100) : 0;
+
+  useEffect(() => {
+    if (focus === 'library') scrollToLibrary('instant');
+  }, [focus]);
 
   return (
     <div className="h-full overflow-y-auto" data-testid="dashboard" data-ui-mode={mode}>
@@ -67,7 +77,7 @@ export function DashboardScreen() {
             ))}
           </div>
           <FullscreenButton />
-          <Button onClick={() => navigate({ name: 'library' })} data-testid="open-library">
+          <Button onClick={() => scrollToLibrary('smooth')} data-testid="open-library">
             <Icon name="count" />
             <span>Thư viện bài</span>
           </Button>
@@ -140,6 +150,8 @@ export function DashboardScreen() {
         </section>
 
         {!loaded && <p className="mt-6 text-sm text-slate-500">Đang tải tiến độ…</p>}
+
+        <LessonLibrary />
       </div>
       <AppVersion className="pb-[max(0.5rem,env(safe-area-inset-bottom))]" />
     </div>

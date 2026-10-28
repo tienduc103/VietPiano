@@ -3,23 +3,24 @@ import { lessonManager } from '../core/lessons/LessonManager';
 import { CLEF_LABEL, HAND_LABEL, type Lesson } from '../core/lessons/types';
 import { computeTotals, type LessonProgress } from '../core/storage/ProgressStorage';
 import { useApp } from '../store/appStore';
-import { Button, FullscreenButton, Icon, formatDuration } from '../components/ui';
-import { AppVersion } from '../components/AppVersion';
-import { MicError } from '../components/MicPanel';
-import { ScoreExportDialog } from '../components/ScoreExportDialog';
+import { Button, Icon, formatDuration } from './ui';
+import { ScoreExportDialog } from './ScoreExportDialog';
 import { useSettings } from '../store/settingsStore';
-import { LearnerPanel } from '../components/LearnerPanel';
+import { LearnerPanel } from './LearnerPanel';
 import { activeProfile, useProfiles } from '../store/profileStore';
 import { sessionsForProfile } from '../core/profile/LearnerProfile';
 import { assessLearner } from '../core/profile/assessment';
 import { recommendLessons } from '../core/profile/recommend';
 
-export function LibraryScreen() {
+/**
+ * Thư viện bài (nửa dưới trang chủ): thống kê, gợi ý + đánh giá theo hồ sơ, bài gần đây, các nhóm bài.
+ * `id="library"` để route `library` (nút "Về thư viện", `?screen=library`) cuộn tới đây.
+ */
+export function LessonLibrary() {
   const allProgress = useApp((s) => s.progress);
   const sessions = useApp((s) => s.sessions);
   const recent = useApp((s) => s.recent);
   const openLesson = useApp((s) => s.openLesson);
-  const navigate = useApp((s) => s.navigate);
   const profiles = useProfiles((s) => s.profiles);
   const profile = useProfiles(activeProfile);
   const labelStyle = useSettings((s) => s.settings.labelStyle);
@@ -41,81 +42,60 @@ export function LibraryScreen() {
   const closeExport = useCallback(() => setExporting(null), []);
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-6 pt-[calc(1.5rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-10">
-        <header className="flex items-center gap-4 pl-10">
-          <Button variant="ghost" onClick={() => navigate({ name: 'dashboard' })} aria-label="Về trang chủ giáo trình" className="px-2">
-            <Icon name="back" />
-          </Button>
-          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-12 w-12" />
-          <div className="flex-1">
-            <h1 className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-400 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent dark:from-violet-300 dark:via-fuchsia-300 dark:to-orange-300">
-              VietPiano
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400">Thư viện bài — đánh đúng nốt, bản nhạc tự chuyển tiếp.</p>
-          </div>
-          <FullscreenButton />
-          <Button onClick={() => navigate({ name: 'settings' })} aria-label="Cài đặt">
-            <Icon name="settings" />
-            <span>Cài đặt & micro</span>
-          </Button>
-        </header>
+    <section id="library" className="mt-10 scroll-mt-6" data-testid="library" aria-labelledby="library-title">
+      <h2 id="library-title" className="text-2xl font-bold">
+        Thư viện bài
+      </h2>
+      <p className="text-slate-500 dark:text-slate-400">Luyện tự do — đánh đúng nốt, bản nhạc tự chuyển tiếp.</p>
 
-        {/* Micro bật được từ nút nổi ở thư viện → lỗi micro cũng phải hiện ở đây. */}
-        <div className="mt-4 empty:hidden">
-          <MicError />
-        </div>
-
-        <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Summary tone="sky" label="Thời gian luyện" value={formatDuration(totals.totalPracticeMs)} />
-          <Summary tone="emerald" label="Nốt đúng" value={String(totals.totalCorrect)} />
-          <Summary tone="amber" label="Độ chính xác" value={attempts ? `${Math.round((totals.totalCorrect / attempts) * 100)}%` : '—'} />
-          <Summary tone="pink" label="Bài đã hoàn thành" value={`${totals.lessonsCompleted}/${lessonManager.all().length}`} />
-        </div>
-
-        <LearnerPanel profile={profile} assessment={assessment} recommendations={recommendations} />
-
-        {recentLessons.length > 0 && (
-          <section className="mt-8">
-            <h2 className="mb-3 text-lg font-semibold">Học gần đây</h2>
-            <div className="flex flex-wrap gap-2">
-              {recentLessons.map((l) => (
-                <Button key={l.id} onClick={() => openLesson(l.id)}>
-                  {l.title}
-                </Button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {groups.map((g, gi) => (
-          <section key={g.category} className="mt-8">
-            <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
-              <span className={`h-5 w-1.5 rounded-full ${ACCENTS[gi % ACCENTS.length]}`} />
-              {g.label}
-            </h2>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {g.lessons.map((l) => (
-                <LessonCard
-                  key={l.id}
-                  accent={ACCENTS[gi % ACCENTS.length]}
-                  lesson={l}
-                  progress={progress[l.id]}
-                  onOpen={() => openLesson(l.id)}
-                  onExport={() => setExporting(l)}
-                />
-              ))}
-            </div>
-          </section>
-        ))}
-
-        <p className="mt-10 text-center text-xs text-slate-400">
-          Âm thanh micro chỉ được xử lý trên thiết bị này, không gửi lên Internet. Dữ liệu tiến độ lưu cục bộ.
-        </p>
-        <AppVersion className="mt-2" />
+      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Summary tone="sky" label="Thời gian luyện" value={formatDuration(totals.totalPracticeMs)} />
+        <Summary tone="emerald" label="Nốt đúng" value={String(totals.totalCorrect)} />
+        <Summary tone="amber" label="Độ chính xác" value={attempts ? `${Math.round((totals.totalCorrect / attempts) * 100)}%` : '—'} />
+        <Summary tone="pink" label="Bài đã hoàn thành" value={`${totals.lessonsCompleted}/${lessonManager.all().length}`} />
       </div>
+
+      <LearnerPanel profile={profile} assessment={assessment} recommendations={recommendations} />
+
+      {recentLessons.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-lg font-semibold">Học gần đây</h2>
+          <div className="flex flex-wrap gap-2">
+            {recentLessons.map((l) => (
+              <Button key={l.id} onClick={() => openLesson(l.id)}>
+                {l.title}
+              </Button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {groups.map((g, gi) => (
+        <section key={g.category} className="mt-8">
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+            <span className={`h-5 w-1.5 rounded-full ${ACCENTS[gi % ACCENTS.length]}`} />
+            {g.label}
+          </h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {g.lessons.map((l) => (
+              <LessonCard
+                key={l.id}
+                accent={ACCENTS[gi % ACCENTS.length]}
+                lesson={l}
+                progress={progress[l.id]}
+                onOpen={() => openLesson(l.id)}
+                onExport={() => setExporting(l)}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+
+      <p className="mt-10 text-center text-xs text-slate-400">
+        Âm thanh micro chỉ được xử lý trên thiết bị này, không gửi lên Internet. Dữ liệu tiến độ lưu cục bộ.
+      </p>
       {exporting && <ScoreExportDialog lesson={exporting} labelStyle={labelStyle} onClose={closeExport} />}
-    </div>
+    </section>
   );
 }
 

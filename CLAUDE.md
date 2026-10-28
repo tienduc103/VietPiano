@@ -57,8 +57,9 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
 src/store/           Zustand: settingsStore, micStore, appStore (route + tiến độ + lịch sử phiên), profileStore, curriculumStore
 src/hooks/           vòng đời app (ẩn nền → tắt micro), theme, wake lock, ghi phiên luyện tập
 src/components/      ScoreView, PianoKeyboard, MicPanel, ui
-src/screens/         Dashboard (trang chủ), Curriculum, LessonPlayer, Library, Practice, Settings
-                     `?screen=library` / `?screen=curriculum` mở thẳng màn đó (e2e dùng)
+src/screens/         Dashboard (trang chủ = giáo trình phía trên + Thư viện bài `components/LessonLibrary` phía dưới),
+                     Curriculum, LessonPlayer, Practice, Settings. Route `library` = trang chủ cuộn tới thư viện;
+                     `?screen=library` / `?screen=curriculum` mở thẳng (e2e dùng)
 e2e/                 Playwright; global-setup sinh WAV gam Đô trưởng làm micro giả
 ```
 

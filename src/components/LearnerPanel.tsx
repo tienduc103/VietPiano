@@ -5,7 +5,6 @@ import type { Recommendation } from '../core/profile/recommend';
 import { CATEGORY_LABELS } from '../core/lessons/LessonManager';
 import { HAND_LABEL } from '../core/lessons/types';
 import { useApp } from '../store/appStore';
-import { ProfileSwitcher } from './ProfileSwitcher';
 import { Button, Card, formatDuration } from './ui';
 
 interface Props {
@@ -15,14 +14,12 @@ interface Props {
 }
 
 /**
- * Khu vực hồ sơ người học ở Thư viện bài: chọn / tạo hồ sơ, bài gợi ý theo hồ sơ,
- * đánh giá thời gian học, khả năng chơi đàn và các tiêu chí khác.
+ * Phần theo hồ sơ người học trong Thư viện bài: bài gợi ý theo hồ sơ, đánh giá thời gian học,
+ * khả năng chơi đàn và các tiêu chí khác. Chọn / tạo hồ sơ ở `ProfileSwitcher` đầu trang chủ.
  */
 export function LearnerPanel({ profile, assessment, recommendations }: Props) {
   return (
     <>
-      <ProfileSwitcher />
-
       {profile && assessment && (
         <>
           <section className="mt-6" data-testid="recommendations">
