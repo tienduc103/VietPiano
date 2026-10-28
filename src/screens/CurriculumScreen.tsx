@@ -7,6 +7,7 @@ import { useApp } from '../store/appStore';
 import { useCurriculum } from '../store/curriculumStore';
 import { Button, FullscreenButton, Icon } from '../components/ui';
 import { AppVersion } from '../components/AppVersion';
+import { ProfileSwitcher } from '../components/ProfileSwitcher';
 
 const STATUS: Record<LessonStatus, { label: string; tone: string }> = {
   completed: { label: '✓ Hoàn thành', tone: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' },
@@ -34,6 +35,8 @@ export function CurriculumScreen({ levelId }: { levelId?: string }) {
           <h1 className="flex-1 text-3xl font-bold">{text(CURRICULUM.title)}</h1>
           <FullscreenButton />
         </header>
+
+        <ProfileSwitcher hint="Tiến độ từng buổi được lưu theo hồ sơ — mỗi người học có tiến độ riêng." />
 
         <nav className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" aria-label="Cấp độ">
           {CURRICULUM.levels.map((l) => {

@@ -5,9 +5,8 @@ import type { Recommendation } from '../core/profile/recommend';
 import { CATEGORY_LABELS } from '../core/lessons/LessonManager';
 import { HAND_LABEL } from '../core/lessons/types';
 import { useApp } from '../store/appStore';
-import { useProfiles } from '../store/profileStore';
-import { ProfileDialog } from './ProfileDialog';
-import { Button, Card, Icon, formatDuration } from './ui';
+import { ProfileSwitcher } from './ProfileSwitcher';
+import { Button, Card, formatDuration } from './ui';
 
 interface Props {
   profile: LearnerProfile | null;
@@ -16,65 +15,13 @@ interface Props {
 }
 
 /**
- * Khu vực hồ sơ người học ở trang chủ: chọn / tạo hồ sơ, bài gợi ý theo hồ sơ,
+ * Khu vực hồ sơ người học ở Thư viện bài: chọn / tạo hồ sơ, bài gợi ý theo hồ sơ,
  * đánh giá thời gian học, khả năng chơi đàn và các tiêu chí khác.
  */
 export function LearnerPanel({ profile, assessment, recommendations }: Props) {
-  const profiles = useProfiles((s) => s.profiles);
-  const select = useProfiles((s) => s.select);
-  const [dialog, setDialog] = useState<'new' | 'edit' | null>(null);
-
   return (
     <>
-      {profiles.length === 0 ? (
-        <Card className="mt-6 flex flex-wrap items-center gap-4">
-          <div className="text-4xl" aria-hidden>
-            🎹
-          </div>
-          <div className="min-w-60 flex-1">
-            <h2 className="text-lg font-semibold">Tạo hồ sơ người học</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Cho biết tuổi, trình độ và mục tiêu — VietPiano sẽ gợi ý bài vừa sức và đánh giá tiến bộ riêng cho từng người.
-            </p>
-          </div>
-          <Button variant="primary" onClick={() => setDialog('new')} data-testid="create-profile">
-            Tạo hồ sơ
-          </Button>
-        </Card>
-      ) : (
-        <div className="mt-6 flex flex-wrap items-center gap-2" role="group" aria-label="Người học">
-          {profiles.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => select(p.id)}
-              aria-pressed={p.id === profile?.id}
-              data-testid={`profile-${p.name}`}
-              className={`flex min-h-12 items-center gap-2 rounded-full py-1 pr-4 pl-1.5 font-semibold ring-1 transition-colors ${
-                p.id === profile?.id
-                  ? 'bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white ring-transparent shadow-md shadow-fuchsia-500/30'
-                  : 'bg-white text-slate-700 ring-violet-200 hover:bg-violet-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-violet-800'
-              }`}
-            >
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-white/80 text-xl dark:bg-slate-900/60" aria-hidden>
-                {p.avatar}
-              </span>
-              {p.name}
-              <span className="text-xs font-normal opacity-80">{p.age} tuổi</span>
-            </button>
-          ))}
-          <Button variant="ghost" onClick={() => setDialog('new')} aria-label="Thêm người học">
-            <span className="text-xl leading-none">+</span>
-            Thêm
-          </Button>
-          {profile && (
-            <Button variant="ghost" onClick={() => setDialog('edit')} data-testid="edit-profile">
-              <Icon name="settings" className="h-5 w-5" />
-              Sửa hồ sơ
-            </Button>
-          )}
-        </div>
-      )}
+      <ProfileSwitcher />
 
       {profile && assessment && (
         <>
@@ -101,8 +48,6 @@ export function LearnerPanel({ profile, assessment, recommendations }: Props) {
           <AssessmentCard profile={profile} assessment={assessment} />
         </>
       )}
-
-      {dialog && <ProfileDialog profile={dialog === 'edit' ? (profile ?? undefined) : undefined} onClose={() => setDialog(null)} />}
     </>
   );
 }

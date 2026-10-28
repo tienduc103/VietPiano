@@ -531,6 +531,32 @@ test('trang chủ là Dashboard giáo trình; Curriculum Browser có 6 cấp, c�
   await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(24);
 });
 
+test('tạo hồ sơ người học ngay ở trang chủ và trang giáo trình', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('create-profile').click();
+  await page.getByTestId('profile-name').fill('Bi');
+  await page.getByTestId('profile-age').fill('6');
+  await page.getByTestId('profile-save').click();
+  await expect(page.getByTestId('profile-Bi')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('dashboard')).toContainText('Chào Bi!');
+  await expect(page.getByTestId('dashboard')).toHaveAttribute('data-ui-mode', 'kids');
+
+  await page.getByTestId('open-curriculum').click();
+  await expect(page.getByTestId('profile-Bi')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Thêm người học' }).click();
+  await page.getByTestId('profile-name').fill('Lan');
+  await page.getByTestId('profile-age').fill('30');
+  await page.getByTestId('profile-save').click();
+  await expect(page.getByTestId('profile-Lan')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('cur-lesson-l1-01-keyboard')).toHaveAttribute('data-status', 'available');
+
+  await page.getByRole('button', { name: 'Về trang chủ' }).click();
+  await expect(page.getByTestId('dashboard')).toContainText('Chào Lan!');
+  await expect(page.getByTestId('dashboard')).toHaveAttribute('data-ui-mode', 'adult');
+  await page.getByTestId('profile-Bi').click();
+  await expect(page.getByTestId('dashboard')).toHaveAttribute('data-ui-mode', 'kids');
+});
+
 test('buổi 1: giới thiệu → luyện tập → kiểm tra 5 lượt → kết quả; tiến độ còn sau khi tải lại, buổi 2 mở ra', async ({ page }) => {
   await page.goto('/');
   await page.getByTestId('continue-learning').click();

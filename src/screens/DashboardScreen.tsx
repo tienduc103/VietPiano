@@ -10,6 +10,7 @@ import { useUiMode } from '../hooks/useUiMode';
 import { Button, FullscreenButton, Icon, formatDuration } from '../components/ui';
 import { AppVersion } from '../components/AppVersion';
 import { MicError } from '../components/MicPanel';
+import { ProfileSwitcher } from '../components/ProfileSwitcher';
 
 /** Learning Dashboard — trang chủ: cấp đang học, tiến độ, buổi tiếp theo, thành tích. */
 export function DashboardScreen() {
@@ -80,6 +81,8 @@ export function DashboardScreen() {
           <MicError />
         </div>
 
+        <ProfileSwitcher hint="Lưu tiến độ giáo trình riêng cho từng người và tự chọn giao diện Trẻ em / Người lớn theo tuổi. Dữ liệu chỉ lưu trên máy này." />
+
         {level && progress && (
           <section className="mt-6 grid gap-4 lg:grid-cols-[3fr_2fr]">
             <div className="rounded-3xl bg-gradient-to-br from-violet-600 to-fuchsia-500 p-6 text-white shadow-lg shadow-fuchsia-500/30">
@@ -137,11 +140,6 @@ export function DashboardScreen() {
         </section>
 
         {!loaded && <p className="mt-6 text-sm text-slate-500">Đang tải tiến độ…</p>}
-        {!profile && (
-          <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">
-            Mẹo: tạo hồ sơ người học ở Thư viện bài để lưu tiến độ riêng cho từng người và tự chọn giao diện theo tuổi.
-          </p>
-        )}
       </div>
       <AppVersion className="pb-[max(0.5rem,env(safe-area-inset-bottom))]" />
     </div>
