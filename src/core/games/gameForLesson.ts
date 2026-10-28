@@ -12,17 +12,23 @@
 import { lessonTimeline, pieceToLesson } from '../curriculum/piece';
 import type { CurriculumLesson, KeyQuizRound, Piece } from '../curriculum/types';
 import type { Clef } from '../lessons/types';
-import { midiToPitchClass, requireMidi } from '../music/notes';
+import type { KeySignature } from '../music/keySignature';
+import { midiToName, midiToPitchClass, requireMidi } from '../music/notes';
 import type { Random } from './random';
 
 type Keyboard = { from: number; to: number };
+/**
+ * Tên nốt viết như trong bài cho các phím đen ("Bb4" chứ không phải "A#4") — chỉ có khi buổi dùng nốt giáng.
+ * Không có thì gọi tên theo `midiToName` (dấu thăng).
+ */
+type Names = { names?: Record<number, string> };
 
 export type GameSpec =
-  | { kind: 'note-catch'; keyboard: Keyboard; notes: number[] }
+  | ({ kind: 'note-catch'; keyboard: Keyboard; notes: number[] } & Names)
   | { kind: 'key-hunt'; keyboard: Keyboard; rounds: KeyQuizRound[] }
   | { kind: 'rhythm-train'; piece: Piece }
-  | { kind: 'staff-shoot'; keyboard: Keyboard; clef: Clef; notes: number[] }
-  | { kind: 'echo-melody'; keyboard: Keyboard; notes: number[] }
+  | ({ kind: 'staff-shoot'; keyboard: Keyboard; clef: Clef; notes: number[]; keySignature?: KeySignature } & Names)
+  | ({ kind: 'echo-melody'; keyboard: Keyboard; notes: number[] } & Names)
   /** `fingers`: số ngón → phím (MIDI) của thế tay đang học. App chỉ chấm phím, không biết người học dùng ngón nào. */
   | { kind: 'finger-quiz'; keyboard: Keyboard; hand: 'right' | 'left'; fingers: Record<number, number> };
 
@@ -63,6 +69,36 @@ export function lessonPitches(lesson: CurriculumLesson): number[] {
     }
   }
   return [...set].sort((a, b) => a - b);
+}
+
+/** Tên nốt viết trong bài (bài đọc nốt + bài chơi), theo MIDI — tên đầu tiên gặp được dùng. */
+export function lessonSpellings(lessons: readonly CurriculumLesson[]): Map<number, string> {
+  const out = new Map<number, string>();
+  const add = (pitch: string) => {
+    const m = requireMidi(pitch);
+    if (!out.has(m)) out.set(m, pitch);
+  };
+  for (const lesson of lessons)
+    for (const ex of lesson.exercises) {
+      if (ex.kind === 'note-reading') ex.sequence.forEach(add);
+      if (ex.kind === 'play') for (const n of lessonTimeline(pieceToLesson(ex.piece, ex.id))) if (n.midiNote !== null) add(n.pitch);
+    }
+  return out;
+}
+
+/** `names` cho các nốt có tên khác cách gọi mặc định (nốt giáng); không có thì bỏ trường. */
+function namesFor(notes: readonly number[], spellings: ReadonlyMap<number, string>): Names {
+  const names: Record<number, string> = {};
+  for (const m of notes) {
+    const p = spellings.get(m);
+    if (p && p !== midiToName(m)) names[m] = p;
+  }
+  return Object.keys(names).length > 0 ? { names } : {};
+}
+
+/** Tên hiển thị của nốt trong trò chơi: tên viết trong bài nếu có, không thì tên mặc định. */
+export function gameNoteName(spec: Names, midi: number): string {
+  return spec.names?.[midi] ?? midiToName(midi);
 }
 
 /** Bàn phím từ nốt Đô ≤ nốt thấp nhất tới nốt Si ≥ nốt cao nhất (đủ quãng 8, phím trắng ở hai đầu). */
@@ -129,19 +165,29 @@ export function fingerQuizFor(lesson: CurriculumLesson): Extract<GameSpec, { kin
 export function gamesForLesson(lesson: CurriculumLesson, earlier: readonly CurriculumLesson[] = []): GameSpec[] {
   const rhythm = lesson.exercises.find((e) => e.kind === 'play' && e.mode === 'rhythm');
   const reading = lesson.exercises.filter((e) => e.kind === 'note-reading');
+  const spellings = lessonSpellings([lesson, ...[...earlier].reverse()]);
   let primary: GameSpec;
   if (rhythm && rhythm.kind === 'play') {
     primary = { kind: 'rhythm-train', piece: rhythm.piece };
   } else if (reading.length > 0) {
-    const clef = reading[0].clef;
-    const notes = [...new Set(reading.filter((e) => e.clef === clef).flatMap((e) => e.sequence.map(requireMidi)))].sort((a, b) => a - b);
-    primary = { kind: 'staff-shoot', keyboard: keyboardFor(notes), clef, notes };
+    const first = reading[0];
+    const same = reading.filter((e) => e.clef === first.clef && e.keySignature === first.keySignature);
+    const notes = [...new Set(same.flatMap((e) => e.sequence.map(requireMidi)))].sort((a, b) => a - b);
+    primary = {
+      kind: 'staff-shoot',
+      keyboard: keyboardFor(notes),
+      clef: first.clef,
+      notes,
+      ...(first.keySignature ? { keySignature: first.keySignature } : {}),
+      ...namesFor(notes, lessonSpellings([{ ...lesson, exercises: same }])),
+    };
   } else {
-    primary = gameForLesson(lesson, earlier);
+    const g = gameForLesson(lesson, earlier);
+    primary = g.kind === 'note-catch' ? { ...g, ...namesFor(g.notes, spellings) } : g;
   }
   const echo = echoNotes(notePool(lesson, earlier));
   const finger = fingerQuizFor(lesson);
-  return [primary, { kind: 'echo-melody', keyboard: keyboardFor(echo), notes: echo }, ...(finger ? [finger] : [])];
+  return [primary, { kind: 'echo-melody', keyboard: keyboardFor(echo), notes: echo, ...namesFor(echo, spellings) }, ...(finger ? [finger] : [])];
 }
 
 /** Dãy số ngón cho trò Đố số ngón tay: ngẫu nhiên, không lặp liền nhau. */

@@ -21,6 +21,7 @@ export function pieceToLesson(piece: Piece, id: string): Lesson {
     notes: parseNotes(piece.notation),
     tempo: piece.bpm,
     source: piece.source,
+    ...(piece.keySignature ? { keySignature: piece.keySignature } : {}),
   };
 }
 

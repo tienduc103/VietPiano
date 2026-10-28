@@ -4,7 +4,7 @@ import { keysMatching } from '../curriculum/keys';
 import { lessonTimeline, pieceToLesson } from '../curriculum/piece';
 import { orderedLessons } from '../curriculum/unlock';
 import { seeded } from './random';
-import { fingerQuizFor, fingerSequence, gameForLesson, gamesForLesson, keyboardFor, lessonPitches } from './gameForLesson';
+import { fingerQuizFor, fingerSequence, gameForLesson, gameNoteName, gamesForLesson, keyboardFor, lessonPitches } from './gameForLesson';
 
 const level1 = orderedLessons(CURRICULUM.levels[0]);
 const find = (id: string) => level1.find((l) => l.lessonId === id)!;
@@ -71,6 +71,27 @@ describe('gameForLesson', () => {
         }
       });
     }
+  });
+});
+
+describe('tên nốt viết đúng (nốt giáng)', () => {
+  const level4 = orderedLessons(CURRICULUM.levels[3]);
+  const l4 = (id: string) => level4.find((l) => l.lessonId === id)!;
+
+  it('Bắn bóng: giữ tên "Bb4" và hoá biểu của bài đọc nốt', () => {
+    const [shoot] = gamesForLesson(l4('l4-08-f-major'), level4.slice(0, 7));
+    expect(shoot).toMatchObject({ kind: 'staff-shoot', keySignature: 'F', names: { 70: 'Bb4' } });
+    if (shoot.kind === 'staff-shoot') expect(gameNoteName(shoot, 70)).toBe('Bb4');
+  });
+
+  it('Giai điệu bí ẩn / Hứng nốt rơi: nốt giáng gọi tên giáng; nốt thăng không cần bảng tên', () => {
+    const games = gamesForLesson(l4('l4-06-flat'), level4.slice(0, 5));
+    const echo = games.find((g) => g.kind === 'echo-melody')!;
+    if (echo.kind !== 'echo-melody') throw new Error('sai loại');
+    if (echo.notes.includes(70)) expect(gameNoteName(echo, 70)).toBe('Bb4');
+    const [catchG] = gamesForLesson(l4('l4-01-sharp'));
+    expect(catchG).toMatchObject({ kind: 'note-catch' });
+    expect('names' in catchG).toBe(false);
   });
 });
 

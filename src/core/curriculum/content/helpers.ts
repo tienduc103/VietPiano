@@ -11,6 +11,8 @@ export const NO_DURATION_MIC = 'Với micro, app không biết lúc bạn nhả 
 export const rh = (notation: string, bpm = 60, title?: string): Piece => ({ notation, clef: 'treble', hand: 'right', bpm, title, source: SOURCE });
 export const lh = (notation: string, bpm = 60, title?: string): Piece => ({ notation, clef: 'bass', hand: 'left', bpm, title, source: SOURCE });
 export const both = (notation: string, bpm = 60, title?: string): Piece => ({ notation, clef: 'grand', hand: 'both', bpm, title, source: SOURCE });
+/** Bản nhạc có hoá biểu (vd "G" Sol trưởng, "F" Fa trưởng). */
+export const inKey = (piece: Piece, keySignature: NonNullable<Piece['keySignature']>): Piece => ({ ...piece, keySignature });
 /** Bản nhạc nhịp 3/4. */
 export const in34 = (piece: Piece): Piece => ({ ...piece, timeSignature: [3, 4] });
 

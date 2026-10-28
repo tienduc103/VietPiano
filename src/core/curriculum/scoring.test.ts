@@ -231,10 +231,11 @@ describe('trạng thái buổi / mở khoá (chỉ gợi ý)', () => {
     expect(currentLevel(CURRICULUM, {})?.levelId).toBe('level-1');
     expect(nextLessonAfter(CURRICULUM, l1.lessonId)?.lessonId).toBe(l2.lessonId);
     expect(nextLessonAfter(CURRICULUM, 'l1-05-week1-test')?.lessonId).toBe('l1-06-staff');
-    // Hết cấp 1 → buổi đầu cấp 2; hết cấp 2 → buổi đầu cấp 3; hết cấp 3 (cấp 4 chưa có nội dung) → hết.
+    // Hết cấp 1 → buổi đầu cấp 2; …; hết cấp 4 (cấp 5 chưa có nội dung) → hết.
     expect(nextLessonAfter(CURRICULUM, 'l1-20-final')?.lessonId).toBe('l2-01-g-position');
     expect(nextLessonAfter(CURRICULUM, 'l2-20-final')?.lessonId).toBe('l3-01-eighths');
-    expect(nextLessonAfter(CURRICULUM, 'l3-20-final')).toBeNull();
+    expect(nextLessonAfter(CURRICULUM, 'l3-20-final')?.lessonId).toBe('l4-01-sharp');
+    expect(nextLessonAfter(CURRICULUM, 'l4-20-final')).toBeNull();
     const all = Object.fromEntries(level.lessons.map((l) => [l.lessonId, passed(l)]));
     expect(levelProgress(level, all)).toMatchObject({ completed: 20, next: null });
     // Xong cấp 1 → cấp đang học là cấp 2.

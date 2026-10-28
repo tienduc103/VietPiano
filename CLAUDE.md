@@ -40,7 +40,7 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   lessons/                 kiểu dữ liệu, ký hiệu gọn "C4 D4/h", thư viện bài, LessonManager
   practice/PerformanceTracker.ts  Biểu diễn / Tiết tấu của giáo trình: đồng hồ nhịp CỐ ĐỊNH, chấm cao độ + thời điểm + trường độ (Note Off), dấu lặng
   curriculum/              giáo trình (xem docs/curriculum.md): Curriculum → Level → Week → Lesson → Activity/Exercise
-    content/                 CHỈ dữ liệu (cấp 1–3: mỗi cấp 20 buổi; cấp 4–6 khung "sắp có"; `helpers.ts` hàm dựng chung);
+    content/                 CHỈ dữ liệu (cấp 1–4: mỗi cấp 20 buổi; cấp 5–6 khung "sắp có"; `helpers.ts` hàm dựng chung);
                              `extraPractice` = bài thư viện luyện thêm (gộp từ khoá học cũ)
     validate.ts              kiểm tra dữ liệu (đủ phách, tầm micro, tiên quyết, đáp án) — test chạy cho toàn giáo trình
     piece.ts / QuizEngine.ts / scoring.ts / unlock.ts / progress.ts  bản nhạc→dòng thời gian/MIDI, bài nhiều lượt, rubric, gợi ý mở khoá, tiến độ

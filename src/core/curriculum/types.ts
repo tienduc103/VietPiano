@@ -4,6 +4,7 @@
  * không đổi kiểu dữ liệu. Tiến độ (Progress) lưu riêng ở `storage/CurriculumStorage.ts`.
  */
 import type { Clef, LessonClef, LessonHand } from '../lessons/types';
+import type { KeySignature } from '../music/keySignature';
 
 /**
  * Chữ hiển thị. Hiện chỉ có tiếng Việt; sau này có thể là `{ vi, en }` mà không phải đổi nội dung cũ
@@ -30,6 +31,8 @@ export interface Piece {
   title?: Text;
   /** Ghi nguồn gốc (bản quyền): giai điệu tự soạn cho giáo trình. */
   source?: string;
+  /** Hoá biểu ("G", "F"…). Ký hiệu vẫn ghi đủ dấu hoá ("F#4"); khuông nhạc tự bỏ dấu đã có trong hoá biểu. */
+  keySignature?: KeySignature;
 }
 
 // ── Hình minh hoạ ─────────────────────────────────────────────────────
@@ -138,6 +141,8 @@ export interface NoteReadingExercise extends ExerciseBase {
   /** Các tên nốt hiện làm lựa chọn khi `answer: 'name'`. */
   choices?: string[];
   answer: 'name' | 'play';
+  /** Đọc nốt trong hoá biểu: nốt "F#4" vẽ không có dấu thăng — người học phải nhớ hoá biểu. */
+  keySignature?: KeySignature;
 }
 
 /**

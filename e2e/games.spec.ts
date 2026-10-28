@@ -256,3 +256,31 @@ test('cấp 3: 20 buổi; buổi móc đơn có trò Đèn giao thông với toa
   await page.getByTestId('cur-lesson-l3-04-happy-steps').click();
   await expect(page.getByTestId('lesson-title')).toHaveText('Bài nhạc: Bước chân vui');
 });
+
+test('cấp 4: hoá biểu trên khuông, gọi tên nốt giáng, trò Bắn bóng theo hoá biểu Fa trưởng', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('level-4').click();
+  await expect(page.locator('[data-testid^="cur-lesson-l4-"]')).toHaveCount(20);
+
+  // Buổi 7 — Si hay Si giáng: lựa chọn ghi tên giáng (B♭4), không phải A#4.
+  await page.getByTestId('cur-lesson-l4-07-natural').click();
+  await page.getByTestId('start-lesson').click();
+  await page.getByTestId('intro-next').click();
+  for (let i = 0; i < 2; i++) await page.getByTestId('choice-0').click().then(() => page.waitForTimeout(1000));
+  await expect(page.getByTestId('exercise-done')).toBeVisible();
+  await page.getByTestId('exercise-next').click();
+  await expect(page.getByTestId('name-Bb4')).toHaveText(/B♭4|Si♭4/);
+
+  // Trò Bắn bóng của buổi 8 (đọc nốt theo hoá biểu Fa trưởng): bóng vẽ khuông có hoá biểu.
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('level-4').click();
+  await page.getByTestId('cur-game-l4-08-f-major').click();
+  await expect(page.getByTestId('game-intro')).toHaveAttribute('data-game', 'staff-shoot');
+  await page.getByTestId('game-start').click();
+  const balloon = page.locator('[data-testid="balloon"][data-state="pending"]').first();
+  await expect(balloon.locator('svg')).toBeVisible({ timeout: 15_000 });
+  const midi = await balloon.getAttribute('data-midi');
+  await page.locator(`[data-testid="staff-shoot"] button[data-midi="${midi}"]`).click();
+  await expect(page.getByTestId('game-score')).not.toHaveText('⭐ 0');
+});

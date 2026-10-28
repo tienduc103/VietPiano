@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { pieceToLesson } from '../../core/curriculum/piece';
 import type { UiMode } from '../../core/curriculum/types';
-import type { GameSpec } from '../../core/games/gameForLesson';
+import { gameNoteName, type GameSpec } from '../../core/games/gameForLesson';
 import { gameStars, makeNoteSequence, NoteCatchGame, type NoteCatchConfig } from '../../core/games/NoteCatchGame';
 import { virtualInput } from '../../core/input/VirtualInputProvider';
 import type { Clef } from '../../core/lessons/types';
-import { midiToName } from '../../core/music/notes';
+import type { KeySignature } from '../../core/music/keySignature';
 import { renderScore, scoreFontsReady } from '../../core/score/ScoreRenderer';
 import { useNoteInput } from '../../hooks/useNoteInput';
 import { useMic } from '../../store/micStore';
@@ -23,7 +23,7 @@ const STAFF_TOP = 38;
 const STAFF_BAND = 108;
 
 /** Vẽ sẵn mỗi nốt một khuông nhỏ (SVG) — một lần cho cả ván, không vẽ lại VexFlow mỗi khung hình. */
-function useStaffSvgs(notes: readonly number[], clef: Clef): Map<number, string> | null {
+function useStaffSvgs(notes: readonly number[], clef: Clef, nameOf: (midi: number) => string, keySignature?: KeySignature): Map<number, string> | null {
   const [svgs, setSvgs] = useState<Map<number, string> | null>(null);
   useEffect(() => {
     let alive = true;
@@ -35,7 +35,7 @@ function useStaffSvgs(notes: readonly number[], clef: Clef): Map<number, string>
       const out = new Map<number, string>();
       try {
         for (const m of new Set(notes)) {
-          const lesson = pieceToLesson({ notation: `${midiToName(m)}/w`, clef, hand: clef === 'bass' ? 'left' : 'right', bpm: 60, timeSignature: [4, 4] }, `shoot-${m}`);
+          const lesson = pieceToLesson({ notation: `${nameOf(m)}/w`, clef, hand: clef === 'bass' ? 'left' : 'right', bpm: 60, timeSignature: [4, 4], keySignature }, `shoot-${m}`);
           const r = renderScore(host, lesson, { showNames: false, labelStyle: 'letter' });
           const svg = host.querySelector('svg');
           if (!svg) continue;
@@ -59,7 +59,8 @@ function useStaffSvgs(notes: readonly number[], clef: Clef): Map<number, string>
     return () => {
       alive = false;
     };
-  }, [notes, clef]);
+    // `nameOf` suy từ spec — cố định trong suốt ván.
+  }, [notes, clef, keySignature]);
   return svgs;
 }
 
@@ -68,7 +69,7 @@ export function StaffShootView({ spec, mode, golden, onEnd }: { spec: Extract<Ga
   const settings = useSettings((s) => s.settings);
   const micLive = useMic((s) => s.live);
   const kids = mode === 'kids';
-  const svgs = useStaffSvgs(spec.notes, spec.clef);
+  const svgs = useStaffSvgs(spec.notes, spec.clef, (m) => gameNoteName(spec, m), spec.keySignature);
   const engine = useMemo(() => {
     const cfg = { ...(kids ? KIDS : ADULT), golden };
     // Nốt vàng (hay đọc nhầm) xuất hiện nhiều hơn.

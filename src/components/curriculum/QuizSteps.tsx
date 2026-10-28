@@ -189,7 +189,7 @@ export function NoteReadingStep({ exercise, mode, onDone }: StepProps<NoteReadin
   );
   const pitch = exercise.sequence[state.index];
   const piece: Piece = useMemo(
-    () => ({ notation: `${pitch}/w`, clef: exercise.clef, hand: exercise.clef === 'bass' ? 'left' : 'right', bpm: 60, timeSignature: [4, 4] }),
+    () => ({ notation: `${pitch}/w`, clef: exercise.clef, hand: exercise.clef === 'bass' ? 'left' : 'right', bpm: 60, timeSignature: [4, 4], keySignature: exercise.keySignature }),
     [pitch, exercise.clef],
   );
   const showHint = hinted === state.index;

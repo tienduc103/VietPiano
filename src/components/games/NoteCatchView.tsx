@@ -1,9 +1,9 @@
 import { useEffect, useMemo } from 'react';
-import type { GameSpec } from '../../core/games/gameForLesson';
+import { gameNoteName, type GameSpec } from '../../core/games/gameForLesson';
 import { gameStars, KIDS_NOTE_CATCH_CONFIG, makeNoteSequence, NoteCatchGame } from '../../core/games/NoteCatchGame';
 import type { UiMode } from '../../core/curriculum/types';
 import { virtualInput } from '../../core/input/VirtualInputProvider';
-import { midiToLabel } from '../../core/music/notes';
+import { pitchToLabel } from '../../core/music/notes';
 import { useNoteInput } from '../../hooks/useNoteInput';
 import { useMic } from '../../store/micStore';
 import { useSettings } from '../../store/settingsStore';
@@ -83,7 +83,7 @@ export function NoteCatchView({ spec, mode, onEnd }: { spec: Extract<GameSpec, {
                 fontSize: kids ? 22 : 18,
               }}
             >
-              {midiToLabel(d.midi, settings.labelStyle)}
+              {pitchToLabel(gameNoteName(spec, d.midi), settings.labelStyle)}
             </div>
           );
         })}

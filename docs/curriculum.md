@@ -45,8 +45,14 @@ và mọi bài tập bắt buộc (`required`, mặc định true) đạt `pass`
 | 1 — Làm quen Piano | Bàn phím, nốt Đô, số ngón, C–D–E | Khuông nhạc, khoá Sol, C4–G4 | Nốt đen/trắng/tròn, dấu lặng đen | Tay trái C3–G3, đổi tay, bài 4 và 8 ô |
 | 2 — Mở rộng tầm tay | Thế tay Sol, A4–D5, đổi thế tay | Khoá Fa tới B3, tay trái thế Sol G2–D3 | Nhịp 3/4, trắng chấm dôi, lặng trắng | Bước liền/nhảy quãng, quãng 5–8, bài valse, bài hai tay |
 | 3 — Móc đơn và chấm dôi | Móc đơn ("1 và"), lặng móc đơn | Đen chấm dôi (4/4 và 3/4), tay trái móc đơn | Đảo phách móc đơn – đen – móc đơn, nửa sau phách | Gam Đô trưởng luồn ngón hai tay, bài 8 ô, bài hai tay 3/4 |
+| 4 — Dấu thăng, dấu giáng | Dấu thăng, nửa cung / một cung, hoá biểu Sol trưởng | Dấu giáng, dấu hoàn, hoá biểu Fa trưởng, tay trái thế Fa | Gam Sol trưởng, tay trái thế Rê, bài và hai tay Sol trưởng | Gam Fa trưởng, bài 3/4 và hai tay Fa trưởng, phân biệt giọng |
 
-Cấp 4–6 là khung "sắp có" (`comingSoon` trong `curriculum.ts`).
+Cấp 5–6 là khung "sắp có" (`comingSoon` trong `curriculum.ts`).
+
+Cấp 4 — hoá biểu: `Piece.keySignature` / `NoteReadingExercise.keySignature` (helper `inKey(piece, 'G')`). Ký hiệu
+vẫn ghi đủ dấu hoá ("F#4", "Bb4"); khuông nhạc tự bỏ dấu đã có trong hoá biểu và tự thêm dấu hoàn. Test
+`nội dung cấp 4` kiểm tra bài Sol trưởng chỉ dùng F♯, bài Fa trưởng chỉ dùng B♭. Trò chơi gọi nốt giáng bằng tên
+giáng (`GameSpec.names`, `gameNoteName`) — không quy về dấu thăng như `midiToName`.
 
 Cấp 3 — lưu ý micro: bài có móc đơn để ≤ 66 BPM (móc đơn cách nhau ~0,5 giây) và giai điệu không lặp cùng
 một nốt liền nhau ở móc đơn (micro cần tiếng gõ mới để nhận lại cùng nốt) — test `nội dung cấp 3` kiểm tra cả hai.

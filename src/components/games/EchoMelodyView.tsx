@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import type { UiMode } from '../../core/curriculum/types';
 import { soundOutput } from '../../core/audio/SoundOutput';
 import { EchoMelodyGame, KIDS_ECHO_CONFIG } from '../../core/games/EchoMelodyGame';
-import type { GameSpec } from '../../core/games/gameForLesson';
+import { gameNoteName, type GameSpec } from '../../core/games/gameForLesson';
 import { gameStars } from '../../core/games/NoteCatchGame';
 import { virtualInput } from '../../core/input/VirtualInputProvider';
-import { midiToLabel } from '../../core/music/notes';
+import { pitchToLabel } from '../../core/music/notes';
 import { useNoteInput } from '../../hooks/useNoteInput';
 import { useMic } from '../../store/micStore';
 import { useSettings } from '../../store/settingsStore';
@@ -116,7 +116,7 @@ export function EchoMelodyView({ spec, mode, onEnd }: { spec: Extract<GameSpec, 
             🔁 Nghe lại (−{engine.config.replayPenalty})
           </Button>
           <Button onClick={() => setHint(engine.hint())} disabled={!answering || hint !== null} data-testid="echo-hint">
-            💡 Gợi ý nốt đầu{hint !== null ? `: ${midiToLabel(hint, settings.labelStyle)}` : ` (−${engine.config.hintPenalty})`}
+            💡 Gợi ý nốt đầu{hint !== null ? `: ${pitchToLabel(gameNoteName(spec, hint), settings.labelStyle)}` : ` (−${engine.config.hintPenalty})`}
           </Button>
         </div>
       </div>
