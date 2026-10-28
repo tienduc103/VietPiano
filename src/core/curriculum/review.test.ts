@@ -61,15 +61,18 @@ describe('tiến độ luyện tập / trò chơi', () => {
     const l = lesson('l1-01-keyboard');
     let rec = emptyRecord('p', l);
     rec = applyReview(rec, 60_000, 5);
-    rec = applyGameResult(rec, { score: 900, stars: 2 }, 30_000, 6);
-    rec = applyGameResult(rec, { score: 500, stars: 3 }, 30_000, 7);
-    expect(rec).toMatchObject({ reviewCount: 1, gamePlays: 2, gameBestScore: 900, gameBestStars: 3, practiceMs: 120_000, passed: false, lastPracticedAt: 7 });
+    rec = applyGameResult(rec, { kind: 'note-catch', score: 900, stars: 2 }, 30_000, 6);
+    rec = applyGameResult(rec, { kind: 'echo-melody', score: 500, stars: 3 }, 30_000, 7);
+    rec = applyGameResult(rec, { kind: 'note-catch', score: 700, stars: 1 }, 0, 8);
+    expect(rec).toMatchObject({ reviewCount: 1, gamePlays: 3, gameBestScore: 900, gameBestStars: 3, practiceMs: 120_000, passed: false, lastPracticedAt: 8 });
+    expect(rec.games).toEqual({ 'note-catch': { plays: 2, bestScore: 900, bestStars: 2 }, 'echo-melody': { plays: 1, bestScore: 500, bestStars: 3 } });
     expect(rec.exercises).toEqual({});
   });
 
   it('bản ghi cũ (chưa có trường mới) đọc lại về 0', () => {
-    const { reviewCount, gamePlays, gameBestScore, gameBestStars, ...old } = emptyRecord('p', lesson('l1-01-keyboard'));
-    void [reviewCount, gamePlays, gameBestScore, gameBestStars];
-    expect(sanitizeRecord(old)).toMatchObject({ reviewCount: 0, gamePlays: 0, gameBestScore: 0, gameBestStars: 0 });
+    const { reviewCount, gamePlays, gameBestScore, gameBestStars, games, ...old } = emptyRecord('p', lesson('l1-01-keyboard'));
+    void [reviewCount, gamePlays, gameBestScore, gameBestStars, games];
+    expect(sanitizeRecord(old)).toMatchObject({ reviewCount: 0, gamePlays: 0, gameBestScore: 0, gameBestStars: 0, games: {} });
+    expect(sanitizeRecord({ ...old, games: { 'key-hunt': { plays: 2, bestScore: 'x', bestStars: 9 }, bad: null } })?.games).toEqual({ 'key-hunt': { plays: 2, bestScore: 0, bestStars: 3 } });
   });
 });

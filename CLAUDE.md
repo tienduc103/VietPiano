@@ -46,8 +46,12 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
     piece.ts / QuizEngine.ts / scoring.ts / unlock.ts / progress.ts  bản nhạc→dòng thời gian/MIDI, bài nhiều lượt, rubric, gợi ý mở khoá, tiến độ
     review.ts                Luyện tập sau buổi: tự sinh từ bài tập của buổi (bài yếu nhất, trộn lượt, hỏi thêm nốt hay nhầm);
                              weight 0 → không đổi điểm/trạng thái đạt. Luồng buổi: kết quả → Luyện tập → Trò chơi → buổi tiếp
-  games/                   trò chơi sau buổi, máy trạng thái thuần (thời gian truyền vào): `gameForLesson` suy trò từ nội dung buổi;
-                             NoteCatchGame "Hứng nốt rơi" (mỗi sự kiện hứng tối đa 1 nốt, `graceMs` bù trễ micro), KeyHuntGame "Săn phím"
+  games/                   trò chơi sau buổi, máy trạng thái thuần (thời gian truyền vào): `gamesForLesson` suy 2 trò/buổi từ nội dung
+                             (trò chính theo kỹ năng + EchoMelody); kỷ lục lưu theo loại trò (`LessonRecord.games`).
+                             NoteCatchGame "Hứng nốt rơi" (mỗi sự kiện hứng tối đa 1 nốt, `graceMs` bù trễ micro; `golden` ×2 điểm) —
+                             dùng lại cho "Bắn bóng trên khuông" (bài đọc nốt, nốt vẽ sẵn SVG một lần, không tên nốt); KeyHuntGame "Săn phím";
+                             RhythmTrainGame "Đèn giao thông tiết tấu" (bài tiết tấu, không xét cao độ, gõ vào dấu lặng = phanh);
+                             EchoMelodyGame "Giai điệu bí ẩn" (luyện tai; bỏ nốt trong lúc app phát)
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt
   storage/ProgressStorage.ts  IndexedDB (phiên + tổng hợp theo bài), fallback bộ nhớ; bài gần đây ở localStorage
   storage/CurriculumStorage.ts  IndexedDB riêng "vietpiano-curriculum": tiến độ giáo trình theo hồ sơ, ghi ngay sau mỗi bài tập

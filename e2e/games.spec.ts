@@ -19,9 +19,11 @@ async function answerPrompts(page: Page, root: string, promptId: string, until: 
       await page.waitForTimeout(100);
       continue;
     }
-    // Lượt cuối xong thì bài tập biến mất ngay — không chờ phím nữa.
+    // Lượt cuối xong thì bài tập biến mất ngay — không chờ yêu cầu / phím nữa.
+    const text = await prompt.textContent({ timeout: 1000 }).catch(() => null);
+    if (text === null) continue;
     await page
-      .locator(`[data-testid="${root}"] [data-midi="${keyFor((await prompt.textContent()) ?? '')}"]`)
+      .locator(`[data-testid="${root}"] [data-midi="${keyFor(text)}"]`)
       .click({ timeout: 2000 })
       .catch(() => undefined);
     await page.waitForTimeout(330); // > minIntervalMs
@@ -91,4 +93,98 @@ test('trò chơi Hứng nốt rơi: đánh đúng nốt đang rơi thì hứng �
   await expect(result).toBeVisible();
   await expect(page.getByTestId('game-stars')).toHaveAttribute('data-stars', '3');
   await expect(page.getByTestId('game-final-score')).not.toHaveText('0');
+});
+
+test('Đèn giao thông tiết tấu: gõ đúng lúc toa chạm vạch; gõ vào ô dấu lặng thì phanh gấp', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('cur-game-l1-14-rest').click();
+  await expect(page.getByTestId('game-intro')).toHaveAttribute('data-game', 'rhythm-train');
+  await page.getByTestId('game-start').click();
+  await expect(page.getByTestId('rhythm-track')).toBeVisible();
+
+  // Gõ ngay trong trình duyệt (chính xác theo khung hình): mỗi toa nốt khi chạm vạch (x = 140 px),
+  // thêm một lần gõ giữa ô dấu lặng đầu tiên.
+  await page.evaluate(() => {
+    const tapped = new Set<Element>();
+    let restTapped = false;
+    const tap = () => document.querySelector('[data-testid="rhythm-tap"]')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    const loop = () => {
+      if (!document.querySelector('[data-testid="rhythm-track"]')) return;
+      for (const w of Array.from(document.querySelectorAll<HTMLElement>('[data-testid="wagon"]'))) {
+        const x = parseFloat(w.style.left);
+        if (w.dataset.rest) {
+          if (!restTapped && x <= 140 - 50) {
+            restTapped = true;
+            tap();
+          }
+        } else if (!tapped.has(w) && x <= 141) {
+          tapped.add(w);
+          tap();
+        }
+      }
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  });
+  await expect(page.getByTestId('rhythm-judge')).toContainText('Đang nghỉ mà', { timeout: 30_000 });
+  await expect(page.getByTestId('game-result')).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByTestId('game-stars')).toHaveAttribute('data-stars', '3');
+  await expect(page.locator('[data-testid="game-result"] dd').first()).toHaveText('18/18');
+});
+
+test('Giai điệu bí ẩn: nghe (phím sáng theo nốt) rồi đánh lại; đoạn dài dần tới hết 5 vòng', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('cur-game-l1-04-cde').click();
+  await page.getByTestId('game-pick-echo-melody').click();
+  await expect(page.getByTestId('game-intro')).toHaveAttribute('data-game', 'echo-melody');
+  await page.getByTestId('game-start').click();
+  await page.getByRole('switch').click(); // "Hiện phím khi phát"
+
+  const game = page.getByTestId('echo-melody');
+  const result = page.getByTestId('game-result');
+  for (let round = 0; round < 5; round++) {
+    await expect(game).toHaveAttribute('data-status', 'listen');
+    const melody: string[] = [];
+    while ((await game.getAttribute('data-status')) === 'listen') {
+      const lit = await game.locator('button[data-highlighted]').first().getAttribute('data-midi', { timeout: 50 }).catch(() => null);
+      if (lit && lit !== melody.at(-1)) melody.push(lit);
+      await page.waitForTimeout(40);
+    }
+    expect(melody).toHaveLength(3 + round);
+    for (const m of melody) {
+      await game.locator(`button[data-midi="${m}"]`).first().click();
+      await page.waitForTimeout(200); // > minIntervalMs
+    }
+  }
+  await expect(result).toBeVisible();
+  await expect(page.getByTestId('game-stars')).toHaveAttribute('data-stars', '3');
+  await expect(page.getByTestId('game-final-score')).toHaveText(String(100 * (3 + 4 + 5 + 6 + 7)));
+  // Kết quả có nút chơi trò còn lại của buổi.
+  await expect(page.getByTestId('game-other')).toContainText('Hứng nốt rơi');
+});
+
+test('Bắn bóng trên khuông: bóng mang nốt vẽ trên khuông, đánh đúng nốt thì bắn trúng', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('cur-game-l1-06-staff').click();
+  await expect(page.getByTestId('game-intro')).toHaveAttribute('data-game', 'staff-shoot');
+  await page.getByTestId('game-start').click();
+
+  const balloon = page.locator('[data-testid="balloon"][data-state="pending"]').first();
+  await expect(balloon).toBeVisible({ timeout: 15_000 });
+  await expect(balloon.locator('svg')).toBeVisible(); // khuông nhạc, không có tên nốt
+  const result = page.getByTestId('game-result');
+  for (let i = 0; i < 400 && !(await result.isVisible()); i++) {
+    if (await balloon.isVisible()) {
+      const midi = await balloon.getAttribute('data-midi');
+      if (midi) await page.locator(`[data-testid="staff-shoot"] button[data-midi="${midi}"]`).click({ timeout: 2000 }).catch(() => undefined);
+      await page.waitForTimeout(150);
+    } else {
+      await page.waitForTimeout(100);
+    }
+  }
+  await expect(result).toBeVisible();
+  await expect(page.getByTestId('game-stars')).toHaveAttribute('data-stars', '3');
 });

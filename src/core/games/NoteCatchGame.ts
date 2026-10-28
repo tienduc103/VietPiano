@@ -22,6 +22,8 @@ export interface NoteCatchConfig {
   lives: number;
   /** Bỏ sự kiện quá sát sự kiện được nhận trước (micro phát lặp). */
   minIntervalMs: number;
+  /** "Nốt vàng" (vd nốt hay đọc nhầm): hứng được tính gấp `GOLDEN_MULTIPLIER` điểm. */
+  golden: readonly number[];
 }
 
 export const DEFAULT_NOTE_CATCH_CONFIG: NoteCatchConfig = {
@@ -34,6 +36,7 @@ export const DEFAULT_NOTE_CATCH_CONFIG: NoteCatchConfig = {
   graceMs: 350,
   lives: 3,
   minIntervalMs: 120,
+  golden: [],
 };
 
 /** Bé chơi chậm hơn, nhiều mạng hơn. */
@@ -72,6 +75,7 @@ export type AnswerOutcome = 'hit' | 'wrong' | 'ignored';
 
 export const HIT_POINTS = 100;
 export const COMBO_BONUS = 10;
+export const GOLDEN_MULTIPLIER = 2;
 const MAX_COMBO_BONUS = 10;
 
 /** Dãy nốt rơi: lần lượt mọi nốt (trộn), không nốt nào xuất hiện ba lần liên tiếp. */
@@ -184,7 +188,7 @@ export class NoteCatchGame {
     this.setState({
       drops,
       hits: s.hits + 1,
-      score: s.score + HIT_POINTS + COMBO_BONUS * Math.min(s.combo, MAX_COMBO_BONUS),
+      score: s.score + (HIT_POINTS + COMBO_BONUS * Math.min(s.combo, MAX_COMBO_BONUS)) * (this.isGolden(midi) ? GOLDEN_MULTIPLIER : 1),
       combo,
       bestCombo: Math.max(s.bestCombo, combo),
       lastOutcome: 'hit',
@@ -212,6 +216,10 @@ export class NoteCatchGame {
   private finishIfDone(): void {
     const s = this.state;
     if (s.lives <= 0 || s.drops.every((d) => d.state !== 'pending')) this.setState({ status: 'finished' });
+  }
+
+  isGolden(midi: number): boolean {
+    return this.config.golden.includes(midi);
   }
 
   get accuracy(): number {

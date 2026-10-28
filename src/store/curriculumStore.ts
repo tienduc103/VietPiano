@@ -29,7 +29,7 @@ interface CurriculumStore {
   markIntroDone: (lesson: CurriculumLesson) => Promise<void>;
   addTime: (lesson: CurriculumLesson, ms: number) => Promise<void>;
   recordReview: (lesson: CurriculumLesson, practiceMs: number) => Promise<void>;
-  recordGame: (lesson: CurriculumLesson, game: { score: number; stars: number }, practiceMs: number) => Promise<void>;
+  recordGame: (lesson: CurriculumLesson, game: { kind: string; score: number; stars: number }, practiceMs: number) => Promise<void>;
   recordAiNote: (lesson: CurriculumLesson, note: AiNote) => Promise<void>;
   clear: () => Promise<void>;
 }

@@ -53,8 +53,16 @@ export interface LessonRecord {
   gamePlays: number;
   gameBestScore: number;
   gameBestStars: number;
+  /** Theo từng trò (khoá = loại trò, vd "note-catch") — điểm các trò không so sánh với nhau được. */
+  games: Record<string, GameRecord>;
   /** Nhận xét AI các lần làm buổi, cũ → mới, tối đa MAX_AI_NOTES. */
   aiNotes: AiNote[];
+}
+
+export interface GameRecord {
+  plays: number;
+  bestScore: number;
+  bestStars: number;
 }
 
 /** Người học chưa có hồ sơ dùng chung khoá này. */
@@ -84,6 +92,7 @@ export function emptyRecord(profileKey: string, lesson: Pick<CurriculumLesson, '
     gamePlays: 0,
     gameBestScore: 0,
     gameBestStars: 0,
+    games: {},
     aiNotes: [],
   };
 }
@@ -139,9 +148,14 @@ export function applyReview(rec: LessonRecord, practiceMs: number, now: number):
 }
 
 /** Chơi xong một ván trò chơi sau buổi. */
-export function applyGameResult(rec: LessonRecord, game: { score: number; stars: number }, practiceMs: number, now: number): LessonRecord {
+export function applyGameResult(rec: LessonRecord, game: { kind: string; score: number; stars: number }, practiceMs: number, now: number): LessonRecord {
+  const prev = rec.games[game.kind];
   return {
     ...rec,
+    games: {
+      ...rec.games,
+      [game.kind]: { plays: (prev?.plays ?? 0) + 1, bestScore: Math.max(prev?.bestScore ?? 0, game.score), bestStars: Math.max(prev?.bestStars ?? 0, game.stars) },
+    },
     gamePlays: rec.gamePlays + 1,
     gameBestScore: Math.max(rec.gameBestScore, game.score),
     gameBestStars: Math.max(rec.gameBestStars, game.stars),
@@ -181,6 +195,10 @@ export function sanitizeRecord(raw: unknown): LessonRecord | null {
   }
   const mistakes: Record<string, number> = {};
   for (const [k, v] of Object.entries(r.mistakes ?? {})) if (typeof v === 'number' && v > 0) mistakes[k] = v;
+  const games: Record<string, GameRecord> = {};
+  for (const [k, g] of Object.entries(r.games ?? {})) {
+    if (g && typeof g === 'object') games[k] = { plays: num(g.plays), bestScore: num(g.bestScore), bestStars: Math.min(3, num(g.bestStars)) };
+  }
   return {
     key: recordKey(r.profileKey, r.lessonId),
     profileKey: r.profileKey,
@@ -200,6 +218,7 @@ export function sanitizeRecord(raw: unknown): LessonRecord | null {
     gamePlays: num(r.gamePlays),
     gameBestScore: num(r.gameBestScore),
     gameBestStars: Math.min(3, num(r.gameBestStars)),
+    games,
     aiNotes: sanitizeAiNotes(r.aiNotes),
   };
 }

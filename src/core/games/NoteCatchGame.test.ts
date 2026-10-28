@@ -63,6 +63,15 @@ describe('NoteCatchGame', () => {
     expect(g.answer(64, 6000)).toBe('ignored');
   });
 
+  it('nốt vàng được gấp đôi điểm', () => {
+    const g = new NoteCatchGame([60, 62], { ...CFG, golden: [62] });
+    g.start(0);
+    g.answer(60, 1000);
+    g.answer(62, 2500);
+    expect(g.getState().score).toBe(100 + 2 * 110);
+    expect(g.isGolden(62)).toBe(true);
+  });
+
   it('chưa bắt đầu thì bỏ mọi sự kiện', () => {
     const g = new NoteCatchGame([60], CFG);
     expect(g.answer(60, 0)).toBe('ignored');
