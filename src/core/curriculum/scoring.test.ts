@@ -214,9 +214,13 @@ describe('trạng thái buổi / mở khoá (chỉ gợi ý)', () => {
     expect(currentLevel(CURRICULUM, {})?.levelId).toBe('level-1');
     expect(nextLessonAfter(CURRICULUM, l1.lessonId)?.lessonId).toBe(l2.lessonId);
     expect(nextLessonAfter(CURRICULUM, 'l1-05-week1-test')?.lessonId).toBe('l1-06-staff');
-    expect(nextLessonAfter(CURRICULUM, 'l1-20-final')).toBeNull();
+    // Hết cấp 1 → buổi đầu cấp 2; hết cấp 2 (cấp 3 chưa có nội dung) → hết.
+    expect(nextLessonAfter(CURRICULUM, 'l1-20-final')?.lessonId).toBe('l2-01-g-position');
+    expect(nextLessonAfter(CURRICULUM, 'l2-20-final')).toBeNull();
     const all = Object.fromEntries(level.lessons.map((l) => [l.lessonId, passed(l)]));
     expect(levelProgress(level, all)).toMatchObject({ completed: 20, next: null });
+    // Xong cấp 1 → cấp đang học là cấp 2.
+    expect(currentLevel(CURRICULUM, all)?.levelId).toBe('level-2');
   });
 
   it('thành tích suy từ tiến độ', () => {

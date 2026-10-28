@@ -630,3 +630,17 @@ test('tiết tấu: metronome đếm vào rồi chạy, hiện phách, chấm th
   await page.getByRole('button', { name: 'Chậm hơn' }).click();
   await expect(page.getByTestId('tempo-control')).toContainText('♩ = 54');
 });
+
+test('cấp 2: có 20 buổi, nhịp 3/4 đếm vào 3 phách', async ({ page }) => {
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('level-2').click();
+  await expect(page.locator('[data-testid^="cur-lesson-l2-"]')).toHaveCount(20);
+  await expect(page.getByTestId('cur-lesson-l2-01-g-position')).toHaveAttribute('data-status', 'suggest-later');
+  await page.getByTestId('cur-lesson-l2-12-dotted-half').click();
+  await page.getByTestId('start-lesson').click();
+  await page.getByTestId('intro-next').click();
+  await expect(page.getByTestId('play-kind')).toContainText('Tiết tấu');
+  await page.getByTestId('timed-run').click();
+  await expect(page.getByTestId('count-in')).toBeVisible();
+  await expect(page.getByTestId('beat-indicator').locator('span')).toHaveCount(3, { timeout: 6000 });
+});

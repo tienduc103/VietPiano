@@ -8,7 +8,7 @@ Curriculum → Level → Week → CurriculumLesson → Activity (giới thiệu)
 
 | Lớp | File | Vai trò |
 | --- | --- | --- |
-| Nội dung | `src/core/curriculum/content/` | CHỈ dữ liệu: `curriculum.ts` (6 cấp), `level1.ts` (4 tuần, 20 buổi) |
+| Nội dung | `src/core/curriculum/content/` | CHỈ dữ liệu: `curriculum.ts` (6 cấp), `level1.ts`, `level2.ts` (mỗi cấp 4 tuần, 20 buổi), `helpers.ts` (hàm dựng dùng chung) |
 | Kiểu dữ liệu | `src/core/curriculum/types.ts` | Schema; chữ hiển thị là `Text` (chuỗi tiếng Việt, sau này có thể `{ vi, en }`) |
 | Kiểm tra dữ liệu | `validate.ts` | Đủ phách, tầm micro 36–84, tiên quyết đi trước, đáp án hợp lệ, thứ tự sự kiện |
 | Bản nhạc | `piece.ts` | Ký hiệu gọn → `Lesson` (dùng lại ScoreView/PracticeEngine) → dòng thời gian từng nốt → file MIDI |
@@ -38,15 +38,29 @@ và mọi bài tập bắt buộc (`required`, mặc định true) đạt `pass`
 
 Điều kiện đạt bài biểu diễn chuẩn: `{ minScore: 80, minAccuracy: 0.8, minCompletion: 0.9 }`.
 
-## Thêm cấp độ mới (vd cấp 2)
+## Nội dung hiện có
 
-1. Tạo `src/core/curriculum/content/level2.ts` theo mẫu `level1.ts`: mảng `defs` các buổi + `LEVEL2_WEEKS`.
-   - `lessonId` duy nhất toàn giáo trình (quy ước `l2-07-ten-ngan`), `weekId` dạng `l2-w1`.
-   - `prerequisites`: buổi liền trước; buổi đầu cấp 2 cần `l1-20-final`.
-2. Trong `curriculum.ts` thay `comingSoon(2, …)` bằng level đầy đủ (`availability: 'available'`).
+| Cấp | Tuần 1 | Tuần 2 | Tuần 3 | Tuần 4 |
+| --- | --- | --- | --- | --- |
+| 1 — Làm quen Piano | Bàn phím, nốt Đô, số ngón, C–D–E | Khuông nhạc, khoá Sol, C4–G4 | Nốt đen/trắng/tròn, dấu lặng đen | Tay trái C3–G3, đổi tay, bài 4 và 8 ô |
+| 2 — Mở rộng tầm tay | Thế tay Sol, A4–D5, đổi thế tay | Khoá Fa tới B3, tay trái thế Sol G2–D3 | Nhịp 3/4, trắng chấm dôi, lặng trắng | Bước liền/nhảy quãng, quãng 5–8, bài valse, bài hai tay |
+
+Cấp 3–6 là khung "sắp có" (`comingSoon` trong `curriculum.ts`).
+
+## Thêm cấp độ mới (vd cấp 3)
+
+1. Tạo `src/core/curriculum/content/level3.ts` theo mẫu `level2.ts` (dùng các hàm trong `helpers.ts`:
+   `rh`/`lh`/`both`/`in34`, `play`, `practice`, `keyboardPage`/`staffPage`/`countPage`, `buildLessons`).
+   - `lessonId` duy nhất toàn giáo trình (quy ước `l3-07-ten-ngan`), `weekId` dạng `l3-w1`.
+   - `prerequisites`: buổi liền trước; buổi đầu cấp 3 cần `l2-20-final`.
+2. Trong `curriculum.ts` thay `comingSoon(3, …)` bằng level đầy đủ (`availability: 'available'`).
 3. Chạy `npm test`: `curriculum.test.ts` chạy `validateCurriculum` cho toàn giáo trình,
    `flow.test.ts` mô phỏng người học chơi đúng mọi buổi và phải đạt — bài nào không chơi được sẽ báo lỗi.
-4. Cập nhật test số lượng nếu thêm test riêng cho cấp mới.
+4. Thêm test riêng cho cấp mới trong `curriculum.test.ts` (như "nội dung cấp 2") và cập nhật test số cấp đang mở.
+
+Cần nốt móc đơn / chấm dôi trong bài tiết tấu: ký hiệu đã hỗ trợ (`/8`, `/qd`); `PerformanceTracker` tự thu hẹp
+cửa sổ khớp theo khoảng cách nốt. Cần hợp âm (hai tay cùng lúc) thì micro KHÔNG chấm được — chỉ chấm giai điệu,
+như bài có `accompaniment` của thư viện.
 
 Không cần sửa engine, UI hay storage.
 

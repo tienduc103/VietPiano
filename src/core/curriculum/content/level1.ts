@@ -3,32 +3,10 @@
  * Mọi giai điệu là bài tập tự soạn cho giáo trình VietPiano (không chép từ giáo trình thương mại).
  * Quy ước: C4 = Đô giữa = MIDI 60. Thế tay cố định: tay phải ngón 1 ở C4; tay trái ngón 5 ở C3.
  */
-import type { ChoiceQuestion, CurriculumLesson, Exercise, IntroPage, KeyQuizRound, Piece, PlayExercise, Week } from '../types';
+import type { ChoiceQuestion, CurriculumLesson, KeyQuizRound, Week } from '../types';
+import { both, buildLessons, countPage, keyboardPage, lh, NO_DURATION_MIC, NO_FINGER_CHECK, play, practice, rh, staffPage, KEYS, type LessonDef } from './helpers';
 
 const LEVEL = 'level-1';
-const SOURCE = 'Bài tập tự soạn cho giáo trình VietPiano';
-/** Bàn phím cho bài tìm phím: C3–B5 (3 quãng 8 quanh Đô giữa). */
-const KEYS = { from: 48, to: 83 };
-const PERFORMANCE_PASS = { minScore: 80, minAccuracy: 0.8, minCompletion: 0.9 };
-const NO_FINGER_CHECK = 'App nghe được nốt nhưng không biết bạn dùng ngón nào — hãy tự để ý số ngón ghi trên khuông.';
-const NO_DURATION_MIC = 'Với micro, app không biết lúc bạn nhả phím nên không chấm trường độ (chỉ chấm khi dùng đàn MIDI hoặc bàn phím ảo).';
-
-const rh = (notation: string, bpm = 60, title?: string): Piece => ({ notation, clef: 'treble', hand: 'right', bpm, title, source: SOURCE });
-const lh = (notation: string, bpm = 60, title?: string): Piece => ({ notation, clef: 'bass', hand: 'left', bpm, title, source: SOURCE });
-const both = (notation: string, bpm = 60, title?: string): Piece => ({ notation, clef: 'grand', hand: 'both', bpm, title, source: SOURCE });
-
-const play = (id: string, title: string, mode: PlayExercise['mode'], piece: Piece, more: Partial<PlayExercise> = {}): PlayExercise => ({
-  kind: 'play',
-  id,
-  title,
-  mode,
-  piece,
-  pass: mode === 'wait' ? { minAccuracy: 0.8, minCompletion: 1 } : mode === 'rhythm' ? { minScore: 75, minCompletion: 0.9 } : PERFORMANCE_PASS,
-  ...more,
-});
-
-/** Bài luyện tập: không tính vào điểm buổi, không bắt buộc. */
-const practice = <T extends Exercise>(ex: T): T => ({ ...ex, required: false, weight: 0 });
 
 const R = {
   group2: { prompt: 'Bấm một phím trong nhóm 2 phím đen', target: { type: 'black-group', size: 2 } },
@@ -61,33 +39,6 @@ const Q = {
   trebleClef: { prompt: 'Khoá Sol ôm dòng kẻ nào?', options: ['Dòng 1 (Mi)', 'Dòng 2 (Sol)', 'Dòng 3 (Si)'], answer: 1 },
   bassC3: { prompt: 'Tay trái đặt ngón 5 ở nốt nào?', options: ['C3 (Đô thấp)', 'G3 (Sol thấp)', 'C4 (Đô giữa)'], answer: 0 },
 } satisfies Record<string, ChoiceQuestion>;
-
-const keyboardPage = (title: string, body: string, highlight: NonNullable<Extract<IntroPage['illustration'], { type: 'keyboard' }>['highlight']>, kids?: string): IntroPage => ({
-  title,
-  body,
-  kids,
-  illustration: { type: 'keyboard', ...KEYS, highlight },
-});
-
-const staffPage = (title: string, body: string, piece: Piece, kids?: string): IntroPage => ({
-  title,
-  body,
-  kids,
-  illustration: { type: 'staff', piece, listen: true },
-});
-
-const countPage = (title: string, body: string, piece: Piece, counts: string[], kids?: string): IntroPage => ({
-  title,
-  body,
-  kids,
-  illustration: { type: 'counting', piece, counts },
-});
-
-interface LessonDef extends Omit<CurriculumLesson, 'levelId' | 'contentVersion' | 'ageVariants' | 'unlockCriteria' | 'prerequisites' | 'notes'> {
-  ageVariants?: CurriculumLesson['ageVariants'];
-  prerequisites?: string[];
-  notes?: CurriculumLesson['notes'];
-}
 
 /** "Dạo chơi buổi sáng" — tự soạn, hai tay thay phiên (8 ô nhịp). */
 const MORNING =
@@ -698,11 +649,4 @@ export const LEVEL1_WEEKS: Week[] = [
   },
 ];
 
-export const LEVEL1_LESSONS: CurriculumLesson[] = defs.map((d) => ({
-  ...d,
-  levelId: LEVEL,
-  contentVersion: 1,
-  ageVariants: d.ageVariants ?? {},
-  prerequisites: d.prerequisites ?? [],
-  unlockCriteria: { lessonsPassed: d.prerequisites ?? [] },
-}));
+export const LEVEL1_LESSONS: CurriculumLesson[] = buildLessons(LEVEL, defs);

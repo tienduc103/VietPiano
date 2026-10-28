@@ -90,8 +90,8 @@ function completeLesson(l: CurriculumLesson, rec: LessonRecord, wrong: Record<st
 }
 
 describe('luồng học giáo trình (integration)', () => {
-  it('chơi đúng hết → mọi buổi cấp 1 đều đạt (dữ liệu bài chơi được thật)', () => {
-    for (const l of CURRICULUM.levels[0].lessons) {
+  it('chơi đúng hết → mọi buổi của mọi cấp đã mở đều đạt (dữ liệu bài chơi được thật)', () => {
+    for (const l of CURRICULUM.levels.flatMap((lv) => lv.lessons)) {
       const { rec, scores } = completeLesson(l, emptyRecord('p', l));
       expect({ id: l.lessonId, passed: rec.passed }).toEqual({ id: l.lessonId, passed: true });
       for (const s of Object.values(scores)) expect(s.score).toBeGreaterThanOrEqual(90);
