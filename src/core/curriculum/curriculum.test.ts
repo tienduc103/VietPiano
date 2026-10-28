@@ -3,6 +3,7 @@ import { lessonManager } from '../lessons/LessonManager';
 import { CURRICULUM } from './content/curriculum';
 import { LEVEL1_LESSONS, LEVEL1_WEEKS } from './content/level1';
 import { LEVEL2_LESSONS, LEVEL2_WEEKS } from './content/level2';
+import { LEVEL3_LESSONS, LEVEL3_WEEKS } from './content/level3';
 import { keysMatching } from './keys';
 import { lessonTimeline, pieceToLesson } from './piece';
 import { orderedLessons } from './unlock';
@@ -16,7 +17,7 @@ describe('nội dung giáo trình', () => {
 
   it('có 6 cấp độ; cấp 1–2 mở, cấp 3–6 là khung "sắp có"', () => {
     expect(CURRICULUM.levels.map((l) => l.number)).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(CURRICULUM.levels.map((l) => l.availability)).toEqual(['available', 'available', 'coming-soon', 'coming-soon', 'coming-soon', 'coming-soon']);
+    expect(CURRICULUM.levels.map((l) => l.availability)).toEqual(['available', 'available', 'available', 'coming-soon', 'coming-soon', 'coming-soon']);
   });
 
   it('cấp 1: 4 tuần × 5 buổi, số buổi 1–20 theo đúng thứ tự', () => {
@@ -117,6 +118,45 @@ describe('nội dung cấp 2', () => {
 
   it('bài luyện thêm trỏ tới bài có trong thư viện', () => {
     for (const e of LEVEL2_WEEKS.flatMap((w) => w.extraPractice ?? [])) expect(lessonManager.get(e.lessonId)).toBeDefined();
+  });
+});
+
+describe('nội dung cấp 3', () => {
+  const plays = (id: string) => LEVEL3_LESSONS.find((l) => l.lessonId === id)!.exercises.filter((e): e is PlayExercise => e.kind === 'play');
+  const notesOf = (ids: string[]) => ids.flatMap(plays).flatMap((e) => pieceToLesson(e.piece, 'x').notes);
+
+  it('4 tuần × 5 buổi, số buổi 1–20, buổi đầu cần buổi cuối cấp 2, kiểm tra ở buổi 5/10/15/20', () => {
+    expect(LEVEL3_WEEKS.map((w) => w.lessonIds.length)).toEqual([5, 5, 5, 5]);
+    expect(orderedLessons(CURRICULUM.levels[2]).map((l) => l.number)).toEqual(Array.from({ length: 20 }, (_, i) => i + 1));
+    expect(LEVEL3_LESSONS[0].prerequisites).toEqual(['l2-20-final']);
+    for (const n of [5, 10, 15, 20]) expect(LEVEL3_LESSONS.find((l) => l.number === n)!.assessment).toEqual({ passScore: 80, checkpoint: true });
+  });
+
+  it('tuần 1 có móc đơn và lặng móc đơn; tuần 2 có đen chấm dôi (cả nhịp 3/4)', () => {
+    const w1 = notesOf(LEVEL3_WEEKS[0].lessonIds);
+    expect(w1.some((n) => n.duration === '8' && !n.rest)).toBe(true);
+    expect(w1.some((n) => n.duration === '8' && n.rest)).toBe(true);
+    const w2 = LEVEL3_WEEKS[1].lessonIds.flatMap(plays);
+    expect(w2.some((e) => e.piece.timeSignature?.[0] === 3 && pieceToLesson(e.piece, 'x').notes.some((n) => n.duration === 'qd'))).toBe(true);
+  });
+
+  it('bài móc đơn để chậm (≤ 66 BPM) — micro kịp nhận từng tiếng gõ', () => {
+    for (const l of LEVEL3_LESSONS)
+      for (const e of l.exercises)
+        if (e.kind === 'play' && pieceToLesson(e.piece, 'x').notes.some((n) => n.duration === '8')) expect(e.piece.bpm, `${l.lessonId}/${e.id}`).toBeLessThanOrEqual(66);
+  });
+
+  it('giai điệu móc đơn không lặp cùng một nốt liền nhau (micro cần tiếng gõ mới) — trừ bài tiết tấu', () => {
+    for (const l of LEVEL3_LESSONS)
+      for (const e of l.exercises) {
+        if (e.kind !== 'play' || e.mode === 'rhythm') continue;
+        const ns = pieceToLesson(e.piece, 'x').notes.filter((n) => !n.rest);
+        for (let i = 1; i < ns.length; i++) expect(ns[i].midi === ns[i - 1].midi && (ns[i].duration === '8' || ns[i - 1].duration === '8'), `${l.lessonId}/${e.id} nốt ${i}`).toBe(false);
+      }
+  });
+
+  it('bài luyện thêm trỏ tới bài có trong thư viện', () => {
+    for (const e of LEVEL3_WEEKS.flatMap((w) => w.extraPractice ?? [])) expect(lessonManager.get(e.lessonId)).toBeDefined();
   });
 });
 

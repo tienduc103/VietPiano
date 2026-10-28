@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { buildReview } from '../../core/curriculum/review';
+import { CURRICULUM } from '../../core/curriculum/content/curriculum';
+import { buildReview, CUMULATIVE_PREFIX, type EarlierLesson } from '../../core/curriculum/review';
+import { orderedLessons } from '../../core/curriculum/unlock';
 import type { ExerciseScore } from '../../core/curriculum/scoring';
 import { text, type CurriculumLesson, type UiMode } from '../../core/curriculum/types';
 import { useCurriculum } from '../../store/curriculumStore';
@@ -28,9 +30,16 @@ export function ReviewSession({
   const [run, setRun] = useState(0);
   // Sinh một lần cho mỗi lượt luyện (đọc tiến độ lúc bắt đầu, không sinh lại khi điểm vừa được ghi).
   const exercises = useMemo(() => {
-    const rec = useCurriculum.getState().records[lesson.lessonId];
-    const bestScores = Object.fromEntries(Object.entries(rec?.exercises ?? {}).map(([id, e]) => [id, e.bestScore]));
-    return buildReview(lesson, { bestScores, mistakes: rec?.mistakes });
+    const records = useCurriculum.getState().records;
+    const best = (id: string) => Object.fromEntries(Object.entries(records[id]?.exercises ?? {}).map(([exId, e]) => [exId, e.bestScore]));
+    // Ôn cộng dồn: các buổi cùng cấp đã học trước buổi này.
+    const level = CURRICULUM.levels.find((l) => l.levelId === lesson.levelId);
+    const ordered = level ? orderedLessons(level) : [];
+    const earlier: EarlierLesson[] = ordered
+      .slice(0, Math.max(0, ordered.findIndex((l) => l.lessonId === lesson.lessonId)))
+      .filter((l) => Object.keys(records[l.lessonId]?.exercises ?? {}).length > 0)
+      .map((l) => ({ lesson: l, bestScores: best(l.lessonId), mistakes: records[l.lessonId].mistakes }));
+    return buildReview(lesson, { bestScores: best(lesson.lessonId), mistakes: records[lesson.lessonId]?.mistakes, earlier });
   }, [lesson, run]);
   const [index, setIndex] = useState(0);
   const [attempt, setAttempt] = useState(0);
@@ -80,7 +89,14 @@ export function ReviewSession({
     <div className="grid gap-4" data-testid="review">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amber-50 px-4 py-2 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:ring-amber-900">
         <span className="font-semibold text-amber-900 dark:text-amber-200">
-          🎯 Luyện tập {index + 1}/{exercises.length} · {kids ? 'ôn lại cho thật chắc nhé!' : 'ôn phần còn yếu của buổi — không tính điểm buổi'}
+          🎯 Luyện tập {index + 1}/{exercises.length} ·{' '}
+          {exercises[index].id.startsWith(CUMULATIVE_PREFIX)
+            ? kids
+              ? 'nhớ lại bài cũ nào!'
+              : 'khởi động: ôn lại buổi đã học'
+            : kids
+              ? 'ôn lại cho thật chắc nhé!'
+              : 'ôn phần còn yếu của buổi — không tính điểm buổi'}
         </span>
         <Button variant="ghost" onClick={onGame} data-testid="review-skip">
           Bỏ qua → Trò chơi

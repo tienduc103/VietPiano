@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { seeded } from '../games/random';
 import { CURRICULUM } from './content/curriculum';
 import { applyGameResult, applyReview, emptyRecord, sanitizeRecord } from './progress';
-import { buildReview, missedReadingNotes, REVIEW_PREFIX } from './review';
+import { buildReview, cumulativeExercise, missedReadingNotes, REVIEW_PREFIX } from './review';
 import { findLesson } from './unlock';
 
 const lesson = (id: string) => findLesson(CURRICULUM, id)!;
@@ -74,5 +74,43 @@ describe('tiến độ luyện tập / trò chơi', () => {
     void [reviewCount, gamePlays, gameBestScore, gameBestStars, games];
     expect(sanitizeRecord(old)).toMatchObject({ reviewCount: 0, gamePlays: 0, gameBestScore: 0, gameBestStars: 0, games: {} });
     expect(sanitizeRecord({ ...old, games: { 'key-hunt': { plays: 2, bestScore: 'x', bestStars: 9 }, bad: null } })?.games).toEqual({ 'key-hunt': { plays: 2, bestScore: 0, bestStars: 3 } });
+  });
+});
+
+describe('ôn cộng dồn', () => {
+  const b2 = lesson('l1-02-find-c');
+  const b3 = lesson('l1-03-fingers');
+  const earlier = (scores2: Record<string, number>, scores3: Record<string, number>, mistakes2: Record<string, number> = {}) => [
+    { lesson: b2, bestScores: scores2, mistakes: mistakes2 },
+    { lesson: b3, bestScores: scores3, mistakes: {} },
+  ];
+  const idsOf = (l: typeof b2) => Object.fromEntries(l.exercises.map((e) => [e.id, 100]));
+
+  it('thêm MỘT bài ngắn từ buổi cũ yếu nhất, đặt đầu tiên; không có buổi cũ đã làm thì thôi', () => {
+    const quiz2 = b2.exercises.find((e) => e.kind === 'key-quiz')!;
+    const review = buildReview(lesson('l1-04-cde'), { random: seeded(1), earlier: earlier({ ...idsOf(b2), [quiz2.id]: 30 }, idsOf(b3)) });
+    expect(review[0].id).toBe(`review-cum-l1-02-find-c-${quiz2.id}`);
+    expect(review[0].title).toMatch(/^Ôn lại buổi 2: /);
+    expect(review[0]).toMatchObject({ weight: 0, required: false });
+    if (review[0].kind !== 'key-quiz') throw new Error('sai loại');
+    expect(review[0].rounds).toHaveLength(4);
+    expect(buildReview(lesson('l1-04-cde'), { random: seeded(1) }).some((e) => e.id.startsWith('review-cum-'))).toBe(false);
+    expect(cumulativeExercise([{ lesson: b2, bestScores: {}, mistakes: {} }])).toBeNull(); // buổi chưa làm bài nào
+  });
+
+  it('bằng điểm thì ưu tiên buổi gần hơn; bỏ bài chơi theo khuông', () => {
+    const ex = cumulativeExercise(earlier(idsOf(b2), idsOf(b3)), seeded(2))!;
+    expect(ex.id.startsWith('review-cum-l1-03-fingers-')).toBe(true);
+    expect(ex.kind).not.toBe('play');
+  });
+
+  it('đọc nốt: nốt hay nhầm của buổi cũ được giữ trong số lượt cắt bớt', () => {
+    const b6 = lesson('l1-06-staff');
+    const reading = b6.exercises.find((e) => e.kind === 'note-reading')!;
+    const scores = Object.fromEntries(b6.exercises.map((e) => [e.id, e.id === reading.id ? 10 : 100]));
+    const ex = cumulativeExercise([{ lesson: b6, bestScores: scores, mistakes: { 'note:G4>F4': 3 } }], seeded(4))!;
+    if (ex.kind !== 'note-reading') throw new Error('sai loại');
+    expect(ex.sequence).toHaveLength(4);
+    expect(ex.sequence).toContain('G4');
   });
 });

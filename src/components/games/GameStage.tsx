@@ -9,6 +9,7 @@ import { useCurriculum } from '../../store/curriculumStore';
 import { InputSourceBar } from '../curriculum/common';
 import { Button, Icon } from '../ui';
 import { EchoMelodyView } from './EchoMelodyView';
+import { FingerQuizView } from './FingerQuizView';
 import { KeyHuntView } from './KeyHuntView';
 import { NoteCatchView } from './NoteCatchView';
 import { RhythmTrainView } from './RhythmTrainView';
@@ -32,6 +33,10 @@ const HOW_TO: Record<GameKind, { adult: string; kids: string }> = {
     adult: 'Bóng bay mang một nốt vẽ trên khuông (không có tên nốt). Đọc nốt và đánh đúng phím trước khi bóng bay khỏi mép trái. Bóng vàng ⭐ là nốt bạn hay đọc nhầm — được gấp đôi điểm.',
     kids: 'Bóng bay chở nốt nhạc đang bay qua! Nhìn nốt trên khuông rồi bấm đúng phím để bắn bóng nhé.',
   },
+  'finger-quiz': {
+    adult: 'Đặt tay vào thế tay của buổi. Mỗi lượt hiện một số ngón — đánh phím mà ngón đó đang nằm trên. App chỉ kiểm tra phím, không biết bạn dùng ngón nào: hãy tự dùng đúng ngón.',
+    kids: 'Đặt tay lên đàn như trong bài nhé. Hình bàn tay sáng ngón nào thì bấm phím dưới ngón đó!',
+  },
   'echo-melody': {
     adult: 'Nghe app phát một đoạn nhạc ngắn rồi đánh lại đúng thứ tự. Đúng thì đoạn sau dài thêm một nốt. Sai một nốt mất một mạng và được nghe lại. "Nghe lại" và "Gợi ý" bị trừ điểm.',
     kids: 'Đàn đang đố bạn một giai điệu bí mật! Nghe thật kỹ rồi đánh lại giống hệt nhé.',
@@ -46,6 +51,7 @@ const HITS_LABEL: Record<GameKind, string> = {
   'rhythm-train': 'Gõ trúng',
   'staff-shoot': 'Bắn trúng',
   'echo-melody': 'Vòng qua',
+  'finger-quiz': 'Đúng',
 };
 
 /**
@@ -99,7 +105,8 @@ export function GameStage({
     setPhase('result');
     onResult({ ...r, kind: spec.kind });
   };
-  const other = specs.find((s) => s.kind !== spec.kind);
+  /** Trò kế tiếp trong danh sách (vòng lại) — nút "Chơi …" ở màn kết quả. */
+  const other = specs.length > 1 ? specs[(specs.findIndex((s) => s.kind === spec.kind) + 1) % specs.length] : undefined;
 
   if (phase === 'play') {
     return (
@@ -122,7 +129,7 @@ export function GameStage({
   return (
     <div className="mx-auto grid max-w-3xl gap-4">
       {phase === 'intro' && specs.length > 1 && (
-        <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Chọn trò chơi">
+        <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${specs.length}, minmax(0, 1fr))` }} role="radiogroup" aria-label="Chọn trò chơi">
           {specs.map((s) => {
             const rec = record?.games?.[s.kind];
             return (
@@ -222,6 +229,8 @@ function GameView({ spec, mode, golden, onEnd }: { spec: GameSpec; mode: UiMode;
       return <StaffShootView spec={spec} mode={mode} golden={golden} onEnd={onEnd} />;
     case 'echo-melody':
       return <EchoMelodyView spec={spec} mode={mode} onEnd={onEnd} />;
+    case 'finger-quiz':
+      return <FingerQuizView spec={spec} mode={mode} onEnd={onEnd} />;
   }
 }
 

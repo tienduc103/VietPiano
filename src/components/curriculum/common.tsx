@@ -49,7 +49,7 @@ export function ListenButton({ piece, bpm, label = 'Nghe mẫu' }: { piece: Piec
 }
 
 /** Bàn tay với số ngón 1–5 (ngón cái = 1 ở cả hai tay). */
-export function HandFigure({ hand }: { hand: 'right' | 'left' }) {
+export function HandFigure({ hand, highlight }: { hand: 'right' | 'left'; /** Ngón được tô nổi (trò Đố số ngón tay). */ highlight?: number }) {
   // Toạ độ đầu ngón tay phải (ngón cái bên trái); tay trái lật gương.
   const fingers = [
     { n: 1, x: 32, y: 118, h: 46, rot: -38 },
@@ -69,8 +69,8 @@ export function HandFigure({ hand }: { hand: 'right' | 'left' }) {
       {fingers.map((f) => {
         const x = hand === 'left' ? 200 - f.x : f.x;
         return (
-          <g key={f.n}>
-            <circle cx={x} cy={f.y + 16} r="13" className="fill-orange-500" />
+          <g key={f.n} data-finger={f.n} data-highlighted={highlight === f.n || undefined}>
+            <circle cx={x} cy={f.y + 16} r={highlight === f.n ? 17 : 13} className={highlight === f.n ? 'fill-fuchsia-600' : highlight ? 'fill-orange-300' : 'fill-orange-500'} />
             <text x={x} y={f.y + 21} textAnchor="middle" className="fill-white text-[15px] font-bold">
               {f.n}
             </text>

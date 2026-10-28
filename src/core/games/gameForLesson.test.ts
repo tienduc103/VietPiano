@@ -3,7 +3,8 @@ import { CURRICULUM } from '../curriculum/content/curriculum';
 import { keysMatching } from '../curriculum/keys';
 import { lessonTimeline, pieceToLesson } from '../curriculum/piece';
 import { orderedLessons } from '../curriculum/unlock';
-import { gameForLesson, gamesForLesson, keyboardFor, lessonPitches } from './gameForLesson';
+import { seeded } from './random';
+import { fingerQuizFor, fingerSequence, gameForLesson, gamesForLesson, keyboardFor, lessonPitches } from './gameForLesson';
 
 const level1 = orderedLessons(CURRICULUM.levels[0]);
 const find = (id: string) => level1.find((l) => l.lessonId === id)!;
@@ -24,6 +25,7 @@ describe('gameForLesson', () => {
   it('mỗi buổi 2 trò: trò chính theo kỹ năng + Giai điệu bí ẩn', () => {
     const kinds = (id: string) => gamesForLesson(find(id), level1.slice(0, level1.indexOf(find(id)))).map((g) => g.kind);
     expect(kinds('l1-01-keyboard')).toEqual(['key-hunt', 'echo-melody']);
+    expect(kinds('l1-03-fingers')).toEqual(['note-catch', 'echo-melody', 'finger-quiz']);
     expect(kinds('l1-04-cde')).toEqual(['note-catch', 'echo-melody']);
     expect(kinds('l1-06-staff')).toEqual(['staff-shoot', 'echo-melody']);
     expect(kinds('l1-11-quarter')).toEqual(['rhythm-train', 'echo-melody']);
@@ -41,6 +43,10 @@ describe('gameForLesson', () => {
             continue;
           }
           if (g.kind === 'key-hunt') continue;
+          if (g.kind === 'finger-quiz') {
+            for (const m of Object.values(g.fingers)) expect(m >= g.keyboard.from && m <= g.keyboard.to, l.lessonId).toBe(true);
+            continue;
+          }
           expect(g.notes.length, `${l.lessonId} ${g.kind}`).toBeGreaterThanOrEqual(2);
           for (const m of g.notes) expect(m >= g.keyboard.from && m <= g.keyboard.to && m >= 36 && m <= 84, `${l.lessonId} ${g.kind} ${m}`).toBe(true);
           if (g.kind === 'echo-melody') expect(Math.max(...g.notes) - Math.min(...g.notes), l.lessonId).toBeLessThanOrEqual(12);
@@ -68,7 +74,28 @@ describe('gameForLesson', () => {
   });
 });
 
+describe('fingerQuizFor', () => {
+  it('lấy thế tay từ hình bàn phím có số ngón; xác định tay theo hướng số ngón', () => {
+    expect(fingerQuizFor(find('l1-09-five-notes'))).toEqual({ kind: 'finger-quiz', keyboard: { from: 55, to: 69 }, hand: 'right', fingers: { 1: 60, 2: 62, 3: 64, 4: 65, 5: 67 } });
+    expect(fingerQuizFor(find('l1-16-left-hand'))).toMatchObject({ hand: 'left', fingers: { 1: 55, 5: 48 } });
+    expect(fingerQuizFor(find('l1-08-f-g'))).toBeNull(); // chỉ ghi 2 ngón
+    expect(fingerQuizFor(find('l1-04-cde'))).toBeNull();
+    // Gam luồn ngón: ngón 1 ở hai phím → không phải thế tay cố định.
+    const scale = orderedLessons(CURRICULUM.levels[2]).find((l) => l.lessonId === 'l3-16-scale-rh')!;
+    expect(fingerQuizFor(scale)).toBeNull();
+  });
+});
+
 it('keyboardFor: từ Đô tới Si, ít nhất một quãng 8', () => {
   expect(keyboardFor([62, 64])).toEqual({ from: 60, to: 71 });
   expect(keyboardFor([48, 67])).toEqual({ from: 48, to: 71 });
+});
+
+it('fingerSequence: đủ lượt, chỉ dùng ngón cho trước, không lặp liền nhau', () => {
+  const seq = fingerSequence([1, 2, 3], 30, seeded(9));
+  expect(seq).toHaveLength(30);
+  for (let i = 0; i < seq.length; i++) {
+    expect([1, 2, 3]).toContain(seq[i]);
+    if (i > 0) expect(seq[i]).not.toBe(seq[i - 1]);
+  }
 });

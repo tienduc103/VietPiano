@@ -188,3 +188,71 @@ test('Bắn bóng trên khuông: bóng mang nốt vẽ trên khuông, đánh đ�
   await expect(result).toBeVisible();
   await expect(page.getByTestId('game-stars')).toHaveAttribute('data-stars', '3');
 });
+
+test('ôn cộng dồn: học xong buổi 1 thì Luyện tập buổi 2 có bài khởi động ôn lại buổi 1', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('cur-lesson-l1-01-keyboard').click();
+  await page.getByTestId('start-lesson').click();
+  for (let i = 0; i < 3; i++) await page.getByTestId('intro-next').click();
+  for (let ex = 0; ex < 2; ex++) {
+    await answerPrompts(page, 'key-quiz', 'quiz-prompt', page.getByTestId('exercise-done'));
+    await page.getByTestId('exercise-next').click();
+  }
+  await expect(page.getByTestId('lesson-result')).toBeVisible();
+
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('cur-review-l1-02-find-c').click();
+  await expect(page.getByTestId('review')).toContainText('khởi động: ôn lại buổi đã học');
+  await expect(page.getByTestId('step-title')).toContainText('Ôn lại buổi 1:');
+  await expect(page.getByTestId('round-dots').locator('span')).toHaveCount(4);
+  await answerPrompts(page, 'key-quiz', 'quiz-prompt', page.getByTestId('review-step-done'));
+  await page.getByTestId('review-next').click();
+  await expect(page.getByTestId('review')).not.toContainText('ôn lại buổi đã học');
+});
+
+test('Đố số ngón tay: bàn tay sáng một ngón, đánh phím dưới ngón đó trong thế tay', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('cur-game-l1-09-five-notes').click();
+  await expect(page.getByTestId('game-pick-finger-quiz')).toBeVisible();
+  await page.getByTestId('game-pick-finger-quiz').click();
+  await page.getByTestId('game-start').click();
+
+  const keyOf: Record<string, number> = { '1': 60, '2': 62, '3': 64, '4': 65, '5': 67 };
+  const prompt = page.getByTestId('finger-prompt');
+  await expect(prompt).toContainText('tay phải');
+  // Gợi ý thế tay: số ngón hiện trên phím.
+  await page.getByTestId('finger-hint').click();
+  await expect(page.locator('[data-testid="finger-quiz"] [data-testid="key-finger"]')).toHaveCount(5);
+  // Hình bàn tay tô đúng ngón đang hỏi.
+  const f = await prompt.getAttribute('data-finger');
+  await expect(page.locator(`[data-testid="hand-figure"] [data-finger="${f}"]`)).toHaveAttribute('data-highlighted', 'true');
+
+  const result = page.getByTestId('game-result');
+  for (let i = 0; i < 40 && !(await result.isVisible()); i++) {
+    const finger = await prompt.getAttribute('data-finger', { timeout: 1000 }).catch(() => null);
+    if (finger) await page.locator(`[data-testid="finger-quiz"] button[data-midi="${keyOf[finger]}"]`).click({ timeout: 2000 }).catch(() => undefined);
+    await page.waitForTimeout(330);
+  }
+  await expect(result).toBeVisible();
+  await expect(page.getByTestId('game-stars')).toHaveAttribute('data-stars', '3');
+});
+
+test('cấp 3: 20 buổi; buổi móc đơn có trò Đèn giao thông với toa nửa phách', async ({ page }) => {
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('level-3').click();
+  await expect(page.locator('[data-testid^="cur-lesson-l3-"]')).toHaveCount(20);
+  await expect(page.getByTestId('coming-soon')).toHaveCount(0);
+  await page.getByTestId('cur-game-l3-01-eighths').click();
+  await expect(page.getByTestId('game-intro')).toHaveAttribute('data-game', 'rhythm-train');
+  await page.getByTestId('game-start').click();
+  // Toa móc đơn ghi "½" (nửa phách).
+  await expect(page.locator('[data-testid="wagon"]', { hasText: '½' }).first()).toBeAttached();
+  await page.getByTestId('game-stop').click();
+  // Bài nhạc móc đơn mở được, khuông nhạc vẽ đủ nốt.
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('level-3').click();
+  await page.getByTestId('cur-lesson-l3-04-happy-steps').click();
+  await expect(page.getByTestId('lesson-title')).toHaveText('Bài nhạc: Bước chân vui');
+});

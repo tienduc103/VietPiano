@@ -7,11 +7,13 @@
  *  - Buổi có ≥ 3 nốt khác nhau (chơi theo khuông) → "Hứng nốt rơi" với chính các nốt đó.
  *  - Ít nốt nhưng có bài tìm phím → "Săn phím" với các lượt tìm phím của buổi.
  *  - Còn lại → "Hứng nốt rơi" với nốt của các buổi gần trước đó.
+ * Buổi có hình thế tay (bàn phím ghi số ngón, ≥ 3 ngón) có thêm trò thứ ba "Đố số ngón tay".
  */
 import { lessonTimeline, pieceToLesson } from '../curriculum/piece';
 import type { CurriculumLesson, KeyQuizRound, Piece } from '../curriculum/types';
 import type { Clef } from '../lessons/types';
 import { midiToPitchClass, requireMidi } from '../music/notes';
+import type { Random } from './random';
 
 type Keyboard = { from: number; to: number };
 
@@ -20,7 +22,9 @@ export type GameSpec =
   | { kind: 'key-hunt'; keyboard: Keyboard; rounds: KeyQuizRound[] }
   | { kind: 'rhythm-train'; piece: Piece }
   | { kind: 'staff-shoot'; keyboard: Keyboard; clef: Clef; notes: number[] }
-  | { kind: 'echo-melody'; keyboard: Keyboard; notes: number[] };
+  | { kind: 'echo-melody'; keyboard: Keyboard; notes: number[] }
+  /** `fingers`: số ngón → phím (MIDI) của thế tay đang học. App chỉ chấm phím, không biết người học dùng ngón nào. */
+  | { kind: 'finger-quiz'; keyboard: Keyboard; hand: 'right' | 'left'; fingers: Record<number, number> };
 
 export type GameKind = GameSpec['kind'];
 
@@ -30,6 +34,7 @@ export const GAME_TITLE: Record<GameKind, string> = {
   'rhythm-train': 'Đèn giao thông tiết tấu',
   'staff-shoot': 'Bắn bóng trên khuông',
   'echo-melody': 'Giai điệu bí ẩn',
+  'finger-quiz': 'Đố số ngón tay',
 };
 
 export const GAME_ICON: Record<GameKind, string> = {
@@ -38,6 +43,7 @@ export const GAME_ICON: Record<GameKind, string> = {
   'rhythm-train': '🚦',
   'staff-shoot': '🎈',
   'echo-melody': '🔮',
+  'finger-quiz': '🖐️',
 };
 
 const MIN_NOTES = 3;
@@ -95,7 +101,31 @@ function echoNotes(pool: readonly number[]): number[] {
   return lo.length >= 2 ? lo : pool.slice(0, 2);
 }
 
-/** Trò chính của buổi rồi tới "Giai điệu bí ẩn". `earlier`: các buổi trước buổi này (theo thứ tự học). */
+/**
+ * Thế tay của buổi: hình bàn phím có nhiều số ngón nhất trong phần giới thiệu (cần ≥ 3 ngón).
+ * Bỏ hình có một ngón ở hai phím (gam luồn ngón) — không phải thế tay cố định, câu hỏi "ngón 1 ở đâu" sẽ có hai đáp án.
+ */
+export function fingerQuizFor(lesson: CurriculumLesson): Extract<GameSpec, { kind: 'finger-quiz' }> | null {
+  let best: { from: number; to: number; fingers: Readonly<Record<number, number>> } | null = null;
+  for (const a of lesson.activities) {
+    for (const p of a.pages) {
+      const ill = p.illustration;
+      if (ill?.type !== 'keyboard' || !ill.fingers) continue;
+      const used = Object.values(ill.fingers);
+      if (new Set(used).size !== used.length) continue;
+      if (!best || Object.keys(ill.fingers).length > Object.keys(best.fingers).length) best = { from: ill.from, to: ill.to, fingers: ill.fingers };
+    }
+  }
+  if (!best || Object.keys(best.fingers).length < MIN_NOTES) return null;
+  const fingers: Record<number, number> = {};
+  for (const [midi, finger] of Object.entries(best.fingers)) fingers[finger] = Number(midi);
+  const ns = Object.keys(fingers).map(Number).sort((a, b) => a - b);
+  // Tay phải: ngón số nhỏ ở phím thấp hơn; tay trái ngược lại.
+  const hand = fingers[ns[0]] < fingers[ns[ns.length - 1]] ? 'right' : 'left';
+  return { kind: 'finger-quiz', keyboard: { from: best.from, to: best.to }, hand, fingers };
+}
+
+/** Trò chính của buổi rồi tới "Giai điệu bí ẩn" (+ "Đố số ngón tay" nếu buổi có hình thế tay). `earlier`: các buổi trước buổi này (theo thứ tự học). */
 export function gamesForLesson(lesson: CurriculumLesson, earlier: readonly CurriculumLesson[] = []): GameSpec[] {
   const rhythm = lesson.exercises.find((e) => e.kind === 'play' && e.mode === 'rhythm');
   const reading = lesson.exercises.filter((e) => e.kind === 'note-reading');
@@ -110,5 +140,17 @@ export function gamesForLesson(lesson: CurriculumLesson, earlier: readonly Curri
     primary = gameForLesson(lesson, earlier);
   }
   const echo = echoNotes(notePool(lesson, earlier));
-  return [primary, { kind: 'echo-melody', keyboard: keyboardFor(echo), notes: echo }];
+  const finger = fingerQuizFor(lesson);
+  return [primary, { kind: 'echo-melody', keyboard: keyboardFor(echo), notes: echo }, ...(finger ? [finger] : [])];
+}
+
+/** Dãy số ngón cho trò Đố số ngón tay: ngẫu nhiên, không lặp liền nhau. */
+export function fingerSequence(fingers: readonly number[], count: number, random: Random = Math.random): number[] {
+  const out: number[] = [];
+  while (out.length < count) {
+    const f = fingers[Math.floor(random() * fingers.length)];
+    if (fingers.length > 1 && f === out[out.length - 1]) continue;
+    out.push(f);
+  }
+  return out;
 }

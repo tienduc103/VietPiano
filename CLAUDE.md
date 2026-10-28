@@ -40,14 +40,16 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   lessons/                 kiểu dữ liệu, ký hiệu gọn "C4 D4/h", thư viện bài, LessonManager
   practice/PerformanceTracker.ts  Biểu diễn / Tiết tấu của giáo trình: đồng hồ nhịp CỐ ĐỊNH, chấm cao độ + thời điểm + trường độ (Note Off), dấu lặng
   curriculum/              giáo trình (xem docs/curriculum.md): Curriculum → Level → Week → Lesson → Activity/Exercise
-    content/                 CHỈ dữ liệu (cấp 1–2: mỗi cấp 20 buổi; cấp 3–6 khung "sắp có"; `helpers.ts` hàm dựng chung);
+    content/                 CHỈ dữ liệu (cấp 1–3: mỗi cấp 20 buổi; cấp 4–6 khung "sắp có"; `helpers.ts` hàm dựng chung);
                              `extraPractice` = bài thư viện luyện thêm (gộp từ khoá học cũ)
     validate.ts              kiểm tra dữ liệu (đủ phách, tầm micro, tiên quyết, đáp án) — test chạy cho toàn giáo trình
     piece.ts / QuizEngine.ts / scoring.ts / unlock.ts / progress.ts  bản nhạc→dòng thời gian/MIDI, bài nhiều lượt, rubric, gợi ý mở khoá, tiến độ
     review.ts                Luyện tập sau buổi: tự sinh từ bài tập của buổi (bài yếu nhất, trộn lượt, hỏi thêm nốt hay nhầm);
+                             + 1 bài ngắn ôn cộng dồn từ buổi đã học gần đây (`cumulativeExercise`, đặt đầu tiên);
                              weight 0 → không đổi điểm/trạng thái đạt. Luồng buổi: kết quả → Luyện tập → Trò chơi → buổi tiếp
   games/                   trò chơi sau buổi, máy trạng thái thuần (thời gian truyền vào): `gamesForLesson` suy 2 trò/buổi từ nội dung
-                             (trò chính theo kỹ năng + EchoMelody); kỷ lục lưu theo loại trò (`LessonRecord.games`).
+                             (trò chính theo kỹ năng + EchoMelody; + "Đố số ngón tay" nếu buổi có hình thế tay — dùng KeyHuntGame,
+                             bỏ hình có ngón lặp như gam luồn ngón); kỷ lục lưu theo loại trò (`LessonRecord.games`).
                              NoteCatchGame "Hứng nốt rơi" (mỗi sự kiện hứng tối đa 1 nốt, `graceMs` bù trễ micro; `golden` ×2 điểm) —
                              dùng lại cho "Bắn bóng trên khuông" (bài đọc nốt, nốt vẽ sẵn SVG một lần, không tên nốt); KeyHuntGame "Săn phím";
                              RhythmTrainGame "Đèn giao thông tiết tấu" (bài tiết tấu, không xét cao độ, gõ vào dấu lặng = phanh);
