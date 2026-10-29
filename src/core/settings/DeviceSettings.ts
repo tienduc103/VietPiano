@@ -14,6 +14,8 @@ export type PracticeMode = 'wait' | 'count' | 'tempo';
 export type UiModeSetting = 'auto' | 'kids' | 'adult';
 /** Nguồn nốt cho giáo trình: auto = đàn MIDI nếu đã nối, không thì micro. Bàn phím ảo luôn dùng được. */
 export type InputSourceSetting = 'auto' | 'microphone' | 'midi';
+/** Cô giáo giọng nói: kids = chỉ ở giao diện Kids (bé chưa biết đọc), always = mọi giao diện, off = tắt. */
+export type VoiceTeacherSetting = 'kids' | 'always' | 'off';
 
 export interface DeviceSettings {
   /** Tần số chuẩn A4 (Clavinova cho phép chỉnh 414.8–466.8 Hz, mặc định 440). */
@@ -49,6 +51,21 @@ export interface DeviceSettings {
   aiCoachEnabled: boolean;
   ollamaUrl: string;
   ollamaModel: string;
+  voiceTeacher: VoiceTeacherSetting;
+  /** Nút loa trên màn học: tạm tắt tiếng (vẫn hiện chữ hướng dẫn). */
+  voiceMuted: boolean;
+  /** Tốc độ đọc (1 = bình thường). */
+  voiceRate: number;
+  /** Tự đọc hướng dẫn: lời dặn, nốt cần đánh, nhắc khi bé chưa đánh. */
+  voiceAutoRead: boolean;
+  /** Khen khi đúng, chúc mừng khi xong. */
+  voiceEncourage: boolean;
+  /** Nhắc lại sau chừng này giây bé chưa thao tác; 0 = không nhắc. */
+  voiceRemindSec: number;
+  /** Tên giọng đã chọn; '' = tự chọn (giọng nữ miền Bắc nếu có). */
+  voiceName: string;
+  /** Cho dùng giọng trực tuyến của trình duyệt (gửi câu đọc lên máy chủ của Microsoft / Google). Mặc định tắt. */
+  voiceAllowOnline: boolean;
 }
 
 export const DEFAULT_SETTINGS: DeviceSettings = {
@@ -73,7 +90,19 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
   aiCoachEnabled: false,
   ollamaUrl: DEFAULT_OLLAMA_URL,
   ollamaModel: DEFAULT_OLLAMA_MODEL,
+  voiceTeacher: 'kids',
+  voiceMuted: false,
+  voiceRate: 0.85,
+  voiceAutoRead: true,
+  voiceEncourage: true,
+  voiceRemindSec: 10,
+  voiceName: '',
+  voiceAllowOnline: false,
 };
+
+export const VOICE_RATE_MIN = 0.5;
+export const VOICE_RATE_MAX = 1.3;
+export const VOICE_REMIND_MAX_SEC = 60;
 
 export const TEMPO_PERCENT_MIN = 40;
 export const TEMPO_PERCENT_MAX = 160;
@@ -149,7 +178,21 @@ function sanitize(s: DeviceSettings): DeviceSettings {
     aiCoachEnabled: s.aiCoachEnabled === true,
     ollamaUrl: sanitizeOllamaUrl(s.ollamaUrl),
     ollamaModel: typeof s.ollamaModel === 'string' && s.ollamaModel.trim() ? s.ollamaModel.trim().slice(0, 100) : DEFAULT_OLLAMA_MODEL,
+    voiceTeacher: s.voiceTeacher === 'always' || s.voiceTeacher === 'off' ? s.voiceTeacher : 'kids',
+    voiceMuted: s.voiceMuted === true,
+    voiceRate: Math.round(num(s.voiceRate, DEFAULT_SETTINGS.voiceRate, VOICE_RATE_MIN, VOICE_RATE_MAX) * 100) / 100,
+    voiceAutoRead: s.voiceAutoRead !== false,
+    voiceEncourage: s.voiceEncourage !== false,
+    voiceRemindSec: sanitizeRemind(s.voiceRemindSec),
+    voiceName: typeof s.voiceName === 'string' ? s.voiceName.slice(0, 200) : '',
+    voiceAllowOnline: s.voiceAllowOnline === true,
   };
+}
+
+/** 0 = không nhắc, còn lại 5–60 giây. */
+function sanitizeRemind(v: unknown): number {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return DEFAULT_SETTINGS.voiceRemindSec;
+  return v <= 0 ? 0 : Math.round(Math.min(VOICE_REMIND_MAX_SEC, Math.max(5, v)));
 }
 
 function sanitizeMode({ practiceMode: m }: DeviceSettings): PracticeMode {

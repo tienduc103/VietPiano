@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useApp } from './store/appStore';
 import { useAppLifecycle, useMidiConnection, useTheme } from './hooks/useAppLifecycle';
+import { useVoiceTeacherLifecycle } from './hooks/useVoiceTeacher';
 import { PracticeScreen } from './screens/PracticeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
@@ -21,6 +22,7 @@ export function App() {
   useAppLifecycle();
   useMidiConnection();
   useTheme();
+  useVoiceTeacherLifecycle();
 
   useEffect(() => {
     void loadProgress();

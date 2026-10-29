@@ -86,6 +86,18 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   storage/CurriculumStorage.ts  IndexedDB riêng "vietpiano-curriculum": tiến độ giáo trình theo hồ sơ, ghi ngay sau mỗi bài tập
   audio/SoundOutput.ts     tiếng đàn mẫu + click metronome (WebAudio tổng hợp, offline); micro bỏ nốt trong lúc phát mẫu
   settings/DeviceSettings.ts  cài đặt micro/hiển thị ở localStorage
+  voice/                   cô giáo giọng nói tiếng Việt (mặc định chỉ Kids Mode, `voiceTeacher` 'kids'|'always'|'off'):
+                             `types.ts` VoiceCue { trigger, instructionText, voiceText, audioAsset, priority, cooldownMs };
+                             `phrases.ts` câu mặc định ngắn (≤ 15 từ, không chê), tên nốt đọc Đô/Rê…/"Fa thăng", gợi ý vị trí phím;
+                             `VoiceTeacher.ts` hàng đợi thuần: một câu mỗi lúc (ưu tiên ≥ ngắt, thấp hơn chờ 1 chỗ, chờ quá 4 s bỏ),
+                             cooldown theo id, im khi đang phát mẫu (`soundOutput.isPlayingUntil`), `cancelAll` khi đổi bước/bài,
+                             `blocksMic` → `useNoteInput` bỏ nốt MICRO lúc cô đang nói (MIDI không ảnh hưởng);
+                             `WaitVoiceCoach.ts` Wait Mode → lời nói (khen thưa, nốt kế chỉ đọc nếu bé chưa đánh sau 1.5 s, sai tăng
+                             `helpLevel` → hiện tên nốt / bàn phím nhấp nháy, nhắc khi chưa thao tác `voiceRemindSec`);
+                             `speakers.ts` HybridSpeaker: file `audioAsset` trong `public/` → TTS vi-VN (ưu tiên nữ miền Bắc) → chỉ chữ.
+                             Giọng trực tuyến (Edge Natural/Google) tắt mặc định (`voiceAllowOnline`); `teacher.ts` singleton.
+                             Dữ liệu bài: `voice?: VoiceCue[]` ở CurriculumLesson / Exercise, `voice?` ở IntroPage (validate kiểm tra).
+                             UI: `components/VoiceBar` (bong bóng chữ, Nghe lại, tắt tiếng `voiceMuted`, tốc độ), hook `useVoiceTeacher`
   feedback/OllamaClient.ts   gọi Ollama cục bộ (`/api/tags`, `/api/chat` stream NDJSON, Content-Type text/plain → không preflight CORS)
   feedback/coachPrompt.ts    báo cáo bài (`lessonReport` giáo trình / `practiceReport` màn Luyện tập) → prompt tiếng Việt;
                              UI: `components/AiCoachCard` ở màn kết quả buổi học + hộp thoại hoàn thành bài.
@@ -142,6 +154,9 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   chỉ có qua app native (Core MIDI). Khi đàn MIDI đã nối, màn Luyện tập bỏ nốt từ micro (micro nghe chính tiếng đàn đó).
 - Micro: chỉ một stream (`microphoneInput` singleton), tắt AGC/khử ồn/khử vọng, phải `stop()` để giải phóng track +
   đóng AudioContext. Khi app vào nền → tắt micro, người dùng bấm để bật lại (Safari cần user gesture).
+- Cô giáo giọng nói: không nói lúc phát mẫu hay trong bài Biểu diễn / Tiết tấu (bé cần nghe nhịp); không đọc tên/thông tin
+  của bé; phát qua `speechSynthesis` / `<audio>`, không qua AudioContext của tiếng đàn. Chưa kiểm thử trên iPad thật
+  (e2e giả `speechSynthesis`: `e2e/voice-teacher.spec.ts`).
 - Không gửi âm thanh hay dữ liệu ra ngoài; không thêm backend hay AI API trên mạng (dịch vụ đám mây).
   Ngoại lệ duy nhất: **AI cục bộ qua Ollama** (`aiCoachEnabled`, mặc định TẮT).
   Chỉ gửi số liệu tóm tắt dạng chữ (điểm, tiêu chí, lỗi, tên/tuổi/trình độ hồ sơ), KHÔNG gửi âm thanh.

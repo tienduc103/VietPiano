@@ -4,6 +4,7 @@ import { accompanimentTimeline, lessonTimeline, pedalRanges, pieceToLesson } fro
 import { sustainUnderPedal } from '../../core/music/pedal';
 import { text, type Illustration, type Piece, type UiMode } from '../../core/curriculum/types';
 import { scheduleNotes, soundOutput } from '../../core/audio/SoundOutput';
+import { voiceTeacher } from '../../core/voice/teacher';
 import type { InputSourceSetting } from '../../core/settings/DeviceSettings';
 import { useSettings } from '../../store/settingsStore';
 import { useMidi } from '../../store/midiStore';
@@ -38,6 +39,8 @@ export function ListenButton({ piece, bpm, label = 'Nghe mẫu' }: { piece: Piec
       setPlaying(false);
       return;
     }
+    // Bé đang nghe mẫu → cô giáo im (câu chờ đọc sau khi mẫu dứt sẽ không đọc nữa).
+    voiceTeacher.interrupt();
     const lesson = pieceToLesson(piece, 'listen');
     // Bài có phần đệm: nghe cả hai tay cùng lúc; có pedal: nốt ngân tới chỗ nhả pedal.
     const notes = sustainUnderPedal([...lessonTimeline(lesson), ...accompanimentTimeline(lesson)], pedalRanges(lesson));

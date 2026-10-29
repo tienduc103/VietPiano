@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { matchesKeyTarget } from '../../core/curriculum/keys';
-import { QuizEngine } from '../../core/curriculum/QuizEngine';
+import { QuizEngine, type QuizState } from '../../core/curriculum/QuizEngine';
 import { questionKey, scoreQuiz, wrongNoteKey, type ExerciseScore } from '../../core/curriculum/scoring';
 import { text, type ChoiceQuizExercise, type KeyQuizExercise, type NoteReadingExercise, type Piece, type UiMode } from '../../core/curriculum/types';
 import { midiToLabel, midiToName, pitchToLabel, requireMidi } from '../../core/music/notes';
@@ -11,6 +11,9 @@ import { useMic } from '../../store/micStore';
 import { PianoKeyboard } from '../PianoKeyboard';
 import { Button } from '../ui';
 import { Feedback, IllustrationView, RoundDots, StaticScore, StepTitle } from './common';
+import { useVoiceActive, useVoiceScope } from '../../hooks/useVoiceTeacher';
+import { phrases } from '../../core/voice/phrases';
+import { voiceTeacher } from '../../core/voice/teacher';
 
 export interface StepProps<E> {
   exercise: E;
@@ -70,6 +73,7 @@ export function KeyQuizStep({ exercise, mode, onDone }: StepProps<KeyQuizExercis
     ),
   );
   const round = exercise.rounds[state.index];
+  useKeyQuizVoice(exercise, state, mode);
   return (
     <div className="grid gap-5" data-testid="key-quiz">
       <StepTitle title={text(exercise.title)} instructions={exercise.instructions && text(exercise.instructions)}>
@@ -98,6 +102,23 @@ export function KeyQuizStep({ exercise, mode, onDone }: StepProps<KeyQuizExercis
       <p className="text-center text-sm text-slate-500 dark:text-slate-400">Bấm trên đàn thật (micro / MIDI) hoặc chạm bàn phím trên màn hình.</p>
     </div>
   );
+}
+
+/** Cô giáo đọc đề từng lượt (bé chưa biết đọc vẫn biết phải tìm phím nào), khen / nhắc nhẹ sau mỗi lần bấm. */
+function useKeyQuizVoice(exercise: KeyQuizExercise, state: QuizState<number>, mode: UiMode) {
+  const active = useVoiceActive(mode);
+  const autoRead = useSettings((s) => s.settings.voiceAutoRead);
+  const encourage = useSettings((s) => s.settings.voiceEncourage);
+  useVoiceScope();
+  useEffect(() => {
+    if (!active) return;
+    const finished = state.status === 'finished';
+    const prompt = finished ? null : text(exercise.rounds[state.index].prompt);
+    const outcome = state.lastEventTime === 0 ? null : state.lastOutcome;
+    if (finished ? !encourage : !autoRead && outcome !== 'wrong') return;
+    voiceTeacher.say(phrases.quizRound(prompt, encourage ? outcome : null, exercise.retry, state.correct + state.wrong));
+    // Chỉ đọc khi có lượt mới / lần trả lời mới.
+  }, [active, state.lastEventTime, state.index]);
 }
 
 // ── Câu hỏi trắc nghiệm ──────────────────────────────────────────────

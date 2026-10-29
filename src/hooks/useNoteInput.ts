@@ -7,6 +7,7 @@ import { chooseBaseC, keyToMidi } from '../core/input/keyMapping';
 import { soundOutput } from '../core/audio/SoundOutput';
 import type { InputSourceSetting } from '../core/settings/DeviceSettings';
 import { acceptSource } from '../core/input/sourceFilter';
+import { voiceTeacher } from '../core/voice/teacher';
 
 /** Bỏ nốt micro thêm chừng này sau khi tiếng đàn mẫu tắt (âm ngân của loa). */
 const PLAYBACK_GUARD_MS = 300;
@@ -18,7 +19,7 @@ export interface NoteInputHandlers {
 
 /**
  * Nối micro + đàn MIDI + bàn phím ảo (+ bàn phím máy tính) vào một bộ xử lý, dùng chung cho mọi bài tập
- * giáo trình. Nốt micro trong lúc app đang phát mẫu bị bỏ (micro nghe thấy loa).
+ * giáo trình. Nốt micro trong lúc app đang phát mẫu hoặc cô giáo đang nói bị bỏ (micro nghe thấy loa).
  */
 export function useNoteInput(
   handlers: NoteInputHandlers,
@@ -38,6 +39,8 @@ export function useNoteInput(
     const onNote = (e: NoteInputEvent) => {
       if (!acceptSource(e.source, settingRef.current, midiInput.hasDevice())) return;
       if (guardRef.current && e.source === 'microphone' && e.time < soundOutput.isPlayingUntil + PLAYBACK_GUARD_MS) return;
+      // Tiếng cô giáo qua loa có cao độ → micro có thể nhận thành nốt. Đàn MIDI / bàn phím ảo không bị ảnh hưởng.
+      if (e.source === 'microphone' && voiceTeacher.blocksMic(e.time)) return;
       ref.current.onNote(e);
     };
     const onOff = (e: NoteOffEvent) => {

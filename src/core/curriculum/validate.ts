@@ -2,7 +2,7 @@
  * Kiểm tra dữ liệu giáo trình (chạy trong unit test cho mọi cấp độ):
  * id duy nhất, tuần ↔ buổi khớp nhau, tiên quyết tồn tại và đi trước (không vòng),
  * bản nhạc đủ phách từng ô, nốt trong tầm micro, nhịp độ hợp lý, thứ tự sự kiện tăng dần,
- * câu hỏi / lượt tìm phím có đáp án hợp lệ.
+ * câu hỏi / lượt tìm phím có đáp án hợp lệ, câu cô giáo đọc ngắn gọn.
  */
 import { splitMeasures } from '../lessons/notation';
 import { measureLength, type Lesson } from '../lessons/types';
@@ -10,6 +10,8 @@ import { nameToMidi } from '../music/notes';
 import { keysMatching } from './keys';
 import { lessonTimeline, pieceToLesson } from './piece';
 import { text, type Curriculum, type Illustration, type Piece } from './types';
+import { countWords } from '../voice/phrases';
+import { VOICE_TRIGGERS, type VoiceCue } from '../voice/types';
 
 /** Tầm micro nhận diện tin cậy (như test thư viện bài). */
 export const MIC_MIN_MIDI = 36;
@@ -96,6 +98,22 @@ function validateIllustration(ill: Illustration | undefined, where: string): str
   return [];
 }
 
+/** Câu đọc cho bé 4–8 tuổi nên 5–15 từ; dữ liệu cho phép tối đa 20 (lời dặn trang giới thiệu). */
+export const VOICE_MAX_WORDS = 20;
+
+export function validateVoice(cues: readonly VoiceCue[] | undefined, where: string): string[] {
+  const errors: string[] = [];
+  for (const c of cues ?? []) {
+    if (!VOICE_TRIGGERS.includes(c.trigger)) errors.push(`${where}: trigger giọng nói lạ "${c.trigger}"`);
+    const said = c.voiceText ?? c.instructionText;
+    if (!c.instructionText.trim() || !said.trim()) errors.push(`${where}: câu giọng nói rỗng`);
+    else if (countWords(said) > VOICE_MAX_WORDS) errors.push(`${where}: câu giọng nói dài ${countWords(said)} từ (tối đa ${VOICE_MAX_WORDS})`);
+    if (c.audioAsset !== undefined && !/^[\w\-/]+\.(mp3|m4a|aac|ogg|wav)$/.test(c.audioAsset)) errors.push(`${where}: audioAsset "${c.audioAsset}" phải là đường dẫn tương đối tới file âm thanh`);
+    if (c.cooldownMs !== undefined && c.cooldownMs < 0) errors.push(`${where}: cooldown âm`);
+  }
+  return errors;
+}
+
 export function validateCurriculum(curriculum: Curriculum): string[] {
   const errors: string[] = [];
   const lessonIds = new Set<string>();
@@ -136,10 +154,17 @@ export function validateCurriculum(curriculum: Curriculum): string[] {
       if (new Set(ids).size !== ids.length) errors.push(`${at}: trùng id hoạt động / bài tập`);
       if (l.exercises.length > 0 && !l.exercises.some((e) => e.required ?? true)) errors.push(`${at}: không có bài tập bắt buộc nào`);
 
-      l.activities.forEach((a) => a.pages.forEach((p, pi) => errors.push(...validateIllustration(p.illustration, `${at}/${a.id}#${pi + 1}`))));
+      l.activities.forEach((a) =>
+        a.pages.forEach((p, pi) => {
+          errors.push(...validateIllustration(p.illustration, `${at}/${a.id}#${pi + 1}`));
+          errors.push(...validateVoice(p.voice && [p.voice], `${at}/${a.id}#${pi + 1}`));
+        }),
+      );
+      errors.push(...validateVoice(l.voice, at));
 
       for (const ex of l.exercises) {
         const where = `${at}/${ex.id}`;
+        errors.push(...validateVoice(ex.voice, where));
         switch (ex.kind) {
           case 'play':
             errors.push(...validatePiece(ex.piece, where));

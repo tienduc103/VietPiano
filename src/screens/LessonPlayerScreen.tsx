@@ -18,6 +18,9 @@ import { GameStage } from '../components/games/GameStage';
 import { AiCoachCard } from '../components/AiCoachCard';
 import { lessonReport } from '../core/feedback/coachPrompt';
 import { AiNoteHistory } from '../components/AiNoteHistory';
+import { VoiceBar } from '../components/VoiceBar';
+import { useVoiceCue, useVoiceScope } from '../hooks/useVoiceTeacher';
+import { overrideCue, phrases } from '../core/voice/phrases';
 
 /** Thời gian một bước tối đa được tính là luyện tập (bỏ đi giữa chừng thì không cộng cả buổi chiều). */
 const MAX_STEP_MS = 15 * 60_000;
@@ -52,6 +55,8 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
   const saveError = useCurriculum((s) => s.saveError);
   const { recordExercise, recordRun, markIntroDone, addTime, recordReview, recordGame } = useCurriculum.getState();
   useWakeLock(true);
+  // Đổi buổi học (Player dựng lại theo key) → huỷ lời cô giáo của buổi cũ.
+  useVoiceScope();
 
   const steps = useMemo<Step[]>(
     () => [{ type: 'overview' }, ...lesson.activities.map((activity) => ({ type: 'activity' as const, activity })), ...lesson.exercises.map((exercise) => ({ type: 'exercise' as const, exercise }))],
@@ -210,6 +215,11 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
 
       <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <div className="mx-auto max-w-6xl">
+          {phase !== 'game' && (
+            <div className="mb-3">
+              <VoiceBar mode={mode} />
+            </div>
+          )}
           {phase === 'review' ? (
             <ReviewSession lesson={lesson} mode={mode} tempoPercent={tempoPercent} onComplete={() => void recordReview(lesson, takeElapsed())} onGame={() => enterStage('game')} />
           ) : phase === 'game' ? (
@@ -275,6 +285,8 @@ function Overview({ lesson, mode, onStart }: { lesson: CurriculumLesson; mode: U
   const missing = missingPrerequisites(lesson, records).map((id) => findLesson(CURRICULUM, id)).filter((l): l is CurriculumLesson => !!l);
   const variant = lesson.ageVariants[mode];
   const rec = records[lesson.lessonId];
+  useVoiceScope();
+  useVoiceCue(overrideCue(phrases.lessonStart(text(lesson.title)), lesson.voice), lesson.lessonId, mode);
   return (
     <div className="grid gap-5 lg:grid-cols-[2fr_1fr]" data-testid="lesson-overview">
       <section className="rounded-3xl bg-white/90 p-6 shadow-sm ring-1 ring-violet-100 dark:bg-slate-800/90 dark:ring-violet-900">
@@ -331,6 +343,9 @@ function IntroStep({ activity, mode, onDone }: { activity: Activity; mode: UiMod
   const [page, setPage] = useState(0);
   const p = activity.pages[page];
   const last = page === activity.pages.length - 1;
+  const shown = text(mode === 'kids' && p.kids ? p.kids : p.body);
+  useVoiceScope();
+  useVoiceCue(p.voice ?? phrases.say(shown, 'step_start', 'intro_page'), `${activity.id}-${page}`, mode);
   return (
     <div className="grid gap-5" data-testid="intro-step">
       <div className="flex items-center justify-between gap-3">
@@ -341,7 +356,7 @@ function IntroStep({ activity, mode, onDone }: { activity: Activity; mode: UiMod
           {page + 1}/{activity.pages.length}
         </span>
       </div>
-      <p className={mode === 'kids' ? 'text-2xl leading-relaxed' : 'text-lg'}>{text(mode === 'kids' && p.kids ? p.kids : p.body)}</p>
+      <p className={mode === 'kids' ? 'text-2xl leading-relaxed' : 'text-lg'}>{shown}</p>
       {p.illustration && <IllustrationView ill={p.illustration} id={`${activity.id}-${page}`} />}
       <div className="flex gap-3">
         <Button onClick={() => setPage((x) => x - 1)} disabled={page === 0}>
@@ -389,6 +404,8 @@ function ExerciseDone({
   last: boolean;
 }) {
   const kids = mode === 'kids';
+  useVoiceScope();
+  useVoiceCue(phrases.exerciseResult(score.passed || practice), score, mode, 'encouragement');
   const stars = starsFor(score.score);
   return (
     <section className="rounded-3xl bg-white/90 p-6 text-center shadow-sm ring-1 ring-violet-100 dark:bg-slate-800/90 dark:ring-violet-900" data-testid="exercise-done">
@@ -468,6 +485,8 @@ function LessonResult({
   const feedback = lessonFeedback(result, done, mode);
   const kids = mode === 'kids';
   const stars = starsFor(result.score);
+  useVoiceScope();
+  useVoiceCue(overrideCue(phrases.lessonComplete(result.passed), lesson.voice), runAt, mode, 'encouragement');
 
   return (
     <section className="mx-auto grid max-w-3xl gap-5 rounded-3xl bg-white/90 p-6 shadow-sm ring-1 ring-violet-100 dark:bg-slate-800/90 dark:ring-violet-900" data-testid="lesson-result" aria-label="Kết quả buổi học">

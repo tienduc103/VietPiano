@@ -17,6 +17,9 @@ import { useNoteInput } from '../../hooks/useNoteInput';
 import { useMic } from '../../store/micStore';
 import { useMidi } from '../../store/midiStore';
 import { useSettings } from '../../store/settingsStore';
+import { useVoiceActive, useVoiceScope, useWaitCoachOptions } from '../../hooks/useVoiceTeacher';
+import { voiceTeacher } from '../../core/voice/teacher';
+import { WaitVoiceCoach, type HelpLevel } from '../../core/voice/WaitVoiceCoach';
 import { PianoKeyboard } from '../PianoKeyboard';
 import { HandsGuide } from '../HandsGuide';
 import { ScoreView } from '../ScoreView';
@@ -182,12 +185,12 @@ function useKeyboardRange(timeline: TimelineNote[], lesson: Lesson) {
   );
 }
 
-function ScoreBox({ lesson, index, results, finished, wrongPulse }: { lesson: Lesson; index: number; results: readonly NoteResult[]; finished: boolean; wrongPulse: number }) {
+function ScoreBox({ lesson, index, results, finished, wrongPulse, showNames }: { lesson: Lesson; index: number; results: readonly NoteResult[]; finished: boolean; wrongPulse: number; showNames?: boolean }) {
   const settings = useSettings((s) => s.settings);
   return (
     // Khuông đôi cao hơn (hai khuông + số ngón tay trái + tên nốt).
     <div className={`${lesson.clef === 'grand' ? 'h-80' : 'h-64'} rounded-2xl bg-white shadow-md shadow-violet-200/60 ring-1 ring-violet-100 dark:bg-slate-900 dark:shadow-none dark:ring-violet-900`}>
-      <ScoreView lesson={lesson} index={index} results={results} status={finished ? 'finished' : 'waiting'} wrongPulse={wrongPulse} showNames={settings.showNoteNames} labelStyle={settings.labelStyle} />
+      <ScoreView lesson={lesson} index={index} results={results} status={finished ? 'finished' : 'waiting'} wrongPulse={wrongPulse} showNames={showNames ?? settings.showNoteNames} labelStyle={settings.labelStyle} />
     </div>
   );
 }
@@ -232,6 +235,33 @@ function WaitRunner({ exercise, lesson, timeline, hand, mode, scored, loop, onSc
     () => engine.getState(),
   );
   const mistakes = useRef<string[]>([]);
+
+  // Cô giáo giọng nói (Kids Mode): hướng dẫn theo tiến trình; sai nhiều lần → `help` tăng, màn hình gợi ý rõ hơn.
+  const voiceActive = useVoiceActive(mode);
+  const coachOptions = useWaitCoachOptions();
+  const [help, setHelp] = useState<HelpLevel>(0);
+  useVoiceScope();
+  useEffect(() => {
+    if (!voiceActive) return;
+    const targets = playable.map((n) => ({ pitch: n.pitch, finger: n.finger, hand: n.hand }));
+    const coach = new WaitVoiceCoach((c) => voiceTeacher.say(c), targets, text(exercise.title), coachOptions, exercise.voice, setHelp);
+    coach.start(engine.getState());
+    // Engine báo state ngay trong lúc xử lý nốt (đường MIDI) → để lời nói sang lượt sau, không chặn nhận nốt.
+    let pending = 0;
+    const off = engine.subscribe(() => {
+      if (pending) return;
+      pending = window.setTimeout(() => {
+        pending = 0;
+        coach.update(engine.getState());
+      }, 0);
+    });
+    return () => {
+      off();
+      window.clearTimeout(pending);
+      coach.dispose();
+      setHelp(0);
+    };
+  }, [voiceActive, engine, playable, exercise, coachOptions]);
 
   useNoteInput(
     {
@@ -295,7 +325,7 @@ function WaitRunner({ exercise, lesson, timeline, hand, mode, scored, loop, onSc
             : 'Micro chỉ nhận một nốt mỗi lúc nên chỉ chấm tay phải; tay trái cứ đánh theo hướng dẫn. Muốn chấm cả hai tay: nối đàn MIDI hoặc tắt micro và dùng bàn phím ảo.'}
         </p>
       )}
-      <ScoreBox lesson={lesson} index={current?.index ?? 0} results={results} finished={finished} wrongPulse={state.wrong} />
+      <ScoreBox lesson={lesson} index={current?.index ?? 0} results={results} finished={finished} wrongPulse={state.wrong} showNames={help >= 1 || undefined} />
       <div className="flex flex-wrap items-center gap-4">
         {leftStep && current ? (
           <HandsGuide
@@ -348,8 +378,9 @@ function WaitRunner({ exercise, lesson, timeline, hand, mode, scored, loop, onSc
       {finished && !scored && (
         <p className="text-center font-semibold text-emerald-700 dark:text-emerald-300">{loop ? 'Xong một lượt — chơi lại…' : 'Xong! Bấm ↺ để luyện lại hoặc chuyển sang "Làm bài".'}</p>
       )}
-      {settings.showKeyboard && (
-        <div className="h-36">
+      {(settings.showKeyboard || help >= 2) && (
+        // Bé sai nhiều lần: luôn hiện bàn phím, phím cần đánh sáng + khung nhấp nháy.
+        <div className={`h-36 rounded-xl ${help >= 2 ? 'animate-pulse ring-4 ring-amber-400' : ''}`} data-testid="wait-keyboard" data-help={help || undefined}>
           <PianoKeyboard
             from={range.from}
             to={range.to}

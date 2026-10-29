@@ -165,6 +165,8 @@ const defs: LessonDef[] = [
     estimatedDuration: 12,
     prerequisites: ['l1-03-fingers'],
     notes: [NO_FINGER_CHECK],
+    // Câu cô giáo đọc (Kids Mode) thay câu mặc định; có file ghi âm thì thêm `audioAsset: 'voice/….mp3'`.
+    voice: [{ trigger: 'lesson_start', instructionText: 'Chào bé! Hôm nay mình chơi ba nốt Đô, Rê, Mi. Bấm Bắt đầu nhé!' }],
     activities: [
       {
         kind: 'intro',
@@ -185,6 +187,7 @@ const defs: LessonDef[] = [
       play('test', 'Bài chính: Đô – Rê – Mi', 'wait', rh('C4:1 D4:2 E4:3 D4:2 | C4:1 D4:2 E4/h:3 | E4:3 D4:2 C4:1 D4:2 | C4/w:1'), {
         pass: { minAccuracy: 0.85, minCompletion: 1 },
         instructions: 'Độ chính xác nốt cần ≥ 85%.',
+        voice: [{ trigger: 'step_start', instructionText: 'Đặt ngón 1 lên nốt Đô. Mình bắt đầu nhé!' }],
       }),
     ],
     assessment: { passScore: 80, checkpoint: false },

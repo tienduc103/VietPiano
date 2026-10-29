@@ -81,6 +81,15 @@ describe('DeviceSettings', () => {
     expect(loadSettings(st)).toMatchObject({ aiCoachEnabled: true, ollamaUrl: 'http://127.0.0.1:11434', ollamaModel: 'gemma2:9b' });
   });
 
+  it('cô giáo giọng nói: mặc định vi-VN cho Kids, 0.85x, tự đọc + động viên; giọng trực tuyến tắt', () => {
+    const st = memoryStorage();
+    expect(loadSettings(st)).toMatchObject({ voiceTeacher: 'kids', voiceRate: 0.85, voiceAutoRead: true, voiceEncourage: true, voiceRemindSec: 10, voiceName: '', voiceAllowOnline: false });
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ voiceTeacher: 'loud', voiceRate: 9, voiceAutoRead: 0, voiceRemindSec: 2, voiceAllowOnline: 'yes', voiceName: 42 }));
+    expect(loadSettings(st)).toMatchObject({ voiceTeacher: 'kids', voiceRate: 1.3, voiceAutoRead: true, voiceRemindSec: 5, voiceAllowOnline: false, voiceName: '' });
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ voiceTeacher: 'off', voiceRate: 0.7, voiceAutoRead: false, voiceEncourage: false, voiceRemindSec: 0, voiceName: 'Linh' }));
+    expect(loadSettings(st)).toMatchObject({ voiceTeacher: 'off', voiceRate: 0.7, voiceAutoRead: false, voiceEncourage: false, voiceRemindSec: 0, voiceName: 'Linh' });
+  });
+
   it('ánh xạ độ nhạy ↔ noise gate hai chiều', () => {
     expect(sensitivityToNoiseGate(0)).toBeCloseTo(0.05);
     expect(sensitivityToNoiseGate(100)).toBeCloseTo(0.0005);

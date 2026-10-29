@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { loadSettings, saveSettings, type DeviceSettings } from '../core/settings/DeviceSettings';
 import { microphoneInput } from '../core/input/MicrophoneInputProvider';
+import { voiceSpeaker, voiceTeacher } from '../core/voice/teacher';
 
 interface SettingsStore {
   settings: DeviceSettings;
@@ -17,8 +18,15 @@ function applyToRecognizer(s: DeviceSettings) {
   });
 }
 
+/** Tốc độ đọc + giọng cho cô giáo giọng nói (bật/tắt theo giao diện Kids: `useVoiceTeacher`). */
+function applyToVoice(s: DeviceSettings) {
+  voiceSpeaker.configure({ voiceName: s.voiceName, allowOnline: s.voiceAllowOnline });
+  voiceTeacher.setConfig({ rate: s.voiceRate });
+}
+
 const initial = loadSettings();
 applyToRecognizer(initial);
+applyToVoice(initial);
 
 export const useSettings = create<SettingsStore>((set, get) => ({
   settings: initial,
@@ -26,6 +34,7 @@ export const useSettings = create<SettingsStore>((set, get) => ({
     const settings = { ...get().settings, ...patch };
     saveSettings(settings);
     applyToRecognizer(settings);
+    applyToVoice(settings);
     set({ settings });
   },
 }));

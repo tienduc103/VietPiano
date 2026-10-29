@@ -10,7 +10,7 @@ import { LEVEL6_LESSONS, LEVEL6_WEEKS } from './content/level6';
 import { keysMatching } from './keys';
 import { lessonTimeline, pedalRanges, pieceToLesson } from './piece';
 import { orderedLessons } from './unlock';
-import { validateCurriculum, validatePiece } from './validate';
+import { validateCurriculum, validatePiece, validateVoice } from './validate';
 import type { Curriculum, CurriculumLesson, Piece, PlayExercise } from './types';
 
 describe('nội dung giáo trình', () => {
@@ -326,6 +326,17 @@ describe('nội dung cấp 6', () => {
 
 describe('validateCurriculum bắt lỗi dữ liệu', () => {
   const base = (): Curriculum => structuredClone(CURRICULUM);
+
+  it('câu cô giáo đọc: trigger hợp lệ, không rỗng, ngắn, audioAsset là file âm thanh tương đối', () => {
+    expect(validateVoice([{ trigger: 'lesson_start', instructionText: 'Chào bé!', audioAsset: 'voice/l1-04/start.mp3' }], 'v')).toEqual([]);
+    expect(validateVoice([{ trigger: 'hello' as never, instructionText: 'x' }], 'v')[0]).toMatch(/trigger/);
+    expect(validateVoice([{ trigger: 'timeout', instructionText: ' ' }], 'v')[0]).toMatch(/rỗng/);
+    expect(validateVoice([{ trigger: 'timeout', instructionText: Array(25).fill('một').join(' ') }], 'v')[0]).toMatch(/25 từ/);
+    expect(validateVoice([{ trigger: 'timeout', instructionText: 'x', audioAsset: 'https://cdn.example/a.mp3' }], 'v')[0]).toMatch(/audioAsset/);
+    const c = base();
+    c.levels[0].lessons[0].voice = [{ trigger: 'note_wrong', instructionText: 'x', cooldownMs: -1 }];
+    expect(validateCurriculum(c)).toEqual([`${c.levels[0].lessons[0].lessonId}: cooldown âm`]);
+  });
 
   it('ô nhịp thiếu phách, nốt ngoài tầm micro, ký hiệu sai, nhịp độ lạ', () => {
     const piece = { clef: 'treble' as const, hand: 'right' as const, bpm: 60 };

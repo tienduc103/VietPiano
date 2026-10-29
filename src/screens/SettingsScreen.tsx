@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { microphoneInput } from '../core/input/MicrophoneInputProvider';
 import { midiToLabel, type NoteLabelStyle } from '../core/music/notes';
 import {
@@ -6,6 +6,8 @@ import {
   noiseGateFromAmbient,
   noiseGateToSensitivity,
   sensitivityToNoiseGate,
+  VOICE_RATE_MAX,
+  VOICE_RATE_MIN,
 } from '../core/settings/DeviceSettings';
 import { useSettings } from '../store/settingsStore';
 import { useMic } from '../store/micStore';
@@ -21,6 +23,8 @@ import { CalibrationCheckView } from '../components/CalibrationCheckView';
 import { AppVersion } from '../components/AppVersion';
 import { AUTO_OLLAMA_URL, normalizeOllamaUrl, OllamaError, resolveOllama } from '../core/feedback/OllamaClient';
 import { ollamaCandidatesForPage, ollamaUrlLabel } from '../components/AiCoachCard';
+import { voiceSpeaker, voiceTeacher } from '../core/voice/teacher';
+import { phrases } from '../core/voice/phrases';
 
 const CALIBRATION_MS = 2500;
 
@@ -184,6 +188,8 @@ export function SettingsScreen() {
             </div>
           </Card>
 
+          <VoiceTeacherSettings />
+
           <AiCoachSettings />
 
           <Card>
@@ -234,6 +240,101 @@ export function SettingsScreen() {
   );
 }
 
+const inputClass = 'min-h-12 rounded-xl bg-white px-3 ring-1 ring-violet-200 dark:bg-slate-900 dark:ring-violet-800';
+
+const REMIND_OPTIONS = [0, 5, 10, 20, 30] as const;
+
+/** Cô giáo giọng nói: phụ huynh chỉnh khi nào đọc, giọng, tốc độ, nhắc lại. */
+function VoiceTeacherSettings() {
+  const s = useSettings((x) => x.settings);
+  const update = useSettings((x) => x.update);
+  const voices = useSyncExternalStore(
+    (cb) => voiceSpeaker.onVoicesChanged(cb),
+    () => voiceVoicesKey(),
+  );
+  const list = useMemo(() => (voices ? voiceSpeaker.vietnameseVoices() : []), [voices]);
+  const shown = list.filter((v) => s.voiceAllowOnline || v.localService);
+  const current = voiceSpeaker.currentVoice();
+  const test = () => {
+    voiceTeacher.unlock();
+    voiceTeacher.say(phrases.say('Chào bé! Cô sẽ cùng bé học đàn nhé.', 'lesson_start', 'voice_test'));
+  };
+  return (
+    <Card>
+      <h2 className="text-xl font-semibold">Cô giáo giọng nói</h2>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        Đọc hướng dẫn bằng tiếng Việt cho bé chưa biết đọc: lời dặn của bài, nốt cần đánh, khen khi đúng, nhắc nhẹ khi sai.
+        Dùng giọng đọc có sẵn trên máy (iPad: vào Cài đặt → Trợ năng → Nội dung được đọc → Giọng nói → Tiếng Việt để tải giọng).
+        Khi dùng micro, nốt đàn trong lúc cô đang nói bị bỏ qua (micro nghe thấy loa) — đàn MIDI không bị ảnh hưởng.
+      </p>
+      <div className="mt-2 divide-y divide-slate-200 dark:divide-slate-700">
+        <Row label="Bật cô giáo">
+          <Segmented
+            value={s.voiceTeacher}
+            onChange={(v) => update({ voiceTeacher: v })}
+            options={[
+              { value: 'kids', label: 'Giao diện Trẻ em' },
+              { value: 'always', label: 'Luôn bật' },
+              { value: 'off', label: 'Tắt' },
+            ]}
+          />
+        </Row>
+        <Toggle label="Tự đọc hướng dẫn (lời dặn, nốt cần đánh)" checked={s.voiceAutoRead} onChange={(v) => update({ voiceAutoRead: v })} />
+        <Toggle label="Khen khi đúng, chúc mừng khi xong bài" checked={s.voiceEncourage} onChange={(v) => update({ voiceEncourage: v })} />
+        <Row label={`Tốc độ đọc: ${s.voiceRate.toFixed(2)}×`}>
+          <input
+            type="range"
+            min={VOICE_RATE_MIN}
+            max={VOICE_RATE_MAX}
+            step={0.05}
+            value={s.voiceRate}
+            onChange={(e) => update({ voiceRate: Number(e.target.value) })}
+            className="w-56 accent-violet-600"
+            aria-label="Tốc độ đọc"
+            data-testid="voice-rate"
+          />
+        </Row>
+        <Row label="Nhắc lại khi bé chưa đánh">
+          <Segmented
+            value={String(s.voiceRemindSec)}
+            onChange={(v) => update({ voiceRemindSec: Number(v) })}
+            options={REMIND_OPTIONS.map((n) => ({ value: String(n), label: n === 0 ? 'Không' : `${n} giây` }))}
+          />
+        </Row>
+        <Row label="Giọng đọc">
+          <select className={`${inputClass} w-64`} value={s.voiceName} onChange={(e) => update({ voiceName: e.target.value })} aria-label="Giọng đọc" data-testid="voice-name">
+            <option value="">Tự chọn (ưu tiên giọng nữ miền Bắc)</option>
+            {shown.map((v) => (
+              <option key={v.name} value={v.name}>
+                {v.name}
+                {v.localService ? '' : ' (trực tuyến)'}
+              </option>
+            ))}
+          </select>
+        </Row>
+        <Toggle
+          label="Cho dùng giọng trực tuyến của trình duyệt (Edge / Chrome gửi câu đọc lên máy chủ Microsoft / Google; câu đọc không có tên hay thông tin của bé)"
+          checked={s.voiceAllowOnline}
+          onChange={(v) => update({ voiceAllowOnline: v })}
+        />
+        <Row label={current ? `Đang dùng: ${current.name}` : voiceSpeaker.ttsSupported ? 'Máy chưa có giọng tiếng Việt dùng được — cô chỉ hiện chữ' : 'Trình duyệt không hỗ trợ đọc chữ — cô chỉ hiện chữ'}>
+          <Button onClick={test} data-testid="voice-test">
+            <Icon name="volume" /> Nghe thử
+          </Button>
+        </Row>
+      </div>
+    </Card>
+  );
+}
+
+/** Đổi khi danh sách giọng của trình duyệt đổi (Chrome nạp bất đồng bộ). */
+function voiceVoicesKey(): string {
+  return voiceSpeaker
+    .vietnameseVoices()
+    .map((v) => v.name)
+    .join('|');
+}
+
 function AiCoachSettings() {
   const { aiCoachEnabled, ollamaUrl, ollamaModel } = useSettings((s) => s.settings);
   const update = useSettings((s) => s.update);
@@ -275,7 +376,6 @@ function AiCoachSettings() {
     }
   };
 
-  const inputClass = 'min-h-12 rounded-xl bg-white px-3 ring-1 ring-violet-200 dark:bg-slate-900 dark:ring-violet-800';
 
   return (
     <Card>

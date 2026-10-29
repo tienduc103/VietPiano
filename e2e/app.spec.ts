@@ -666,7 +666,7 @@ test('buổi chưa đủ điều kiện vẫn mở được (chỉ gợi ý); Ki
   await expect(page.getByTestId('lesson-player')).toHaveAttribute('data-ui-mode', 'kids');
   await page.getByTestId('intro-next').click();
   await page.getByTestId('intro-next').click();
-  await expect(page.getByText('Mi ngồi trên dòng 1, Fa nằm trong khe, Sol ôm dòng 2!')).toBeVisible();
+  await expect(page.getByTestId('intro-step').getByText('Mi ngồi trên dòng 1, Fa nằm trong khe, Sol ôm dòng 2!')).toBeVisible();
 });
 
 test('buổi 3: trắc nghiệm số ngón rồi chơi C–D–E ở Wait Mode bằng bàn phím máy tính', async ({ page }) => {

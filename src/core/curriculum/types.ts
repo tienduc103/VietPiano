@@ -6,6 +6,7 @@
 import type { Clef, LessonClef, LessonHand, LessonSection } from '../lessons/types';
 import type { DynamicMark } from '../music/dynamics';
 import type { KeySignature } from '../music/keySignature';
+import type { VoiceCue } from '../voice/types';
 
 /**
  * Chữ hiển thị. Hiện chỉ có tiếng Việt; sau này có thể là `{ vi, en }` mà không phải đổi nội dung cũ
@@ -72,6 +73,8 @@ export interface IntroPage {
   illustration?: Illustration;
   /** Lời nhắc cho bé (Kids Mode) — thay `body` nếu có. */
   kids?: Text;
+  /** Câu cô giáo đọc khi mở trang (mặc định đọc `kids` / `body`). */
+  voice?: VoiceCue;
 }
 
 // ── Hoạt động (không chấm điểm) ──────────────────────────────────────
@@ -122,6 +125,8 @@ interface ExerciseBase {
   /** Trọng số trong điểm của bài (mặc định 1). */
   weight?: number;
   pass: PassRule;
+  /** Câu cô giáo đọc (Kids Mode) thay câu mặc định cùng trigger — xem `core/voice/phrases.ts`. */
+  voice?: VoiceCue[];
 }
 
 /**
@@ -240,6 +245,8 @@ export interface CurriculumLesson {
   contentVersion: number;
   /** Ghi chú giới hạn kỹ thuật hiển thị cho người học (vd "app không kiểm tra được ngón tay"). */
   notes?: Text[];
+  /** Câu cô giáo đọc ở cấp buổi học (`lesson_start`, `lesson_complete`) thay câu mặc định. */
+  voice?: VoiceCue[];
 }
 
 /** Bài trong thư viện nên luyện thêm ở tuần này (gộp từ khoá học "Nốt nhạc cơ bản" cũ). */
