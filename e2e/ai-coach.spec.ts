@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test';
 const TAGS = '**/api/tags';
 const CHAT = '**/api/chat';
 
-test('nhận xét bằng AI (Ollama giả): bật trong Cài đặt, hiện sau khi hoàn thành bài', async ({ page }) => {
+test('nhận xét bằng AI (Ollama giả): bật trong Cài đặt, hiện sau khi hoàn thành bài', async ({ page, baseURL }) => {
   const prompts: string[] = [];
   await page.route(TAGS, (route) =>
     route.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ models: [{ name: 'gemma4:12b' }] }) }),
@@ -26,7 +26,8 @@ test('nhận xét bằng AI (Ollama giả): bật trong Cài đặt, hiện sau 
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
   await page.getByTestId('ollama-test').click();
-  await expect(page.getByText('Kết nối tốt — 1 model qua http://localhost:4173/ollama.')).toBeVisible();
+  // Địa chỉ proxy theo server đang chạy test (không ghi cứng cổng).
+  await expect(page.getByText(`Kết nối tốt — 1 model qua ${new URL('ollama', `${baseURL}/`).href}.`)).toBeVisible();
 
   await page.goto('/?screen=library');
   await page.getByTestId('lesson-scale-c-major').click();
