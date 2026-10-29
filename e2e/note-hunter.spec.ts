@@ -15,6 +15,13 @@ async function setup(page: Page, targets: number[], opts: { song?: string; mode?
 const key = (page: Page, midi: number) => page.locator(`[data-testid="hunter-keyboard"] [data-midi="${midi}"]`);
 const status = (page: Page) => page.getByTestId('hunter-screen');
 
+test('mục Trò chơi mở được Săn nốt', async ({ page }) => {
+  await page.goto('/?screen=games');
+  await page.getByTestId('open-note-hunter').click();
+  await expect(page.getByTestId('hunter-setup')).toBeVisible();
+  await expect(page.getByTestId('hunter-start')).toBeEnabled();
+});
+
 test('bài không có nốt mục tiêu đã chọn → báo rõ, không cho bắt đầu', async ({ page }) => {
   await setup(page, [61]); // Đô thăng 4 không có trong bài
   await expect(page.getByTestId('hunter-no-targets')).toContainText('không có nốt nào');

@@ -6,6 +6,7 @@ import { SettingsScreen } from './screens/SettingsScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
 import { CurriculumScreen } from './screens/CurriculumScreen';
 import { LessonPlayerScreen } from './screens/LessonPlayerScreen';
+import { GamesScreen } from './screens/GamesScreen';
 import { NoteHunterScreen } from './screens/NoteHunterScreen';
 import { useCurriculum } from './store/curriculumStore';
 import { useProfiles } from './store/profileStore';
@@ -36,6 +37,7 @@ export function App() {
       {route.name === 'curriculum' && <CurriculumScreen levelId={route.levelId} />}
       {route.name === 'lesson' && <LessonPlayerScreen lessonId={route.lessonId} stage={route.stage} />}
       {route.name === 'library' && <DashboardScreen focus="library" />}
+      {route.name === 'games' && <GamesScreen />}
       {route.name === 'note-hunter' && <NoteHunterScreen />}
       {route.name === 'practice' && <PracticeScreen lessonId={route.lessonId} />}
       {route.name === 'settings' && <SettingsScreen />}

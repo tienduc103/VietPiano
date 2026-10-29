@@ -15,16 +15,19 @@ export type Route =
   /** `stage`: mở thẳng phần Luyện tập / Trò chơi sau buổi (nút trên thẻ buổi học). */
   | { name: 'lesson'; lessonId: string; stage?: LessonStage }
   | { name: 'library' }
+  /** Mục Trò chơi: mọi trò của các buổi học + trò chơi tự do. */
+  | { name: 'games' }
   /** Săn nốt (Note Hunter): bản nhạc tự chạy, dừng ở nốt mục tiêu chờ người chơi đánh đúng. */
   | { name: 'note-hunter' }
   | { name: 'practice'; lessonId: string }
   | { name: 'settings' };
 
-/** Màn hình mở đầu: Dashboard giáo trình; "?screen=library" / "?screen=curriculum" mở thẳng màn đó (đường tắt, dùng cả trong e2e). */
+/** Màn hình mở đầu: Dashboard giáo trình; "?screen=library" / "?screen=curriculum" / "?screen=games" mở thẳng màn đó (đường tắt, dùng cả trong e2e). */
 export function initialRoute(search = typeof location === 'undefined' ? '' : location.search): Route {
   const screen = new URLSearchParams(search).get('screen');
   if (screen === 'library') return { name: 'library' };
   if (screen === 'curriculum') return { name: 'curriculum' };
+  if (screen === 'games') return { name: 'games' };
   if (screen === 'note-hunter') return { name: 'note-hunter' };
   return { name: 'dashboard' };
 }

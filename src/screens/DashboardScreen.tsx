@@ -77,6 +77,10 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
             ))}
           </div>
           <FullscreenButton />
+          <Button onClick={() => navigate({ name: 'games' })} data-testid="open-games">
+            <Icon name="gamepad" />
+            <span>Trò chơi</span>
+          </Button>
           <Button onClick={() => scrollToLibrary('smooth')} data-testid="open-library">
             <Icon name="count" />
             <span>Thư viện bài</span>

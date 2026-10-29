@@ -58,7 +58,12 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              NoteCatchGame "Hứng nốt rơi" (mỗi sự kiện hứng tối đa 1 nốt, `graceMs` bù trễ micro; `golden` ×2 điểm) —
                              dùng lại cho "Bắn bóng trên khuông" (bài đọc nốt, nốt vẽ sẵn SVG một lần, không tên nốt); KeyHuntGame "Săn phím";
                              RhythmTrainGame "Đèn giao thông tiết tấu" (bài tiết tấu, không xét cao độ, gõ vào dấu lặng = phanh);
-                             EchoMelodyGame "Giai điệu bí ẩn" (luyện tai; bỏ nốt trong lúc app phát)
+                             EchoMelodyGame "Giai điệu bí ẩn" (luyện tai; bỏ nốt trong lúc app phát).
+                             Mục Trò chơi (`screens/GamesScreen`, tab Theo trò / Theo buổi học): `catalog.ts` (thông tin trò,
+                             chỉ mục trò của mọi buổi, `specSummary` chú thích nội dung; mọi buổi đều mở, buổi chưa học có nhãn).
+                             Trò tự do (`ArcadeGameSpec`, mức chơi soạn sẵn ở `arcade.ts`, kỷ lục localStorage theo hồ sơ):
+                             NoteSprintGame "Đua đọc nốt 60 giây" (sai trừ giây), EarFinderGame "Nghe nốt đoán phím" (cao hơn/thấp hơn),
+                             "Thám tử quãng" (`intervals.ts` + KeyHuntGame), SteadyBeatGame "Giữ nhịp tim" (chấm khoảng giữa các lần gõ)
   noteHunter/              "Săn nốt" (`screens/NoteHunterScreen`, route `note-hunter`, `?screen=note-hunter`): bản nhạc tự chạy,
                              DỪNG ĐÚNG phách đầu mỗi nốt mục tiêu (người chơi chọn nốt, so theo MIDI) tới khi đánh đúng.
                              `songs.ts` bài = Lesson (3 bài riêng + bài hát một bè của thư viện) → `HunterNote` qua `lessonTimeline`
@@ -86,8 +91,8 @@ src/store/           Zustand: settingsStore, micStore, appStore (route + tiến 
 src/hooks/           vòng đời app (ẩn nền → tắt micro), theme, wake lock, ghi phiên luyện tập
 src/components/      ScoreView, PianoKeyboard, MicPanel, ui
 src/screens/         Dashboard (trang chủ = giáo trình phía trên + Thư viện bài `components/LessonLibrary` phía dưới),
-                     Curriculum, LessonPlayer, Practice, Settings. Route `library` = trang chủ cuộn tới thư viện;
-                     `?screen=library` / `?screen=curriculum` mở thẳng (e2e dùng)
+                     Curriculum, LessonPlayer, Practice, Games, Settings. Route `library` = trang chủ cuộn tới thư viện;
+                     `?screen=library` / `?screen=curriculum` / `?screen=games` mở thẳng (e2e dùng)
 e2e/                 Playwright; global-setup sinh WAV gam Đô trưởng làm micro giả
 ```
 

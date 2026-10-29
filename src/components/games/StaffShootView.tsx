@@ -23,7 +23,7 @@ const STAFF_TOP = 38;
 const STAFF_BAND = 108;
 
 /** Vẽ sẵn mỗi nốt một khuông nhỏ (SVG) — một lần cho cả ván, không vẽ lại VexFlow mỗi khung hình. */
-function useStaffSvgs(notes: readonly number[], clef: Clef, nameOf: (midi: number) => string, keySignature?: KeySignature): Map<number, string> | null {
+export function useStaffSvgs(notes: readonly number[], clef: Clef, nameOf: (midi: number) => string, keySignature?: KeySignature): Map<number, string> | null {
   const [svgs, setSvgs] = useState<Map<number, string> | null>(null);
   useEffect(() => {
     let alive = true;

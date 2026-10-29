@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { CURRICULUM } from '../../core/curriculum/content/curriculum';
 import { missedReadingNotes } from '../../core/curriculum/review';
+import type { GameRecord } from '../../core/curriculum/progress';
 import type { CurriculumLesson, UiMode } from '../../core/curriculum/types';
 import { orderedLessons } from '../../core/curriculum/unlock';
 import { GAME_ICON, GAME_TITLE, gamesForLesson, type GameKind, type GameSpec } from '../../core/games/gameForLesson';
@@ -8,12 +9,16 @@ import { requireMidi } from '../../core/music/notes';
 import { useCurriculum } from '../../store/curriculumStore';
 import { InputSourceBar } from '../curriculum/common';
 import { Button, Icon } from '../ui';
+import { EarFinderView } from './EarFinderView';
 import { EchoMelodyView } from './EchoMelodyView';
 import { FingerQuizView } from './FingerQuizView';
+import { IntervalDetectiveView } from './IntervalDetectiveView';
 import { KeyHuntView } from './KeyHuntView';
 import { NoteCatchView } from './NoteCatchView';
+import { NoteSprintView } from './NoteSprintView';
 import { RhythmTrainView } from './RhythmTrainView';
 import { StaffShootView } from './StaffShootView';
+import { SteadyBeatView } from './SteadyBeatView';
 import { Stars, type GameResult } from './shared';
 
 const HOW_TO: Record<GameKind, { adult: string; kids: string }> = {
@@ -41,10 +46,26 @@ const HOW_TO: Record<GameKind, { adult: string; kids: string }> = {
     adult: 'Nghe app phát một đoạn nhạc ngắn rồi đánh lại đúng thứ tự. Đúng thì đoạn sau dài thêm một nốt. Sai một nốt mất một mạng và được nghe lại. "Nghe lại" và "Gợi ý" bị trừ điểm.',
     kids: 'Đàn đang đố bạn một giai điệu bí mật! Nghe thật kỹ rồi đánh lại giống hệt nhé.',
   },
+  'note-sprint': {
+    adult: 'Mỗi lúc hiện một nốt trên khuông (không có tên nốt). Đánh đúng phím để sang nốt mới — đọc được càng nhiều nốt trong 60 giây càng tốt. Đánh sai bị trừ 3 giây.',
+    kids: 'Đua với đồng hồ! Nhìn nốt trên khuông rồi bấm đúng phím thật nhanh. Bấm sai thì đồng hồ bị trừ một giây đó.',
+  },
+  'ear-finder': {
+    adult: 'App phát một nốt — tìm phím của nốt đó. Sai thì app cho biết nốt cần tìm cao hơn hay thấp hơn. Đúng ngay lần đầu được nhiều điểm nhất. Bấm "Nghe nốt mốc" để so sánh.',
+    kids: 'Đàn hát một nốt bí mật! Nghe kỹ rồi tìm phím đó nhé. Nếu chưa đúng, mũi tên sẽ chỉ cho bạn đi lên hay đi xuống.',
+  },
+  'interval-detective': {
+    adult: 'Mỗi lượt có một nốt gốc (sáng trên bàn phím) và một quãng, ví dụ "quãng 3 trưởng đi lên". Đánh nốt cách nốt gốc đúng quãng đó trước khi hết giờ. Đếm số nửa cung nếu cần.',
+    kids: 'Thám tử ơi! Từ phím đang sáng, đếm đúng số bước rồi bấm phím cần tìm nhé.',
+  },
+  'steady-beat': {
+    adult: 'Metronome kêu 8 phách: 4 phách đầu để nghe, 4 phách sau gõ theo (phím nào cũng được). Sau đó metronome tắt — bạn tự gõ tiếp thật đều. Mỗi phách được chấm Đều / Khá / Lệch theo độ lệch so với nhịp gốc.',
+    kids: 'Tim đập thình thịch đều đều! Gõ theo tiếng tích-tắc, rồi khi tiếng tắt đi thì bạn tự gõ tiếp thật đều nhé.',
+  },
 };
 
 /** Ý nghĩa ô "chuỗi" trên màn kết quả theo từng trò. */
-const COMBO_LABEL: Partial<Record<GameKind, string>> = { 'echo-melody': 'Đoạn dài nhất (nốt)' };
+const COMBO_LABEL: Partial<Record<GameKind, string>> = { 'echo-melody': 'Đoạn dài nhất (nốt)', 'steady-beat': 'Chuỗi phách đều' };
 const HITS_LABEL: Record<GameKind, string> = {
   'note-catch': 'Hứng được',
   'key-hunt': 'Bắt được',
@@ -52,6 +73,10 @@ const HITS_LABEL: Record<GameKind, string> = {
   'staff-shoot': 'Bắn trúng',
   'echo-melody': 'Vòng qua',
   'finger-quiz': 'Đúng',
+  'note-sprint': 'Đọc đúng',
+  'ear-finder': 'Tìm được',
+  'interval-detective': 'Tìm được',
+  'steady-beat': 'Phách đều',
 };
 
 /**
@@ -60,38 +85,80 @@ const HITS_LABEL: Record<GameKind, string> = {
  */
 export function GameStage({
   lesson,
-  mode,
-  onResult,
-  onNext,
-  onBack,
+  initialKind,
+  backLabel = 'Về giáo trình',
+  ...rest
 }: {
   lesson: CurriculumLesson;
   mode: UiMode;
+  initialKind?: GameKind;
+  backLabel?: string;
   onResult: (r: GameResult & { kind: GameKind }) => void;
   onNext?: () => void;
   onBack: () => void;
 }) {
-  const kids = mode === 'kids';
   const specs = useMemo(() => {
     const level = CURRICULUM.levels.find((l) => l.levelId === lesson.levelId);
     const lessons = level ? orderedLessons(level) : [];
     return gamesForLesson(lesson, lessons.slice(0, Math.max(0, lessons.findIndex((l) => l.lessonId === lesson.lessonId))));
   }, [lesson]);
   const record = useCurriculum((s) => s.records[lesson.lessonId]);
-  const [kind, setKind] = useState<GameKind>(specs[0].kind);
+  return (
+    <GamePlayer
+      {...rest}
+      key={lesson.lessonId}
+      specs={specs}
+      initialKind={initialKind}
+      backLabel={backLabel}
+      recordOf={(k) => record?.games?.[k]}
+      // Nốt hay đọc nhầm của buổi → bóng vàng.
+      goldenFor={(spec) => {
+        const notes = spec.kind === 'staff-shoot' ? spec.notes : [];
+        return [...missedReadingNotes(record?.mistakes).keys()].map(requireMidi).filter((m) => notes.includes(m));
+      }}
+    />
+  );
+}
+
+/**
+ * Khung chơi chung: chọn trò (khi có nhiều trò) → giới thiệu → chơi → kết quả. Dùng cho trò sau buổi và mục Trò chơi.
+ * `recordOf`: kỷ lục hiện có của trò (để hiện + báo "Kỷ lục mới").
+ */
+export function GamePlayer({
+  specs,
+  mode,
+  initialKind,
+  recordOf,
+  goldenFor,
+  onResult,
+  onNext,
+  onBack,
+  backLabel,
+}: {
+  specs: readonly GameSpec[];
+  mode: UiMode;
+  initialKind?: GameKind;
+  recordOf: (kind: GameKind) => GameRecord | undefined;
+  goldenFor?: (spec: GameSpec) => number[];
+  onResult: (r: GameResult & { kind: GameKind }) => void;
+  onNext?: () => void;
+  onBack: () => void;
+  backLabel: string;
+}) {
+  const kids = mode === 'kids';
+  const [kind, setKind] = useState<GameKind>(initialKind && specs.some((s) => s.kind === initialKind) ? initialKind : specs[0].kind);
   const spec = specs.find((s) => s.kind === kind) ?? specs[0];
   const [phase, setPhase] = useState<'intro' | 'play' | 'result'>('intro');
   const [run, setRun] = useState(0);
   const [result, setResult] = useState<GameResult | null>(null);
   /** Kỷ lục của trò này trước ván vừa chơi (để báo "Kỷ lục mới"). */
   const previousBest = useRef(0);
-  /** Nốt hay đọc nhầm của buổi → bóng vàng (lấy lúc bắt đầu ván). */
+  /** Nốt "vàng" (×2 điểm) của ván, lấy lúc bắt đầu ván. */
   const golden = useRef<number[]>([]);
 
   const start = () => {
-    previousBest.current = record?.games?.[spec.kind]?.bestScore ?? 0;
-    const notes = spec.kind === 'staff-shoot' ? spec.notes : [];
-    golden.current = [...missedReadingNotes(record?.mistakes).keys()].map(requireMidi).filter((m) => notes.includes(m));
+    previousBest.current = recordOf(spec.kind)?.bestScore ?? 0;
+    golden.current = goldenFor?.(spec) ?? [];
     setRun((r) => r + 1);
     setPhase('play');
   };
@@ -125,13 +192,13 @@ export function GameStage({
     );
   }
 
-  const best = record?.games?.[spec.kind];
+  const best = recordOf(spec.kind);
   return (
     <div className="mx-auto grid max-w-3xl gap-4">
       {phase === 'intro' && specs.length > 1 && (
         <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${specs.length}, minmax(0, 1fr))` }} role="radiogroup" aria-label="Chọn trò chơi">
           {specs.map((s) => {
-            const rec = record?.games?.[s.kind];
+            const rec = recordOf(s.kind);
             return (
               <button
                 key={s.kind}
@@ -208,8 +275,8 @@ export function GameStage({
               Bài tiếp theo →
             </Button>
           )}
-          <Button variant="ghost" onClick={onBack}>
-            Về giáo trình
+          <Button variant="ghost" onClick={onBack} data-testid="game-back">
+            {backLabel}
           </Button>
         </div>
       </section>
@@ -231,6 +298,14 @@ function GameView({ spec, mode, golden, onEnd }: { spec: GameSpec; mode: UiMode;
       return <EchoMelodyView spec={spec} mode={mode} onEnd={onEnd} />;
     case 'finger-quiz':
       return <FingerQuizView spec={spec} mode={mode} onEnd={onEnd} />;
+    case 'note-sprint':
+      return <NoteSprintView spec={spec} mode={mode} onEnd={onEnd} />;
+    case 'ear-finder':
+      return <EarFinderView spec={spec} mode={mode} onEnd={onEnd} />;
+    case 'interval-detective':
+      return <IntervalDetectiveView spec={spec} mode={mode} onEnd={onEnd} />;
+    case 'steady-beat':
+      return <SteadyBeatView spec={spec} mode={mode} onEnd={onEnd} />;
   }
 }
 

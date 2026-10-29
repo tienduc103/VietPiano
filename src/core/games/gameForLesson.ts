@@ -14,6 +14,7 @@ import type { CurriculumLesson, KeyQuizRound, Piece } from '../curriculum/types'
 import type { Clef } from '../lessons/types';
 import type { KeySignature } from '../music/keySignature';
 import { midiToName, midiToPitchClass, requireMidi } from '../music/notes';
+import type { IntervalDirection } from './intervals';
 import type { Random } from './random';
 
 type Keyboard = { from: number; to: number };
@@ -23,7 +24,8 @@ type Keyboard = { from: number; to: number };
  */
 type Names = { names?: Record<number, string> };
 
-export type GameSpec =
+/** Trò suy từ nội dung buổi học (trò sau buổi). */
+export type LessonGameSpec =
   | ({ kind: 'note-catch'; keyboard: Keyboard; notes: number[] } & Names)
   | { kind: 'key-hunt'; keyboard: Keyboard; rounds: KeyQuizRound[] }
   | { kind: 'rhythm-train'; piece: Piece }
@@ -31,6 +33,16 @@ export type GameSpec =
   | ({ kind: 'echo-melody'; keyboard: Keyboard; notes: number[] } & Names)
   /** `fingers`: số ngón → phím (MIDI) của thế tay đang học. App chỉ chấm phím, không biết người học dùng ngón nào. */
   | { kind: 'finger-quiz'; keyboard: Keyboard; hand: 'right' | 'left'; fingers: Record<number, number> };
+
+/** Trò chỉ có ở mục Trò chơi (không gắn với buổi học) — mức chơi soạn sẵn ở `arcade.ts`. */
+export type ArcadeGameSpec =
+  | ({ kind: 'note-sprint'; keyboard: Keyboard; clef: Clef; notes: number[] } & Names)
+  | { kind: 'interval-detective'; keyboard: Keyboard; intervals: number[]; directions: IntervalDirection[] }
+  /** `reference`: nốt mốc người học được nghe lại bất kỳ lúc nào (luyện cao độ tương đối). */
+  | ({ kind: 'ear-finder'; keyboard: Keyboard; notes: number[]; reference: number } & Names)
+  | { kind: 'steady-beat'; bpm: number; silentBeats: number };
+
+export type GameSpec = LessonGameSpec | ArcadeGameSpec;
 
 export type GameKind = GameSpec['kind'];
 
@@ -41,6 +53,10 @@ export const GAME_TITLE: Record<GameKind, string> = {
   'staff-shoot': 'Bắn bóng trên khuông',
   'echo-melody': 'Giai điệu bí ẩn',
   'finger-quiz': 'Đố số ngón tay',
+  'note-sprint': 'Đua đọc nốt 60 giây',
+  'interval-detective': 'Thám tử quãng',
+  'ear-finder': 'Nghe nốt đoán phím',
+  'steady-beat': 'Giữ nhịp tim',
 };
 
 export const GAME_ICON: Record<GameKind, string> = {
@@ -50,6 +66,10 @@ export const GAME_ICON: Record<GameKind, string> = {
   'staff-shoot': '🎈',
   'echo-melody': '🔮',
   'finger-quiz': '🖐️',
+  'note-sprint': '⏱️',
+  'interval-detective': '🕵️',
+  'ear-finder': '👂',
+  'steady-beat': '💓',
 };
 
 const MIN_NOTES = 3;
@@ -121,7 +141,7 @@ export function notePool(lesson: CurriculumLesson, earlier: readonly CurriculumL
 }
 
 /** Trò Hứng nốt rơi / Săn phím (trò chính khi buổi không có bài tiết tấu hay đọc nốt). */
-export function gameForLesson(lesson: CurriculumLesson, earlier: readonly CurriculumLesson[] = []): GameSpec {
+export function gameForLesson(lesson: CurriculumLesson, earlier: readonly CurriculumLesson[] = []): LessonGameSpec {
   const own = lessonPitches(lesson);
   if (own.length >= MIN_NOTES) return { kind: 'note-catch', keyboard: keyboardFor(own), notes: own };
   const keyQuizzes = lesson.exercises.filter((e) => e.kind === 'key-quiz');
@@ -141,7 +161,7 @@ function echoNotes(pool: readonly number[]): number[] {
  * Thế tay của buổi: hình bàn phím có nhiều số ngón nhất trong phần giới thiệu (cần ≥ 3 ngón).
  * Bỏ hình có một ngón ở hai phím (gam luồn ngón) — không phải thế tay cố định, câu hỏi "ngón 1 ở đâu" sẽ có hai đáp án.
  */
-export function fingerQuizFor(lesson: CurriculumLesson): Extract<GameSpec, { kind: 'finger-quiz' }> | null {
+export function fingerQuizFor(lesson: CurriculumLesson): Extract<LessonGameSpec, { kind: 'finger-quiz' }> | null {
   let best: { from: number; to: number; fingers: Readonly<Record<number, number>> } | null = null;
   for (const a of lesson.activities) {
     for (const p of a.pages) {
@@ -162,11 +182,11 @@ export function fingerQuizFor(lesson: CurriculumLesson): Extract<GameSpec, { kin
 }
 
 /** Trò chính của buổi rồi tới "Giai điệu bí ẩn" (+ "Đố số ngón tay" nếu buổi có hình thế tay). `earlier`: các buổi trước buổi này (theo thứ tự học). */
-export function gamesForLesson(lesson: CurriculumLesson, earlier: readonly CurriculumLesson[] = []): GameSpec[] {
+export function gamesForLesson(lesson: CurriculumLesson, earlier: readonly CurriculumLesson[] = []): LessonGameSpec[] {
   const rhythm = lesson.exercises.find((e) => e.kind === 'play' && e.mode === 'rhythm');
   const reading = lesson.exercises.filter((e) => e.kind === 'note-reading');
   const spellings = lessonSpellings([lesson, ...[...earlier].reverse()]);
-  let primary: GameSpec;
+  let primary: LessonGameSpec;
   if (rhythm && rhythm.kind === 'play') {
     primary = { kind: 'rhythm-train', piece: rhythm.piece };
   } else if (reading.length > 0) {
