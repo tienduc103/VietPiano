@@ -10,7 +10,7 @@
 import type { DynamicMark } from '../../music/dynamics';
 import type { LessonSection } from '../../lessons/types';
 import type { ChoiceQuestion, CurriculumLesson, Piece, Week } from '../types';
-import { buildLessons, in34, inKey, NO_FINGER_CHECK, ONLY_MELODY_SCORED, play, practice, rh, staffPage, withLh, type LessonDef } from './helpers';
+import { buildLessons, in34, inKey, lh, NO_FINGER_CHECK, ONLY_MELODY_SCORED, play, practice, rh, staffPage, withLh, type LessonDef } from './helpers';
 
 const LEVEL = 'level-6';
 const KIDS_SLOWER = { kids: { tempoPercent: 85 } };
@@ -435,12 +435,31 @@ const defs: LessonDef[] = [
         id: 'intro',
         title: 'Dưới ánh trăng',
         pages: [
+          staffPage(
+            'Dưới Đô giữa trên khuông Sol',
+            'Đi xuống từ Đô giữa (C4, một dòng kẻ phụ): Si (B3) treo ngay dưới dòng kẻ phụ đó, La (A3) nằm trên dòng kẻ phụ thứ hai, Sol (G3) treo dưới dòng kẻ phụ thứ hai.',
+            rh('C4 B3 A3 G3 | A3 B3 C4/h'),
+            'Đô đội một mũ, La đội hai mũ — Si và Sol treo ngay bên dưới mũ!',
+          ),
           { title: 'Dời thế tay', body: 'Đoạn B (ô 9): ngón 5 ở Rê4, ngón 1 xuống Sol3. Hết đoạn B, đưa ngón 1 về Đô4 cho đoạn A cuối.', illustration: { type: 'keyboard', from: 53, to: 67, highlight: [55, 57, 59, 60, 62], fingers: { 55: 1, 57: 2, 59: 3, 60: 4, 62: 5 } } },
           staffPage('Nghe mẫu', 'A (mf) – A (p) – B (f) – A (p).', AU_CLAIR),
         ],
       },
     ],
-    exercises: [{ kind: 'choice-quiz', id: 'quiz', title: 'Câu hỏi: dời thế tay', questions: [Q.shift], pass: { minAccuracy: 1 } }, ...rehearse(AU_CLAIR)],
+    exercises: [
+      { kind: 'choice-quiz', id: 'quiz', title: 'Câu hỏi: dời thế tay', questions: [Q.shift], pass: { minAccuracy: 1 } },
+      practice({
+        kind: 'note-reading',
+        id: 'read',
+        title: 'Luyện đọc nốt dưới Đô giữa',
+        clef: 'treble',
+        answer: 'name',
+        sequence: ['B3', 'A3', 'G3', 'C4', 'A3', 'G3', 'B3', 'D4'],
+        choices: ['G3', 'A3', 'B3', 'C4', 'D4'],
+        pass: {},
+      }),
+      ...rehearse(AU_CLAIR),
+    ],
     assessment: { passScore: 80, checkpoint: false },
   },
   {
@@ -505,7 +524,17 @@ const defs: LessonDef[] = [
     prerequisites: ['l6-12-butterfly'],
     notes: NOTES_HANDS,
     ageVariants: KIDS_SLOWER,
-    activities: [{ kind: 'intro', id: 'intro', title: 'Minuet', pages: [staffPage('Nghe mẫu', 'Minuet là điệu nhảy nhịp 3/4 thời Baroque. Tay trái giản lược một nốt mỗi ô.', MINUET)] }],
+    activities: [
+      {
+        kind: 'intro',
+        id: 'intro',
+        title: 'Minuet',
+        pages: [
+          staffPage('Tay trái lên Rê4', 'Ô 7 tay trái có Rê4 (D4): trên khuông Fa, Đô giữa nằm trên một dòng kẻ phụ phía trên khuông, Rê4 nằm ngay trên dòng kẻ phụ đó.', lh('B3 C4 D4/h')),
+          staffPage('Nghe mẫu', 'Minuet là điệu nhảy nhịp 3/4 thời Baroque. Tay trái giản lược một nốt mỗi ô.', MINUET),
+        ],
+      },
+    ],
     exercises: [
       practice(play('rh', 'Khởi động: tay phải riêng', 'wait', { ...MINUET, accompaniment: undefined, clef: 'treble' })),
       ...rehearse(MINUET, 'Biểu diễn hai tay có sắc thái'),

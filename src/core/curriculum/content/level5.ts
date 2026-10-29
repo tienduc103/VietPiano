@@ -9,7 +9,7 @@
  * Fa trưởng F2+A2+C3 / F2+B♭2+D3 / E2+G2+C3.
  */
 import type { ChoiceQuestion, CurriculumLesson, Week } from '../types';
-import { buildLessons, in34, inKey, NO_FINGER_CHECK, ONLY_MELODY_SCORED, play, practice, rh, staffPage, withLh, type LessonDef } from './helpers';
+import { buildLessons, in34, inKey, lh, NO_FINGER_CHECK, ONLY_MELODY_SCORED, play, practice, rh, staffPage, withLh, type LessonDef } from './helpers';
 
 const LEVEL = 'level-5';
 const KIDS_SLOWER = { kids: { tempoPercent: 85 } };
@@ -440,7 +440,21 @@ const defs: LessonDef[] = [
     prerequisites: ['l5-15-week3-test'],
     notes: NOTES,
     ageVariants: KIDS_SLOWER,
-    activities: [{ kind: 'intro', id: 'intro', title: 'Sol trưởng', pages: [staffPage('Nghe mẫu', 'Ba hợp âm Sol – Đô – Rê dưới giai điệu thế Sol.', inKey(withLh(G_SONG, G_SONG_LH, 60, 'Hai tay Sol trưởng'), 'G'))] }],
+    activities: [
+      {
+        kind: 'intro',
+        id: 'intro',
+        title: 'Sol trưởng',
+        pages: [
+          staffPage(
+            'Fa thăng dưới khuông Fa',
+            'Hợp âm Rê: ngón 5 tay trái xuống Fa thăng (F♯2) — khe ngay dưới dòng 1 khuông Fa. Hoá biểu đã có dấu thăng nên cạnh nốt không ghi lại.',
+            inKey(lh('G2/h F#2/h | G2/w'), 'G'),
+          ),
+          staffPage('Nghe mẫu', 'Ba hợp âm Sol – Đô – Rê dưới giai điệu thế Sol.', inKey(withLh(G_SONG, G_SONG_LH, 60, 'Hai tay Sol trưởng'), 'G')),
+        ],
+      },
+    ],
     exercises: [
       { kind: 'choice-quiz', id: 'quiz', title: 'Câu hỏi: hợp âm Sol trưởng', questions: [Q.gTonic], pass: { minAccuracy: 1 } },
       ...handsTogether(G_SONG, G_SONG_LH, { title: 'Hai tay Sol trưởng', key: 'G' }),
@@ -458,7 +472,17 @@ const defs: LessonDef[] = [
     prerequisites: ['l5-16-g-major'],
     notes: NOTES,
     ageVariants: KIDS_SLOWER,
-    activities: [{ kind: 'intro', id: 'intro', title: 'Fa trưởng', pages: [staffPage('Nghe mẫu', 'Ba hợp âm Fa – Si giáng – Đô dưới giai điệu thế Fa.', inKey(withLh(F_SONG, F_SONG_LH, 60, 'Hai tay Fa trưởng'), 'F'))] }],
+    activities: [
+      {
+        kind: 'intro',
+        id: 'intro',
+        title: 'Fa trưởng',
+        pages: [
+          staffPage('Mi trên dòng kẻ phụ', 'Hợp âm Đô: ngón 5 tay trái xuống Mi (E2) — nằm trên một dòng kẻ phụ dưới khuông Fa, ngay dưới Fa (F2).', inKey(lh('F2/h E2/h | F2/w'), 'F')),
+          staffPage('Nghe mẫu', 'Ba hợp âm Fa – Si giáng – Đô dưới giai điệu thế Fa.', inKey(withLh(F_SONG, F_SONG_LH, 60, 'Hai tay Fa trưởng'), 'F')),
+        ],
+      },
+    ],
     exercises: [
       { kind: 'choice-quiz', id: 'quiz', title: 'Câu hỏi: hợp âm Fa trưởng', questions: [Q.fTonic], pass: { minAccuracy: 1 } },
       ...handsTogether(F_SONG, F_SONG_LH, { title: 'Hai tay Fa trưởng', key: 'F' }),

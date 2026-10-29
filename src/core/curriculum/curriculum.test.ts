@@ -11,7 +11,7 @@ import { keysMatching } from './keys';
 import { lessonTimeline, pieceToLesson } from './piece';
 import { orderedLessons } from './unlock';
 import { validateCurriculum, validatePiece } from './validate';
-import type { Curriculum, PlayExercise } from './types';
+import type { Curriculum, CurriculumLesson, Piece, PlayExercise } from './types';
 
 describe('nội dung giáo trình', () => {
   it('toàn bộ giáo trình hợp lệ (đủ phách, tầm nốt, tiên quyết, đáp án…)', () => {
@@ -92,6 +92,44 @@ describe('nội dung giáo trình', () => {
     for (const l of LEVEL1_LESSONS)
       for (const e of l.exercises)
         if (e.kind === 'key-quiz') for (const r of e.rounds) expect(keysMatching(r.target, e.keyboard.from, e.keyboard.to).length).toBeGreaterThan(0);
+  });
+});
+
+describe('thứ tự kiến thức', () => {
+  /** Ký hiệu đọc được trên khuông: trường độ ("q", "Rh"…) và cao độ theo khoá ("treble:C4", "bass:G2"). */
+  const symbols = (p: Piece): string[] => {
+    const l = pieceToLesson(p, 'x');
+    const out = l.notes.map((n) => `${n.rest ? 'R' : ''}${n.duration}`);
+    for (const n of l.notes) if (!n.rest) out.push(`${(p.hand === 'both' ? n.hand : p.hand) === 'left' ? 'bass' : 'treble'}:${n.pitch}`);
+    for (const c of l.accompaniment ?? []) out.push(c.duration, ...c.pitches.map((q) => `bass:${q}`));
+    return out;
+  };
+  const pieceKey = (p: Piece) => `${p.notation}|${p.accompaniment ?? ''}`;
+  /** Trang giới thiệu có khuông nhạc — trừ trang "Nghe mẫu" của chính bản nhạc trong bài tập (nghe thôi chưa phải học). */
+  const introSymbols = (l: CurriculumLesson) => {
+    const played = new Set(l.exercises.flatMap((e) => (e.kind === 'play' ? [pieceKey(e.piece)] : [])));
+    return l.activities.flatMap((a) =>
+      a.pages.flatMap((p) => (p.illustration && 'piece' in p.illustration && !played.has(pieceKey(p.illustration.piece)) ? symbols(p.illustration.piece) : [])),
+    );
+  };
+  const exerciseSymbols = (l: CurriculumLesson) =>
+    l.exercises.flatMap((e) => (e.kind === 'play' ? symbols(e.piece) : e.kind === 'note-reading' ? e.sequence.map((s) => `${e.clef}:${s}`) : []));
+  /**
+   * Ngoại lệ có chủ đích: buổi 3–4 cấp 1 chơi theo số ngón ở Wait Mode trước khi học khuông (tuần 2)
+   * và trường độ (tuần 3) — Wait Mode không chấm nhịp.
+   */
+  const ALLOWED: Record<string, string[]> = { 'l1-03-fingers': ['q', 'h', 'treble:C4', 'treble:D4', 'treble:E4'], 'l1-04-cde': ['w'] };
+
+  it('trường độ và nốt mới được giới thiệu (trang giới thiệu hoặc buổi trước) trước khi dùng trong bài tập', () => {
+    const seen = new Set<string>();
+    const missing: string[] = [];
+    for (const level of CURRICULUM.levels)
+      for (const l of orderedLessons(level)) {
+        const known = new Set([...seen, ...introSymbols(l), ...(ALLOWED[l.lessonId] ?? [])]);
+        for (const s of new Set(exerciseSymbols(l))) if (!known.has(s)) missing.push(`${l.lessonId}: ${s}`);
+        for (const s of [...introSymbols(l), ...exerciseSymbols(l)]) seen.add(s);
+      }
+    expect(missing).toEqual([]);
   });
 });
 

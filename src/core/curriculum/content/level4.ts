@@ -232,6 +232,7 @@ const defs: LessonDef[] = [
         title: 'Dấu giáng',
         pages: [
           keyboardPage('Si giáng', 'Dấu giáng ♭ làm nốt thấp xuống nửa cung — sang phím ngay bên trái. Si giáng là phím đen cuối của nhóm 3 phím đen.', [70, 71], 'Si lùi sang trái một bước nhỏ là thành Si giáng!'),
+          staffPage('Dấu giáng trên khuông', 'Dấu ♭ viết ngay trước nốt, cùng dòng/khe với nốt: Si giáng ở dòng 3, Mi giáng ở dòng 1.', rh('Bb4/w | Eb4/w'), 'Cái mũ nhỏ hình chữ b đứng trước nốt = đi xuống phím đen bên trái!'),
           { title: 'Thế tay Fa', body: 'Ngón 1 ở Fa (F4), ngón 4 trên Si giáng, ngón 5 ở Đô cao.', illustration: fPositionKeys },
         ],
       },
@@ -239,6 +240,16 @@ const defs: LessonDef[] = [
     exercises: [
       practice({ kind: 'key-quiz', id: 'warmup', title: 'Luyện tìm nốt giáng', keyboard: KEYS, retry: true, rounds: [R.anyBFlat, R.bFlat4, R.eFlat4, R.anyBFlat], pass: {} }),
       { kind: 'choice-quiz', id: 'quiz', title: 'Câu hỏi: dấu giáng', questions: [Q.flat, Q.bFlatWhere], pass: { minAccuracy: 0.5 } },
+      practice({
+        kind: 'note-reading',
+        id: 'read',
+        title: 'Luyện đọc nốt giáng',
+        clef: 'treble',
+        answer: 'name',
+        sequence: ['Bb4', 'Eb4', 'B4', 'Bb4', 'E4', 'Eb4'],
+        choices: ['Eb4', 'E4', 'Bb4', 'B4'],
+        pass: {},
+      }),
       play('play', 'Thế tay Fa có Si giáng', 'wait', rh('F4:1 G4:2 A4:3 Bb4:4 | C5/w:5 | C5:5 Bb4:4 A4:3 G4:2 | F4/w:1')),
     ],
     assessment: { passScore: 80, checkpoint: false },
@@ -361,6 +372,12 @@ const defs: LessonDef[] = [
         title: 'Gam Sol trưởng',
         pages: [
           { title: 'Ngón tay cho gam Sol trưởng', body: 'Đi lên: 1 – 2 – 3, luồn ngón 1 ở Đô cao, rồi 2 – 3 – 4 – 5 (ngón 4 ở Fa thăng). Đi xuống ngược lại, vắt ngón 3 qua ở Si.', illustration: gScaleKeys },
+          staffPage(
+            'Lên trên khuông',
+            'Trên Rê cao (D5, dòng 4): Mi (E5) ở khe 4, Fa (F5) trên dòng 5, Sol (G5) nằm ngay trên khuông. Trong gam Sol trưởng, Fa luôn là Fa thăng (F♯5).',
+            rh('D5 E5 F5 G5 | G5 F#5 E5 D5'),
+            'Leo lên nóc khuông: Mi – Fa – Sol!',
+          ),
           staffPage('Nghe mẫu', 'Gam Sol trưởng đi lên rồi đi xuống.', inKey(rh(SCALE_G, 66, 'Gam Sol trưởng'), 'G')),
         ],
       },

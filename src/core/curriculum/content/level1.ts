@@ -552,7 +552,16 @@ const defs: LessonDef[] = [
         kind: 'intro',
         id: 'intro',
         title: 'Sao đêm',
-        pages: [staffPage('Nghe mẫu', 'Nghe bài trước khi chơi — chú ý nốt Mi dài 3 phách ở cuối.', rh('E4:3 E4:3 G4:5 G4:5 | F4:4 E4:3 D4/h:2 | E4:3 D4:2 C4:1 D4:2 | E4/hd:3 R', 66, 'Sao đêm'))],
+        pages: [
+          countPage(
+            'Nốt trắng có chấm',
+            'Dấu chấm bên phải nốt trắng kéo dài thêm 1 phách: nốt trắng chấm dôi = 3 phách. Đánh ở "1", giữ qua "2 – 3", nghỉ ở "4". Cấp 2 sẽ học kỹ hơn.',
+            rh('E4/hd R | C4/hd R'),
+            ['1 – 2 – 3', '4', '1 – 2 – 3', '4'],
+            'Chấm nhỏ bên nốt trắng = giữ thêm một tiếng tích tắc nữa!',
+          ),
+          staffPage('Nghe mẫu', 'Nghe bài trước khi chơi — chú ý nốt Mi dài 3 phách ở cuối.', rh('E4:3 E4:3 G4:5 G4:5 | F4:4 E4:3 D4/h:2 | E4:3 D4:2 C4:1 D4:2 | E4/hd:3 R', 66, 'Sao đêm')),
+        ],
       },
     ],
     exercises: [

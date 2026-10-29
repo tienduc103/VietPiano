@@ -34,7 +34,7 @@ Trường độ chỉ chấm được khi nguồn vào báo thả phím (đàn M
 
 Điểm buổi = trung bình có trọng số (`weight`, mặc định 1) các bài tập. Buổi đạt khi điểm ≥ `assessment.passScore`
 và mọi bài tập bắt buộc (`required`, mặc định true) đạt `pass`. Bài khởi động: `required: false, weight: 0`
-(dùng helper `practice()` trong `level1.ts`).
+(dùng helper `practice()` trong `content/helpers.ts`).
 
 Điều kiện đạt bài biểu diễn chuẩn: `{ minScore: 80, minAccuracy: 0.8, minCompletion: 0.9 }`.
 
@@ -79,6 +79,9 @@ Bài tiết tấu (gõ một phím) được phép lặp nốt.
 2. Trong `curriculum.ts` thay `comingSoon(3, …)` bằng level đầy đủ (`availability: 'available'`).
 3. Chạy `npm test`: `curriculum.test.ts` chạy `validateCurriculum` cho toàn giáo trình,
    `flow.test.ts` mô phỏng người học chơi đúng mọi buổi và phải đạt — bài nào không chơi được sẽ báo lỗi.
+   Test "thứ tự kiến thức" kiểm tra mọi trường độ và nốt (theo khoá Sol / Fa) trong bài tập đã xuất hiện ở buổi trước
+   hoặc ở trang giới thiệu của buổi — trang "Nghe mẫu" của chính bản nhạc trong bài tập không tính. Nốt mới
+   (vd nốt dòng kẻ phụ) → thêm một `staffPage` riêng giải thích vị trí, thường kèm bài đọc nốt `practice(...)`.
 4. Thêm test riêng cho cấp mới trong `curriculum.test.ts` (như "nội dung cấp 2") và cập nhật test số cấp đang mở.
 
 Cần nốt móc đơn / chấm dôi trong bài tiết tấu: ký hiệu đã hỗ trợ (`/8`, `/qd`); `PerformanceTracker` tự thu hẹp
