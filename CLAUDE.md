@@ -72,6 +72,13 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              không tính, `earlyGraceMs`, `minRepeatMs`); `AudioScheduler` lên lịch trước ngắn, không vượt `stopBeat()`,
                              tạm dừng huỷ nốt; nốt mục tiêu không tự phát. Micro: `useNoteInput({ playbackGuard: false })` + `isLikelyEcho`
                              (bỏ nốt trùng/hoạ âm nốt app đang phát; tuỳ chọn tai nghe). Kết quả: localStorage theo hồ sơ (`storage.ts`)
+  flappyNote/              "Flappy Note" (`screens/FlappyNoteScreen`, route `flappy-note`, `?screen=flappy-note`): chim rơi theo trọng lực,
+                             mỗi nốt ĐÚNG = một lần vỗ cánh + sang nốt kế (tối đa 1 nốt/sự kiện; `minIntervalMs` chỉ tính sau lần chuyển nốt),
+                             sai → không nâng. `FlappyNoteGame` máy trạng thái + vật lý bước cố định (ready/playing/paused/won/over,
+                             va chạm → mất mạng + bất tử), `levels.ts` màn = thế tay 5 ngón (ngón gợi ý) + giai điệu cho chế độ Chuỗi nốt,
+                             độ khó Dễ/Vừa/Khó chỉ đổi vật lý. Canvas `components/flappyNote/FlappyCanvas` đọc `getWorld()` mỗi khung
+                             (không re-render React); khu hướng dẫn `NoteGuide` (khuông vẽ sẵn, tên nốt, `HandFigure`, 3 nốt tiếp).
+                             Kỷ lục theo hồ sơ + màn × độ khó, tổng sao → danh hiệu (`storage.ts`, localStorage)
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt
   storage/ProgressStorage.ts  IndexedDB (phiên + tổng hợp theo bài), fallback bộ nhớ; bài gần đây ở localStorage
   storage/CurriculumStorage.ts  IndexedDB riêng "vietpiano-curriculum": tiến độ giáo trình theo hồ sơ, ghi ngay sau mỗi bài tập

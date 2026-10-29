@@ -54,7 +54,16 @@ export function ListenButton({ piece, bpm, label = 'Nghe mẫu' }: { piece: Piec
 }
 
 /** Bàn tay với số ngón 1–5 (ngón cái = 1 ở cả hai tay). */
-export function HandFigure({ hand, highlight }: { hand: 'right' | 'left'; /** Ngón được tô nổi (trò Đố số ngón tay). */ highlight?: number }) {
+export function HandFigure({
+  hand,
+  highlight,
+  className = 'mx-auto h-56',
+}: {
+  hand: 'right' | 'left';
+  /** Ngón được tô nổi (trò Đố số ngón tay). */
+  highlight?: number;
+  className?: string;
+}) {
   // Toạ độ đầu ngón tay phải (ngón cái bên trái); tay trái lật gương.
   const fingers = [
     { n: 1, x: 32, y: 118, h: 46, rot: -38 },
@@ -64,7 +73,7 @@ export function HandFigure({ hand, highlight }: { hand: 'right' | 'left'; /** Ng
     { n: 5, x: 162, y: 70, h: 54, rot: 18 },
   ];
   return (
-    <svg viewBox="0 0 200 230" className="mx-auto h-56" role="img" aria-label={`Số ngón tay ${hand === 'right' ? 'phải' : 'trái'}`} data-testid="hand-figure">
+    <svg viewBox="0 0 200 230" className={className} role="img" aria-label={`Số ngón tay ${hand === 'right' ? 'phải' : 'trái'}`} data-testid="hand-figure">
       <g transform={hand === 'left' ? 'translate(200,0) scale(-1,1)' : undefined} className="text-amber-200 dark:text-amber-300/80">
         <rect x="52" y="110" width="116" height="100" rx="40" fill="currentColor" />
         {fingers.map((f) => (

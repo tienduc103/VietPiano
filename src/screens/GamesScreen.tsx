@@ -214,6 +214,20 @@ export function GamesScreen() {
                 <span className="block text-sm opacity-90">Chọn nốt cần săn — bản nhạc tự chạy và dừng ở mỗi nốt đó chờ bạn đánh đúng. Đọc nốt trên khuông · MIDI, micro, piano ảo.</span>
               </span>
             </button>
+            <button
+              type="button"
+              onClick={() => navigate({ name: 'flappy-note' })}
+              data-testid="open-flappy-note"
+              className="flex min-h-16 items-center gap-4 rounded-2xl bg-gradient-to-r from-sky-500 to-amber-400 px-5 py-4 text-left text-white shadow-md shadow-sky-500/30 hover:brightness-110"
+            >
+              <span className="text-4xl" aria-hidden>
+                🐤
+              </span>
+              <span className="flex-1">
+                <span className="block text-xl font-bold">Flappy Note</span>
+                <span className="block text-sm opacity-90">Mỗi nốt đánh đúng là một lần chú chim vỗ cánh — bay qua các ống! Đọc nốt, số ngón 1–5, phản xạ · MIDI, bàn phím máy tính, piano ảo.</span>
+              </span>
+            </button>
             {(['lesson', 'arcade'] as const).map((source) => (
               <div key={source} className="grid gap-3">
                 <div>

@@ -19,6 +19,8 @@ export type Route =
   | { name: 'games' }
   /** Săn nốt (Note Hunter): bản nhạc tự chạy, dừng ở nốt mục tiêu chờ người chơi đánh đúng. */
   | { name: 'note-hunter' }
+  /** Flappy Note: chim bay qua ống, mỗi nốt đánh đúng là một lần vỗ cánh. */
+  | { name: 'flappy-note' }
   | { name: 'practice'; lessonId: string }
   | { name: 'settings' };
 
@@ -29,6 +31,7 @@ export function initialRoute(search = typeof location === 'undefined' ? '' : loc
   if (screen === 'curriculum') return { name: 'curriculum' };
   if (screen === 'games') return { name: 'games' };
   if (screen === 'note-hunter') return { name: 'note-hunter' };
+  if (screen === 'flappy-note') return { name: 'flappy-note' };
   return { name: 'dashboard' };
 }
 
