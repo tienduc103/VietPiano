@@ -17,7 +17,7 @@ import { ReviewSession } from '../components/curriculum/ReviewSession';
 import { GameStage } from '../components/games/GameStage';
 import { AiCoachCard } from '../components/AiCoachCard';
 import { lessonReport } from '../core/feedback/coachPrompt';
-import type { AiNote } from '../core/curriculum/progress';
+import { AiNoteHistory } from '../components/AiNoteHistory';
 
 /** Thời gian một bước tối đa được tính là luyện tập (bỏ đi giữa chừng thì không cộng cả buổi chiều). */
 const MAX_STEP_MS = 15 * 60_000;
@@ -315,30 +315,6 @@ function Overview({ lesson, mode, onStart }: { lesson: CurriculumLesson; mode: U
         {rec && rec.aiNotes.length > 0 && <AiNoteHistory notes={rec.aiNotes} />}
       </aside>
     </div>
-  );
-}
-
-/** Nhận xét AI các lần học trước (mới nhất trước); bản mới nhất mở sẵn. */
-function AiNoteHistory({ notes }: { notes: readonly AiNote[] }) {
-  const list = [...notes].reverse();
-  const fmt = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  return (
-    <section className="rounded-2xl bg-white/90 p-4 shadow-sm ring-1 ring-violet-100 dark:bg-slate-800/90 dark:ring-violet-900" data-testid="ai-note-history">
-      <h3 className="font-semibold">🤖 Nhận xét của AI</h3>
-      <div className="mt-2 grid max-h-96 gap-2 overflow-y-auto">
-        {list.map((n, i) => (
-          <details key={n.at} open={i === 0} className="rounded-xl bg-violet-50 px-3 py-2 dark:bg-slate-700/60">
-            <summary className="flex min-h-10 cursor-pointer items-center justify-between gap-2 text-sm">
-              <span className="text-slate-500 dark:text-slate-400">{fmt.format(n.at)}</span>
-              <span className="font-bold tabular-nums">{n.score}/100</span>
-            </summary>
-            <p className="mt-1 whitespace-pre-line text-sm" data-testid="ai-note-text">
-              {n.text}
-            </p>
-          </details>
-        ))}
-      </div>
-    </section>
   );
 }
 

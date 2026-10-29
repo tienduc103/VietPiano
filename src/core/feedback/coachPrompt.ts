@@ -4,6 +4,7 @@
  */
 import { midiToLabel, type NoteLabelStyle } from '../music/notes';
 import { computeAccuracy, type PracticeState } from '../practice/PracticeEngine';
+import type { TempoState } from '../practice/TempoFollower';
 import { formatMistake, scoreLesson, type ExerciseScore } from '../curriculum/scoring';
 import { text, type CurriculumLesson, type UiMode } from '../curriculum/types';
 import { EXPERIENCE_LABELS, type LearnerProfile } from '../profile/LearnerProfile';
@@ -22,6 +23,8 @@ export interface CoachReport {
   exercises?: { title: string; score: number | null; passed: boolean }[];
   mistakes: { text: string; count: number }[];
   durationMs?: number;
+  /** Thông tin thêm về cách chấm (mỗi dòng một ý), ví dụ "không xét đúng/sai nốt". */
+  facts?: string[];
 }
 
 export type CoachLearner = Pick<LearnerProfile, 'name' | 'age' | 'experience'>;
@@ -99,6 +102,49 @@ export function practiceReport(title: string, state: PracticeState, labelStyle: 
   };
 }
 
+/**
+ * Báo cáo từ một lượt "Chạy theo nhịp": chỉ đo thời điểm gõ, KHÔNG xét cao độ.
+ * Điểm = tỉ lệ nốt đánh đúng phách trên tổng số nốt (như độ chính xác bài tiết tấu).
+ */
+export function tempoReport(
+  title: string,
+  tempo: TempoState,
+  expected: readonly number[],
+  labelStyle: NoteLabelStyle,
+  targetBpm: number,
+): CoachReport {
+  const total = tempo.results.length;
+  const completion = total ? tempo.hits / total : 0;
+  const onTimeRatio = tempo.hits ? tempo.onTime / tempo.hits : 0;
+  const mistakes = new Map<string, number>();
+  tempo.results.forEach((r, i) => {
+    if (r !== 'skipped' || expected[i] === undefined) return;
+    const t = `Lỡ nốt ${midiToLabel(expected[i], labelStyle)}`;
+    mistakes.set(t, (mistakes.get(t) ?? 0) + 1);
+  });
+  const list = topMistakes(mistakes);
+  if (tempo.extra > 0) list.push({ text: 'Gõ thừa (không khớp nốt nào)', count: tempo.extra });
+  const endBpm = Math.round(tempo.currentBpm);
+  const drift = endBpm - targetBpm;
+  return {
+    title,
+    kind: 'piece',
+    score: Math.round(onTimeRatio * completion * 100),
+    criteria: [
+      { label: 'Đúng nốt', value: null },
+      { label: 'Đúng nhịp (trong các nốt đã đánh)', value: onTimeRatio },
+      { label: 'Hoàn thành', value: completion },
+    ],
+    mistakes: list,
+    durationMs: tempo.finishedAt !== null && tempo.startedAt !== null ? tempo.finishedAt - tempo.startedAt : undefined,
+    facts: [
+      'Chế độ chạy theo nhịp: chỉ chấm thời điểm gõ phím, không xét đánh đúng hay sai nốt.',
+      `Nhịp độ đặt ♩=${targetBpm}, lúc kết thúc người chơi ở ♩=${endBpm}` +
+        (Math.abs(drift) >= 4 ? ` (${drift > 0 ? 'nhanh dần' : 'chậm dần'} ${Math.abs(drift)}).` : ' (giữ nhịp ổn định).'),
+    ],
+  };
+}
+
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 export function buildCoachMessages(report: CoachReport, learner: CoachLearner | null, mode: UiMode): ChatMessage[] {
@@ -130,6 +176,7 @@ export function buildCoachMessages(report: CoachReport, learner: CoachLearner | 
     lines.push('Bài tập:');
     for (const e of report.exercises) lines.push(`- ${e.title}: ${e.score === null ? 'chưa làm' : `${e.score}/100${e.passed ? ' (đạt)' : ''}`}`);
   }
+  for (const f of report.facts ?? []) lines.push(f);
   if (report.durationMs !== undefined) lines.push(`Thời gian chơi: ${Math.round(report.durationMs / 1000)} giây.`);
   lines.push(
     report.mistakes.length

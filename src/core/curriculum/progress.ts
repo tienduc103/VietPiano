@@ -5,6 +5,9 @@
  */
 import { scoreLesson, type ExerciseScore } from './scoring';
 import type { CurriculumLesson } from './types';
+import { mergeAiNote, sanitizeAiNotes, type AiNote } from '../feedback/aiNotes';
+
+export { MAX_AI_NOTES, type AiNote } from '../feedback/aiNotes';
 
 export interface ExerciseRecord {
   attempts: number;
@@ -13,19 +16,6 @@ export interface ExerciseRecord {
   /** Đã từng đạt. */
   passed: boolean;
 }
-
-/** Nhận xét của AI cục bộ (Ollama) cho một lần làm hết buổi. */
-export interface AiNote {
-  /** Thời điểm vào màn kết quả — khoá của lần làm; "Viết lại" ghi đè nhận xét cùng `at`. */
-  at: number;
-  /** Điểm buổi của lần đó. */
-  score: number;
-  text: string;
-  model: string;
-}
-
-/** Số nhận xét AI giữ lại mỗi buổi (mới nhất). */
-export const MAX_AI_NOTES = 10;
 
 export interface LessonRecord {
   /** `${profileKey}|${lessonId}` */
@@ -166,11 +156,8 @@ export function applyGameResult(rec: LessonRecord, game: { kind: string; score: 
 
 /** Lưu nhận xét AI của một lần làm buổi (cùng `at` → thay thế, ví dụ khi bấm "Viết lại"). */
 export function applyAiNote(rec: LessonRecord, note: AiNote): LessonRecord {
-  const text = note.text.trim();
-  if (!text) return rec;
-  const others = rec.aiNotes.filter((n) => n.at !== note.at);
-  const aiNotes = [...others, { ...note, text }].sort((a, b) => a.at - b.at).slice(-MAX_AI_NOTES);
-  return { ...rec, aiNotes };
+  const aiNotes = mergeAiNote(rec.aiNotes, note);
+  return aiNotes === rec.aiNotes ? rec : { ...rec, aiNotes };
 }
 
 /** Lỗi hay gặp nhất, nhiều nhất trước. */
@@ -223,14 +210,3 @@ export function sanitizeRecord(raw: unknown): LessonRecord | null {
   };
 }
 
-function sanitizeAiNotes(raw: unknown): AiNote[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter(
-      (n): n is AiNote =>
-        !!n && typeof n === 'object' && typeof n.at === 'number' && typeof n.score === 'number' && typeof n.text === 'string' && n.text.trim() !== '',
-    )
-    .map((n) => ({ at: n.at, score: n.score, text: n.text, model: typeof n.model === 'string' ? n.model : '' }))
-    .sort((a, b) => a.at - b.at)
-    .slice(-MAX_AI_NOTES);
-}

@@ -12,6 +12,7 @@ import { useMic } from '../store/micStore';
 import { useApp } from '../store/appStore';
 import { useCurriculum } from '../store/curriculumStore';
 import { curriculumStorage } from '../core/storage/CurriculumStorage';
+import { aiNoteStorage } from '../core/storage/AiNoteStorage';
 import { Button, Card, Icon, Segmented, Toggle } from '../components/ui';
 import { DetectedNote, LevelMeter, MicButton, MicError } from '../components/MicPanel';
 import { AutoCalibration } from '../components/AutoCalibration';
@@ -536,6 +537,7 @@ function DataCard() {
   const clearProgress = useApp((s) => s.clearProgress);
   const clearCurriculum = async () => {
     await curriculumStorage.clear();
+    await aiNoteStorage.clear();
     useCurriculum.setState({ records: {} });
   };
   const [confirming, setConfirming] = useState(false);
@@ -543,7 +545,7 @@ function DataCard() {
     <Card>
       <h2 className="text-xl font-semibold">Dữ liệu</h2>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-        Tiến độ, lịch sử luyện tập và tiến độ giáo trình lưu trong IndexedDB của trình duyệt trên máy này. Xoá dữ liệu Safari sẽ xoá cả tiến độ.
+        Tiến độ, lịch sử luyện tập, tiến độ giáo trình và nhận xét AI lưu trong IndexedDB của trình duyệt trên máy này. Xoá dữ liệu Safari sẽ xoá cả tiến độ.
       </p>
       <div className="mt-3 flex gap-2">
         {confirming ? (

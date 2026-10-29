@@ -26,7 +26,10 @@ import { useWakeLock } from '../hooks/useAppLifecycle';
 import { useSessionRecorder } from '../hooks/useSessionRecorder';
 import { useUiMode } from '../hooks/useUiMode';
 import { AiCoachCard } from '../components/AiCoachCard';
-import { practiceReport } from '../core/feedback/coachPrompt';
+import { practiceReport, tempoReport } from '../core/feedback/coachPrompt';
+import type { AiNote, AiNoteMode } from '../core/feedback/aiNotes';
+import { AiNoteHistory } from '../components/AiNoteHistory';
+import { useLibraryAiNotes } from '../hooks/useLibraryAiNotes';
 
 const FEEDBACK_MS = 900;
 /**
@@ -161,6 +164,8 @@ function Practice({ lesson }: { lesson: Lesson }) {
 
   // Hiện Đúng/Sai trong chốc lát rồi quay về "Đang chờ".
   const [showFeedback, setShowFeedback] = useState(false);
+  const aiNotes = useLibraryAiNotes(lesson.id);
+  const [showAiNotes, setShowAiNotes] = useState(false);
   useEffect(() => {
     if (state.lastEventTime === 0) return;
     setShowFeedback(true);
@@ -258,6 +263,11 @@ function Practice({ lesson }: { lesson: Lesson }) {
               ✗ {state.wrong}
             </span>
           </div>
+        )}
+        {aiNotes.notes.length > 0 && (
+          <Button variant="ghost" onClick={() => setShowAiNotes(true)} aria-label="Nhận xét AI các lần trước" title="Nhận xét AI các lần trước" className="px-2" data-testid="open-ai-notes">
+            🤖 <span className="tabular-nums">{aiNotes.notes.length}</span>
+          </Button>
         )}
         <ModePicker value={mode} onChange={(practiceMode) => updateSettings({ practiceMode })} />
         <Button
@@ -366,6 +376,10 @@ function Practice({ lesson }: { lesson: Lesson }) {
 
       {tempoMode && tempo.status === 'finished' && (
         <TempoFinishDialog
+          title={lesson.title}
+          midis={midis}
+          bpm={baseBpm}
+          onAiNote={aiNotes.add}
           tempo={tempo}
           onRetry={() => follower.restart()}
           onNext={nextLesson ? () => openLesson(nextLesson.id) : undefined}
@@ -375,11 +389,21 @@ function Practice({ lesson }: { lesson: Lesson }) {
       {!tempoMode && state.status === 'finished' && (
         <FinishDialog
           title={lesson.title}
+          mode={mode === 'count' ? 'count' : 'wait'}
+          onAiNote={aiNotes.add}
           state={state}
           onRetry={restart}
           onNext={nextLesson ? () => openLesson(nextLesson.id) : undefined}
           onLibrary={() => navigate({ name: 'library' })}
         />
+      )}
+      {showAiNotes && (
+        <div className="fixed inset-0 z-20 grid place-items-center bg-violet-950/50 p-4 backdrop-blur-sm" role="dialog" aria-modal aria-label="Nhận xét AI các lần trước" onClick={() => setShowAiNotes(false)}>
+          <div className="grid w-full max-w-lg gap-3" onClick={(e) => e.stopPropagation()}>
+            <AiNoteHistory notes={aiNotes.notes} className="bg-white shadow-2xl dark:bg-slate-800" />
+            <Button onClick={() => setShowAiNotes(false)}>Đóng</Button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -594,12 +618,26 @@ function timingLabel(offsetMs: number | null): string {
   return offsetMs < 0 ? `Sớm ${Math.round(-offsetMs)} ms` : `Muộn ${Math.round(offsetMs)} ms`;
 }
 
+/** Lưu nhận xét AI của lần chơi này: mốc `at` cố định theo lần mở hộp thoại → "Viết lại" ghi đè. */
+function useAiNoteSaver(score: number, mode: AiNoteMode, onAiNote: (note: AiNote) => void) {
+  const [at] = useState(() => Date.now());
+  return (text: string, model: string) => onAiNote({ at, score, text, model, mode });
+}
+
 function TempoFinishDialog({
+  title,
+  midis,
+  bpm,
+  onAiNote,
   tempo,
   onRetry,
   onNext,
   onLibrary,
 }: {
+  title: string;
+  midis: readonly number[];
+  bpm: number;
+  onAiNote: (note: AiNote) => void;
   tempo: TempoState;
   onRetry: () => void;
   onNext?: () => void;
@@ -607,6 +645,10 @@ function TempoFinishDialog({
 }) {
   const total = tempo.results.length;
   const onTimePct = tempo.hits === 0 ? 0 : Math.round((tempo.onTime / tempo.hits) * 100);
+  const labelStyle = useSettings((s) => s.settings.labelStyle);
+  const uiMode = useUiMode();
+  const report = tempoReport(title, tempo, midis, labelStyle, bpm);
+  const saveNote = useAiNoteSaver(report.score, 'tempo', onAiNote);
   return (
     <div className="fixed inset-0 z-20 grid place-items-center bg-violet-950/50 p-4 backdrop-blur-sm" role="dialog" aria-modal aria-label="Kết quả chạy theo nhịp">
       <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl dark:bg-slate-800">
@@ -618,6 +660,9 @@ function TempoFinishDialog({
           <Stat label="Bị lỡ" value={String(tempo.missed)} />
           <Stat label="Nhịp độ cuối" value={`♩=${Math.round(tempo.currentBpm)}`} />
         </dl>
+        <div className="mt-4 text-left">
+          <AiCoachCard report={report} mode={uiMode} onDone={saveNote} />
+        </div>
         <div className="mt-8 flex flex-col gap-2">
           {onNext && (
             <Button variant="primary" onClick={onNext}>
@@ -636,12 +681,16 @@ function TempoFinishDialog({
 
 function FinishDialog({
   title,
+  mode,
+  onAiNote,
   state,
   onRetry,
   onNext,
   onLibrary,
 }: {
   title: string;
+  mode: AiNoteMode;
+  onAiNote: (note: AiNote) => void;
   state: PracticeState;
   onRetry: () => void;
   onNext?: () => void;
@@ -652,6 +701,8 @@ function FinishDialog({
   const accuracy = Math.round(computeAccuracy(state) * 100);
   const elapsed = state.finishedAt !== null && state.startedAt !== null ? state.finishedAt - state.startedAt : 0;
   const stars = accuracy >= 95 ? 3 : accuracy >= 80 ? 2 : 1;
+  const report = practiceReport(title, state, labelStyle);
+  const saveNote = useAiNoteSaver(report.score, mode, onAiNote);
   return (
     <div className="fixed inset-0 z-20 grid place-items-center bg-violet-950/50 p-4 backdrop-blur-sm" role="dialog" aria-modal aria-label="Kết quả">
       <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl dark:bg-slate-800">
@@ -667,7 +718,7 @@ function FinishDialog({
           <Stat label="Sai / Bỏ qua" value={`${state.wrong} / ${state.skipped}`} />
         </dl>
         <div className="mt-4 text-left">
-          <AiCoachCard report={practiceReport(title, state, labelStyle)} mode={uiMode} />
+          <AiCoachCard report={report} mode={uiMode} onDone={saveNote} />
         </div>
         <div className="mt-8 flex flex-col gap-2">
           {onNext && (

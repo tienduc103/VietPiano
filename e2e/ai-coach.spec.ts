@@ -105,3 +105,59 @@ test('nhận xét AI của buổi học được lưu vào lịch sử buổi, c
   await expect(history.getByTestId('ai-note-text')).toHaveCount(1);
   await expect(history.getByTestId('ai-note-text')).toHaveText('Nhóm 2 phím đen còn nhầm, tập thêm nhé.');
 });
+
+test('bài thư viện: nhận xét AI (Chờ nốt + Theo nhịp) lưu theo bài, xem lại sau khi tải lại', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.addInitScript(() => {
+    const key = 'vietpiano.settings.v1';
+    const s = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<string, unknown>;
+    localStorage.setItem(key, JSON.stringify({ ...s, aiCoachEnabled: true, ollamaUrl: 'http://localhost:11434' }));
+  });
+  const prompts: string[] = [];
+  await page.route(TAGS, (route) =>
+    route.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ models: [{ name: 'gemma4:12b' }] }) }),
+  );
+  await page.route(CHAT, (route) => {
+    const body = JSON.parse(route.request().postData() ?? '{}') as { messages: { content: string }[] };
+    const user = body.messages[1].content;
+    prompts.push(user);
+    const text = user.includes('chạy theo nhịp') ? 'Giữ nhịp đều hơn nhé.' : 'Chơi gam rất chuẩn.';
+    return route.fulfill({
+      contentType: 'application/x-ndjson',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: { content: text } }) + '\n',
+    });
+  });
+
+  await page.goto('/?screen=library');
+  await page.getByTestId('lesson-scale-c-major').click();
+  await expect(page.getByTestId('open-ai-notes')).toHaveCount(0);
+  for (const key of 'asdfghjkkjhgfdsa') {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(140);
+  }
+  await expect(page.getByRole('dialog', { name: 'Kết quả' }).getByTestId('ai-coach-text')).toHaveText('Chơi gam rất chuẩn.');
+  await expect(page.getByTestId('open-ai-notes')).toContainText('1');
+
+  // Chạy theo nhịp: đánh một nốt rồi để bài tự chạy hết.
+  await page.getByRole('button', { name: 'Luyện lại', exact: true }).click();
+  await expect(page.getByTestId('progress-text')).toHaveText('0/16');
+  await page.getByTestId('mode-tempo').click();
+  for (let i = 0; i < 12; i++) await page.getByRole('button', { name: 'Nhanh hơn' }).click();
+  await page.keyboard.press('f');
+  const tempoDialog = page.getByRole('dialog', { name: 'Kết quả chạy theo nhịp' });
+  await expect(tempoDialog.getByTestId('ai-coach-text')).toHaveText('Giữ nhịp đều hơn nhé.', { timeout: 30_000 });
+  expect(prompts.at(-1)).toContain('Đúng nốt không đo');
+  expect(prompts.at(-1)).toContain('Nhịp độ đặt ♩=115');
+
+  // Tải lại: lịch sử của bài còn đủ 2 lần, mới nhất trước, ghi chế độ chơi.
+  await page.goto('/?screen=library');
+  await page.getByTestId('lesson-scale-c-major').click();
+  await page.getByTestId('open-ai-notes').click();
+  const history = page.getByRole('dialog', { name: 'Nhận xét AI các lần trước' }).getByTestId('ai-note-history');
+  await expect(history.getByTestId('ai-note-text')).toHaveText(['Giữ nhịp đều hơn nhé.', 'Chơi gam rất chuẩn.']);
+  await expect(history).toContainText('Theo nhịp');
+  await expect(history).toContainText('Chờ nốt');
+  await page.getByRole('button', { name: 'Đóng' }).click();
+  await expect(history).toHaveCount(0);
+});

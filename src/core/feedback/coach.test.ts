@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { scorePerformance, scoreWait, wrongNoteKey } from '../curriculum/scoring';
 import type { Exercise } from '../curriculum/types';
 import type { PracticeState } from '../practice/PracticeEngine';
-import { buildCoachMessages, lessonReport, practiceReport } from './coachPrompt';
+import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
+import type { TempoState } from '../practice/TempoFollower';
+import { IndexedDbAiNoteStorage, MemoryAiNoteStorage } from '../storage/AiNoteStorage';
+import { MAX_AI_NOTES, sanitizeAiNotes } from './aiNotes';
+import { buildCoachMessages, lessonReport, practiceReport, tempoReport } from './coachPrompt';
 import { listModels, normalizeOllamaUrl, ollamaCandidates, ollamaProxyUrl, OllamaError, resolveOllama, streamChat } from './OllamaClient';
 
 const ex = (id: string, title: string): Exercise => ({ kind: 'choice-quiz', id, title, questions: [], pass: { minScore: 70 } });
@@ -60,6 +65,72 @@ describe('báo cáo cho thầy AI', () => {
     expect(user).toContain('Bài nhạc: "Twinkle"');
     expect(user).toContain('30 giây');
     expect(user).not.toContain('Học viên:');
+  });
+});
+
+describe('chạy theo nhịp', () => {
+  const tempo = (over: Partial<TempoState>): TempoState => ({
+    status: 'finished',
+    index: 4,
+    results: ['correct', 'skipped', 'correct', 'correct'],
+    hits: 3,
+    missed: 1,
+    extra: 2,
+    onTime: 2,
+    beat: 8,
+    currentBpm: 88,
+    lastOffsetMs: null,
+    lastEventTime: 0,
+    startedAt: 0,
+    finishedAt: 10_000,
+    ...over,
+  });
+
+  it('không xét cao độ; điểm = đúng phách × hoàn thành; ghi nhịp nhanh/chậm dần', () => {
+    const r = tempoReport('Bài A', tempo({}), [60, 62, 64, 65], 'letter', 100);
+    expect(r.score).toBe(Math.round((2 / 3) * (3 / 4) * 100));
+    expect(r.criteria[0]).toEqual({ label: 'Đúng nốt', value: null });
+    expect(r.mistakes).toEqual([
+      { text: 'Lỡ nốt D4', count: 1 },
+      { text: 'Gõ thừa (không khớp nốt nào)', count: 2 },
+    ]);
+    const user = buildCoachMessages(r, null, 'adult')[1].content;
+    expect(user).toContain('Đúng nốt không đo');
+    expect(user).toContain('không xét đánh đúng hay sai nốt');
+    expect(user).toContain('chậm dần 12');
+    expect(tempoReport('A', tempo({ currentBpm: 101 }), [60, 62, 64, 65], 'letter', 100).facts?.[1]).toContain('giữ nhịp ổn định');
+  });
+});
+
+describe('lưu nhận xét AI bài thư viện', () => {
+  it('đọc dữ liệu hỏng an toàn, giữ chế độ chơi hợp lệ', () => {
+    expect(sanitizeAiNotes('x')).toEqual([]);
+    expect(sanitizeAiNotes([{ at: 2, score: 5, text: 'a', model: 'm', mode: 'tempo' }, { at: 1, score: 5, text: 'b', mode: 'lạ' }])).toEqual([
+      { at: 1, score: 5, text: 'b', model: '' },
+      { at: 2, score: 5, text: 'a', model: 'm', mode: 'tempo' },
+    ]);
+  });
+
+  it.each([
+    ['IndexedDB', () => new IndexedDbAiNoteStorage(new IDBFactory())],
+    ['bộ nhớ', () => new MemoryAiNoteStorage()],
+  ])('theo người học + bài, ghi đè cùng lần, giới hạn số bản, xoá theo người học (%s)', async (_name, make) => {
+    const st = make();
+    expect(await st.get('p1', 'a')).toEqual([]);
+    await st.add('p1', 'a', { at: 1, score: 50, text: 'một', model: 'm', mode: 'wait' });
+    await st.add('p1', 'a', { at: 1, score: 50, text: 'một (viết lại)', model: 'm', mode: 'wait' });
+    await st.add('p1', 'b', { at: 2, score: 60, text: 'bài b', model: 'm' });
+    await st.add('p2', 'a', { at: 3, score: 70, text: 'người khác', model: 'm' });
+    expect((await st.get('p1', 'a')).map((n) => n.text)).toEqual(['một (viết lại)']);
+    expect((await st.get('p2', 'a')).map((n) => n.text)).toEqual(['người khác']);
+    // Lưu liên tiếp không mất bản nào.
+    await Promise.all(Array.from({ length: 15 }, (_, i) => st.add('p1', 'a', { at: 10 + i, score: i, text: `n${i}`, model: 'm' })));
+    const list = await st.get('p1', 'a');
+    expect(list).toHaveLength(MAX_AI_NOTES);
+    expect(list.at(-1)?.text).toBe('n14');
+    await st.clear('p1');
+    expect(await st.get('p1', 'b')).toEqual([]);
+    expect(await st.get('p2', 'a')).toHaveLength(1);
   });
 });
 
