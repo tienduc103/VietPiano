@@ -27,7 +27,7 @@ import { Stars, useGameState, useKeyFlash } from '../components/games/shared';
 import { useStaffSvgs } from '../components/games/StaffShootView';
 import { MicButton } from '../components/MicPanel';
 import { PianoKeyboard } from '../components/PianoKeyboard';
-import { Button, Card, FullscreenButton, Icon, Segmented, Toggle } from '../components/ui';
+import { Button, Card, FullscreenButton, Icon, Segmented } from '../components/ui';
 import { useNoteInput } from '../hooks/useNoteInput';
 import { useUiMode } from '../hooks/useUiMode';
 import { useApp } from '../store/appStore';
@@ -88,25 +88,33 @@ function FlappySetup({ settings, records, update, onStart }: { settings: FlappyS
   const level = findLevel(settings.levelId) ?? FLAPPY_LEVELS[0];
   const total = totalStars(records);
   const rank = rankFor(total);
+  const melody = level.melodies.find((m) => m.id === settings.melodyId);
+  const hints: { key: 'showName' | 'showFinger' | 'highlightKey' | 'showUpcoming' | 'sound'; label: string }[] = [
+    { key: 'showName', label: 'Tên nốt' },
+    { key: 'showFinger', label: 'Ngón + bàn tay' },
+    { key: 'highlightKey', label: 'Tô phím cần đánh' },
+    { key: 'showUpcoming', label: '3 nốt tiếp theo' },
+    { key: 'sound', label: 'Âm thanh' },
+  ];
   return (
     <div className="h-full overflow-y-auto" data-testid="flappy-setup">
-      <div className="mx-auto grid max-w-5xl gap-5 px-6 pt-[calc(1.5rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-10">
-        <header className="flex flex-wrap items-center gap-3 pl-10">
+      <div className="mx-auto grid max-w-5xl gap-4 px-6 pt-[calc(1rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-6">
+        <header className="flex items-center gap-3 pl-10">
           <Button variant="ghost" onClick={() => navigate({ name: 'games' })} aria-label="Về mục Trò chơi" className="px-2">
             <Icon name="back" />
           </Button>
-          <h1 className="flex-1 text-3xl font-bold">🐤 Flappy Note</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-3xl font-bold">🐤 Flappy Note</h1>
+            <p className="truncate text-sm text-slate-600 dark:text-slate-300">Mỗi nốt đánh đúng là một lần chú chim vỗ cánh — đọc nốt, đặt đúng ngón, bay qua các ống!</p>
+          </div>
           <FullscreenButton />
         </header>
-        <p className="text-slate-600 dark:text-slate-300">
-          Mỗi nốt đánh <strong>đúng</strong> là một lần chú chim vỗ cánh bay lên. Đọc nốt trên khuông, đặt đúng ngón và giúp chim vượt qua các ống!
-        </p>
 
-        <Card className="flex flex-wrap items-center gap-4">
+        <Card className="flex flex-wrap items-center gap-4 py-3!">
           <span className="text-5xl" aria-hidden>
             {rank.current.icon}
           </span>
-          <div className="grid flex-1 gap-1">
+          <div className="grid min-w-56 flex-1 gap-1">
             <p className="text-xl font-bold">{rank.current.title}</p>
             <p className="text-sm text-slate-500 dark:text-slate-400" data-testid="flappy-total-stars">
               ★ {total}/{MAX_TOTAL_STARS} sao{rank.next ? ` · còn ${rank.next.stars - total} sao nữa để thành ${rank.next.icon} ${rank.next.title}` : ' · danh hiệu cao nhất!'}
@@ -115,11 +123,14 @@ function FlappySetup({ settings, records, update, onStart }: { settings: FlappyS
               <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-fuchsia-500" style={{ width: `${(total / MAX_TOTAL_STARS) * 100}%` }} />
             </div>
           </div>
+          <Button variant="primary" className="min-h-16 min-w-56 text-xl" onClick={onStart} data-testid="flappy-start">
+            ▶ Chơi ngay
+          </Button>
         </Card>
 
-        <section className="grid gap-3">
-          <h2 className="text-xl font-bold">1 · Chọn màn chơi</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="Màn chơi">
+        <section className="grid gap-2">
+          <h2 className="text-lg font-bold">Màn chơi</h2>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="Màn chơi">
             {FLAPPY_LEVELS.map((l) => (
               <button
                 key={l.id}
@@ -128,76 +139,86 @@ function FlappySetup({ settings, records, update, onStart }: { settings: FlappyS
                 aria-checked={l.id === level.id}
                 onClick={() => update({ levelId: l.id, melodyId: l.melodies[0]?.id ?? '', mode: l.melodies.length ? settings.mode : 'random' })}
                 data-testid={`flappy-level-${l.id}`}
-                className={`grid min-h-24 gap-1 rounded-2xl p-4 text-left ring-2 transition-colors ${l.id === level.id ? 'bg-sky-500 text-white ring-sky-300' : 'bg-white/90 ring-sky-100 hover:ring-sky-300 dark:bg-slate-800 dark:ring-slate-700'}`}
+                className={`grid min-h-12 rounded-2xl px-3 py-2 text-left ring-2 transition-colors ${l.id === level.id ? 'bg-sky-500 text-white ring-sky-300' : 'bg-white/90 ring-sky-100 hover:ring-sky-300 dark:bg-slate-800 dark:ring-slate-700'}`}
               >
-                <span className="text-lg font-bold">{l.label}</span>
-                <span className="text-sm opacity-80">{l.description}</span>
-                <span className={`text-sm ${l.id === level.id ? '' : 'text-amber-600 dark:text-amber-300'}`}>{starsText(bestStarsOfLevel(records, l.id))}</span>
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className="font-bold">{l.label}</span>
+                  <span className={`shrink-0 text-xs ${l.id === level.id ? '' : 'text-amber-600 dark:text-amber-300'}`}>{starsText(bestStarsOfLevel(records, l.id))}</span>
+                </span>
+                <span className="truncate text-sm opacity-80">{l.description}</span>
               </button>
             ))}
           </div>
         </section>
 
-        <section className="grid gap-3">
-          <h2 className="text-xl font-bold">2 · Chế độ</h2>
-          <Segmented
-            value={settings.mode}
-            onChange={(mode) => update({ mode })}
-            options={[
-              { value: 'random', label: '🎲 Nốt ngẫu nhiên' },
-              ...(level.melodies.length ? [{ value: 'sequence' as const, label: '🎼 Chuỗi nốt' }] : []),
-            ]}
-          />
-          {settings.mode === 'sequence' && (
-            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Giai điệu">
-              {level.melodies.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={m.id === settings.melodyId}
-                  onClick={() => update({ melodyId: m.id })}
-                  data-testid={`flappy-melody-${m.id}`}
-                  className={`grid min-h-12 rounded-xl px-4 py-2 text-left ring-2 ${m.id === settings.melodyId ? 'bg-fuchsia-500 text-white ring-fuchsia-300' : 'bg-white/90 ring-violet-100 dark:bg-slate-800 dark:ring-violet-900'}`}
-                >
-                  <span className="font-semibold">{m.label}</span>
-                  <span className="text-xs opacity-80">{m.source}</span>
-                </button>
-              ))}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="grid content-start gap-3 py-4!">
+            <div className="grid gap-2">
+              <h2 className="text-lg font-bold">Chế độ</h2>
+              <Segmented
+                value={settings.mode}
+                onChange={(mode) => update({ mode })}
+                options={[
+                  { value: 'random', label: '🎲 Nốt ngẫu nhiên' },
+                  ...(level.melodies.length ? [{ value: 'sequence' as const, label: '🎼 Chuỗi nốt' }] : []),
+                ]}
+              />
+              {settings.mode === 'sequence' && (
+                <>
+                  <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Giai điệu">
+                    {level.melodies.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={m.id === settings.melodyId}
+                        onClick={() => update({ melodyId: m.id })}
+                        data-testid={`flappy-melody-${m.id}`}
+                        className={`min-h-12 rounded-xl px-3 text-sm font-semibold ring-2 ${m.id === settings.melodyId ? 'bg-fuchsia-500 text-white ring-fuchsia-300' : 'bg-white/90 ring-violet-100 dark:bg-slate-800 dark:ring-violet-900'}`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                  {melody && <p className="text-xs text-slate-500 dark:text-slate-400">Nguồn: {melody.source}</p>}
+                </>
+              )}
             </div>
-          )}
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {settings.mode === 'random' ? 'Nốt bốc ngẫu nhiên trong màn, không lặp liền nhau.' : 'Đánh lần lượt các nốt của giai điệu (hết thì lặp lại) — luyện đọc chuỗi nốt và chuyển ngón.'}
-          </p>
-        </section>
+            <div className="grid gap-2">
+              <h2 className="text-lg font-bold">Độ khó</h2>
+              <Segmented value={settings.difficulty} onChange={(difficulty) => update({ difficulty })} options={(['easy', 'normal', 'hard'] as const).map((d) => ({ value: d, label: DIFFICULTY_LABEL[d] }))} />
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {DIFFICULTY_HELP[settings.difficulty]} · {starsText(records[flappyKey(level.id, settings.difficulty)])}
+              </p>
+            </div>
+          </Card>
 
-        <section className="grid gap-3">
-          <h2 className="text-xl font-bold">3 · Độ khó</h2>
-          <Segmented value={settings.difficulty} onChange={(difficulty) => update({ difficulty })} options={(['easy', 'normal', 'hard'] as const).map((d) => ({ value: d, label: DIFFICULTY_LABEL[d] }))} />
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {DIFFICULTY_HELP[settings.difficulty]} · {starsText(records[flappyKey(level.id, settings.difficulty)])}
-          </p>
-        </section>
-
-        <section className="grid gap-3">
-          <h2 className="text-xl font-bold">4 · Gợi ý & nguồn nốt</h2>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Toggle checked={settings.showName} onChange={(showName) => update({ showName })} label="Hiện tên nốt" />
-            <Toggle checked={settings.showFinger} onChange={(showFinger) => update({ showFinger })} label="Hiện ngón tay + bàn tay" />
-            <Toggle checked={settings.highlightKey} onChange={(highlightKey) => update({ highlightKey })} label="Tô phím cần đánh trên piano ảo" />
-            <Toggle checked={settings.showUpcoming} onChange={(showUpcoming) => update({ showUpcoming })} label="Hiện 3 nốt tiếp theo" />
-            <Toggle checked={settings.sound} onChange={(sound) => update({ sound })} label="Âm thanh" />
-          </div>
-          <InputSourceBar />
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Đàn MIDI (Chrome/Edge trên máy tính) · bàn phím máy tính (A S D F… từ nốt Đô) · bấm piano ảo trên màn hình. Micro cũng dùng được nhưng chậm hơn một chút.
-          </p>
-        </section>
-
-        <div className="flex justify-center">
-          <Button variant="primary" className="min-w-56 text-xl" onClick={onStart} data-testid="flappy-start">
-            ▶ Bắt đầu bay
-          </Button>
+          <Card className="grid content-start gap-3 py-4!">
+            <div className="grid gap-2">
+              <h2 className="text-lg font-bold">Gợi ý</h2>
+              <div className="flex flex-wrap gap-2">
+                {hints.map((h) => (
+                  <button
+                    key={h.key}
+                    type="button"
+                    role="switch"
+                    aria-checked={settings[h.key]}
+                    onClick={() => update({ [h.key]: !settings[h.key] })}
+                    data-testid={`flappy-hint-${h.key}`}
+                    className={`min-h-12 rounded-xl px-3 text-sm font-semibold ring-2 transition-colors ${settings[h.key] ? 'bg-violet-600 text-white ring-violet-300' : 'bg-white/90 text-slate-500 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700'}`}
+                  >
+                    {settings[h.key] ? '✓ ' : ''}
+                    {h.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <h2 className="text-lg font-bold">Nguồn nốt</h2>
+              <InputSourceBar />
+              <p className="text-xs text-slate-500 dark:text-slate-400">Đàn MIDI · bàn phím máy tính (A S D F… từ nốt Đô) · piano ảo trên màn hình luôn dùng được.</p>
+            </div>
+          </Card>
         </div>
       </div>
     </div>
