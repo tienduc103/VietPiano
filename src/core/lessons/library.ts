@@ -13,7 +13,7 @@ const ROMANCE_MELODY =
   'A4:5 A4 A4 | A4 G4 F4 | F4 E4 D4 | D4:1 F4:2 A4:3 | D5:5 D5 D5 | D5 C5:4 Bb4:(3) | Bb4:(3) A4:2 G4:1 | G4 A4 Bb4:(3) | ' +
   'A4 Bb4:(3) A4 | C#5:4 Bb4:(3) A4:2 | A4:3 G4 F4:1 | F4:3 E4 D4 | E4 E4 E4 | E4 F4 E4 | D4 D4 D4 | D4/hd';
 
-/** Năm đoạn của bài bé 1 – 2 – 3 dài: tròn/trắng → trắng chấm → đen → đen chấm + móc đơn → tổng hợp. */
+/** Năm đoạn của các bài bé ba ngón dài (1 – 2 – 3, 3 – 4 – 5): tròn/trắng → trắng chấm → đen → đen chấm + móc đơn → tổng hợp. */
 const KIDS_123_SECTIONS = [
   { measure: 1, label: 'A' },
   { measure: 9, label: 'B' },
@@ -361,6 +361,28 @@ const defs: LessonDef[] = [
       'E4:3 F4:4 G4:5 F4:4 | E4:3 D4:2 C4/h:1 | E4:3 G4:5 E4:3 G4:5 | C4/w:1',
   },
   {
+    id: 'kid-rh-345',
+    title: 'Bé tay phải: 3 – 4 – 5 đủ trường độ',
+    description:
+      'Bài dài 40 ô nhịp với ngón 3 (Mi), 4 (Fa), 5 (Sol): nốt tròn, trắng, trắng chấm, đen, đen chấm và móc đơn — giữ đủ phách từng nốt.',
+    category: 'kids',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    difficulty: 2,
+    hand: 'right',
+    tempo: 60,
+    sections: KIDS_123_SECTIONS,
+    notation:
+      'E4/w:3 | F4/w:4 | G4/w:5 | F4/h:4 E4/h:3 | E4/h:3 G4/h:5 | F4/w:4 | G4/h:5 F4/h:4 | E4/w:3 | ' +
+      'E4/hd:3 F4:4 | G4/hd:5 F4:4 | E4/hd:3 G4:5 | F4/w:4 | G4:5 F4/hd:4 | E4:3 G4/hd:5 | F4/hd:4 E4:3 | E4/w:3 | ' +
+      'E4:3 F4:4 G4:5 F4:4 | E4:3 E4:3 E4/h:3 | G4:5 F4:4 E4:3 F4:4 | G4:5 G4:5 G4/h:5 | ' +
+      'F4:4 G4:5 F4:4 E4:3 | F4:4 F4:4 F4/h:4 | G4:5 F4:4 E4:3 G4:5 | E4/w:3 | ' +
+      'E4/qd:3 F4/8:4 G4/h:5 | G4/qd:5 F4/8:4 E4/h:3 | E4/8:3 F4/8:4 G4/8:5 F4/8:4 E4/h:3 | G4/8:5 F4/8:4 E4/8:3 F4/8:4 G4/h:5 | ' +
+      'F4/qd:4 G4/8:5 F4:4 E4:3 | E4/8:3 F4/8:4 G4:5 G4/8:5 F4/8:4 E4:3 | G4/qd:5 F4/8:4 E4/qd:3 F4/8:4 | G4/w:5 | ' +
+      'E4:3 G4:5 F4/h:4 | G4/hd:5 E4:3 | F4/8:4 G4/8:5 F4/8:4 E4/8:3 F4/h:4 | G4/w:5 | ' +
+      'G4:5 F4:4 E4:3 F4:4 | G4/qd:5 F4/8:4 E4/h:3 | F4/h:4 G4/h:5 | E4/w:3',
+  },
+  {
     id: 'kid-rh-skip',
     title: 'Bé tay phải: nhảy ngón 1 – 3 – 5',
     description: 'Bỏ cách một ngón: Đô (1), Mi (3), Sol (5).',
@@ -415,6 +437,28 @@ const defs: LessonDef[] = [
     notation:
       'C3/h:5 D3/h:4 | E3/w:3 | E3/h:3 D3/h:4 | C3/w:5 | ' +
       'C3:5 D3:4 E3:3 D3:4 | C3:5 D3:4 E3/h:3 | E3:3 D3:4 C3:5 D3:4 | C3/w:5',
+  },
+  {
+    id: 'kid-lh-345',
+    title: 'Bé tay trái: 3 – 4 – 5 đủ trường độ',
+    description:
+      'Ngón út (5) ở Đô3, ngón 4 Rê3, ngón 3 Mi3 (khoá Fa). Bài dài 40 ô nhịp: nốt tròn, trắng, trắng chấm, đen, đen chấm và móc đơn.',
+    category: 'kids',
+    clef: 'bass',
+    timeSignature: [4, 4],
+    difficulty: 2,
+    hand: 'left',
+    tempo: 60,
+    sections: KIDS_123_SECTIONS,
+    notation:
+      'E3/w:3 | D3/w:4 | C3/w:5 | D3/h:4 E3/h:3 | E3/h:3 C3/h:5 | D3/w:4 | C3/h:5 D3/h:4 | E3/w:3 | ' +
+      'E3/hd:3 D3:4 | C3/hd:5 D3:4 | E3/hd:3 C3:5 | D3/w:4 | C3:5 D3/hd:4 | E3:3 C3/hd:5 | D3/hd:4 E3:3 | E3/w:3 | ' +
+      'E3:3 D3:4 C3:5 D3:4 | E3:3 E3:3 E3/h:3 | C3:5 D3:4 E3:3 D3:4 | C3:5 C3:5 C3/h:5 | ' +
+      'D3:4 C3:5 D3:4 E3:3 | D3:4 D3:4 D3/h:4 | C3:5 D3:4 E3:3 C3:5 | E3/w:3 | ' +
+      'E3/qd:3 D3/8:4 C3/h:5 | C3/qd:5 D3/8:4 E3/h:3 | E3/8:3 D3/8:4 C3/8:5 D3/8:4 E3/h:3 | C3/8:5 D3/8:4 E3/8:3 D3/8:4 C3/h:5 | ' +
+      'D3/qd:4 C3/8:5 D3:4 E3:3 | E3/8:3 D3/8:4 C3:5 C3/8:5 D3/8:4 E3:3 | C3/qd:5 D3/8:4 E3/qd:3 D3/8:4 | C3/w:5 | ' +
+      'E3:3 C3:5 D3/h:4 | C3/hd:5 E3:3 | D3/8:4 C3/8:5 D3/8:4 E3/8:3 D3/h:4 | C3/w:5 | ' +
+      'C3:5 D3:4 E3:3 D3:4 | C3/qd:5 D3/8:4 E3/h:3 | D3/h:4 C3/h:5 | E3/w:3',
   },
   {
     id: 'kid-lh-five',
