@@ -15,6 +15,8 @@ export type Route =
   /** `stage`: mở thẳng phần Luyện tập / Trò chơi sau buổi (nút trên thẻ buổi học). */
   | { name: 'lesson'; lessonId: string; stage?: LessonStage }
   | { name: 'library' }
+  /** Săn nốt (Note Hunter): bản nhạc tự chạy, dừng ở nốt mục tiêu chờ người chơi đánh đúng. */
+  | { name: 'note-hunter' }
   | { name: 'practice'; lessonId: string }
   | { name: 'settings' };
 
@@ -23,6 +25,7 @@ export function initialRoute(search = typeof location === 'undefined' ? '' : loc
   const screen = new URLSearchParams(search).get('screen');
   if (screen === 'library') return { name: 'library' };
   if (screen === 'curriculum') return { name: 'curriculum' };
+  if (screen === 'note-hunter') return { name: 'note-hunter' };
   return { name: 'dashboard' };
 }
 

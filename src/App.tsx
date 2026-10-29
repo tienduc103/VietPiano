@@ -6,6 +6,7 @@ import { SettingsScreen } from './screens/SettingsScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
 import { CurriculumScreen } from './screens/CurriculumScreen';
 import { LessonPlayerScreen } from './screens/LessonPlayerScreen';
+import { NoteHunterScreen } from './screens/NoteHunterScreen';
 import { useCurriculum } from './store/curriculumStore';
 import { useProfiles } from './store/profileStore';
 import { AppVersionSide } from './components/AppVersion';
@@ -35,10 +36,11 @@ export function App() {
       {route.name === 'curriculum' && <CurriculumScreen levelId={route.levelId} />}
       {route.name === 'lesson' && <LessonPlayerScreen lessonId={route.lessonId} stage={route.stage} />}
       {route.name === 'library' && <DashboardScreen focus="library" />}
+      {route.name === 'note-hunter' && <NoteHunterScreen />}
       {route.name === 'practice' && <PracticeScreen lessonId={route.lessonId} />}
       {route.name === 'settings' && <SettingsScreen />}
       {/* Màn hình Luyện tập tự đặt nút trong khung khuông nhạc (góc phải dưới có bàn phím ảo + nút điều khiển). */}
-      {route.name !== 'practice' && route.name !== 'lesson' && (
+      {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && (
         <FloatingMicNote className="fixed right-[calc(12px+env(safe-area-inset-right,0px))] bottom-[calc(12px+env(safe-area-inset-bottom,0px))]" />
       )}
       <FloatingReloadButton />

@@ -20,17 +20,24 @@ export interface NoteInputHandlers {
  * Nối micro + đàn MIDI + bàn phím ảo (+ bàn phím máy tính) vào một bộ xử lý, dùng chung cho mọi bài tập
  * giáo trình. Nốt micro trong lúc app đang phát mẫu bị bỏ (micro nghe thấy loa).
  */
-export function useNoteInput(handlers: NoteInputHandlers, setting: InputSourceSetting, opts: { computerKeys?: boolean; baseMidi?: number } = {}): void {
+export function useNoteInput(
+  handlers: NoteInputHandlers,
+  setting: InputSourceSetting,
+  opts: { computerKeys?: boolean; baseMidi?: number; playbackGuard?: boolean } = {},
+): void {
   const ref = useRef(handlers);
   ref.current = handlers;
   const settingRef = useRef(setting);
   settingRef.current = setting;
+  // false: màn tự lọc tiếng loa (trò Săn nốt so cao độ với nốt app đang phát thay vì bỏ hết nốt micro).
+  const guardRef = useRef(opts.playbackGuard ?? true);
+  guardRef.current = opts.playbackGuard ?? true;
 
   useEffect(() => {
     microphoneInput.resetRecognizer();
     const onNote = (e: NoteInputEvent) => {
       if (!acceptSource(e.source, settingRef.current, midiInput.hasDevice())) return;
-      if (e.source === 'microphone' && e.time < soundOutput.isPlayingUntil + PLAYBACK_GUARD_MS) return;
+      if (guardRef.current && e.source === 'microphone' && e.time < soundOutput.isPlayingUntil + PLAYBACK_GUARD_MS) return;
       ref.current.onNote(e);
     };
     const onOff = (e: NoteOffEvent) => {

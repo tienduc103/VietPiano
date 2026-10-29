@@ -214,3 +214,63 @@ input[type='range'] {
   accent-color: #c026d3;
   height: 2rem;
 }
+
+/* ── Săn nốt (Note Hunter): nốt mục tiêu tím, nốt khác trung tính, con trỏ phát chạy liên tục ── */
+:root {
+  --hunter-target: #7c3aed;
+  --hunter-neutral: #94a3b8;
+  --hunter-playhead: #c026d3;
+}
+.dark {
+  --hunter-target: #a78bfa;
+  --hunter-neutral: #64748b;
+  --hunter-playhead: #f0abfc;
+}
+.hunter-score .score-note {
+  color: var(--hunter-neutral);
+}
+.hunter-score .score-note.is-playing {
+  color: var(--score-ink);
+}
+.hunter-score .score-note.is-target {
+  color: var(--hunter-target);
+}
+.hunter-score .score-note.is-upcoming {
+  color: var(--hunter-target);
+  filter: drop-shadow(0 0 4px var(--hunter-target));
+}
+.hunter-score .score-note.is-correct {
+  color: var(--score-correct);
+  filter: none;
+}
+.hunter-score .score-note.is-wrong {
+  color: var(--score-wrong);
+  filter: none;
+}
+.hunter-score .score-cursor {
+  fill: var(--hunter-playhead);
+  opacity: 0.55;
+  transition: none;
+}
+.hunter-score .score-cursor.is-waiting {
+  opacity: 0.9;
+}
+@keyframes hunter-hit {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-hunter-hit {
+  animation: hunter-hit 320ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-hunter-hit {
+    animation: none;
+  }
+}

@@ -59,6 +59,14 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              dùng lại cho "Bắn bóng trên khuông" (bài đọc nốt, nốt vẽ sẵn SVG một lần, không tên nốt); KeyHuntGame "Săn phím";
                              RhythmTrainGame "Đèn giao thông tiết tấu" (bài tiết tấu, không xét cao độ, gõ vào dấu lặng = phanh);
                              EchoMelodyGame "Giai điệu bí ẩn" (luyện tai; bỏ nốt trong lúc app phát)
+  noteHunter/              "Săn nốt" (`screens/NoteHunterScreen`, route `note-hunter`, `?screen=note-hunter`): bản nhạc tự chạy,
+                             DỪNG ĐÚNG phách đầu mỗi nốt mục tiêu (người chơi chọn nốt, so theo MIDI) tới khi đánh đúng.
+                             `songs.ts` bài = Lesson (3 bài riêng + bài hát một bè của thư viện) → `HunterNote` qua `lessonTimeline`
+                             (một nguồn cho khuông nhạc, trình phát, game); `MusicTransport` đồng hồ phách; `NoteHunterGame` máy trạng thái
+                             IDLE/PLAYING/WAITING_FOR_NOTE/PAUSED/COMPLETED, chế độ wait/note/rhythm, chỉ nhận noteOn MỚI (phím giữ từ trước
+                             không tính, `earlyGraceMs`, `minRepeatMs`); `AudioScheduler` lên lịch trước ngắn, không vượt `stopBeat()`,
+                             tạm dừng huỷ nốt; nốt mục tiêu không tự phát. Micro: `useNoteInput({ playbackGuard: false })` + `isLikelyEcho`
+                             (bỏ nốt trùng/hoạ âm nốt app đang phát; tuỳ chọn tai nghe). Kết quả: localStorage theo hồ sơ (`storage.ts`)
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt
   storage/ProgressStorage.ts  IndexedDB (phiên + tổng hợp theo bài), fallback bộ nhớ; bài gần đây ở localStorage
   storage/CurriculumStorage.ts  IndexedDB riêng "vietpiano-curriculum": tiến độ giáo trình theo hồ sơ, ghi ngay sau mỗi bài tập
