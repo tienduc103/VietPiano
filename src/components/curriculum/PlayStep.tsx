@@ -7,6 +7,7 @@ import { keyboardRange } from '../../core/input/keyMapping';
 import { virtualInput } from '../../core/input/VirtualInputProvider';
 import { midiInput } from '../../core/input/MIDIInputProvider';
 import { isAccompanimentMidi, measureLength, type Hand, type Lesson } from '../../core/lessons/types';
+import { loudnessDb } from '../../core/music/dynamics';
 import { midiToLabel, midiToName, pitchToLabel } from '../../core/music/notes';
 import { DEFAULT_PRACTICE_CONFIG, PracticeEngine, type NoteResult } from '../../core/practice/PracticeEngine';
 import { DEFAULT_PERFORMANCE_CONFIG, PerformanceTracker } from '../../core/practice/PerformanceTracker';
@@ -181,7 +182,8 @@ function useKeyboardRange(timeline: TimelineNote[], lesson: Lesson) {
 function ScoreBox({ lesson, index, results, finished, wrongPulse }: { lesson: Lesson; index: number; results: readonly NoteResult[]; finished: boolean; wrongPulse: number }) {
   const settings = useSettings((s) => s.settings);
   return (
-    <div className="h-64 rounded-2xl bg-white shadow-md shadow-violet-200/60 ring-1 ring-violet-100 dark:bg-slate-900 dark:shadow-none dark:ring-violet-900">
+    // Khuông đôi cao hơn (hai khuông + số ngón tay trái + tên nốt).
+    <div className={`${lesson.clef === 'grand' ? 'h-80' : 'h-64'} rounded-2xl bg-white shadow-md shadow-violet-200/60 ring-1 ring-violet-100 dark:bg-slate-900 dark:shadow-none dark:ring-violet-900`}>
       <ScoreView lesson={lesson} index={index} results={results} status={finished ? 'finished' : 'waiting'} wrongPulse={wrongPulse} showNames={settings.showNoteNames} labelStyle={settings.labelStyle} />
     </div>
   );
@@ -393,7 +395,7 @@ function TimedRunner({ exercise, lesson, timeline, hand, kind, bpm, mode, scored
       onNote: (e) => {
         // Bài có phần đệm: nốt tay trái đánh kèm không bị tính là thừa.
         if (isAccompanimentMidi(lesson, e.midi)) return;
-        tracker.handleNoteOn(e.midi, e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time);
+        tracker.handleNoteOn(e.midi, e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time, loudnessDb(e));
       },
       onNoteOff: (e) => {
         if (!isAccompanimentMidi(lesson, e.midi)) tracker.handleNoteOff(e.midi, e.time);

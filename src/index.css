@@ -150,6 +150,16 @@ body::before {
   font-size: 13px;
 }
 
+/* Dấu sắc thái kiểu bản in: chữ nghiêng đậm có chân. */
+.score-dynamic {
+  fill: currentColor;
+  stroke: none;
+  font-size: 22px;
+  font-weight: 700;
+  font-style: italic;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
 .score-finger.is-current {
   fill: var(--score-current);
   font-weight: 800;

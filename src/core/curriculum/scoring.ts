@@ -3,7 +3,8 @@
  *
  *  theory / keyboard / recognition : % lượt đúng ngay lần đầu.
  *  wait        : 90% độ chính xác nốt + 10% hoàn thành. KHÔNG có tiêu chí nhịp (Wait Mode không tính thời gian).
- *  performance : đúng nốt 45% + đúng nhịp 30% + đúng trường độ 15% + hoàn thành 10%.
+ *  performance : đúng nốt 45% + đúng nhịp 30% + đúng trường độ 15% + hoàn thành 10%
+ *                (+ mạnh – nhẹ 15% khi bản nhạc có dấu sắc thái; bàn phím ảo không có lực gõ → "không đo").
  *  rhythm      : đúng nhịp 70% + đúng trường độ 15% + hoàn thành 15% (không xét cao độ).
  * Trường độ chỉ chấm được khi nguồn vào báo thả phím (MIDI, bàn phím ảo); với micro phần trọng số đó
  * được chia lại theo tỉ lệ cho các tiêu chí còn lại — không đoán trường độ từ âm ngân.
@@ -13,7 +14,7 @@ import type { PerformanceResult } from '../practice/PerformanceTracker';
 import type { CurriculumLesson, Exercise, PassRule, Rubric } from './types';
 
 export interface Criterion {
-  key: 'accuracy' | 'pitch' | 'timing' | 'duration' | 'completion';
+  key: 'accuracy' | 'pitch' | 'timing' | 'duration' | 'completion' | 'dynamics';
   label: string;
   /** 0..1, null = không đo được với nguồn vào này. */
   value: number | null;
@@ -36,6 +37,8 @@ export interface ExerciseScore {
 }
 
 export const PERFORMANCE_WEIGHTS = { pitch: 45, timing: 30, duration: 15, completion: 10 } as const;
+/** Trọng số thêm cho tiêu chí mạnh – nhẹ (bài có dấu sắc thái). */
+export const DYNAMICS_WEIGHT = 15;
 export const RHYTHM_WEIGHTS = { timing: 70, duration: 15, completion: 15 } as const;
 export const WAIT_WEIGHTS = { accuracy: 90, completion: 10 } as const;
 
@@ -103,6 +106,7 @@ export function scorePerformance(ex: Exercise, r: PerformanceResult, mistakes: s
       { key: 'timing', label: 'Đúng nhịp', value: r.timing, weight: PERFORMANCE_WEIGHTS.timing },
       { key: 'duration', label: 'Đúng trường độ', value: r.duration, weight: PERFORMANCE_WEIGHTS.duration },
       { key: 'completion', label: 'Hoàn thành bài', value: r.completion, weight: PERFORMANCE_WEIGHTS.completion },
+      ...(r.dynamics !== undefined ? [{ key: 'dynamics' as const, label: 'Mạnh – nhẹ', value: r.dynamics, weight: DYNAMICS_WEIGHT }] : []),
     ],
     r.pitchAccuracy,
     r.completion,

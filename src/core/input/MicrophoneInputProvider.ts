@@ -49,7 +49,7 @@ export class MicrophoneInputProvider implements NoteInputProvider {
       this.pitchFrames.emit(frame);
       const out = this.recognizer.process({ ...frame, attack: this.attack!.process(samples, time) });
       this.analysis.emit({ ...out, time });
-      if (out.noteOn) this.notes.emit({ midi: out.noteOn.midi, time: out.noteOn.time, source: 'microphone' });
+      if (out.noteOn) this.notes.emit({ midi: out.noteOn.midi, time: out.noteOn.time, source: 'microphone', level: out.rms });
     });
     audio.statusChanges.on(({ status }) => {
       if (status !== 'running') this.resetRecognizer();

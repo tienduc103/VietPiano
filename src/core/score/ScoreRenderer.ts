@@ -68,6 +68,12 @@ export const LH_FINGER_STEP = 13;
 /** Hàng tên nốt: cách dòng kẻ dưới cùng của khuông dưới; bài có phần đệm chừa thêm chỗ cho số ngón tay trái. */
 export const LABEL_OFFSET = 58;
 export const LABEL_OFFSET_ACCOMPANIMENT = 84;
+/** Dấu sắc thái (p, f…): dưới khuông Sol (giữa hai khuông nếu là khuông đôi), tối thiểu cách dòng kẻ dưới cùng. */
+export const DYNAMIC_OFFSET = 32;
+/** …và cách tâm nốt thấp nhất trên khuông đó (nốt có dòng kẻ phụ như Đô4, Sol3). */
+export const DYNAMIC_BELOW_NOTE = 26;
+/** Khuông đơn có dấu sắc thái: hàng tên nốt lùi xuống nhường chỗ. */
+export const DYNAMIC_SPACE = 22;
 /** Khoảng trống thêm phía trên khi bài có chữ đánh dấu đoạn (khung chữ nằm trên hàng số ngón tay). */
 export const SECTION_SPACE = 24;
 /** Khung chữ đánh dấu đoạn: cạnh vuông, khoảng cách từ đáy khung tới dòng kẻ trên cùng (trên hàng số ngón tay). */
@@ -125,7 +131,8 @@ export function accompanimentFingerRows(note: AccompanimentNote, staveNote: Stav
 
 /** Khoảng cách từ dòng kẻ dưới cùng xuống hàng tên nốt. */
 export function labelOffset(lesson: Lesson): number {
-  return lesson.accompaniment?.length ? LABEL_OFFSET_ACCOMPANIMENT : LABEL_OFFSET;
+  const base = lesson.accompaniment?.length ? LABEL_OFFSET_ACCOMPANIMENT : LABEL_OFFSET;
+  return base + (lesson.dynamics?.length && lesson.clef !== 'grand' ? DYNAMIC_SPACE : 0);
 }
 
 /** Các khuông của bài (trên xuống dưới): bài hai tay → [Sol, Fa]. */
@@ -391,6 +398,22 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     t.textContent = label;
     svg.append(rect, t);
   });
+
+  // Dấu sắc thái (p, mf, f…) một hàng dưới khuông trên cùng, thấp hơn mọi nốt của khuông đó, ngay dưới nốt bắt đầu đoạn.
+  const topBottom = built[0].staves[0].getYForLine(4);
+  const lowestHead = Math.max(topBottom, ...lesson.notes.map((n, i) => (n.rest || staffOf(lesson, n) !== 0 ? -Infinity : Math.max(...allNotes[i].getYs()))));
+  const dynamicY = Math.max(topBottom + DYNAMIC_OFFSET, lowestHead + DYNAMIC_BELOW_NOTE);
+  for (const d of lesson.dynamics ?? []) {
+    if (noteCenters[d.index] === undefined) continue;
+    const t = document.createElementNS(SVG_NS, 'text');
+    t.setAttribute('x', String(noteCenters[d.index]));
+    t.setAttribute('y', String(dynamicY));
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('class', 'score-dynamic');
+    t.setAttribute('data-dynamic', d.mark);
+    t.textContent = d.mark;
+    svg.appendChild(t);
+  }
 
   // Số ngón tay phần đệm: chồng dưới khuông Fa, không tô sáng vì app không chấm phần đệm.
   if (accMeasures) {

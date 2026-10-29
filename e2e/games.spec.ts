@@ -322,3 +322,42 @@ test('cấp 5: hai tay cùng lúc — nốt tay trái không bị tính sai, ch�
   await expect(page.getByTestId('exercise-score')).toHaveText('100/100');
   await expect(page.getByTestId('exercise-verdict')).toHaveText('Đạt');
 });
+
+test('cấp 6: dấu sắc thái f / p trên khuông; biểu diễn có tiêu chí "Mạnh – nhẹ" (bàn phím không có lực gõ → không đo)', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('level-6').click();
+  await expect(page.locator('[data-testid^="cur-lesson-l6-"]')).toHaveCount(20);
+  await page.getByTestId('cur-lesson-l6-01-forte-piano').click();
+  await page.getByTestId('start-lesson').click();
+  for (let i = 0; i < 3; i++) await page.getByTestId('intro-next').click();
+  for (let i = 0; i < 3; i++) {
+    await page.getByTestId('choice-0').click();
+    await page.waitForTimeout(1000);
+  }
+  await page.getByTestId('exercise-next').click();
+
+  // C D E F | G (tròn) | G F E D | C (tròn) — phím a s d f g.
+  const keys = ['a', 's', 'd', 'f', 'g', 'g', 'f', 'd', 's', 'a'];
+  const beats = [0, 1, 2, 3, 4, 8, 9, 10, 11, 12];
+  const lengths = [1, 1, 1, 1, 4, 1, 1, 1, 1, 4];
+  await expect(page.locator('[data-testid="play-step"] .score-dynamic')).toHaveText(['f', 'p']);
+  for (const k of keys) {
+    await page.keyboard.press(k);
+    await page.waitForTimeout(160);
+  }
+  await page.getByTestId('exercise-next').click();
+
+  // Biểu diễn: 60 phách/phút, đếm vào 4 phách; giữ phím gần đủ trường độ.
+  await page.getByTestId('timed-run').click();
+  const t0 = Date.now() + 4000;
+  for (let i = 0; i < keys.length; i++) {
+    await page.waitForTimeout(Math.max(0, t0 + beats[i] * 1000 - Date.now()));
+    await page.keyboard.down(keys[i]);
+    await page.waitForTimeout(lengths[i] * 1000 * 0.8);
+    await page.keyboard.up(keys[i]);
+  }
+  await expect(page.getByTestId('exercise-verdict')).toHaveText('Đạt', { timeout: 10_000 });
+  const criterion = page.locator('dl > div', { hasText: 'Mạnh – nhẹ (15%)' });
+  await expect(criterion).toContainText('không đo');
+});

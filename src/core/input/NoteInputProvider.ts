@@ -13,6 +13,8 @@ export interface NoteInputEvent {
   source: InputSource;
   /** Lực gõ 1–127 (chỉ đàn MIDI có). */
   velocity?: number;
+  /** Micro: RMS khung lúc nhận nốt — độ to tương đối (chấm sắc thái mạnh nhẹ). */
+  level?: number;
 }
 
 /**

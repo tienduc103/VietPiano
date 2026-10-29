@@ -25,6 +25,8 @@ Trước khi báo xong việc: `npm test && npm run build && npm run test:e2e`.
 src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi thứ ở đây phải có unit test
   music/notes.ts           tần số ↔ MIDI ↔ tên nốt (C4, Đô4), cents
   music/keySignature.ts    hoá biểu ("Dm", "Em"…) + dấu hoá cần vẽ trong ô nhịp (bất thường, dấu hoàn)
+  music/dynamics.ts        sắc thái p…f: lực gõ phát mẫu + điểm "Mạnh – nhẹ" TƯƠNG ĐỐI giữa đoạn liền kề
+                             (MIDI velocity / RMS micro lúc nhận nốt; bàn phím ảo → không đo) — cấp 6
   audio/AudioInput.ts      getUserMedia + AudioContext + AudioWorklet (singleton, dọn dẹp đầy đủ)
   audio/capture-processor.js  AudioWorklet (JS thuần) gửi khung 2048 mẫu mỗi hop 1024
   audio/PitchDetector.ts   YIN → { frequency, confidence, rms }
@@ -41,7 +43,7 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   lessons/                 kiểu dữ liệu, ký hiệu gọn "C4 D4/h", thư viện bài, LessonManager
   practice/PerformanceTracker.ts  Biểu diễn / Tiết tấu của giáo trình: đồng hồ nhịp CỐ ĐỊNH, chấm cao độ + thời điểm + trường độ (Note Off), dấu lặng
   curriculum/              giáo trình (xem docs/curriculum.md): Curriculum → Level → Week → Lesson → Activity/Exercise
-    content/                 CHỈ dữ liệu (cấp 1–5: mỗi cấp 20 buổi; cấp 6 khung "sắp có"; `helpers.ts` hàm dựng chung);
+    content/                 CHỈ dữ liệu (cấp 1–6: mỗi cấp 20 buổi; `helpers.ts` hàm dựng chung);
                              `extraPractice` = bài thư viện luyện thêm (gộp từ khoá học cũ)
     validate.ts              kiểm tra dữ liệu (đủ phách, tầm micro, tiên quyết, đáp án) — test chạy cho toàn giáo trình
     piece.ts / QuizEngine.ts / scoring.ts / unlock.ts / progress.ts  bản nhạc→dòng thời gian/MIDI, bài nhiều lượt, rubric, gợi ý mở khoá, tiến độ

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { durationQuality, PerformanceTracker, timingQuality, type TimedNote } from './PerformanceTracker';
+import { durationQuality, PerformanceTracker, timedSections, timingQuality, type TimedNote } from './PerformanceTracker';
 
 /** 60 bpm → 1 nốt đen = 1000 ms; bắt đầu lúc t = 0, đếm vào 4 phách → phách 0 ở t = 4000. */
 const BEAT = 1000;
@@ -156,5 +156,39 @@ describe('điểm thời điểm / trường độ', () => {
     expect(durationQuality(0.9)).toBe(1);
     expect(durationQuality(0.35)).toBeCloseTo(0.5);
     expect(durationQuality(2)).toBe(0);
+  });
+});
+
+describe('PerformanceTracker — sắc thái mạnh nhẹ', () => {
+  const marked = (): TimedNote[] =>
+    quarters([60, 62, 64, 65, 67, 65, 64, 62]).map((n, i) => ({ ...n, dynamic: i < 4 ? ('p' as const) : ('f' as const) }));
+
+  it('timedSections gộp nốt liền nhau cùng sắc thái', () => {
+    expect(timedSections(marked())).toEqual([
+      { mark: 'p', from: 0, to: 4 },
+      { mark: 'f', from: 4, to: 8 },
+    ]);
+    expect(timedSections(quarters([60, 62]))).toEqual([]);
+  });
+
+  it('đoạn f to hơn đoạn p → dynamics 1; đều tiếng → 0; không truyền độ to → null', () => {
+    const run = (db: (i: number) => number | null) => {
+      const t = started(marked());
+      marked().forEach((n, i) => t.handleNoteOn(n.midi!, at(i), db(i)));
+      t.tick(at(10));
+      return t.result();
+    };
+    expect(run((i) => (i < 4 ? -20 : -12)).dynamics).toBe(1);
+    expect(run(() => -20).dynamics).toBe(0);
+    expect(run(() => null).dynamics).toBeNull();
+    expect(run((i) => (i < 4 ? -20 : -12)).pitchAccuracy).toBe(1);
+  });
+
+  it('bài không có dấu sắc thái → không có trường dynamics', () => {
+    const t = started(quarters([60, 62]));
+    t.handleNoteOn(60, at(0), -10);
+    t.handleNoteOn(62, at(1), -10);
+    t.tick(at(4));
+    expect('dynamics' in t.result()).toBe(false);
   });
 });

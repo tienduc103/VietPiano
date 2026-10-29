@@ -5,11 +5,12 @@
  */
 import { parseAccompaniment, parseNotes, splitMeasures } from '../lessons/notation';
 import { DURATION_BEATS, measureLength, noteHand, type Finger, type Hand, type Lesson } from '../lessons/types';
+import { dynamicAt, DYNAMIC_VELOCITY, type DynamicMark } from '../music/dynamics';
 import type { TimedNote } from '../practice/PerformanceTracker';
 import { text, type Piece } from './types';
 
 export function pieceToLesson(piece: Piece, id: string): Lesson {
-  return {
+  const lesson: Lesson = {
     id,
     title: piece.title ? text(piece.title) : '',
     description: '',
@@ -23,7 +24,29 @@ export function pieceToLesson(piece: Piece, id: string): Lesson {
     source: piece.source,
     ...(piece.keySignature ? { keySignature: piece.keySignature } : {}),
     ...(piece.accompaniment ? { accompaniment: parseAccompaniment(piece.accompaniment) } : {}),
+    ...(piece.sections ? { sections: piece.sections } : {}),
   };
+  if (piece.dynamics) lesson.dynamics = dynamicMarks(lesson, piece.dynamics);
+  return lesson;
+}
+
+/** Dấu sắc thái theo ô nhịp (từ 1, ô lấy đà không đánh số) → chỉ số nốt đầu ô. Ô không tồn tại → lỗi. */
+function dynamicMarks(lesson: Lesson, byMeasure: NonNullable<Piece['dynamics']>): NonNullable<Lesson['dynamics']> {
+  const measures = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup);
+  const firstIndex: number[] = [];
+  let i = 0;
+  for (const m of measures) {
+    firstIndex.push(i);
+    i += m.items.length;
+  }
+  const offset = lesson.pickup ? 0 : -1;
+  return Object.entries(byMeasure)
+    .map(([measure, mark]) => {
+      const idx = firstIndex[Number(measure) + offset];
+      if (idx === undefined) throw new Error(`Dấu sắc thái ở ô nhịp ${measure} không có trong bài`);
+      return { index: idx, mark: mark as DynamicMark };
+    })
+    .sort((a, b) => a.index - b.index);
 }
 
 export interface TimelineNote {
@@ -39,6 +62,8 @@ export interface TimelineNote {
   finger?: Finger;
   /** Lực gõ khi phát mẫu / xuất MIDI (1–127). */
   velocity: number;
+  /** Sắc thái đang có hiệu lực (bài có dấu p / f…). */
+  dynamic?: DynamicMark;
   /** Ô nhịp (từ 0, gồm cả ô lấy đà). */
   measureIndex: number;
 }
@@ -48,10 +73,12 @@ const DEFAULT_VELOCITY = 80;
 export function lessonTimeline(lesson: Lesson): TimelineNote[] {
   const measures = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup);
   const out: TimelineNote[] = [];
+  const dynamics = lesson.dynamics ? dynamicAt(lesson.dynamics, lesson.notes.length) : [];
   let beat = 0;
   measures.forEach((m, mi) => {
     for (const n of m.items) {
       const durationBeats = DURATION_BEATS[n.duration];
+      const dynamic = dynamics[out.length];
       out.push({
         index: out.length,
         pitch: n.pitch,
@@ -60,7 +87,8 @@ export function lessonTimeline(lesson: Lesson): TimelineNote[] {
         durationBeats,
         hand: noteHand(lesson, n),
         ...(n.finger ? { finger: n.finger } : {}),
-        velocity: DEFAULT_VELOCITY,
+        velocity: dynamic ? DYNAMIC_VELOCITY[dynamic] : DEFAULT_VELOCITY,
+        ...(dynamic ? { dynamic } : {}),
         measureIndex: mi,
       });
       beat += durationBeats;
@@ -72,11 +100,16 @@ export function lessonTimeline(lesson: Lesson): TimelineNote[] {
 /** Nốt phần đệm (mỗi nốt của hợp âm một mục) để phát mẫu cùng giai điệu; không chấm điểm. */
 export function accompanimentTimeline(lesson: Lesson): { midiNote: number; startBeat: number; durationBeats: number; velocity: number }[] {
   const out: { midiNote: number; startBeat: number; durationBeats: number; velocity: number }[] = [];
+  // Bài có sắc thái: tay trái theo sắc thái của nốt giai điệu đang vang.
+  const melody = lesson.dynamics ? lessonTimeline(lesson) : [];
   let beat = 0;
   for (const chord of lesson.accompaniment ?? []) {
     const durationBeats = DURATION_BEATS[chord.duration];
+    const under = melody.filter((n) => n.startBeat <= beat + 1e-9).pop();
+    const scale = under?.dynamic ? DYNAMIC_VELOCITY[under.dynamic] / DEFAULT_VELOCITY : 1;
     // Tay trái nhỏ hơn giai điệu một chút khi nghe mẫu.
-    for (const midi of chord.midis) out.push({ midiNote: midi, startBeat: beat, durationBeats, velocity: ACCOMPANIMENT_VELOCITY });
+    const velocity = Math.round(ACCOMPANIMENT_VELOCITY * scale);
+    for (const midi of chord.midis) out.push({ midiNote: midi, startBeat: beat, durationBeats, velocity });
     beat += durationBeats;
   }
   return out;
@@ -90,6 +123,7 @@ export function timedNotes(timeline: readonly TimelineNote[], hand?: Hand): Time
     startBeat: n.startBeat,
     durationBeats: n.durationBeats,
     midi: hand && n.hand !== hand ? null : n.midiNote,
+    ...(n.dynamic ? { dynamic: n.dynamic } : {}),
   }));
 }
 

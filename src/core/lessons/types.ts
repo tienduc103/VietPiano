@@ -1,3 +1,4 @@
+import type { DynamicMark } from '../music/dynamics';
 import type { KeySignature } from '../music/keySignature';
 
 export type Clef = 'treble' | 'bass';
@@ -91,6 +92,8 @@ export interface Lesson {
   accompaniment?: AccompanimentNote[];
   /** Chữ đánh dấu đoạn (A, B…) như bản in. */
   sections?: LessonSection[];
+  /** Dấu sắc thái (p, f…) đặt ở nốt `index` của `notes`, có hiệu lực tới dấu sau. */
+  dynamics?: { index: number; mark: DynamicMark }[];
   /** Ghi chú nguồn gốc bản nhạc (bản quyền). */
   source?: string;
   /** Nhịp độ gợi ý cho chế độ chạy theo nhịp (nốt đen/phút); mặc định DEFAULT_TEMPO_BPM. */

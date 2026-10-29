@@ -26,7 +26,7 @@ Curriculum → Level → Week → CurriculumLesson → Activity (giới thiệu)
 | `choice-quiz` | theory | % câu đúng |
 | `note-reading` | recognition | % nốt nhận đúng (`answer: 'name'` chọn tên, `'play'` đánh trên đàn); xem gợi ý = không tính đúng lần đầu |
 | `play` + `mode: 'wait'` | wait | 90% độ chính xác + 10% hoàn thành — **không có tiêu chí nhịp** |
-| `play` + `mode: 'performance'` | performance | nốt 45% + nhịp 30% + trường độ 15% + hoàn thành 10% |
+| `play` + `mode: 'performance'` | performance | nốt 45% + nhịp 30% + trường độ 15% + hoàn thành 10% (+ mạnh – nhẹ 15% nếu có `dynamics`) |
 | `play` + `mode: 'rhythm'` | rhythm | nhịp 70% + trường độ 15% + hoàn thành 15% (không xét cao độ) |
 
 Trường độ chỉ chấm được khi nguồn vào báo thả phím (đàn MIDI, bàn phím ảo). Với micro, tiêu chí này là
@@ -47,8 +47,14 @@ và mọi bài tập bắt buộc (`required`, mặc định true) đạt `pass`
 | 3 — Móc đơn và chấm dôi | Móc đơn ("1 và"), lặng móc đơn | Đen chấm dôi (4/4 và 3/4), tay trái móc đơn | Đảo phách móc đơn – đen – móc đơn, nửa sau phách | Gam Đô trưởng luồn ngón hai tay, bài 8 ô, bài hai tay 3/4 |
 | 4 — Dấu thăng, dấu giáng | Dấu thăng, nửa cung / một cung, hoá biểu Sol trưởng | Dấu giáng, dấu hoàn, hoá biểu Fa trưởng, tay trái thế Fa | Gam Sol trưởng, tay trái thế Rê, bài và hai tay Sol trưởng | Gam Fa trưởng, bài 3/4 và hai tay Fa trưởng, phân biệt giọng |
 | 5 — Hai tay cùng lúc | Nốt trầm giữ / đổi nửa ô, quãng 5 tay trái | Hợp âm Đô, Fa, Sol thế gần, đổi hợp âm | Tay trái nốt đen, đệm valse, hợp âm rải | Hai tay giọng Sol / Fa trưởng, bài móc đơn trên hợp âm rải, valse |
+| 6 — Biểu diễn | Sắc thái f, p, mp, mf; tiếng vọng; bài hai tay có sắc thái | Câu hỏi – đáp, hình thức A – B, A – B – A, dời thế tay (Au clair de la lune) | Khúc hoan ca, Kìa con bướm vàng, Minuet Sol trưởng (phạm vi công cộng); Andante / Allegretto | To dần / nhỏ dần, bài valse 16 ô, chương trình, tổng duyệt, hoà nhạc tốt nghiệp |
 
-Cấp 6 là khung "sắp có" (`comingSoon` trong `curriculum.ts`).
+Cấp 6 — sắc thái: `Piece.dynamics` theo ô nhịp (`{ 1: 'p', 5: 'f' }`) → `Lesson.dynamics` (chỉ số nốt đầu ô), vẽ dưới
+khuông Sol (`.score-dynamic`), "Nghe mẫu" phát theo lực gõ (`DYNAMIC_VELOCITY`). Biểu diễn thêm tiêu chí "Mạnh – nhẹ"
+(`music/dynamics.ts`): so trung vị độ to của hai đoạn liền kề — đủ `FULL_STEP_DB` (3 dB) đúng chiều là trọn điểm. Độ to:
+đàn MIDI = velocity, micro = RMS khung lúc nhận nốt (`NoteInputEvent.level`), bàn phím ảo → "không đo" (chia lại trọng số).
+Chỉ so tương đối nên không phụ thuộc micro xa/gần. `Piece.sections` vẽ chữ đánh dấu đoạn (A, B). Bài phạm vi công cộng
+ghi nguồn riêng (`pd(piece, source)`).
 
 Cấp 5 — hai tay CÙNG LÚC: `Piece.accompaniment` (helper `withLh(melody, lh)`, khuông đôi, giai điệu `hand: 'right'`).
 App chỉ chấm giai điệu tay phải; `PlayStep` bỏ qua nốt thấp hơn giai điệu (`isAccompanimentMidi`) ở cả Wait Mode và

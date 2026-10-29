@@ -1,23 +1,14 @@
 /**
- * Giáo trình VietPiano: 6 cấp độ. Cấp 1–5 đã có nội dung; cấp 6 mới là khung (availability 'coming-soon')
- * để Curriculum Browser hiện đủ lộ trình. Thêm cấp mới: tạo `levelN.ts` (tuần + buổi) rồi gắn vào đây.
+ * Giáo trình VietPiano: 6 cấp độ, đủ nội dung (mỗi cấp 4 tuần × 5 buổi). Cấp chưa có nội dung dùng
+ * availability 'coming-soon' (Curriculum Browser hiện "Sắp có"). Thêm cấp mới: tạo `levelN.ts` (tuần + buổi) rồi gắn vào đây.
  */
-import type { Curriculum, Level } from '../types';
+import type { Curriculum } from '../types';
 import { LEVEL1_LESSONS, LEVEL1_WEEKS } from './level1';
 import { LEVEL2_LESSONS, LEVEL2_WEEKS } from './level2';
 import { LEVEL3_LESSONS, LEVEL3_WEEKS } from './level3';
 import { LEVEL4_LESSONS, LEVEL4_WEEKS } from './level4';
 import { LEVEL5_LESSONS, LEVEL5_WEEKS } from './level5';
-
-const comingSoon = (number: number, title: string, description: string): Level => ({
-  levelId: `level-${number}`,
-  number,
-  title,
-  description,
-  availability: 'coming-soon',
-  weeks: [],
-  lessons: [],
-});
+import { LEVEL6_LESSONS, LEVEL6_WEEKS } from './level6';
 
 export const CURRICULUM: Curriculum = {
   curriculumId: 'vietpiano-basic',
@@ -69,6 +60,14 @@ export const CURRICULUM: Curriculum = {
       weeks: LEVEL5_WEEKS,
       lessons: LEVEL5_LESSONS,
     },
-    comingSoon(6, 'Cấp 6 — Biểu diễn', 'Bài nhạc hoàn chỉnh, sắc thái mạnh nhẹ, biểu diễn trọn bài.'),
+    {
+      levelId: 'level-6',
+      number: 6,
+      title: 'Cấp 6 — Biểu diễn',
+      description: 'Sắc thái mạnh nhẹ (p, mp, mf, f; to dần, nhỏ dần), câu nhạc, hình thức A – B – A, nhịp độ; bài cổ điển phạm vi công cộng và buổi hoà nhạc tốt nghiệp. 4 tuần, 20 buổi.',
+      availability: 'available',
+      weeks: LEVEL6_WEEKS,
+      lessons: LEVEL6_LESSONS,
+    },
   ],
 };

@@ -57,6 +57,15 @@ describe('rubric chấm điểm', () => {
     expect(s.score).toBe(Math.round((55 / 85) * 100));
   });
 
+  it('bài có dấu sắc thái: thêm tiêu chí "Mạnh – nhẹ" 15%; không đo được (bàn phím ảo) → chia lại trọng số', () => {
+    const full = perf({ pitchAccuracy: 1, timing: 1, duration: 1, completion: 1 });
+    expect(scorePerformance(ex({}), full, []).criteria.some((c) => c.key === 'dynamics')).toBe(false);
+    const flat = scorePerformance(ex({}), { ...full, dynamics: 0 }, []);
+    expect(flat.criteria.find((c) => c.key === 'dynamics')).toMatchObject({ label: 'Mạnh – nhẹ', value: 0, weight: 15 });
+    expect(flat.score).toBe(Math.round((100 / 115) * 100));
+    expect(scorePerformance(ex({}), { ...full, dynamics: null }, []).score).toBe(100);
+  });
+
   it('điều kiện đạt biểu diễn: điểm ≥ 80, nốt ≥ 80%, hoàn thành ≥ 90%', () => {
     const rule = { minScore: 80, minAccuracy: 0.8, minCompletion: 0.9 };
     expect(scorePerformance(ex(rule), perf({}), []).passed).toBe(true);
@@ -231,12 +240,13 @@ describe('trạng thái buổi / mở khoá (chỉ gợi ý)', () => {
     expect(currentLevel(CURRICULUM, {})?.levelId).toBe('level-1');
     expect(nextLessonAfter(CURRICULUM, l1.lessonId)?.lessonId).toBe(l2.lessonId);
     expect(nextLessonAfter(CURRICULUM, 'l1-05-week1-test')?.lessonId).toBe('l1-06-staff');
-    // Hết cấp 1 → buổi đầu cấp 2; …; hết cấp 5 (cấp 6 chưa có nội dung) → hết.
+    // Hết cấp 1 → buổi đầu cấp 2; …; hết cấp 6 (cấp cuối) → hết.
     expect(nextLessonAfter(CURRICULUM, 'l1-20-final')?.lessonId).toBe('l2-01-g-position');
     expect(nextLessonAfter(CURRICULUM, 'l2-20-final')?.lessonId).toBe('l3-01-eighths');
     expect(nextLessonAfter(CURRICULUM, 'l3-20-final')?.lessonId).toBe('l4-01-sharp');
     expect(nextLessonAfter(CURRICULUM, 'l4-20-final')?.lessonId).toBe('l5-01-bass-whole');
-    expect(nextLessonAfter(CURRICULUM, 'l5-20-final')).toBeNull();
+    expect(nextLessonAfter(CURRICULUM, 'l5-20-final')?.lessonId).toBe('l6-01-forte-piano');
+    expect(nextLessonAfter(CURRICULUM, 'l6-20-final')).toBeNull();
     const all = Object.fromEntries(level.lessons.map((l) => [l.lessonId, passed(l)]));
     expect(levelProgress(level, all)).toMatchObject({ completed: 20, next: null });
     // Xong cấp 1 → cấp đang học là cấp 2.

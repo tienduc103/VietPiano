@@ -6,6 +6,7 @@ import { LEVEL2_LESSONS, LEVEL2_WEEKS } from './content/level2';
 import { LEVEL3_LESSONS, LEVEL3_WEEKS } from './content/level3';
 import { LEVEL4_LESSONS, LEVEL4_WEEKS } from './content/level4';
 import { LEVEL5_LESSONS, LEVEL5_WEEKS } from './content/level5';
+import { LEVEL6_LESSONS, LEVEL6_WEEKS } from './content/level6';
 import { keysMatching } from './keys';
 import { lessonTimeline, pieceToLesson } from './piece';
 import { orderedLessons } from './unlock';
@@ -17,9 +18,9 @@ describe('nội dung giáo trình', () => {
     expect(validateCurriculum(CURRICULUM)).toEqual([]);
   });
 
-  it('có 6 cấp độ; cấp 1–2 mở, cấp 3–6 là khung "sắp có"', () => {
+  it('có 6 cấp độ, cấp nào cũng đã có nội dung', () => {
     expect(CURRICULUM.levels.map((l) => l.number)).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(CURRICULUM.levels.map((l) => l.availability)).toEqual(['available', 'available', 'available', 'available', 'available', 'coming-soon']);
+    expect(CURRICULUM.levels.map((l) => l.availability)).toEqual(Array(6).fill('available'));
   });
 
   it('cấp 1: 4 tuần × 5 buổi, số buổi 1–20 theo đúng thứ tự', () => {
@@ -225,6 +226,57 @@ describe('nội dung cấp 5', () => {
   });
 });
 
+describe('nội dung cấp 6', () => {
+  const plays = LEVEL6_LESSONS.flatMap((l) => l.exercises.filter((e): e is PlayExercise => e.kind === 'play').map((e) => ({ l, e })));
+
+  it('4 tuần × 5 buổi, số buổi 1–20, buổi đầu cần buổi cuối cấp 5, kiểm tra ở buổi 5/10/15/20', () => {
+    expect(LEVEL6_WEEKS.map((w) => w.lessonIds.length)).toEqual([5, 5, 5, 5]);
+    expect(orderedLessons(CURRICULUM.levels[5]).map((l) => l.number)).toEqual(Array.from({ length: 20 }, (_, i) => i + 1));
+    expect(LEVEL6_LESSONS[0].prerequisites).toEqual(['l5-20-final']);
+    for (const n of [5, 10, 15, 20]) expect(LEVEL6_LESSONS.find((l) => l.number === n)!.assessment).toEqual({ passScore: 80, checkpoint: true });
+  });
+
+  it('mọi bài biểu diễn có dấu sắc thái (≥ 2 mức) và mọi buổi nhắc cách app chấm mạnh – nhẹ', () => {
+    for (const { l, e } of plays) if (e.mode === 'performance') expect(new Set(Object.values(e.piece.dynamics ?? {})).size, `${l.lessonId}/${e.id}`).toBeGreaterThanOrEqual(2);
+    for (const l of LEVEL6_LESSONS) expect(l.notes?.some((n) => String(n).includes('Mạnh – nhẹ')), l.lessonId).toBe(true);
+  });
+
+  it('đủ bốn mức p / mp / mf / f; có hình thức A – B – A; có bài phạm vi công cộng ghi nguồn', () => {
+    const marks = new Set(plays.flatMap((x) => Object.values(x.e.piece.dynamics ?? {})));
+    for (const m of ['p', 'mp', 'mf', 'f']) expect(marks.has(m as never), m).toBe(true);
+    expect(plays.some((x) => x.e.piece.sections?.map((s) => s.label).join('') === 'ABA')).toBe(true);
+    expect(plays.some((x) => x.e.piece.source?.includes('phạm vi công cộng'))).toBe(true);
+  });
+
+  it('bài có phần đệm thì buổi nhắc rằng app chỉ chấm tay phải', () => {
+    for (const { l, e } of plays) if (e.piece.accompaniment) expect(l.notes?.some((n) => String(n).includes('chỉ chấm giai điệu tay phải')), l.lessonId).toBe(true);
+  });
+
+  it('bài móc đơn để chậm (≤ 66 BPM) và không lặp cùng nốt liền móc đơn', () => {
+    for (const { l, e } of plays) {
+      const notes = pieceToLesson(e.piece, 'x').notes;
+      if (!notes.some((n) => n.duration === '8')) continue;
+      expect(e.piece.bpm, l.lessonId).toBeLessThanOrEqual(66);
+      notes.forEach((n, i) => {
+        const prev = notes[i - 1];
+        if (prev && !n.rest && !prev.rest && (n.duration === '8' || prev.duration === '8')) expect(n.midi, `${l.lessonId} nốt ${i}`).not.toBe(prev.midi);
+      });
+    }
+  });
+
+  it('phát mẫu theo sắc thái: nốt p nhẹ hơn nốt f', () => {
+    const { e } = plays.find((x) => x.l.lessonId === 'l6-01-forte-piano' && x.e.mode === 'performance')!;
+    const tl = lessonTimeline(pieceToLesson(e.piece, 'x'));
+    expect(tl[0].dynamic).toBe('f');
+    expect(tl[tl.length - 1].dynamic).toBe('p');
+    expect(tl[0].velocity).toBeGreaterThan(tl[tl.length - 1].velocity);
+  });
+
+  it('bài luyện thêm trỏ tới bài có trong thư viện', () => {
+    for (const e of LEVEL6_WEEKS.flatMap((w) => w.extraPractice ?? [])) expect(lessonManager.get(e.lessonId)).toBeDefined();
+  });
+});
+
 describe('validateCurriculum bắt lỗi dữ liệu', () => {
   const base = (): Curriculum => structuredClone(CURRICULUM);
 
@@ -236,6 +288,17 @@ describe('validateCurriculum bắt lỗi dữ liệu', () => {
     expect(validatePiece({ ...piece, notation: 'C4/w', bpm: 500 }, 'p')[0]).toMatch(/nhịp độ/);
     expect(validatePiece({ ...piece, notation: 'R/w' }, 'p')).toEqual(['p: không có nốt nào để chơi']);
     expect(validatePiece({ ...piece, notation: 'C4 C4 C4/h', hand: 'both', clef: 'grand' }, 'p')[0]).toMatch(/RH\/LH/);
+  });
+
+  it('dấu sắc thái: ô nhịp phải có trong bài, cần ≥ 2 mức khác nhau; gắn vào nốt đầu ô', () => {
+    const piece = { clef: 'treble' as const, hand: 'right' as const, bpm: 60, notation: 'C4/w | D4 E4 F4 G4' };
+    expect(validatePiece({ ...piece, dynamics: { 1: 'p', 2: 'f' } }, 'p')).toEqual([]);
+    expect(pieceToLesson({ ...piece, dynamics: { 2: 'f', 1: 'p' } }, 'x').dynamics).toEqual([
+      { index: 0, mark: 'p' },
+      { index: 1, mark: 'f' },
+    ]);
+    expect(validatePiece({ ...piece, dynamics: { 1: 'p', 3: 'f' } }, 'p')[0]).toMatch(/ô nhịp 3/);
+    expect(validatePiece({ ...piece, dynamics: { 1: 'p', 2: 'p' } }, 'p')[0]).toMatch(/hai mức/);
   });
 
   it('phần đệm: khuông đôi + tay phải, đủ phách, cùng số ô, thấp hơn giai điệu', () => {

@@ -74,6 +74,7 @@ export function validatePiece(piece: Piece, where: string): string[] {
   if (piece.hand === 'both' && lesson.notes.some((n) => !n.hand)) errors.push(`${where}: bài hai tay phải ghi RH/LH cho mọi nốt`);
   if (piece.hand !== 'both' && piece.clef === 'grand' && !piece.accompaniment) errors.push(`${where}: khuông đôi chỉ dùng cho bài hai tay`);
   if (piece.accompaniment) errors.push(...validateAccompaniment(piece, lesson, where));
+  if (piece.dynamics && new Set(Object.values(piece.dynamics)).size < 2) errors.push(`${where}: dấu sắc thái cần ít nhất hai mức khác nhau (để so mạnh – nhẹ)`);
   const timeline = lessonTimeline(lesson);
   for (let i = 1; i < timeline.length; i++) {
     if (timeline[i].startBeat <= timeline[i - 1].startBeat) errors.push(`${where}: sự kiện ${i} không đi sau sự kiện trước`);

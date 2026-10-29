@@ -8,6 +8,7 @@ const ADVICE: Record<string, string> = {
   timing: 'Bật metronome, giảm BPM và đếm to "1 – 2 – 3 – 4" khi chơi.',
   duration: 'Giữ phím đủ số phách của nốt (nốt trắng 2 phách, nốt tròn 4 phách) rồi mới nhấc tay.',
   completion: 'Cố gắng chơi hết bài, đừng dừng giữa chừng — sai cũng cứ chơi tiếp.',
+  dynamics: 'Làm rõ mạnh – nhẹ: đoạn "p" đặt ngón nhẹ, đoạn "f" thả sức nặng cánh tay xuống phím; giữ iPad đứng yên một chỗ.',
 };
 
 /** Tiêu chí thấp nhất (đo được) trong các bài tập đã làm. */

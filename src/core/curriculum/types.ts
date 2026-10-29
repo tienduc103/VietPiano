@@ -3,7 +3,8 @@
  * Đây CHỈ là dữ liệu (nội dung nằm ở `content/`), không có logic UI. Thêm cấp độ 2–6 = thêm file nội dung,
  * không đổi kiểu dữ liệu. Tiến độ (Progress) lưu riêng ở `storage/CurriculumStorage.ts`.
  */
-import type { Clef, LessonClef, LessonHand } from '../lessons/types';
+import type { Clef, LessonClef, LessonHand, LessonSection } from '../lessons/types';
+import type { DynamicMark } from '../music/dynamics';
 import type { KeySignature } from '../music/keySignature';
 
 /**
@@ -39,6 +40,13 @@ export interface Piece {
    * nốt thấp hơn giai điệu (tay trái) bị bỏ qua — micro chỉ nhận một nốt mỗi lúc.
    */
   accompaniment?: string;
+  /**
+   * Dấu sắc thái theo ô nhịp (số ô như bản in, từ 1): `{ 1: 'p', 5: 'f' }` — có hiệu lực từ nốt đầu ô tới dấu sau.
+   * Biểu diễn có thêm tiêu chí "Mạnh – nhẹ" (so sánh tương đối giữa các đoạn); phát mẫu theo sắc thái.
+   */
+  dynamics?: Partial<Record<number, DynamicMark>>;
+  /** Chữ đánh dấu đoạn (A, B…) ở đầu ô nhịp. */
+  sections?: LessonSection[];
 }
 
 // ── Hình minh hoạ ─────────────────────────────────────────────────────

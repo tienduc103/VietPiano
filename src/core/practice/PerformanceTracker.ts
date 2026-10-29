@@ -10,8 +10,11 @@
  *  - Đồng hồ đi quá cửa sổ mà chưa có onset → nốt bị lỡ ('skipped').
  *  - Note Off (chỉ MIDI / bàn phím ảo có) → đo thời gian giữ phím so với trường độ.
  * Nốt `midi = null` là dấu lặng hoặc nốt của tay không luyện: không chấm, không có cửa sổ.
+ * Bài có dấu sắc thái (`TimedNote.dynamic`): độ to từng nốt (dB, truyền vào `handleNoteOn`) → điểm mạnh nhẹ
+ * tương đối giữa các đoạn (`music/dynamics.ts`).
  */
 
+import { dynamicsQuality, type DynamicMark, type DynamicSection } from '../music/dynamics';
 import type { NoteResult } from './PracticeEngine';
 
 export interface TimedNote {
@@ -20,6 +23,8 @@ export interface TimedNote {
   durationBeats: number;
   /** null = dấu lặng / nốt không chấm. */
   midi: number | null;
+  /** Sắc thái đang có hiệu lực (bài có dấu p / f…). */
+  dynamic?: DynamicMark;
 }
 
 export type PerformanceStatus = 'idle' | 'countIn' | 'running' | 'paused' | 'finished';
@@ -65,6 +70,8 @@ export interface PerformanceState {
   readonly heldRatios: readonly (number | null)[];
   /** Nốt người chơi đánh cho từng nốt đã chấm. */
   readonly playedMidis: readonly (number | null)[];
+  /** Độ to (dB tương đối) từng nốt đã chấm; null = nguồn không đo được (bàn phím ảo). */
+  readonly loudness: readonly (number | null)[];
   readonly extras: number;
   readonly lastOffsetMs: number | null;
   readonly lastOutcome: PerformanceOutcome | null;
@@ -89,6 +96,8 @@ export interface PerformanceResult {
   completion: number;
   /** Tỉ lệ nốt đã đánh nằm trong `onTimeMs`. */
   onTimeRatio: number;
+  /** 0..1 mạnh nhẹ đúng sắc thái; null = không đo được; undefined = bài không có dấu sắc thái. */
+  dynamics?: number | null;
 }
 
 interface Window {
@@ -139,6 +148,7 @@ export class PerformanceTracker {
       offsetsMs: this.notes.map(() => null),
       heldRatios: this.notes.map(() => null),
       playedMidis: this.notes.map(() => null),
+      loudness: this.notes.map(() => null),
       extras: 0,
       lastOffsetMs: null,
       lastOutcome: null,
@@ -244,7 +254,8 @@ export class PerformanceTracker {
     return this.config.octaveTolerant && (played - expected) % 12 === 0;
   }
 
-  handleNoteOn(midi: number, time: number): PerformanceOutcome {
+  /** `loudness`: độ to nốt (dB tương đối, `loudnessDb`) — chỉ dùng cho điểm sắc thái. */
+  handleNoteOn(midi: number, time: number, loudness: number | null = null): PerformanceOutcome {
     const s = this.state;
     if (s.status !== 'running' && s.status !== 'countIn') return 'ignored';
     if (time - this.lastOnsetTime < this.config.minOnsetIntervalMs) return 'ignored';
@@ -275,12 +286,14 @@ export class PerformanceTracker {
     const results = this.state.results.slice();
     const offsetsMs = this.state.offsetsMs.slice();
     const playedMidis = this.state.playedMidis.slice();
+    const loudnessArr = this.state.loudness.slice();
     results[best] = ok ? 'correct' : 'wrong';
     offsetsMs[best] = offsetMs;
     playedMidis[best] = midi;
+    loudnessArr[best] = loudness;
     this.onsetTimes[best] = time;
     const outcome = ok ? 'hit' : 'wrong';
-    this.setState({ results, offsetsMs, playedMidis, lastOffsetMs: offsetMs, lastOutcome: outcome, lastEventTime: time });
+    this.setState({ results, offsetsMs, playedMidis, loudness: loudnessArr, lastOffsetMs: offsetMs, lastOutcome: outcome, lastEventTime: time });
     return outcome;
   }
 
@@ -354,6 +367,7 @@ export function scorePerformanceState(
     }
   });
   const played = correct + wrong;
+  const sections = timedSections(notes);
   return {
     notes: total,
     correct,
@@ -365,5 +379,27 @@ export function scorePerformanceState(
     duration: durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : null,
     completion: total ? played / total : 0,
     onTimeRatio: played ? onTime / played : 0,
+    ...(sections.length
+      ? {
+          dynamics: dynamicsQuality(
+            sections,
+            // Nốt lỡ không có độ to; độ to của nốt sai cao độ vẫn tính (sắc thái độc lập với cao độ).
+            state.loudness.map((v, i) => (state.results[i] === 'correct' || state.results[i] === 'wrong' ? v : null)),
+            notes.map((n) => n.midi !== null),
+          ),
+        }
+      : {}),
   };
+}
+
+/** Các đoạn sắc thái liền nhau từ `TimedNote.dynamic` (nốt không có sắc thái không thuộc đoạn nào). */
+export function timedSections(notes: readonly TimedNote[]): DynamicSection[] {
+  const out: DynamicSection[] = [];
+  notes.forEach((n, i) => {
+    const last = out[out.length - 1];
+    if (!n.dynamic) return;
+    if (last && last.mark === n.dynamic && last.to === i) last.to = i + 1;
+    else out.push({ mark: n.dynamic, from: i, to: i + 1 });
+  });
+  return out;
 }
