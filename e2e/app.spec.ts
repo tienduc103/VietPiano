@@ -570,9 +570,11 @@ test('trang chủ là Dashboard giáo trình; Curriculum Browser có 6 cấp, c�
   await page.getByRole('button', { name: 'Về trang chủ' }).click();
   await expect(page.getByTestId('dashboard').getByTestId('library')).toBeAttached();
   await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(24);
-  await expect(page.getByTestId('library')).not.toBeInViewport();
+  // Mép trên thư viện có thể đã lọt vào cuối màn hình (trang chủ ngắn) — so vị trí thay vì "có trong khung nhìn".
+  const libraryTop = async () => (await page.getByTestId('library').boundingBox())?.y ?? Infinity;
+  expect(await libraryTop()).toBeGreaterThan(400);
   await page.getByTestId('open-library').click();
-  await expect(page.getByTestId('library')).toBeInViewport();
+  await expect.poll(libraryTop).toBeLessThan(100);
 });
 
 test('?screen=library mở trang chủ, cuộn sẵn tới thư viện; "Về thư viện" từ bài luyện cũng vậy', async ({ page }) => {
