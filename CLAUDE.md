@@ -103,9 +103,11 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
 - Chỉ nhận diện **một nốt tại một thời điểm**. Không giả vờ hỗ trợ hợp âm.
   Bài có `accompaniment` (ký hiệu "D3+F3+A3/hd:5+3+1"): phần đệm tay trái vẽ trên khuông Fa cùng lúc với giai điệu,
   micro → app chỉ chấm giai điệu tay phải; nốt thấp hơn giai điệu bị bỏ qua (`isAccompanimentMidi`).
-  Đàn MIDI đã nối (màn Luyện tập, Chờ/Đếm nốt) → chấm cả hai tay: `accompanimentByNote` gán nốt đệm cho nốt giai điệu,
+  Đàn MIDI / bàn phím ảo (micro tắt) → chấm cả hai tay (màn Luyện tập Chờ/Đếm nốt + bài Chờ nốt giáo trình):
+  `accompanimentByNote` gán nốt đệm cho nốt giai điệu (`LeftHandStep`: nốt, ngón, hợp âm đang giữ),
   `PracticeEngine` (`twoHands` + `leftHand`) chờ đủ giai điệu + nốt tay trái của bước (thứ tự bất kỳ, 'partial').
-  Màn Luyện tập hiện thông báo đang chấm một hay hai tay (`HandsNotice`).
+  Chỉ micro (`micOnlyInput`) → chỉ chấm tay phải. Hướng dẫn luôn hiện cả hai tay (`components/HandsGuide`)
+  kèm thông báo đang chấm một hay hai tay.
 - Không tạo MIDI giả. `MIDIInputProvider` dùng Web MIDI thật (bật ở Cài đặt → `midiEnabled`, tự kết nối khi mở app).
   Safari và mọi trình duyệt trên iPad (WebKit) không có Web MIDI → báo "không hỗ trợ", dùng micro. MIDI trên iPad
   chỉ có qua app native (Core MIDI). Khi đàn MIDI đã nối, màn Luyện tập bỏ nốt từ micro (micro nghe chính tiếng đàn đó).

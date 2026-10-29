@@ -54,7 +54,7 @@ export const REST_PITCH = 'R';
 /**
  * Một nốt hoặc hợp âm của phần đệm tay trái, vẽ trên khuông Fa CÙNG LÚC với giai điệu.
  * Micro: app không chấm phần đệm (chỉ nhận một nốt mỗi lúc) — người học đánh kèm, app chấm giai điệu tay phải.
- * Đàn MIDI (màn Luyện tập, chế độ Chờ/Đếm nốt): chấm cả hai tay theo `accompanimentByNote`.
+ * Đàn MIDI / bàn phím ảo (chế độ Chờ/Đếm nốt): chấm cả hai tay theo `accompanimentByNote`.
  */
 export interface AccompanimentNote {
   /** Các nốt của hợp âm, từ thấp lên cao. */
@@ -115,29 +115,54 @@ export function isAccompanimentMidi(lesson: Pick<Lesson, 'notes' | 'accompanimen
   return midi < Math.min(...lesson.notes.filter((n) => !n.rest).map((n) => n.midi));
 }
 
+/** Tay trái ở một bước (một nốt giai điệu) của bài có phần đệm. */
+export interface LeftHandStep {
+  /** Nốt cần đánh ở bước này (thấp → cao); rỗng nếu tay trái không đánh nốt mới. */
+  pitches: string[];
+  midis: number[];
+  fingers: (Finger | undefined)[];
+  /** Bước không đánh nốt mới: nốt/hợp âm tay trái đang giữ (ngân từ bước trước), rỗng nếu tay trái nghỉ. */
+  held: string[];
+}
+
 /**
- * Nốt tay trái cần đánh ứng với từng nốt giai điệu (chấm hai tay qua đàn MIDI): nốt/hợp âm đệm bắt đầu trong
- * khoảng [đầu nốt giai điệu i, đầu nốt i+1) thuộc về nốt i. Hợp âm ngân qua nhiều nốt giai điệu chỉ cần đánh một lần.
+ * Tay trái ứng với từng nốt giai điệu (hướng dẫn hai tay + chấm hai tay): nốt/hợp âm đệm bắt đầu trong
+ * khoảng [đầu nốt giai điệu i, đầu nốt i+1) thuộc về nốt i — hợp âm ngân qua nhiều nốt giai điệu chỉ đánh một lần.
+ * Đệm bắt đầu lúc giai điệu đang ở dấu lặng → gộp vào nốt giai điệu kế tiếp (Wait Mode không chờ dấu lặng).
  * Bài không có phần đệm → `undefined`.
  */
-export function accompanimentByNote(lesson: Pick<Lesson, 'notes' | 'accompaniment'>): number[][] | undefined {
+export function accompanimentByNote(lesson: Pick<Lesson, 'notes' | 'accompaniment'>): LeftHandStep[] | undefined {
   if (!lesson.accompaniment?.length) return undefined;
+  const EPS = 1e-9;
   const starts: number[] = [];
   let t = 0;
   for (const n of lesson.notes) {
     starts.push(t);
     t += DURATION_BEATS[n.duration];
   }
-  const result: number[][] = lesson.notes.map(() => []);
+  const steps: LeftHandStep[] = lesson.notes.map(() => ({ pitches: [], midis: [], fingers: [], held: [] }));
+  const chords: { start: number; end: number; chord: AccompanimentNote }[] = [];
   let at = 0;
-  let i = 0;
-  const EPS = 1e-9;
   for (const chord of lesson.accompaniment) {
+    const end = at + DURATION_BEATS[chord.duration];
+    chords.push({ start: at, end, chord });
+    // Bước đầu tiên bắt đầu sau hợp âm, không phải dấu lặng (hết bài thì lùi về nốt cuối không phải dấu lặng).
+    let i = 0;
     while (i + 1 < starts.length && starts[i + 1] <= at + EPS) i++;
-    result[i].push(...chord.midis);
-    at += DURATION_BEATS[chord.duration];
+    let k = i;
+    while (k < steps.length && lesson.notes[k].rest) k++;
+    if (k >= steps.length) for (k = i; k > 0 && lesson.notes[k].rest; k--);
+    steps[k].pitches.push(...chord.pitches);
+    steps[k].midis.push(...chord.midis);
+    steps[k].fingers.push(...chord.fingers);
+    at = end;
   }
-  return result;
+  steps.forEach((step, i) => {
+    if (step.midis.length > 0) return;
+    const sounding = chords.find((c) => c.start < starts[i] - EPS && c.end > starts[i] + EPS);
+    if (sounding) step.held = [...sounding.chord.pitches];
+  });
+  return steps;
 }
 
 const CIRCLED_DIGITS = ['①', '②', '③', '④', '⑤'];

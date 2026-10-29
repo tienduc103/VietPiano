@@ -12,3 +12,12 @@ export function acceptSource(source: InputSource, setting: InputSourceSetting, m
   // auto: đàn MIDI đã nối thì micro cũng nghe chính tiếng đàn đó → bỏ micro để một phím không thành hai sự kiện.
   return source === 'midi' || !midiConnected;
 }
+
+/**
+ * Nốt chỉ đến từ micro (không có đàn MIDI nhận được): micro chỉ nhận một nốt mỗi lúc → bài có phần đệm chỉ chấm
+ * tay phải. Micro tắt thì người học bấm bàn phím ảo / bàn phím máy tính → chấm được cả hai tay.
+ */
+export function micOnlyInput(setting: InputSourceSetting, micRunning: boolean, midiConnected: boolean): boolean {
+  if (!micRunning) return false;
+  return setting === 'microphone' || (setting === 'auto' && !midiConnected);
+}

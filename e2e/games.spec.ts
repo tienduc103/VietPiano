@@ -285,7 +285,7 @@ test('cấp 4: hoá biểu trên khuông, gọi tên nốt giáng, trò Bắn b�
   await expect(page.getByTestId('game-score')).not.toHaveText('⭐ 0');
 });
 
-test('cấp 5: hai tay cùng lúc — nốt tay trái không bị tính sai, chỉ chấm giai điệu tay phải', async ({ page }) => {
+test('cấp 5: hai tay cùng lúc — hướng dẫn cả hai tay, bàn phím ảo phải đánh đúng cả hai tay mới sang nốt', async ({ page }) => {
   test.setTimeout(90_000);
   await page.goto('/?screen=curriculum');
   await page.getByTestId('level-5').click();
@@ -301,9 +301,10 @@ test('cấp 5: hai tay cùng lúc — nốt tay trái không bị tính sai, ch�
 
   // C D E F | G E | F E D E | C — phím a s d f g (Đô giữa = a).
   const melody = ['a', 's', 'd', 'f', 'g', 'd', 'f', 'd', 's', 'd', 'a'];
-  const playMelody = async () => {
-    for (const k of melody) {
+  const playMelody = async (left: Record<number, number> = {}) => {
+    for (const [i, k] of melody.entries()) {
       await page.keyboard.press(k);
+      if (left[i]) await page.locator(`[data-testid="play-step"] button[data-midi="${left[i]}"]`).click();
       await page.waitForTimeout(160);
     }
   };
@@ -311,14 +312,22 @@ test('cấp 5: hai tay cùng lúc — nốt tay trái không bị tính sai, ch�
   await playMelody();
   await page.getByTestId('exercise-next').click();
 
-  // Hai tay: khuông đôi; bấm nốt tay trái (C3, G3) — không sai, vẫn chờ C4.
+  // Hai tay: khuông đôi; hướng dẫn tay phải C4 ngón 1 + tay trái C3 ngón 5.
+  await expect(page.getByTestId('hands-notice')).toContainText('Chấm cả hai tay');
   await expect(page.getByTestId('expected-note')).toHaveText('C4');
-  for (const m of [48, 55]) {
-    await page.locator(`[data-testid="play-step"] button[data-midi="${m}"]`).click();
-    await page.waitForTimeout(200);
-  }
+  await expect(page.getByTestId('expected-left')).toHaveText('C3');
+  await expect(page.getByTestId('expected-left-finger')).toHaveText('ngón 5');
+  // Chỉ tay trái: chưa sang nốt.
+  await page.locator(`[data-testid="play-step"] button[data-midi="48"]`).click();
   await expect(page.getByTestId('expected-note')).toHaveText('C4');
-  await playMelody();
+  await expect(page.getByTestId('progress-text')).toHaveText('0/11');
+  await page.keyboard.press('a');
+  await expect(page.getByTestId('progress-text')).toHaveText('1/11');
+  await expect(page.getByTestId('expected-left')).toHaveText('giữ C3');
+  await page.waitForTimeout(160);
+  // Phần còn lại: nốt tròn tay trái đầu mỗi ô (E3, G3, C3).
+  melody.shift();
+  await playMelody({ 3: 52, 5: 55, 9: 48 });
   await expect(page.getByTestId('exercise-score')).toHaveText('100/100');
   await expect(page.getByTestId('exercise-verdict')).toHaveText('Đạt');
 });

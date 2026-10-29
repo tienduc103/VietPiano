@@ -170,18 +170,28 @@ describe('thư viện bài học', () => {
   it.each(withAccompaniment.map((l) => [l.id, l] as const))('%s: mọi nốt đệm được gán cho một nốt giai điệu (chấm hai tay)', (_id, lesson) => {
     const left = accompanimentByNote(lesson)!;
     expect(left).toHaveLength(lesson.notes.length);
-    expect(left.flat()).toEqual(lesson.accompaniment!.flatMap((n) => n.midis));
+    expect(left.flatMap((s) => s.midis)).toEqual(lesson.accompaniment!.flatMap((n) => n.midis));
+    left.forEach((s) => expect(s.fingers).toHaveLength(s.midis.length));
   });
 
   it('Romance hai tay: hợp âm giữ cả ô (đoạn A) chỉ đánh ở nốt đầu ô; rải hợp âm (đoạn B) mỗi nốt một nốt đệm', () => {
     const lesson = LESSONS.find((l) => l.id === 'song-romance-2-hands')!;
     const left = accompanimentByNote(lesson)!;
-    const D3 = 50, F3 = 53, A3 = 57;
-    expect(left.slice(0, 4)).toEqual([[D3, F3, A3], [], [], [D3, F3, A3]]);
+    expect(left.slice(0, 4).map((s) => s.pitches)).toEqual([['D3', 'F3', 'A3'], [], [], ['D3', 'F3', 'A3']]);
+    expect(left[0].fingers).toEqual([5, 3, 1]);
+    // Bước không đánh mới: đang giữ hợp âm.
+    expect(left[1]).toMatchObject({ midis: [], held: ['D3', 'F3', 'A3'] });
     // Đoạn B bắt đầu ở ô 17.
     const b = splitMeasures(lesson.notes, measureLength(lesson.timeSignature)).slice(0, 16).reduce((n, m) => n + m.items.length, 0);
-    expect(left.slice(b, b + 3)).toEqual([[D3], [F3], [A3]]);
+    expect(left.slice(b, b + 3).map((s) => s.pitches)).toEqual([['D3'], ['F3'], ['A3']]);
+    expect(left[b + 1].held).toEqual([]);
     expect(accompanimentByNote(LESSONS[0])).toBeUndefined();
+  });
+
+  it('đệm bắt đầu lúc giai điệu nghỉ → gộp vào nốt giai điệu kế tiếp', () => {
+    const lesson = { notes: parseNotes('C4 R D4/h'), accompaniment: parseAccompaniment('C3 G2 E2/h') };
+    const left = accompanimentByNote(lesson)!;
+    expect(left.map((s) => s.pitches)).toEqual([['C3'], [], ['G2', 'E2']]);
   });
 
   it('bài không có phần đệm không lọc nốt nào', () => {

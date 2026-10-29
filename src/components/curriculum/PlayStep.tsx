@@ -6,7 +6,8 @@ import { soundOutput } from '../../core/audio/SoundOutput';
 import { keyboardRange } from '../../core/input/keyMapping';
 import { virtualInput } from '../../core/input/VirtualInputProvider';
 import { midiInput } from '../../core/input/MIDIInputProvider';
-import { isAccompanimentMidi, measureLength, type Hand, type Lesson } from '../../core/lessons/types';
+import { accompanimentByNote, isAccompanimentMidi, measureLength, type Hand, type Lesson } from '../../core/lessons/types';
+import { micOnlyInput } from '../../core/input/sourceFilter';
 import { loudnessDb } from '../../core/music/dynamics';
 import { midiToLabel, midiToName, pitchToLabel } from '../../core/music/notes';
 import { DEFAULT_PRACTICE_CONFIG, PracticeEngine, type NoteResult } from '../../core/practice/PracticeEngine';
@@ -14,8 +15,10 @@ import { DEFAULT_PERFORMANCE_CONFIG, PerformanceTracker } from '../../core/pract
 import { TEMPO_PERCENT_MAX, TEMPO_PERCENT_MIN } from '../../core/settings/DeviceSettings';
 import { useNoteInput } from '../../hooks/useNoteInput';
 import { useMic } from '../../store/micStore';
+import { useMidi } from '../../store/midiStore';
 import { useSettings } from '../../store/settingsStore';
 import { PianoKeyboard } from '../PianoKeyboard';
+import { HandsGuide } from '../HandsGuide';
 import { ScoreView } from '../ScoreView';
 import { Button, Icon, Segmented, Toggle } from '../ui';
 import { Feedback, ListenButton, StepTitle } from './common';
@@ -211,8 +214,19 @@ function WaitRunner({ exercise, lesson, timeline, hand, mode, scored, loop, onSc
   const micLive = useMic((s) => s.live);
   // Dấu lặng và nốt của tay không luyện không phải chờ.
   const playable = useMemo(() => timeline.filter((n) => n.midiNote !== null && (!hand || n.hand === hand)), [timeline, hand]);
-  const engine = useMemo(() => new PracticeEngine(playable.map((n) => n.midiNote!), { ...DEFAULT_PRACTICE_CONFIG }), [playable]);
-  useEffect(() => engine.setConfig({ octaveTolerant: settings.octaveTolerant }), [engine, settings.octaveTolerant]);
+  // Bài có phần đệm, luyện hai tay: tay trái ứng với từng nốt giai điệu (luyện riêng tay phải thì không có).
+  const leftSteps = useMemo(() => {
+    const steps = hand ? undefined : accompanimentByNote(lesson);
+    return steps && playable.map((n) => steps[n.index]);
+  }, [lesson, hand, playable]);
+  const engine = useMemo(() => new PracticeEngine(playable.map((n) => n.midiNote!), { ...DEFAULT_PRACTICE_CONFIG }, leftSteps?.map((s) => s.midis)), [playable, leftSteps]);
+  // Đàn MIDI / bàn phím ảo → chấm cả hai tay; chỉ có micro (một nốt mỗi lúc) → chỉ tay phải.
+  const midiConnected = useMidi((s) => s.status === 'ready' && s.devices.length > 0);
+  const micRunning = useMic((s) => s.status === 'running');
+  const twoHands = !!leftSteps && !micOnlyInput(settings.inputSource, micRunning, midiConnected);
+  const twoHandsRef = useRef(twoHands);
+  twoHandsRef.current = twoHands;
+  useEffect(() => engine.setConfig({ octaveTolerant: settings.octaveTolerant, twoHands }), [engine, settings.octaveTolerant, twoHands]);
   const state = useSyncExternalStore(
     (cb) => engine.subscribe(cb),
     () => engine.getState(),
@@ -222,8 +236,8 @@ function WaitRunner({ exercise, lesson, timeline, hand, mode, scored, loop, onSc
   useNoteInput(
     {
       onNote: (e) => {
-        // Bài có phần đệm: nốt tay trái đánh kèm không bị tính là sai.
-        if (isAccompanimentMidi(lesson, e.midi)) return;
+        // Bài có phần đệm, chỉ chấm tay phải: nốt tay trái đánh kèm không bị tính là sai.
+        if (!twoHandsRef.current && isAccompanimentMidi(lesson, e.midi)) return;
         const target = playable[engine.getState().index];
         const outcome = engine.handleNote(e.midi, e.time);
         if (outcome === 'wrong' && target) mistakes.current.push(wrongNoteKey(target.pitch, midiToName(e.midi)));
@@ -265,18 +279,43 @@ function WaitRunner({ exercise, lesson, timeline, hand, mode, scored, loop, onSc
   const range = useKeyboardRange(timeline, lesson);
   const flash = flashOn && state.lastPlayedMidi !== null && (state.status === 'correct' || state.status === 'wrong') ? { midi: state.lastPlayedMidi, kind: state.status } : null;
   const done = state.results.filter((r) => r !== 'pending').length;
+  const leftStep = finished ? undefined : leftSteps?.[state.index];
+  const leftKeys = useMemo(() => new Set(twoHands ? state.pendingLeft : (leftStep?.midis ?? [])), [twoHands, state.pendingLeft, leftStep]);
 
   return (
     <div className="grid gap-3" data-testid="wait-runner">
+      {leftSteps && (
+        <p
+          className={`rounded-xl px-4 py-2 text-sm ${twoHands ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}
+          data-testid="hands-notice"
+          role="note"
+        >
+          {twoHands
+            ? 'Chấm cả hai tay: đánh đúng nốt tay phải và đủ nốt tay trái (phím tô vàng) thì mới sang nốt tiếp.'
+            : 'Micro chỉ nhận một nốt mỗi lúc nên chỉ chấm tay phải; tay trái cứ đánh theo hướng dẫn. Muốn chấm cả hai tay: nối đàn MIDI hoặc tắt micro và dùng bàn phím ảo.'}
+        </p>
+      )}
       <ScoreBox lesson={lesson} index={current?.index ?? 0} results={results} finished={finished} wrongPulse={state.wrong} />
       <div className="flex flex-wrap items-center gap-4">
-        <div className="text-center" data-testid="expected">
-          <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Cần đánh</div>
-          <div className="text-4xl font-bold text-fuchsia-600 dark:text-fuchsia-300" data-testid="expected-note">
-            {expected !== null && current ? pitchToLabel(current.pitch, settings.labelStyle) : '—'}
+        {leftStep && current ? (
+          <HandsGuide
+            rightPitch={current.pitch}
+            rightFinger={current.finger}
+            left={leftStep}
+            pendingLeft={state.pendingLeft}
+            melodyDone={state.melodyDone}
+            grading={twoHands}
+            labelStyle={settings.labelStyle}
+          />
+        ) : (
+          <div className="text-center" data-testid="expected">
+            <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Cần đánh</div>
+            <div className="text-4xl font-bold text-fuchsia-600 dark:text-fuchsia-300" data-testid="expected-note">
+              {expected !== null && current ? pitchToLabel(current.pitch, settings.labelStyle) : '—'}
+            </div>
           </div>
-        </div>
-        {current?.finger && !finished && (
+        )}
+        {current?.finger && !finished && !leftStep && (
           <div className="text-center">
             <div className="text-xs text-slate-500 dark:text-slate-400">{current.hand === 'left' ? 'Tay trái' : 'Tay phải'}</div>
             <div className="text-3xl font-bold text-orange-500 dark:text-orange-300">ngón {current.finger}</div>
@@ -314,8 +353,9 @@ function WaitRunner({ exercise, lesson, timeline, hand, mode, scored, loop, onSc
           <PianoKeyboard
             from={range.from}
             to={range.to}
-            expected={expected}
+            expected={state.melodyDone ? null : expected}
             expectedFinger={current?.finger}
+            highlighted={leftKeys}
             detected={micLive?.midi ?? null}
             flash={flash}
             labelStyle={settings.labelStyle}

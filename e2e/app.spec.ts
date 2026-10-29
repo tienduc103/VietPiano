@@ -500,21 +500,37 @@ test('đàn MIDI: bật trong Cài đặt, thấy tên đàn, nốt từ đàn c
   await expect(page.getByTestId('midi-badge')).toHaveText('MIDI: Test Piano');
 });
 
-test('Romance hai tay: micro chỉ chấm tay phải, đàn MIDI chấm cả hai tay', async ({ page }) => {
+test('Romance hai tay: hướng dẫn cả hai tay; bàn phím ảo / đàn MIDI chấm cả hai tay, micro chỉ tay phải', async ({ page }) => {
   await fakeMidi(page);
   await openLesson(page, 'song-romance-2-hands');
+  // Micro tắt → bàn phím ảo chấm cả hai tay; hướng dẫn tay phải A4 ngón 5, tay trái Rê thứ ngón 5·3·1.
+  await expect(page.getByTestId('hands-notice')).toContainText('Bàn phím ảo: chấm cả hai tay');
+  await expect(page.getByTestId('expected-note')).toHaveText('A4');
+  await expect(page.getByTestId('expected-finger')).toHaveText('ngón 5');
+  await expect(page.getByTestId('expected-left')).toHaveText('D3F3A3');
+  await expect(page.getByTestId('expected-left-finger')).toHaveText('ngón 5·3·1');
+  await page.locator('[data-midi="69"]').click();
+  await expect(page.getByTestId('progress-text')).toHaveText('0/92');
+  for (const m of [50, 53, 57]) await page.locator(`[data-midi="${m}"]`).click();
+  await expect(page.getByTestId('progress-text')).toHaveText('1/92');
+  // Bước 2: tay trái giữ hợp âm.
+  await expect(page.getByTestId('expected-left')).toHaveText('giữ D3 F3 A3');
+
+  // Bật micro (không có đàn MIDI) → chỉ chấm tay phải.
+  await page.getByTestId('mic-button').click();
   await expect(page.getByTestId('hands-notice')).toContainText('chỉ chấm giai điệu tay phải');
+  await page.getByTestId('mic-button').click();
 
   await page.goto('/?screen=library');
   await page.getByRole('button', { name: 'Cài đặt' }).click();
   await page.getByRole('switch', { name: /Dùng đàn MIDI/ }).click();
   await expect(page.getByTestId('midi-status')).toContainText('Đã kết nối: Test Piano');
   await openLesson(page, 'song-romance-2-hands');
-  await expect(page.getByTestId('hands-notice')).toContainText('chấm cả hai tay');
+  await expect(page.getByTestId('hands-notice')).toContainText('Đàn MIDI: chấm cả hai tay');
 
   // Nốt đầu: A4 kèm hợp âm Rê thứ (D3 F3 A3) — đúng tay phải chưa đủ để chuyển nốt.
   await midiNote(page, 69);
-  await expect(page.getByTestId('expected-left')).toContainText('D3 F3 A3');
+  await expect(page.getByTestId('hands-guide')).toContainText('Tay phải ✓');
   await expect(page.getByTestId('progress-text')).toHaveText('0/92');
   for (const m of [50, 53, 57]) await midiNote(page, m);
   await expect(page.getByTestId('progress-text')).toHaveText('1/92');
