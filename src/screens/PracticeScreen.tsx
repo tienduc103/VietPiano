@@ -451,7 +451,7 @@ function StatusPanel({
     <div className="flex items-center gap-3" data-testid="status">
       <div
         key={`${state.status}-${state.lastEventTime}`}
-        className={`min-w-36 rounded-xl px-4 py-2 text-center ${tone} ${showFeedback ? (state.status === 'wrong' ? 'animate-shake' : 'animate-pop') : ''}`}
+        className={`flex min-h-16 min-w-36 flex-col justify-center rounded-xl px-4 py-2 text-center ${tone} ${showFeedback ? (state.status === 'wrong' ? 'animate-shake' : 'animate-pop') : ''}`}
         role="status"
         aria-live="polite"
       >

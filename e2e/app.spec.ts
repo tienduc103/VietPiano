@@ -725,3 +725,18 @@ test('cấp 2: có 20 buổi, nhịp 3/4 đếm vào 3 phách', async ({ page })
   await expect(page.getByTestId('count-in')).toBeVisible();
   await expect(page.getByTestId('beat-indicator').locator('span')).toHaveCount(3, { timeout: 6000 });
 });
+
+test('Romance hai tay: khuông nhạc đứng yên theo chiều dọc khi chuyển nốt (không phóng to – thu nhỏ, không nhảy)', async ({ page }) => {
+  await openLesson(page, 'song-romance-2-hands');
+  const box = () => page.locator('[data-testid="score"] svg').evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return `${Math.round(r.top)},${Math.round(r.height)}`;
+  });
+  const first = await box();
+  // Có bước tay trái "giữ" hợp âm, bước không ghi ngón, và nốt sai (ô trạng thái thêm dòng "bạn đánh …").
+  for (let i = 0; i < 14; i++) {
+    await page.keyboard.press(i % 4 === 0 ? 'z' : 'ArrowRight');
+    await page.waitForTimeout(120);
+    expect(await box()).toBe(first);
+  }
+});

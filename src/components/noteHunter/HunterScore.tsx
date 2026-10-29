@@ -4,6 +4,7 @@ import { cursorX, noteIndexAt } from '../../core/noteHunter/cursor';
 import type { TargetResult } from '../../core/noteHunter/NoteHunterGame';
 import type { HunterSong } from '../../core/noteHunter/songs';
 import { renderScore, scoreFontsReady, SCORE_HEIGHT, type RenderedScore } from '../../core/score/ScoreRenderer';
+import { fitScore, type ScoreFit } from '../../core/score/scoreFit';
 
 export interface HunterScoreHandle {
   /** Gọi mỗi khung hình: di con trỏ phát + tự cuộn (thao tác DOM trực tiếp, không render React). */
@@ -22,9 +23,10 @@ interface Props {
 }
 
 /** Con trỏ đứng ở chừng này bề ngang vùng nhìn (đọc trước được phần còn lại). */
-// Phóng tối đa 1.6 (ScoreView 2.4): cột phải chỉ rộng nửa màn hình — cần thấy đủ nốt phía trước để đọc trước.
 const FOCUS_RATIO = 0.3;
 const PLAYHEAD_WIDTH = 4;
+// Phóng tối đa 1.6 (ScoreView 2.4): cột phải chỉ rộng nửa màn hình — cần thấy đủ nốt phía trước để đọc trước.
+const FIT = { minScale: 0.8, maxScale: 1.6, fallbackScale: 1.4 };
 
 /**
  * Khuông nhạc một dòng của bài Săn nốt: vẽ một lần (ScoreRenderer, cùng dữ liệu nốt với trình phát + logic game),
@@ -36,6 +38,7 @@ export function HunterScore({ song, targets, upcoming, leadInBeats, showNames, l
   const hostRef = useRef<HTMLDivElement>(null);
   const renderedRef = useRef<RenderedScore | null>(null);
   const sizeRef = useRef({ w: 0, h: 0 });
+  const fitRef = useRef<ScoreFit | null>(null);
   const lastRef = useRef({ beat: -Infinity, waiting: false, playing: -2 });
   const [ready, setReady] = useState(false);
   const [layout, setLayout] = useState(0);
@@ -107,12 +110,15 @@ export function HunterScore({ song, targets, upcoming, leadInBeats, showNames, l
     }
     const { w, h } = sizeRef.current;
     const height = r.height || SCORE_HEIGHT;
-    const scale = h > 0 ? Math.max(0.8, Math.min(1.6, h / height)) : 1.4;
+    // Vùng nhìn co giãn chút ít → giữ nguyên tỉ lệ + vị trí (khuông không nhảy lên xuống).
+    const fit = (fitRef.current = fitScore(fitRef.current, h, height, FIT));
+    const scale = fit.scale;
     const contentWidth = r.width * scale;
     const offset = Math.min(Math.max(0, contentWidth - w), Math.max(0, x * scale - w * FOCUS_RATIO));
     inner.style.width = `${contentWidth}px`;
     inner.style.height = `${height * scale}px`;
-    inner.style.transform = `translate(${-offset}px, -50%)`;
+    inner.style.top = `${fit.top}px`;
+    inner.style.transform = `translateX(${-offset}px)`;
     lastRef.current = { beat, waiting, playing };
   };
 
@@ -127,7 +133,7 @@ export function HunterScore({ song, targets, upcoming, leadInBeats, showNames, l
   return (
     <div ref={viewportRef} className="hunter-score relative h-full w-full overflow-hidden" aria-label={`Khuông nhạc bài ${song.title}`} data-testid="hunter-score">
       {!ready && <div className="absolute inset-0 grid place-items-center text-slate-400">Đang tải khuông nhạc…</div>}
-      <div ref={innerRef} className="absolute top-1/2 left-0" style={{ transform: 'translate(0, -50%)' }}>
+      <div ref={innerRef} className="absolute top-0 left-0">
         <div ref={hostRef} className="h-full w-full [&>svg]:h-full [&>svg]:w-full" />
       </div>
     </div>

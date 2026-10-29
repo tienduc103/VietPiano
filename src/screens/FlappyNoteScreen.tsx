@@ -44,6 +44,8 @@ const DIFFICULTY_HELP: Record<FlappyDifficulty, string> = {
 };
 
 const starsText = (r: GameRecord | undefined) => (r && r.plays > 0 ? `${'★'.repeat(r.bestStars)}${'☆'.repeat(3 - r.bestStars)} · kỷ lục ${r.bestScore}` : 'Chưa chơi');
+/** Thẻ khuông của dải nốt: bỏ số chỉ nhịp cho thật gọn. */
+const STRIP_STAFF = { timeSignature: false };
 
 /**
  * Flappy Note: chú chim nốt nhạc bay qua các ống — mỗi nốt đánh ĐÚNG là một lần vỗ cánh.
@@ -269,6 +271,9 @@ function FlappyPlay({
     return level.notes.flatMap((n) => durations.map((d) => ({ key: staffCardKey({ ...n, duration: d }), notation: `${n.pitch}/${d ?? 'w'}`, clef: n.clef })));
   }, [level, notes, withDurations, game.config.durations]);
   const svgs = useStaffCards(cards);
+  // Dải nốt giữa màn: khuông thật ngắn — chỉ khoá nhạc + nốt (không số chỉ nhịp) để tập đọc nốt.
+  const stripCards = useMemo(() => (withDurations ? cards : []), [cards, withDurations]);
+  const stripSvgs = useStaffCards(stripCards, undefined, STRIP_STAFF);
 
   const keyboard = useMemo(() => keyboardFor(level.notes.map((n) => n.midi)), [level]);
   const keyHints = useMemo(() => keyHintsFor(chooseBaseC([keyboard.from])), [keyboard]);
@@ -409,7 +414,7 @@ function FlappyPlay({
 
       <div className="relative min-h-48 flex-1 overflow-hidden rounded-3xl ring-1 ring-sky-200 dark:ring-slate-700">
         <FlappyCanvas game={game} />
-        {withDurations && <NoteStrip notes={[state.target, ...state.upcoming]} svgs={svgs} labelStyle={labelStyle} showName={settings.showName} />}
+        {withDurations && <NoteStrip notes={[state.target, ...state.upcoming]} svgs={stripSvgs} />}
         {state.status === 'ready' && (
           <Overlay testId="flappy-ready">
             <p className="text-2xl font-extrabold">Đánh nốt {settings.showName ? targetLabel : 'trên khuông'} để cất cánh! 🐤</p>

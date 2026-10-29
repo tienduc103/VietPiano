@@ -82,6 +82,8 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              (không re-render React); khu hướng dẫn `NoteGuide` (khuông vẽ sẵn, tên nốt, `HandFigure`, 3 nốt tiếp).
                              Kỷ lục theo hồ sơ + màn × độ khó, tổng sao → danh hiệu (`storage.ts`, localStorage)
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt
+  score/scoreFit.ts        tỉ lệ + vị trí dọc của khuông một dòng (ScoreView, Săn nốt): vùng nhìn co giãn ít (≤ 8%) theo từng nốt
+                             → giữ nguyên, khuông không nhảy lên xuống; ô hướng dẫn dưới khuông cũng phải cao cố định
   storage/ProgressStorage.ts  IndexedDB (phiên + tổng hợp theo bài), fallback bộ nhớ; bài gần đây ở localStorage
   storage/CurriculumStorage.ts  IndexedDB riêng "vietpiano-curriculum": tiến độ giáo trình theo hồ sơ, ghi ngay sau mỗi bài tập
   audio/SoundOutput.ts     tiếng đàn mẫu + click metronome (WebAudio tổng hợp, offline); micro bỏ nốt trong lúc phát mẫu

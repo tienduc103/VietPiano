@@ -28,6 +28,8 @@ import { pitchToLabel, type NoteLabelStyle } from '../music/notes';
 export interface ScoreRenderOptions {
   showNames: boolean;
   labelStyle: NoteLabelStyle;
+  /** Vẽ số chỉ nhịp ở đầu khuông (mặc định có). Thẻ nốt lẻ của trò chơi bỏ đi cho gọn. */
+  timeSignature?: boolean;
 }
 
 export interface RenderedScore {
@@ -330,7 +332,7 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     const first = mi === 0;
     const accItems = accMeasures?.[mi]?.items;
     const noteArea = naturalNoteArea(measure.items, accItems);
-    const { staves, headerWidth } = createMeasureStaves(lesson, x, ys, noteArea, { clef: first, time: first }, mi === measures.length - 1);
+    const { staves, headerWidth } = createMeasureStaves(lesson, x, ys, noteArea, { clef: first, time: first && opts.timeSignature !== false }, mi === measures.length - 1);
     const { staves: notes, played, accompaniment } = createMeasureNotes(lesson, measure.items, !(first && lesson.pickup), accItems);
     const { voices, beams } = formatMeasure(lesson, staves, notes, noteArea);
     built.push({ staves, voices, played, beams, accompaniment });

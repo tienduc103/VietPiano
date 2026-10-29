@@ -33,7 +33,11 @@ export function useStaffSvgs(notes: readonly number[], clef: Clef, nameOf: (midi
  * Vẽ sẵn mỗi thẻ một khuông nhỏ (SVG) từ ký hiệu gọn (vd "E4/h" — có trường độ) — một lần cho cả ván.
  * `cards` phải ổn định (useMemo); khoá tuỳ ý.
  */
-export function useStaffCards<K>(cards: readonly { key: K; notation: string; clef: Clef }[], keySignature?: KeySignature): Map<K, string> | null {
+export function useStaffCards<K>(
+  cards: readonly { key: K; notation: string; clef: Clef }[],
+  keySignature?: KeySignature,
+  { timeSignature = true }: { timeSignature?: boolean } = {},
+): Map<K, string> | null {
   const [svgs, setSvgs] = useState<Map<K, string> | null>(null);
   useEffect(() => {
     let alive = true;
@@ -46,7 +50,7 @@ export function useStaffCards<K>(cards: readonly { key: K; notation: string; cle
       try {
         cards.forEach((c, i) => {
           const lesson = pieceToLesson({ notation: c.notation, clef: c.clef, hand: c.clef === 'bass' ? 'left' : 'right', bpm: 60, timeSignature: [4, 4], keySignature }, `shoot-${i}`);
-          const r = renderScore(host, lesson, { showNames: false, labelStyle: 'letter' });
+          const r = renderScore(host, lesson, { showNames: false, labelStyle: 'letter', timeSignature });
           const svg = host.querySelector('svg');
           if (!svg) return;
           r.cursor.remove(); // con trỏ nốt hiện tại
@@ -69,7 +73,7 @@ export function useStaffCards<K>(cards: readonly { key: K; notation: string; cle
     return () => {
       alive = false;
     };
-  }, [cards, keySignature]);
+  }, [cards, keySignature, timeSignature]);
   return svgs;
 }
 

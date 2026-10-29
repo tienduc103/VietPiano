@@ -3,6 +3,7 @@ import { renderScore, scoreFontsReady, SCORE_HEIGHT, type RenderedScore } from '
 import type { Lesson } from '../core/lessons/types';
 import type { NoteResult, PracticeStatus } from '../core/practice/PracticeEngine';
 import type { NoteLabelStyle } from '../core/music/notes';
+import { fitScore, type ScoreFit } from '../core/score/scoreFit';
 
 interface Props {
   lesson: Lesson;
@@ -17,11 +18,16 @@ interface Props {
 
 /** Vị trí nốt hiện tại trên màn hình (tỉ lệ chiều rộng). */
 const FOCUS_RATIO = 0.3;
+// Phóng to theo chiều cao vùng hiển thị để đọc được từ giá nhạc.
+// Tối đa 2.4: khoảng dòng kẻ ~4 mm trên iPad, vẫn thấy đủ nốt phía trước để đọc trước.
+// Tối thiểu 0.8: khuông đôi có phần đệm + chữ đánh dấu đoạn thu nhỏ một chút thay vì bị cắt mất hàng tên nốt.
+const FIT = { minScale: 0.8, maxScale: 2.4, fallbackScale: 1.6 };
 
 export function ScoreView({ lesson, index, results, status, wrongPulse, showNames, labelStyle }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const svgHostRef = useRef<HTMLDivElement>(null);
   const renderedRef = useRef<RenderedScore | null>(null);
+  const fitRef = useRef<ScoreFit | null>(null);
   const [ready, setReady] = useState(false);
   const [layoutVersion, setLayoutVersion] = useState(0);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -85,11 +91,10 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
   }, [wrongPulse]);
 
   const r = renderedRef.current;
-  // Phóng to theo chiều cao vùng hiển thị để đọc được từ giá nhạc.
-  // Tối đa 2.4: khoảng dòng kẻ ~4 mm trên iPad, vẫn thấy đủ nốt phía trước để đọc trước.
-  // Tối thiểu 0.8: khuông đôi có phần đệm + chữ đánh dấu đoạn thu nhỏ một chút thay vì bị cắt mất hàng tên nốt.
   const height = r?.height ?? SCORE_HEIGHT;
-  const scale = size.h > 0 ? Math.max(0.8, Math.min(2.4, size.h / height)) : 1.6;
+  // Giữ cố định tỉ lệ + vị trí khi vùng nhìn chỉ co giãn chút ít theo từng nốt (khuông không nhảy lên xuống).
+  const fit = (fitRef.current = fitScore(fitRef.current, size.h, height, FIT));
+  const scale = fit.scale;
   const contentWidth = (r?.width ?? 0) * scale;
   const focusX = (r?.noteCenters[index] ?? 0) * scale;
   const maxOffset = Math.max(0, contentWidth - size.w);
@@ -104,11 +109,12 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
     >
       {!ready && <div className="absolute inset-0 grid place-items-center text-slate-400">Đang tải khuông nhạc…</div>}
       <div
-        className="absolute top-1/2 left-0"
+        className="absolute left-0"
         style={{
+          top: fit.top,
           width: contentWidth,
           height: height * scale,
-          transform: `translate(${-offset}px, -50%)`,
+          transform: `translateX(${-offset}px)`,
           transition: 'transform 350ms cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       >
