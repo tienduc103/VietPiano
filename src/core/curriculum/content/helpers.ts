@@ -11,6 +11,21 @@ export const NO_DURATION_MIC = 'Với micro, app không biết lúc bạn nhả 
 export const rh = (notation: string, bpm = 60, title?: string): Piece => ({ notation, clef: 'treble', hand: 'right', bpm, title, source: SOURCE });
 export const lh = (notation: string, bpm = 60, title?: string): Piece => ({ notation, clef: 'bass', hand: 'left', bpm, title, source: SOURCE });
 export const both = (notation: string, bpm = 60, title?: string): Piece => ({ notation, clef: 'grand', hand: 'both', bpm, title, source: SOURCE });
+/**
+ * Giai điệu tay phải + phần đệm tay trái đánh cùng lúc (khuông đôi). App chỉ chấm giai điệu; nốt đệm phải thấp hơn
+ * mọi nốt giai điệu (kiểm tra trong `validate.ts`).
+ */
+export const withLh = (melody: string, accompaniment: string, bpm = 60, title?: string): Piece => ({
+  notation: melody,
+  accompaniment,
+  clef: 'grand',
+  hand: 'right',
+  bpm,
+  title,
+  source: SOURCE,
+});
+export const ONLY_MELODY_SCORED =
+  'Hai tay cùng lúc: app chỉ chấm giai điệu tay phải — tay trái đánh kèm theo khuông Fa và không bị tính sai. Micro chỉ nhận một nốt mỗi lúc nên có thể bỏ sót nốt tay phải nếu tay trái đánh quá mạnh: đánh tay trái nhẹ hơn.';
 /** Bản nhạc có hoá biểu (vd "G" Sol trưởng, "F" Fa trưởng). */
 export const inKey = (piece: Piece, keySignature: NonNullable<Piece['keySignature']>): Piece => ({ ...piece, keySignature });
 /** Bản nhạc nhịp 3/4. */

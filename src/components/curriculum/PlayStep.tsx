@@ -6,7 +6,7 @@ import { soundOutput } from '../../core/audio/SoundOutput';
 import { keyboardRange } from '../../core/input/keyMapping';
 import { virtualInput } from '../../core/input/VirtualInputProvider';
 import { midiInput } from '../../core/input/MIDIInputProvider';
-import { measureLength, type Hand, type Lesson } from '../../core/lessons/types';
+import { isAccompanimentMidi, measureLength, type Hand, type Lesson } from '../../core/lessons/types';
 import { midiToLabel, midiToName, pitchToLabel } from '../../core/music/notes';
 import { DEFAULT_PRACTICE_CONFIG, PracticeEngine, type NoteResult } from '../../core/practice/PracticeEngine';
 import { DEFAULT_PERFORMANCE_CONFIG, PerformanceTracker } from '../../core/practice/PerformanceTracker';
@@ -170,8 +170,12 @@ interface RunnerProps {
   onRestart: () => void;
 }
 
-function useKeyboardRange(timeline: TimelineNote[]) {
-  return useMemo(() => keyboardRange(timeline.filter((n) => n.midiNote !== null).map((n) => n.midiNote!)), [timeline]);
+/** Bàn phím ảo phủ cả nốt đệm tay trái (bài hai tay cùng lúc) để người không có đàn vẫn thử được hai tay. */
+function useKeyboardRange(timeline: TimelineNote[], lesson: Lesson) {
+  return useMemo(
+    () => keyboardRange([...timeline.filter((n) => n.midiNote !== null).map((n) => n.midiNote!), ...(lesson.accompaniment ?? []).flatMap((c) => c.midis)]),
+    [timeline, lesson],
+  );
 }
 
 function ScoreBox({ lesson, index, results, finished, wrongPulse }: { lesson: Lesson; index: number; results: readonly NoteResult[]; finished: boolean; wrongPulse: number }) {
@@ -216,6 +220,8 @@ function WaitRunner({ exercise, lesson, timeline, hand, mode, scored, loop, onSc
   useNoteInput(
     {
       onNote: (e) => {
+        // Bài có phần đệm: nốt tay trái đánh kèm không bị tính là sai.
+        if (isAccompanimentMidi(lesson, e.midi)) return;
         const target = playable[engine.getState().index];
         const outcome = engine.handleNote(e.midi, e.time);
         if (outcome === 'wrong' && target) mistakes.current.push(wrongNoteKey(target.pitch, midiToName(e.midi)));
@@ -254,7 +260,7 @@ function WaitRunner({ exercise, lesson, timeline, hand, mode, scored, loop, onSc
   }, [timeline, playable, state.results]);
   const current = playable[state.index];
   const expected = finished ? null : (current?.midiNote ?? null);
-  const range = useKeyboardRange(timeline);
+  const range = useKeyboardRange(timeline, lesson);
   const flash = flashOn && state.lastPlayedMidi !== null && (state.status === 'correct' || state.status === 'wrong') ? { midi: state.lastPlayedMidi, kind: state.status } : null;
   const done = state.results.filter((r) => r !== 'pending').length;
 
@@ -384,8 +390,14 @@ function TimedRunner({ exercise, lesson, timeline, hand, kind, bpm, mode, scored
   const playable = timeline.filter((n) => n.midiNote !== null);
   useNoteInput(
     {
-      onNote: (e) => tracker.handleNoteOn(e.midi, e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time),
-      onNoteOff: (e) => tracker.handleNoteOff(e.midi, e.time),
+      onNote: (e) => {
+        // Bài có phần đệm: nốt tay trái đánh kèm không bị tính là thừa.
+        if (isAccompanimentMidi(lesson, e.midi)) return;
+        tracker.handleNoteOn(e.midi, e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time);
+      },
+      onNoteOff: (e) => {
+        if (!isAccompanimentMidi(lesson, e.midi)) tracker.handleNoteOff(e.midi, e.time);
+      },
     },
     settings.inputSource,
     { baseMidi: playable[0]?.midiNote ?? 60 },
@@ -421,7 +433,7 @@ function TimedRunner({ exercise, lesson, timeline, hand, kind, bpm, mode, scored
 
   const current = timeline[state.index];
   const expected = running && current?.midiNote !== null && (!hand || current?.hand === hand) ? (current?.midiNote ?? null) : null;
-  const range = useKeyboardRange(timeline);
+  const range = useKeyboardRange(timeline, lesson);
   const beatInMeasure = state.beat >= 0 ? Math.floor(state.beat) % beatsPerMeasure : null;
   const hits = state.results.filter((r) => r === 'correct').length;
   const flash = state.lastOutcome === 'hit' || state.lastOutcome === 'wrong' ? state.lastOutcome : null;

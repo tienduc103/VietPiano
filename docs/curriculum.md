@@ -46,8 +46,14 @@ và mọi bài tập bắt buộc (`required`, mặc định true) đạt `pass`
 | 2 — Mở rộng tầm tay | Thế tay Sol, A4–D5, đổi thế tay | Khoá Fa tới B3, tay trái thế Sol G2–D3 | Nhịp 3/4, trắng chấm dôi, lặng trắng | Bước liền/nhảy quãng, quãng 5–8, bài valse, bài hai tay |
 | 3 — Móc đơn và chấm dôi | Móc đơn ("1 và"), lặng móc đơn | Đen chấm dôi (4/4 và 3/4), tay trái móc đơn | Đảo phách móc đơn – đen – móc đơn, nửa sau phách | Gam Đô trưởng luồn ngón hai tay, bài 8 ô, bài hai tay 3/4 |
 | 4 — Dấu thăng, dấu giáng | Dấu thăng, nửa cung / một cung, hoá biểu Sol trưởng | Dấu giáng, dấu hoàn, hoá biểu Fa trưởng, tay trái thế Fa | Gam Sol trưởng, tay trái thế Rê, bài và hai tay Sol trưởng | Gam Fa trưởng, bài 3/4 và hai tay Fa trưởng, phân biệt giọng |
+| 5 — Hai tay cùng lúc | Nốt trầm giữ / đổi nửa ô, quãng 5 tay trái | Hợp âm Đô, Fa, Sol thế gần, đổi hợp âm | Tay trái nốt đen, đệm valse, hợp âm rải | Hai tay giọng Sol / Fa trưởng, bài móc đơn trên hợp âm rải, valse |
 
-Cấp 5–6 là khung "sắp có" (`comingSoon` trong `curriculum.ts`).
+Cấp 6 là khung "sắp có" (`comingSoon` trong `curriculum.ts`).
+
+Cấp 5 — hai tay CÙNG LÚC: `Piece.accompaniment` (helper `withLh(melody, lh)`, khuông đôi, giai điệu `hand: 'right'`).
+App chỉ chấm giai điệu tay phải; `PlayStep` bỏ qua nốt thấp hơn giai điệu (`isAccompanimentMidi`) ở cả Wait Mode và
+Biểu diễn, "Nghe mẫu" phát cả hai tay, bàn phím ảo phủ cả nốt đệm. `validate.ts` bắt phần đệm thiếu phách, lệch số ô,
+hoặc có nốt KHÔNG thấp hơn giai điệu (nốt đó sẽ bị chấm sai). Mỗi buổi ghi chú `ONLY_MELODY_SCORED`.
 
 Cấp 4 — hoá biểu: `Piece.keySignature` / `NoteReadingExercise.keySignature` (helper `inKey(piece, 'G')`). Ký hiệu
 vẫn ghi đủ dấu hoá ("F#4", "Bb4"); khuông nhạc tự bỏ dấu đã có trong hoá biểu và tự thêm dấu hoàn. Test

@@ -1,5 +1,5 @@
 /**
- * Giáo trình VietPiano: 6 cấp độ. Cấp 1–4 đã có nội dung; cấp 5–6 mới là khung (availability 'coming-soon')
+ * Giáo trình VietPiano: 6 cấp độ. Cấp 1–5 đã có nội dung; cấp 6 mới là khung (availability 'coming-soon')
  * để Curriculum Browser hiện đủ lộ trình. Thêm cấp mới: tạo `levelN.ts` (tuần + buổi) rồi gắn vào đây.
  */
 import type { Curriculum, Level } from '../types';
@@ -7,6 +7,7 @@ import { LEVEL1_LESSONS, LEVEL1_WEEKS } from './level1';
 import { LEVEL2_LESSONS, LEVEL2_WEEKS } from './level2';
 import { LEVEL3_LESSONS, LEVEL3_WEEKS } from './level3';
 import { LEVEL4_LESSONS, LEVEL4_WEEKS } from './level4';
+import { LEVEL5_LESSONS, LEVEL5_WEEKS } from './level5';
 
 const comingSoon = (number: number, title: string, description: string): Level => ({
   levelId: `level-${number}`,
@@ -59,7 +60,15 @@ export const CURRICULUM: Curriculum = {
       weeks: LEVEL4_WEEKS,
       lessons: LEVEL4_LESSONS,
     },
-    comingSoon(5, 'Cấp 5 — Hai tay cùng lúc', 'Giai điệu tay phải với nốt trầm tay trái, phối hợp hai tay.'),
+    {
+      levelId: 'level-5',
+      number: 5,
+      title: 'Cấp 5 — Hai tay cùng lúc',
+      description: 'Giai điệu tay phải với nốt trầm, hợp âm Đô – Fa – Sol, đệm valse và hợp âm rải tay trái; hai tay giọng Sol trưởng, Fa trưởng. App chấm giai điệu tay phải. 4 tuần, 20 buổi.',
+      availability: 'available',
+      weeks: LEVEL5_WEEKS,
+      lessons: LEVEL5_LESSONS,
+    },
     comingSoon(6, 'Cấp 6 — Biểu diễn', 'Bài nhạc hoàn chỉnh, sắc thái mạnh nhẹ, biểu diễn trọn bài.'),
   ],
 };

@@ -33,6 +33,12 @@ export interface Piece {
   source?: string;
   /** Hoá biểu ("G", "F"…). Ký hiệu vẫn ghi đủ dấu hoá ("F#4"); khuông nhạc tự bỏ dấu đã có trong hoá biểu. */
   keySignature?: KeySignature;
+  /**
+   * Phần đệm tay trái đánh CÙNG LÚC với giai điệu ("C3+E3+G3/w:5+3+1 | G2/h C3/h"), vẽ trên khuông Fa.
+   * Chỉ dùng với `clef: 'grand'`, `hand: 'right'` (notation = giai điệu tay phải). App chỉ chấm giai điệu:
+   * nốt thấp hơn giai điệu (tay trái) bị bỏ qua — micro chỉ nhận một nốt mỗi lúc.
+   */
+  accompaniment?: string;
 }
 
 // ── Hình minh hoạ ─────────────────────────────────────────────────────

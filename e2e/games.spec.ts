@@ -284,3 +284,41 @@ test('cấp 4: hoá biểu trên khuông, gọi tên nốt giáng, trò Bắn b�
   await page.locator(`[data-testid="staff-shoot"] button[data-midi="${midi}"]`).click();
   await expect(page.getByTestId('game-score')).not.toHaveText('⭐ 0');
 });
+
+test('cấp 5: hai tay cùng lúc — nốt tay trái không bị tính sai, chỉ chấm giai điệu tay phải', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('level-5').click();
+  await expect(page.locator('[data-testid^="cur-lesson-l5-"]')).toHaveCount(20);
+  await page.getByTestId('cur-lesson-l5-01-bass-whole').click();
+  await page.getByTestId('start-lesson').click();
+  for (let i = 0; i < 2; i++) await page.getByTestId('intro-next').click();
+  for (let i = 0; i < 2; i++) {
+    await page.getByTestId('choice-0').click();
+    await page.waitForTimeout(1000);
+  }
+  await page.getByTestId('exercise-next').click();
+
+  // C D E F | G E | F E D E | C — phím a s d f g (Đô giữa = a).
+  const melody = ['a', 's', 'd', 'f', 'g', 'd', 'f', 'd', 's', 'd', 'a'];
+  const playMelody = async () => {
+    for (const k of melody) {
+      await page.keyboard.press(k);
+      await page.waitForTimeout(160);
+    }
+  };
+  // Khởi động: tay phải riêng.
+  await playMelody();
+  await page.getByTestId('exercise-next').click();
+
+  // Hai tay: khuông đôi; bấm nốt tay trái (C3, G3) — không sai, vẫn chờ C4.
+  await expect(page.getByTestId('expected-note')).toHaveText('C4');
+  for (const m of [48, 55]) {
+    await page.locator(`[data-testid="play-step"] button[data-midi="${m}"]`).click();
+    await page.waitForTimeout(200);
+  }
+  await expect(page.getByTestId('expected-note')).toHaveText('C4');
+  await playMelody();
+  await expect(page.getByTestId('exercise-score')).toHaveText('100/100');
+  await expect(page.getByTestId('exercise-verdict')).toHaveText('Đạt');
+});

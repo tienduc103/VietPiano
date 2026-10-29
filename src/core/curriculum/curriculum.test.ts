@@ -5,6 +5,7 @@ import { LEVEL1_LESSONS, LEVEL1_WEEKS } from './content/level1';
 import { LEVEL2_LESSONS, LEVEL2_WEEKS } from './content/level2';
 import { LEVEL3_LESSONS, LEVEL3_WEEKS } from './content/level3';
 import { LEVEL4_LESSONS, LEVEL4_WEEKS } from './content/level4';
+import { LEVEL5_LESSONS, LEVEL5_WEEKS } from './content/level5';
 import { keysMatching } from './keys';
 import { lessonTimeline, pieceToLesson } from './piece';
 import { orderedLessons } from './unlock';
@@ -18,7 +19,7 @@ describe('nội dung giáo trình', () => {
 
   it('có 6 cấp độ; cấp 1–2 mở, cấp 3–6 là khung "sắp có"', () => {
     expect(CURRICULUM.levels.map((l) => l.number)).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(CURRICULUM.levels.map((l) => l.availability)).toEqual(['available', 'available', 'available', 'available', 'coming-soon', 'coming-soon']);
+    expect(CURRICULUM.levels.map((l) => l.availability)).toEqual(['available', 'available', 'available', 'available', 'available', 'coming-soon']);
   });
 
   it('cấp 1: 4 tuần × 5 buổi, số buổi 1–20 theo đúng thứ tự', () => {
@@ -195,6 +196,35 @@ describe('nội dung cấp 4', () => {
   });
 });
 
+describe('nội dung cấp 5', () => {
+  const plays = LEVEL5_LESSONS.flatMap((l) => l.exercises.filter((e): e is PlayExercise => e.kind === 'play').map((e) => ({ l, e })));
+
+  it('4 tuần × 5 buổi, số buổi 1–20, buổi đầu cần buổi cuối cấp 4, kiểm tra ở buổi 5/10/15/20', () => {
+    expect(LEVEL5_WEEKS.map((w) => w.lessonIds.length)).toEqual([5, 5, 5, 5]);
+    expect(orderedLessons(CURRICULUM.levels[4]).map((l) => l.number)).toEqual(Array.from({ length: 20 }, (_, i) => i + 1));
+    expect(LEVEL5_LESSONS[0].prerequisites).toEqual(['l4-20-final']);
+    for (const n of [5, 10, 15, 20]) expect(LEVEL5_LESSONS.find((l) => l.number === n)!.assessment).toEqual({ passScore: 80, checkpoint: true });
+  });
+
+  it('mọi buổi có bài hai tay CÙNG LÚC (phần đệm) và nhắc rằng app chỉ chấm tay phải', () => {
+    for (const l of LEVEL5_LESSONS) {
+      expect(plays.some((x) => x.l === l && x.e.piece.accompaniment), l.lessonId).toBe(true);
+      expect(l.notes?.some((n) => String(n).includes('chỉ chấm giai điệu tay phải')), l.lessonId).toBe(true);
+    }
+  });
+
+  it('có hợp âm khối (≥ 3 nốt), đệm valse 3/4 và hợp âm rải', () => {
+    const acc = plays.filter((x) => x.e.piece.accompaniment).map((x) => pieceToLesson(x.e.piece, 'x'));
+    expect(acc.some((les) => les.accompaniment!.some((c) => c.midis.length >= 3))).toBe(true);
+    expect(acc.some((les) => les.timeSignature[0] === 3)).toBe(true);
+    expect(acc.some((les) => les.accompaniment!.filter((c) => c.midis.length === 1 && c.duration === 'q').length >= 8)).toBe(true);
+  });
+
+  it('bài luyện thêm trỏ tới bài có trong thư viện', () => {
+    for (const e of LEVEL5_WEEKS.flatMap((w) => w.extraPractice ?? [])) expect(lessonManager.get(e.lessonId)).toBeDefined();
+  });
+});
+
 describe('validateCurriculum bắt lỗi dữ liệu', () => {
   const base = (): Curriculum => structuredClone(CURRICULUM);
 
@@ -206,6 +236,15 @@ describe('validateCurriculum bắt lỗi dữ liệu', () => {
     expect(validatePiece({ ...piece, notation: 'C4/w', bpm: 500 }, 'p')[0]).toMatch(/nhịp độ/);
     expect(validatePiece({ ...piece, notation: 'R/w' }, 'p')).toEqual(['p: không có nốt nào để chơi']);
     expect(validatePiece({ ...piece, notation: 'C4 C4 C4/h', hand: 'both', clef: 'grand' }, 'p')[0]).toMatch(/RH\/LH/);
+  });
+
+  it('phần đệm: khuông đôi + tay phải, đủ phách, cùng số ô, thấp hơn giai điệu', () => {
+    const grand = { clef: 'grand' as const, hand: 'right' as const, bpm: 60, notation: 'E4 F4 G4/h | C4/w' };
+    expect(validatePiece({ ...grand, accompaniment: 'C3+E3+G3/w | C3/w' }, 'p')).toEqual([]);
+    expect(validatePiece({ ...grand, accompaniment: 'C3/w | C3/h' }, 'p')).toContain('p: phần đệm ô nhịp 2 có 2 phách, cần 4');
+    expect(validatePiece({ ...grand, accompaniment: 'C3/w' }, 'p')).toContain('p: phần đệm có 1 ô nhịp, giai điệu có 2');
+    expect(validatePiece({ ...grand, accompaniment: 'C3+E3+C4/w | C3/w' }, 'p')).toContain('p: nốt đệm C4 không thấp hơn giai điệu');
+    expect(validatePiece({ ...grand, clef: 'treble', accompaniment: 'C3/w | C3/w' }, 'p')[0]).toMatch(/khuông đôi, giai điệu tay phải/);
   });
 
   it('tiên quyết đi sau / không tồn tại, buổi không thuộc tuần nào', () => {

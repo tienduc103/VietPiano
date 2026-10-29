@@ -523,7 +523,7 @@ test('trang chủ là Dashboard giáo trình; Curriculum Browser có 6 cấp, c�
   await expect(page.locator('[data-testid^="cur-lesson-"]')).toHaveCount(20);
   await expect(page.getByTestId('cur-lesson-l1-01-keyboard')).toHaveAttribute('data-status', 'available');
   await expect(page.getByTestId('cur-lesson-l1-02-find-c')).toHaveAttribute('data-status', 'suggest-later');
-  await page.getByTestId('level-5').click();
+  await page.getByTestId('level-6').click();
   await expect(page.getByTestId('coming-soon')).toBeVisible();
   // Thư viện bài nằm ngay dưới phần giáo trình của trang chủ; nút "Thư viện bài" cuộn xuống.
   await page.getByRole('button', { name: 'Về trang chủ' }).click();

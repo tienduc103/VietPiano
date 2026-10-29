@@ -19,6 +19,36 @@ export const MAX_BPM = 200;
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
+/**
+ * Phần đệm: khuông đôi, giai điệu tay phải; đủ phách từng ô, cùng số ô với giai điệu; mọi nốt đệm THẤP HƠN nốt thấp
+ * nhất của giai điệu (app bỏ qua nốt thấp hơn giai điệu — nốt đệm cao hơn sẽ bị chấm là sai / thừa) và trong tầm micro.
+ */
+function validateAccompaniment(piece: Piece, lesson: Lesson, where: string): string[] {
+  const errors: string[] = [];
+  if (piece.clef !== 'grand' || piece.hand !== 'right') errors.push(`${where}: bài có phần đệm phải là khuông đôi, giai điệu tay phải`);
+  const acc = lesson.accompaniment ?? [];
+  const full = measureLength(lesson.timeSignature);
+  try {
+    const accMeasures = splitMeasures(acc, full, lesson.pickup);
+    accMeasures.forEach((m, i) => {
+      const want = i === 0 && lesson.pickup ? lesson.pickup : full;
+      if (Math.abs(m.beats - want) > 1e-9) errors.push(`${where}: phần đệm ô nhịp ${i + 1} có ${m.beats} phách, cần ${want}`);
+    });
+    const melodyMeasures = splitMeasures(lesson.notes, full, lesson.pickup).length;
+    if (accMeasures.length !== melodyMeasures) errors.push(`${where}: phần đệm có ${accMeasures.length} ô nhịp, giai điệu có ${melodyMeasures}`);
+  } catch (e) {
+    return [...errors, `${where}: phần đệm — ${message(e)}`];
+  }
+  const melodyMin = Math.min(...lesson.notes.filter((n) => !n.rest).map((n) => n.midi));
+  for (const chord of acc) {
+    chord.pitches.forEach((p, i) => {
+      if (chord.midis[i] >= melodyMin) errors.push(`${where}: nốt đệm ${p} không thấp hơn giai điệu`);
+      if (chord.midis[i] < MIC_MIN_MIDI) errors.push(`${where}: nốt đệm ${p} ngoài tầm micro`);
+    });
+  }
+  return errors;
+}
+
 export function validatePiece(piece: Piece, where: string): string[] {
   let lesson: Lesson;
   try {
@@ -42,7 +72,8 @@ export function validatePiece(piece: Piece, where: string): string[] {
     if (!n.rest && (n.midi < MIC_MIN_MIDI || n.midi > MIC_MAX_MIDI)) errors.push(`${where}: nốt ${n.pitch} ngoài tầm micro`);
   }
   if (piece.hand === 'both' && lesson.notes.some((n) => !n.hand)) errors.push(`${where}: bài hai tay phải ghi RH/LH cho mọi nốt`);
-  if (piece.hand !== 'both' && piece.clef === 'grand') errors.push(`${where}: khuông đôi chỉ dùng cho bài hai tay`);
+  if (piece.hand !== 'both' && piece.clef === 'grand' && !piece.accompaniment) errors.push(`${where}: khuông đôi chỉ dùng cho bài hai tay`);
+  if (piece.accompaniment) errors.push(...validateAccompaniment(piece, lesson, where));
   const timeline = lessonTimeline(lesson);
   for (let i = 1; i < timeline.length; i++) {
     if (timeline[i].startBeat <= timeline[i - 1].startBeat) errors.push(`${where}: sự kiện ${i} không đi sau sự kiện trước`);

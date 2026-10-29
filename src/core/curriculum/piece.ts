@@ -3,7 +3,7 @@
  * (pitch, midiNote, startBeat, durationBeats, hand, finger, measureIndex) để chấm nhịp, phát mẫu, xuất MIDI.
  * Quy ước Đô giữa = C4 = MIDI 60.
  */
-import { parseNotes, splitMeasures } from '../lessons/notation';
+import { parseAccompaniment, parseNotes, splitMeasures } from '../lessons/notation';
 import { DURATION_BEATS, measureLength, noteHand, type Finger, type Hand, type Lesson } from '../lessons/types';
 import type { TimedNote } from '../practice/PerformanceTracker';
 import { text, type Piece } from './types';
@@ -22,6 +22,7 @@ export function pieceToLesson(piece: Piece, id: string): Lesson {
     tempo: piece.bpm,
     source: piece.source,
     ...(piece.keySignature ? { keySignature: piece.keySignature } : {}),
+    ...(piece.accompaniment ? { accompaniment: parseAccompaniment(piece.accompaniment) } : {}),
   };
 }
 
@@ -67,6 +68,21 @@ export function lessonTimeline(lesson: Lesson): TimelineNote[] {
   });
   return out;
 }
+
+/** Nốt phần đệm (mỗi nốt của hợp âm một mục) để phát mẫu cùng giai điệu; không chấm điểm. */
+export function accompanimentTimeline(lesson: Lesson): { midiNote: number; startBeat: number; durationBeats: number; velocity: number }[] {
+  const out: { midiNote: number; startBeat: number; durationBeats: number; velocity: number }[] = [];
+  let beat = 0;
+  for (const chord of lesson.accompaniment ?? []) {
+    const durationBeats = DURATION_BEATS[chord.duration];
+    // Tay trái nhỏ hơn giai điệu một chút khi nghe mẫu.
+    for (const midi of chord.midis) out.push({ midiNote: midi, startBeat: beat, durationBeats, velocity: ACCOMPANIMENT_VELOCITY });
+    beat += durationBeats;
+  }
+  return out;
+}
+
+const ACCOMPANIMENT_VELOCITY = 55;
 
 /** Dòng thời gian → đầu vào PerformanceTracker; `hand` chỉ chấm một tay (tay kia coi như dấu lặng). */
 export function timedNotes(timeline: readonly TimelineNote[], hand?: Hand): TimedNote[] {

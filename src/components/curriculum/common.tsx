@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { highlightedKeys } from '../../core/curriculum/keys';
-import { lessonTimeline, pieceToLesson } from '../../core/curriculum/piece';
+import { accompanimentTimeline, lessonTimeline, pieceToLesson } from '../../core/curriculum/piece';
 import { text, type Illustration, type Piece, type UiMode } from '../../core/curriculum/types';
 import { scheduleNotes, soundOutput } from '../../core/audio/SoundOutput';
 import type { InputSourceSetting } from '../../core/settings/DeviceSettings';
@@ -19,7 +19,8 @@ export function StaticScore({ piece, id, showNames }: { piece: Piece; id: string
   const labelStyle = useSettings((s) => s.settings.labelStyle);
   const lesson = useMemo(() => pieceToLesson(piece, id), [piece, id]);
   return (
-    <div className="h-48 rounded-2xl bg-white ring-1 ring-violet-100 dark:bg-slate-900 dark:ring-violet-900">
+    // Khuông đôi (bài hai tay / có phần đệm) cần cao hơn: số ngón dưới hợp âm trầm không bị cắt.
+    <div className={`${piece.clef === 'grand' ? 'h-72' : 'h-48'} rounded-2xl bg-white ring-1 ring-violet-100 dark:bg-slate-900 dark:ring-violet-900`}>
       <ScoreView lesson={lesson} index={0} results={NO_RESULTS} status="finished" wrongPulse={0} showNames={showNames ?? true} labelStyle={labelStyle} />
     </div>
   );
@@ -36,7 +37,9 @@ export function ListenButton({ piece, bpm, label = 'Nghe mẫu' }: { piece: Piec
       setPlaying(false);
       return;
     }
-    const ms = soundOutput.playSequence(scheduleNotes(lessonTimeline(pieceToLesson(piece, 'listen')), bpm ?? piece.bpm));
+    const lesson = pieceToLesson(piece, 'listen');
+    // Bài có phần đệm: nghe cả hai tay cùng lúc.
+    const ms = soundOutput.playSequence(scheduleNotes([...lessonTimeline(lesson), ...accompanimentTimeline(lesson)], bpm ?? piece.bpm));
     setPlaying(true);
     window.setTimeout(() => setPlaying(false), ms);
   };
