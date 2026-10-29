@@ -74,7 +74,9 @@ describe('DeviceSettings', () => {
   it('AI cục bộ: mặc định tắt; địa chỉ hỏng → mặc định, địa chỉ được chuẩn hoá', () => {
     const st = memoryStorage();
     st.setItem('vietpiano.settings.v1', JSON.stringify({ aiCoachEnabled: 'yes', ollamaUrl: 'ftp://x', ollamaModel: '  ' }));
-    expect(loadSettings(st)).toMatchObject({ aiCoachEnabled: false, ollamaUrl: 'http://localhost:11434', ollamaModel: 'gemma4:12b' });
+    expect(loadSettings(st)).toMatchObject({ aiCoachEnabled: false, ollamaUrl: 'auto', ollamaModel: 'gemma4:12b' });
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ ollamaUrl: 'http://localhost:11434' }));
+    expect(loadSettings(st).ollamaUrl).toBe('auto');
     st.setItem('vietpiano.settings.v1', JSON.stringify({ aiCoachEnabled: true, ollamaUrl: '127.0.0.1:11434/', ollamaModel: ' gemma2:9b ' }));
     expect(loadSettings(st)).toMatchObject({ aiCoachEnabled: true, ollamaUrl: 'http://127.0.0.1:11434', ollamaModel: 'gemma2:9b' });
   });

@@ -9,6 +9,7 @@ Không backend, không gửi âm thanh lên mạng, chạy offline. Tuỳ chọn
 | --- | --- |
 | `npm run dev` | Dev server (http, dùng trên máy Windows: micro chạy được ở localhost) |
 | `npm run dev:https` | Dev server HTTPS tự ký — để iPad trong mạng LAN dùng được micro |
+| `npm run serve:lan` | Build + `vite preview` HTTPS — bản production cho cả LAN, kèm proxy AI `/ollama` |
 | `npm test` | Unit test (Vitest) — chạy sau mỗi thay đổi ở `src/core` |
 | `npm run typecheck` | `tsc -b` |
 | `npm run build` | Typecheck + build production + service worker |
@@ -106,10 +107,13 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
 - Micro: chỉ một stream (`microphoneInput` singleton), tắt AGC/khử ồn/khử vọng, phải `stop()` để giải phóng track +
   đóng AudioContext. Khi app vào nền → tắt micro, người dùng bấm để bật lại (Safari cần user gesture).
 - Không gửi âm thanh hay dữ liệu ra ngoài; không thêm backend hay AI API trên mạng (dịch vụ đám mây).
-  Ngoại lệ duy nhất: **AI cục bộ qua Ollama** (`aiCoachEnabled`, mặc định TẮT; `ollamaUrl` mặc định `http://localhost:11434`).
+  Ngoại lệ duy nhất: **AI cục bộ qua Ollama** (`aiCoachEnabled`, mặc định TẮT).
   Chỉ gửi số liệu tóm tắt dạng chữ (điểm, tiêu chí, lỗi, tên/tuổi/trình độ hồ sơ), KHÔNG gửi âm thanh.
   App phải chạy đầy đủ khi tắt hoặc không có Ollama; lỗi kết nối chỉ hiện trong thẻ nhận xét, không chặn luồng học.
-  Hiện chỉ hỗ trợ Chrome trên máy Windows cài Ollama (iPad cần proxy HTTPS — chưa làm). Prompt yêu cầu model chỉ dựa
+  `ollamaUrl` mặc định `"auto"` (giá trị cũ localhost tự đổi sang auto): thử `<base>ollama` trên server của app rồi tới
+  `http://localhost:11434` (`resolveOllama`). `vite.config.ts` cho dev + preview proxy CHỈ `/ollama/api/{tags,chat}` → Ollama
+  máy chạy server (bỏ header Origin; `OLLAMA_PROXY_TARGET`, `OLLAMA_PROXY=0`) → iPad trong LAN dùng chung AI của máy đó.
+  GitHub Pages không có proxy → chỉ dùng được Ollama trên chính máy mở app. Prompt yêu cầu model chỉ dựa
   vào số liệu được cung cấp; e2e giả lập Ollama bằng `page.route` (`e2e/ai-coach.spec.ts`).
 - Bài hát mới phải là giai điệu tự biên soạn hoặc thuộc phạm vi công cộng; ghi `source`.
   Test `lessons.test.ts` kiểm tra mọi ô nhịp đủ phách và nốt nằm trong tầm micro (MIDI 36–84).

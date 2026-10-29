@@ -18,7 +18,8 @@ import { AutoCalibration } from '../components/AutoCalibration';
 import { MidiSettings } from '../components/MidiPanel';
 import { CalibrationCheckView } from '../components/CalibrationCheckView';
 import { AppVersion } from '../components/AppVersion';
-import { listModels, normalizeOllamaUrl, OllamaError } from '../core/feedback/OllamaClient';
+import { AUTO_OLLAMA_URL, normalizeOllamaUrl, OllamaError, resolveOllama } from '../core/feedback/OllamaClient';
+import { ollamaCandidatesForPage, ollamaUrlLabel } from '../components/AiCoachCard';
 
 const CALIBRATION_MS = 2500;
 
@@ -241,7 +242,8 @@ function AiCoachSettings() {
   const [checking, setChecking] = useState(false);
 
   const saveUrl = () => {
-    const u = normalizeOllamaUrl(url);
+    // Ô trống = tự động.
+    const u = normalizeOllamaUrl(url) ?? (url.trim() ? null : AUTO_OLLAMA_URL);
     if (u) update({ ollamaUrl: u });
     setUrl(u ?? ollamaUrl);
   };
@@ -250,12 +252,13 @@ function AiCoachSettings() {
     const u = normalizeOllamaUrl(url) ?? ollamaUrl;
     setChecking(true);
     try {
-      const list = await listModels(u);
+      const { baseUrl, models: list } = await resolveOllama(ollamaCandidatesForPage(u));
       setModels(list);
+      const where = u === AUTO_OLLAMA_URL ? ` qua ${baseUrl}` : '';
       if (list.length === 0) setCheck({ ok: false, text: 'Kết nối được nhưng chưa có model nào. Chạy "ollama pull gemma4:12b".' });
       else {
         const has = list.includes(ollamaModel);
-        setCheck({ ok: has, text: has ? `Kết nối tốt — ${list.length} model.` : `Kết nối tốt, nhưng chưa có model "${ollamaModel}" — chọn một model bên dưới.` });
+        setCheck({ ok: has, text: has ? `Kết nối tốt — ${list.length} model${where}.` : `Kết nối tốt, nhưng chưa có model "${ollamaModel}" — chọn một model bên dưới.` });
       }
     } catch (e) {
       setModels(null);
@@ -264,7 +267,7 @@ function AiCoachSettings() {
         text:
           e instanceof OllamaError && e.kind === 'http'
             ? `Ollama báo lỗi: ${e.message}`
-            : `Không kết nối được ${u}. Kiểm tra Ollama đang chạy; mở app từ tên miền khác localhost thì cần đặt OLLAMA_ORIGINS.`,
+            : `Không kết nối được ${ollamaUrlLabel(u)}. Kiểm tra Ollama đang chạy; iPad/máy khác thì mở app từ máy cài Ollama (npm run serve:lan).`,
       });
     } finally {
       setChecking(false);
@@ -278,7 +281,7 @@ function AiCoachSettings() {
       <h2 className="text-xl font-semibold">Nhận xét bằng AI (Ollama trên máy này)</h2>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         Sau mỗi bài, AI chạy cục bộ bằng Ollama viết vài câu nhận xét từ điểm và lỗi của bài. Chỉ gửi số liệu dạng chữ tới
-        địa chỉ bên dưới, không gửi âm thanh. Dùng trên Chrome máy tính có cài Ollama; không bật thì app chạy như cũ.
+        địa chỉ bên dưới, không gửi âm thanh. Địa chỉ "auto": dùng Ollama của máy đang chạy server app (iPad trong mạng LAN dùng chung), không có thì Ollama trên máy đang mở app. Không bật thì app chạy như cũ.
       </p>
       <div className="mt-2 divide-y divide-slate-200 dark:divide-slate-700">
         <Toggle label="Bật nhận xét bằng AI sau mỗi bài" checked={aiCoachEnabled} onChange={(v) => update({ aiCoachEnabled: v })} />
@@ -289,6 +292,7 @@ function AiCoachSettings() {
             onChange={(e) => setUrl(e.target.value)}
             onBlur={saveUrl}
             onKeyDown={(e) => e.key === 'Enter' && saveUrl()}
+            placeholder="auto"
             spellCheck={false}
             aria-label="Địa chỉ Ollama"
             data-testid="ollama-url"

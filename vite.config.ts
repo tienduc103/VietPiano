@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite';
+import { defineConfig, type ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -18,6 +18,29 @@ if (existsSync(versionFile)) {
   appVersion = readFileSync(versionFile, 'utf8').trim();
   parseVersion(appVersion); // VERSION sai định dạng → dừng build
 }
+
+// AI cục bộ dùng chung cho cả mạng LAN: server của app (dev và preview) chuyển tiếp `<base>ollama/api/{tags,chat}`
+// tới Ollama trên máy này → iPad mở app qua https gọi cùng origin (không mixed content, không CORS).
+// Chỉ mở 2 API đó (không pull/xoá model). Bỏ header Origin vì Ollama từ chối origin lạ (IP LAN).
+// OLLAMA_PROXY_TARGET đổi đích; OLLAMA_PROXY=0 tắt.
+const ollamaTarget = process.env.OLLAMA_PROXY_TARGET ?? 'http://127.0.0.1:11434';
+const ollamaPrefix = `${base.replace(/\/*$/, '/')}ollama`;
+const ollamaProxy: Record<string, ProxyOptions> =
+  process.env.OLLAMA_PROXY === '0'
+    ? {}
+    : {
+        [`^${ollamaPrefix}/api/(tags|chat)$`]: {
+          target: ollamaTarget,
+          changeOrigin: true,
+          rewrite: (path) => path.slice(ollamaPrefix.length),
+          configure: (proxy) => {
+            proxy.on('proxyReq', (req) => {
+              req.removeHeader('origin');
+              req.removeHeader('referer');
+            });
+          },
+        },
+      };
 
 export default defineConfig({
   base,
@@ -69,6 +92,11 @@ export default defineConfig({
   },
   server: {
     host: true,
+    proxy: ollamaProxy,
+  },
+  preview: {
+    host: true,
+    proxy: ollamaProxy,
   },
   test: {
     environment: 'node',

@@ -5,7 +5,7 @@
 import type { NoteLabelStyle } from '../music/notes';
 import { DEFAULT_RECOGNIZER_CONFIG } from '../audio/NoteRecognizer';
 import { sanitizePosition, type FloatingPosition } from './floatingPosition';
-import { DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_URL, normalizeOllamaUrl } from '../feedback/OllamaClient';
+import { DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_URL, LOCAL_OLLAMA_URL, normalizeOllamaUrl } from '../feedback/OllamaClient';
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
 /** wait = chờ đánh đúng mới chuyển; count = mỗi nốt nghe thấy chuyển một nốt; tempo = chạy theo nhịp. */
@@ -147,7 +147,7 @@ function sanitize(s: DeviceSettings): DeviceSettings {
     inputSource: s.inputSource === 'microphone' || s.inputSource === 'midi' ? s.inputSource : 'auto',
     metronomeWithMic: s.metronomeWithMic === true,
     aiCoachEnabled: s.aiCoachEnabled === true,
-    ollamaUrl: (typeof s.ollamaUrl === 'string' && normalizeOllamaUrl(s.ollamaUrl)) || DEFAULT_OLLAMA_URL,
+    ollamaUrl: sanitizeOllamaUrl(s.ollamaUrl),
     ollamaModel: typeof s.ollamaModel === 'string' && s.ollamaModel.trim() ? s.ollamaModel.trim().slice(0, 100) : DEFAULT_OLLAMA_MODEL,
   };
 }
@@ -162,4 +162,10 @@ export function safeLocalStorage(): Storage | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** Địa chỉ cũ mặc định (localhost) → "auto": auto vẫn thử localhost, thêm proxy của app cho iPad trong LAN. */
+function sanitizeOllamaUrl(raw: unknown): string {
+  const u = typeof raw === 'string' ? normalizeOllamaUrl(raw) : null;
+  return !u || u === LOCAL_OLLAMA_URL ? DEFAULT_OLLAMA_URL : u;
 }

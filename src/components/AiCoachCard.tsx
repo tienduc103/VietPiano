@@ -1,12 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildCoachMessages, type CoachReport } from '../core/feedback/coachPrompt';
-import { OllamaError, streamChat } from '../core/feedback/OllamaClient';
+import { AUTO_OLLAMA_URL, OllamaError, ollamaCandidates, ollamaProxyUrl, resolveOllama, streamChat } from '../core/feedback/OllamaClient';
 import type { UiMode } from '../core/curriculum/types';
 import { activeProfile, useProfiles } from '../store/profileStore';
 import { useSettings } from '../store/settingsStore';
 import { Button, Icon } from './ui';
 
 type Status = 'loading' | 'done' | 'error';
+
+/** Địa chỉ Ollama cần thử cho trang hiện tại ("auto" → proxy trên server của app, rồi localhost). */
+export function ollamaCandidatesForPage(setting: string): string[] {
+  return ollamaCandidates(setting, ollamaProxyUrl(location.origin, import.meta.env.BASE_URL));
+}
+
+/** Mô tả địa chỉ cho thông báo lỗi. */
+export function ollamaUrlLabel(setting: string): string {
+  return setting === AUTO_OLLAMA_URL ? `máy chủ của app (${ollamaCandidatesForPage(setting)[0]}) hay localhost` : setting;
+}
 
 /**
  * Nhận xét của "thầy AI" (Ollama cục bộ) sau mỗi bài. Chỉ hiện khi bật ở Cài đặt;
@@ -36,7 +46,8 @@ export function AiCoachCard({ report, mode, onDone }: { report: CoachReport; mod
     setTextOut('');
     setError(null);
     setStatus('loading');
-    streamChat({ baseUrl: ollamaUrl, model: ollamaModel, messages, signal: ctrl.signal, onToken: (t) => setTextOut((s) => s + t) })
+    resolveOllama(ollamaCandidatesForPage(ollamaUrl), { signal: ctrl.signal })
+      .then(({ baseUrl }) => streamChat({ baseUrl, model: ollamaModel, messages, signal: ctrl.signal, onToken: (t) => setTextOut((s) => s + t) }))
       .then((full) => {
         setStatus('done');
         if (full.trim()) onDoneRef.current?.(full, ollamaModel);
@@ -62,10 +73,10 @@ export function AiCoachCard({ report, mode, onDone }: { report: CoachReport; mod
       </div>
       {status === 'error' && error ? (
         <div className="mt-2 text-sm text-amber-700 dark:text-amber-300" role="alert" data-testid="ai-coach-error">
-          <p>{error.kind === 'network' ? `Không kết nối được Ollama ở ${ollamaUrl}.` : `Ollama báo lỗi: ${error.message}`}</p>
+          <p>{error.kind === 'network' ? `Không kết nối được Ollama ở ${ollamaUrlLabel(ollamaUrl)}.` : `Ollama báo lỗi: ${error.message}`}</p>
           <p className="mt-1 text-slate-500 dark:text-slate-400">
             {error.kind === 'network'
-              ? 'Kiểm tra Ollama đang chạy (biểu tượng ở khay hệ thống, hoặc lệnh "ollama serve"). Nếu mở app từ tên miền khác localhost, đặt biến môi trường OLLAMA_ORIGINS.'
+              ? 'Kiểm tra Ollama đang chạy (biểu tượng ở khay hệ thống, hoặc lệnh "ollama serve"). iPad/máy khác: mở app từ máy cài Ollama (npm run serve:lan). Mở từ tên miền khác localhost: đặt biến môi trường OLLAMA_ORIGINS.'
               : `Tải model bằng lệnh "ollama pull ${ollamaModel}" hoặc chọn model khác ở Cài đặt.`}
           </p>
         </div>

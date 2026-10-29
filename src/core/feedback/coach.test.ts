@@ -3,7 +3,7 @@ import { scorePerformance, scoreWait, wrongNoteKey } from '../curriculum/scoring
 import type { Exercise } from '../curriculum/types';
 import type { PracticeState } from '../practice/PracticeEngine';
 import { buildCoachMessages, lessonReport, practiceReport } from './coachPrompt';
-import { listModels, normalizeOllamaUrl, OllamaError, streamChat } from './OllamaClient';
+import { listModels, normalizeOllamaUrl, ollamaCandidates, ollamaProxyUrl, OllamaError, resolveOllama, streamChat } from './OllamaClient';
 
 const ex = (id: string, title: string): Exercise => ({ kind: 'choice-quiz', id, title, questions: [], pass: { minScore: 70 } });
 
@@ -67,6 +67,42 @@ describe('OllamaClient', () => {
     expect(normalizeOllamaUrl('https://pc.lan:8443/ollama/')).toBe('https://pc.lan:8443/ollama');
     expect(normalizeOllamaUrl('')).toBeNull();
     expect(normalizeOllamaUrl('ftp://x')).toBeNull();
+    expect(normalizeOllamaUrl(' Auto ')).toBe('auto');
+  });
+
+  it('auto: thử proxy của app trước rồi tới localhost; địa chỉ tự nhập chỉ thử chính nó', () => {
+    expect(ollamaProxyUrl('https://192.168.1.16:5173', '/')).toBe('https://192.168.1.16:5173/ollama');
+    expect(ollamaProxyUrl('https://u.github.io', '/VietPiano/')).toBe('https://u.github.io/VietPiano/ollama');
+    expect(ollamaCandidates('auto', 'https://pc/ollama')).toEqual(['https://pc/ollama', 'http://localhost:11434']);
+    expect(ollamaCandidates('http://pc:11434', 'https://pc/ollama')).toEqual(['http://pc:11434']);
+  });
+
+  it('resolveOllama: bỏ qua proxy không có (404 hoặc trang HTML), lấy địa chỉ đầu tiên trả lời được', async () => {
+    const tags = JSON.stringify({ models: [{ name: 'gemma4:12b' }] });
+    const fetchFor = (map: Record<string, () => Response>) =>
+      (async (url: string) => {
+        const f = map[url];
+        if (!f) throw new TypeError('Failed to fetch');
+        return f();
+      }) as unknown as typeof fetch;
+    const urls = ['https://pc/ollama', 'http://localhost:11434'];
+    // Có proxy → dùng proxy.
+    expect(await resolveOllama(urls, { fetchImpl: fetchFor({ 'https://pc/ollama/api/tags': () => new Response(tags) }) })).toEqual({
+      baseUrl: 'https://pc/ollama',
+      models: ['gemma4:12b'],
+    });
+    // GitHub Pages: 404 → localhost.
+    const r = await resolveOllama(urls, {
+      fetchImpl: fetchFor({ 'https://pc/ollama/api/tags': () => new Response('<html>', { status: 404 }), 'http://localhost:11434/api/tags': () => new Response(tags) }),
+    });
+    expect(r.baseUrl).toBe('http://localhost:11434');
+    // Server SPA trả index.html 200 → không phải JSON → bỏ qua.
+    const spa = await resolveOllama(urls, {
+      fetchImpl: fetchFor({ 'https://pc/ollama/api/tags': () => new Response('<!doctype html>'), 'http://localhost:11434/api/tags': () => new Response(tags) }),
+    });
+    expect(spa.baseUrl).toBe('http://localhost:11434');
+    // Không đâu trả lời → lỗi kết nối.
+    await expect(resolveOllama(urls, { fetchImpl: fetchFor({}) })).rejects.toMatchObject({ kind: 'network' });
   });
 
   it('stream NDJSON: ghép các mẩu, kể cả dòng bị cắt giữa hai chunk', async () => {
