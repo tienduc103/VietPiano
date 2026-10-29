@@ -39,7 +39,8 @@ const loadTab = (): Tab => {
 const starsText = (r: GameRecord | undefined) => (r && r.plays > 0 ? `${'★'.repeat(r.bestStars)}${'☆'.repeat(3 - r.bestStars)} · kỷ lục ${r.bestScore}` : 'Chưa chơi');
 
 /**
- * Mục Trò chơi: tab "Theo trò chơi" (chọn trò → chọn buổi học / mức chơi) và tab "Theo buổi học"
+ * Mục Trò chơi: tab "Theo trò chơi" (Trò chơi mới — Săn nốt, Flappy Note, trò tự do — ở trên, trò theo bài học ở dưới;
+ * chọn trò → chọn buổi học / mức chơi) và tab "Theo buổi học"
  * (chọn cấp → các buổi, mỗi buổi liệt kê trò của nó). Mọi buổi đều mở (mở khoá chỉ là gợi ý), buổi chưa học có nhãn.
  * Kỷ lục trò của buổi học dùng chung với trò sau buổi (`LessonRecord.games`); trò tự do lưu riêng (`arcade.ts`).
  */
@@ -200,44 +201,48 @@ export function GamesScreen() {
 
         {tab === 'games' && !kind && (
           <section className="mt-6 grid gap-6">
-            <button
-              type="button"
-              onClick={() => navigate({ name: 'note-hunter' })}
-              data-testid="open-note-hunter"
-              className="flex min-h-16 items-center gap-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-4 text-left text-white shadow-md shadow-fuchsia-500/30 hover:brightness-110"
-            >
-              <span className="text-4xl" aria-hidden>
-                🎯
-              </span>
-              <span className="flex-1">
-                <span className="block text-xl font-bold">Săn nốt (Note Hunter)</span>
-                <span className="block text-sm opacity-90">Chọn nốt cần săn — bản nhạc tự chạy và dừng ở mỗi nốt đó chờ bạn đánh đúng. Đọc nốt trên khuông · MIDI, micro, piano ảo.</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate({ name: 'flappy-note' })}
-              data-testid="open-flappy-note"
-              className="flex min-h-16 items-center gap-4 rounded-2xl bg-gradient-to-r from-sky-500 to-amber-400 px-5 py-4 text-left text-white shadow-md shadow-sky-500/30 hover:brightness-110"
-            >
-              <span className="text-4xl" aria-hidden>
-                🐤
-              </span>
-              <span className="flex-1">
-                <span className="block text-xl font-bold">Flappy Note</span>
-                <span className="block text-sm opacity-90">Mỗi nốt đánh đúng là một lần chú chim vỗ cánh — bay qua các ống! Đọc nốt, số ngón 1–5, phản xạ · MIDI, bàn phím máy tính, piano ảo.</span>
-              </span>
-            </button>
-            {(['lesson', 'arcade'] as const).map((source) => (
+            {(['arcade', 'lesson'] as const).map((source) => (
               <div key={source} className="grid gap-3">
                 <div>
-                  <h2 className="text-xl font-bold">{source === 'lesson' ? 'Trò chơi của các buổi học' : 'Trò chơi mới · chơi tự do'}</h2>
+                  <h2 className="text-xl font-bold">{source === 'lesson' ? 'Trò chơi theo bài học' : 'Trò chơi mới · chơi tự do'}</h2>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     {source === 'lesson'
                       ? 'Nội dung lấy từ buổi học (nốt, tiết tấu, thế tay của buổi) — chọn trò rồi chọn buổi. Kỷ lục dùng chung với trò sau buổi.'
-                      : 'Không gắn với buổi học — chọn mức chơi soạn sẵn.'}
+                      : 'Không gắn với buổi học — Săn nốt, Flappy Note và các trò có mức chơi soạn sẵn.'}
                   </p>
                 </div>
+                {source === 'arcade' && (
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate({ name: 'note-hunter' })}
+                      data-testid="open-note-hunter"
+                      className="flex min-h-16 items-center gap-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-4 text-left text-white shadow-md shadow-fuchsia-500/30 hover:brightness-110"
+                    >
+                      <span className="text-4xl" aria-hidden>
+                        🎯
+                      </span>
+                      <span className="flex-1">
+                        <span className="block text-xl font-bold">Săn nốt (Note Hunter)</span>
+                        <span className="block text-sm opacity-90">Chọn nốt cần săn — bản nhạc tự chạy và dừng ở mỗi nốt đó chờ bạn đánh đúng. Đọc nốt trên khuông · MIDI, micro, piano ảo.</span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate({ name: 'flappy-note' })}
+                      data-testid="open-flappy-note"
+                      className="flex min-h-16 items-center gap-4 rounded-2xl bg-gradient-to-r from-sky-500 to-amber-400 px-5 py-4 text-left text-white shadow-md shadow-sky-500/30 hover:brightness-110"
+                    >
+                      <span className="text-4xl" aria-hidden>
+                        🐤
+                      </span>
+                      <span className="flex-1">
+                        <span className="block text-xl font-bold">Flappy Note</span>
+                        <span className="block text-sm opacity-90">Mỗi nốt đánh đúng là một lần chú chim vỗ cánh — bay qua các ống! Đọc nốt, số ngón 1–5, phản xạ · MIDI, bàn phím máy tính, piano ảo.</span>
+                      </span>
+                    </button>
+                  </div>
+                )}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {GAME_ORDER.filter((k) => GAME_INFO[k].source === source).map((k) => {
                     const count = lessonsWithGame(index, k).length;
