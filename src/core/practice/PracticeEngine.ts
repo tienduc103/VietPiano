@@ -9,6 +9,9 @@
  *  - Không có sự kiện → tiếp tục chờ.
  *  - Sự kiện đến quá sát lần chuyển nốt trước (minAdvanceIntervalMs) bị bỏ qua,
  *    lớp bảo vệ thứ hai chống nhảy nhiều nốt (lớp thứ nhất là NoteRecognizer).
+ *  - Hai tay (`twoHands`, chỉ dùng với đàn MIDI — micro không tách được hợp âm): nốt giai điệu kèm các nốt tay
+ *    trái `leftHand[index]`. Đánh theo thứ tự bất kỳ; mỗi nốt đúng ghi nhận một phần ('partial'), đủ cả hai tay
+ *    mới chuyển nốt. Nốt không thuộc bước hiện tại → sai.
  */
 
 export type PracticeStatus = 'waiting' | 'correct' | 'wrong' | 'finished';
@@ -21,12 +24,15 @@ export interface PracticeConfig {
   octaveTolerant: boolean;
   /** Chế độ "Đếm nốt": sai nốt vẫn chuyển sang nốt tiếp theo. */
   advanceOnWrong: boolean;
+  /** Chấm cả nốt tay trái (`leftHand` truyền vào constructor) — chỉ bật khi nốt đến từ đàn MIDI. */
+  twoHands?: boolean;
 }
 
 export const DEFAULT_PRACTICE_CONFIG: PracticeConfig = {
   minAdvanceIntervalMs: 120,
   octaveTolerant: false,
   advanceOnWrong: false,
+  twoHands: false,
 };
 
 export interface PracticeState {
@@ -42,9 +48,13 @@ export interface PracticeState {
   readonly lastEventTime: number;
   readonly startedAt: number | null;
   readonly finishedAt: number | null;
+  /** Chế độ hai tay: nốt tay trái của bước hiện tại chưa đánh (rỗng khi tắt hai tay). */
+  readonly pendingLeft: readonly number[];
+  /** Chế độ hai tay: đã đánh đúng nốt giai điệu, đang chờ tay trái. */
+  readonly melodyDone: boolean;
 }
 
-export type NoteOutcome = 'correct' | 'wrong' | 'ignored' | 'finished';
+export type NoteOutcome = 'correct' | 'partial' | 'wrong' | 'ignored' | 'finished';
 
 export function computeAccuracy(state: Pick<PracticeState, 'correct' | 'wrong'>): number {
   const attempts = state.correct + state.wrong;
@@ -56,17 +66,24 @@ export class PracticeEngine {
   private readonly listeners = new Set<(s: PracticeState) => void>();
   private lastAdvanceTime = -Infinity;
   private hadWrongOnCurrent = false;
+  private leftPressed = new Set<number>();
+  private melodyDone = false;
 
+  /** `leftHand[i]` = nốt tay trái cần đánh cùng nốt giai điệu thứ i (xem `accompanimentByNote`). */
   constructor(
     expected: readonly number[],
     private config: PracticeConfig = DEFAULT_PRACTICE_CONFIG,
+    private readonly leftHand?: readonly (readonly number[])[],
   ) {
     if (expected.length === 0) throw new Error('Bài học phải có ít nhất một nốt');
-    this.state = PracticeEngine.initialState(expected);
+    if (leftHand && leftHand.length !== expected.length) throw new Error('Phần tay trái phải khớp số nốt giai điệu');
+    this.state = { ...PracticeEngine.initialState(expected), pendingLeft: this.requiredLeft(0) };
   }
 
   private static initialState(expected: readonly number[]): PracticeState {
     return {
+      pendingLeft: [],
+      melodyDone: false,
       expected,
       index: 0,
       status: 'waiting',
@@ -90,7 +107,23 @@ export class PracticeEngine {
   }
 
   setConfig(config: Partial<PracticeConfig>): void {
+    const twoHandsChanged = config.twoHands !== undefined && config.twoHands !== !!this.config.twoHands;
     this.config = { ...this.config, ...config };
+    if (twoHandsChanged) {
+      this.resetStep();
+      this.setState({ pendingLeft: this.requiredLeft(this.state.index), melodyDone: false });
+    }
+  }
+
+  /** Nốt tay trái cần đánh ở bước `index` (rỗng nếu không chấm hai tay). */
+  private requiredLeft(index: number): readonly number[] {
+    return (this.config.twoHands && this.leftHand?.[index]) || [];
+  }
+
+  private resetStep(): void {
+    this.hadWrongOnCurrent = false;
+    this.leftPressed = new Set();
+    this.melodyDone = false;
   }
 
   subscribe(listener: (s: PracticeState) => void): () => void {
@@ -117,7 +150,22 @@ export class PracticeEngine {
     const startedAt = s.startedAt ?? time;
     const expected = s.expected[s.index];
 
-    const ok = this.matches(midi, expected);
+    // Hai tay: nốt tay trái so khớp chính xác (không nới quãng 8) và xét trước giai điệu.
+    const left = this.requiredLeft(s.index);
+    const isLeft = left.includes(midi);
+    const isMelody = !isLeft && this.matches(midi, expected);
+    if (left.length > 0 && (isLeft || isMelody)) {
+      if (isLeft ? this.leftPressed.has(midi) : this.melodyDone) return 'ignored';
+      if (isLeft) this.leftPressed.add(midi);
+      else this.melodyDone = true;
+      const pendingLeft = left.filter((m) => !this.leftPressed.has(m));
+      if (!this.melodyDone || pendingLeft.length > 0) {
+        this.setState({ status: 'waiting', pendingLeft, melodyDone: this.melodyDone, startedAt });
+        return 'partial';
+      }
+    }
+
+    const ok = isLeft || isMelody;
     if (!ok && !this.config.advanceOnWrong) {
       this.hadWrongOnCurrent = true;
       this.setState({ status: 'wrong', wrong: s.wrong + 1, lastPlayedMidi: midi, lastEventTime: time, startedAt });
@@ -126,11 +174,13 @@ export class PracticeEngine {
 
     const results = s.results.slice();
     results[s.index] = !ok ? 'wrong' : this.hadWrongOnCurrent ? 'corrected' : 'correct';
-    this.hadWrongOnCurrent = false;
+    this.resetStep();
     this.lastAdvanceTime = time;
     const index = s.index + 1;
     const finished = index >= s.expected.length;
     this.setState({
+      pendingLeft: finished ? [] : this.requiredLeft(index),
+      melodyDone: false,
       index: finished ? s.expected.length - 1 : index,
       status: finished ? 'finished' : ok ? 'correct' : 'wrong',
       results,
@@ -150,11 +200,13 @@ export class PracticeEngine {
     if (s.status === 'finished') return;
     const results = s.results.slice();
     results[s.index] = 'skipped';
-    this.hadWrongOnCurrent = false;
+    this.resetStep();
     this.lastAdvanceTime = time;
     const index = s.index + 1;
     const finished = index >= s.expected.length;
     this.setState({
+      pendingLeft: finished ? [] : this.requiredLeft(index),
+      melodyDone: false,
       index: finished ? s.expected.length - 1 : index,
       status: finished ? 'finished' : 'waiting',
       results,
@@ -172,16 +224,16 @@ export class PracticeEngine {
     const results = s.results.slice();
     results[target] = 'pending';
     if (s.status !== 'finished') results[s.index] = 'pending';
-    this.hadWrongOnCurrent = false;
+    this.resetStep();
     this.lastAdvanceTime = time;
-    this.setState({ index: target, status: 'waiting', results, lastEventTime: time, finishedAt: null });
+    this.setState({ index: target, status: 'waiting', results, lastEventTime: time, finishedAt: null, pendingLeft: this.requiredLeft(target), melodyDone: false });
   }
 
   /** Chơi lại từ đầu, xoá thống kê. */
   restart(): void {
-    this.hadWrongOnCurrent = false;
+    this.resetStep();
     this.lastAdvanceTime = -Infinity;
-    this.state = PracticeEngine.initialState(this.state.expected);
+    this.state = { ...PracticeEngine.initialState(this.state.expected), pendingLeft: this.requiredLeft(0) };
     this.listeners.forEach((l) => l(this.state));
   }
 }

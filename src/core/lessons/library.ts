@@ -599,7 +599,7 @@ const defs: LessonDef[] = [
     title: "Romance d'Amour (hai tay)",
     description:
       'Bản piano dễ (Rê thứ, nhịp 3/4) đúng như bản in: tay phải giai điệu, tay trái đệm hợp âm (đoạn A) và rải hợp âm (đoạn B). ' +
-      'App chấm giai điệu tay phải; tay trái đánh kèm theo khuông Fa.',
+      'Đàn MIDI: chấm cả hai tay. Micro: chỉ chấm giai điệu tay phải, tay trái đánh kèm theo khuông Fa.',
     category: 'song',
     clef: 'grand',
     timeSignature: [3, 4],

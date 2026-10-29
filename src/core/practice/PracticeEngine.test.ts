@@ -219,3 +219,77 @@ describe('PracticeEngine — Đếm nốt (advanceOnWrong)', () => {
     expect(e.getState()).toMatchObject({ index: 1, wrong: 1 });
   });
 });
+
+describe('PracticeEngine — hai tay (đàn MIDI)', () => {
+  const D3 = 50, F3 = 53, A3 = 57, A4 = 69, G4b = 67;
+  // Giai điệu A4 G4 ; nốt 1 kèm hợp âm Rê thứ, nốt 2 không có tay trái.
+  const make = (config = {}) =>
+    new PracticeEngine([A4, G4b], { ...DEFAULT_PRACTICE_CONFIG, twoHands: true, ...config }, [[D3, F3, A3], []]);
+
+  it('chỉ chuyển nốt khi đủ giai điệu và cả hợp âm tay trái, thứ tự bất kỳ', () => {
+    const e = make();
+    expect(e.getState().pendingLeft).toEqual([D3, F3, A3]);
+    expect(e.handleNote(F3, 1000)).toBe('partial');
+    expect(e.handleNote(A4, 1005)).toBe('partial');
+    expect(e.getState()).toMatchObject({ index: 0, melodyDone: true, pendingLeft: [D3, A3], correct: 0 });
+    expect(e.handleNote(D3, 1008)).toBe('partial');
+    expect(e.handleNote(A3, 1010)).toBe('correct');
+    expect(e.getState()).toMatchObject({ index: 1, correct: 1, wrong: 0, pendingLeft: [], melodyDone: false });
+  });
+
+  it('nốt tay trái sai → đếm lỗi, giữ phần đã đánh; nốt kết quả ghi "corrected"', () => {
+    const e = make();
+    e.handleNote(A4, 1000);
+    expect(e.handleNote(G4b - 24, 1010)).toBe('wrong');
+    expect(e.getState()).toMatchObject({ index: 0, wrong: 1, melodyDone: true });
+    e.handleNote(D3, 1020);
+    e.handleNote(F3, 1021);
+    expect(e.handleNote(A3, 1022)).toBe('correct');
+    expect(e.getState().results[0]).toBe('corrected');
+  });
+
+  it('đánh lại nốt đã ghi nhận trong cùng bước không tính gì; bước không có tay trái thì nốt trầm là sai', () => {
+    const e = make();
+    e.handleNote(A4, 1000);
+    expect(e.handleNote(A4, 1100)).toBe('ignored');
+    for (const m of [D3, F3, A3]) e.handleNote(m, 1200);
+    expect(e.getState().index).toBe(1);
+    expect(e.handleNote(D3, 1500)).toBe('wrong');
+    expect(e.handleNote(G4b, 1600)).toBe('finished');
+  });
+
+  it('không nới quãng 8 cho tay trái: octaveTolerant không biến nốt đệm thành nốt giai điệu', () => {
+    // A3 nằm trong hợp âm → luôn tính là tay trái dù cùng tên với A4.
+    const e = make({ octaveTolerant: true });
+    e.handleNote(A3, 1000);
+    expect(e.getState()).toMatchObject({ melodyDone: false, pendingLeft: [D3, F3] });
+  });
+
+  it('tắt hai tay (micro) → chỉ chấm giai điệu; bật/tắt giữa chừng đặt lại bước hiện tại', () => {
+    const e = make();
+    e.handleNote(A4, 1000);
+    e.setConfig({ twoHands: false });
+    expect(e.getState()).toMatchObject({ pendingLeft: [], melodyDone: false });
+    expect(e.handleNote(A4, 1100)).toBe('correct');
+  });
+
+  it('Đếm nốt: nốt sai vẫn chuyển, nốt hợp âm đến ngay sau đó bị bỏ qua (minAdvanceIntervalMs)', () => {
+    const e = make({ advanceOnWrong: true });
+    e.handleNote(A4, 1000);
+    expect(e.handleNote(D3 - 1, 1010)).toBe('wrong');
+    expect(e.getState()).toMatchObject({ index: 1, results: ['wrong', 'pending'] });
+    expect(e.handleNote(F3, 1020)).toBe('ignored');
+  });
+
+  it('back / skip / restart đặt lại phần tay trái của bước', () => {
+    const e = make();
+    e.handleNote(D3, 1000);
+    e.skip(1100);
+    expect(e.getState()).toMatchObject({ index: 1, pendingLeft: [] });
+    e.back(1200);
+    expect(e.getState()).toMatchObject({ index: 0, pendingLeft: [D3, F3, A3], melodyDone: false });
+    e.handleNote(A4, 1400);
+    e.restart();
+    expect(e.getState()).toMatchObject({ index: 0, pendingLeft: [D3, F3, A3], melodyDone: false });
+  });
+});

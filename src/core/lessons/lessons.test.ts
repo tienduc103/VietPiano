@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { LESSONS } from './library';
 import { parseAccompaniment, parseNotes, splitMeasures } from './notation';
 import { lessonManager } from './LessonManager';
-import { fingerText, isAccompanimentMidi, measureLength, sectionAt, type Hand, type Lesson } from './types';
+import { accompanimentByNote, fingerText, isAccompanimentMidi, measureLength, sectionAt, type Hand, type Lesson } from './types';
 
 describe('ký hiệu bài học', () => {
   it('phân tích chuỗi nốt với trường độ mặc định', () => {
@@ -165,6 +165,23 @@ describe('thư viện bài học', () => {
       expect(s.measure).toBeGreaterThanOrEqual(1);
       expect(s.measure).toBeLessThanOrEqual(lesson.pickup ? count - 1 : count);
     }
+  });
+
+  it.each(withAccompaniment.map((l) => [l.id, l] as const))('%s: mọi nốt đệm được gán cho một nốt giai điệu (chấm hai tay)', (_id, lesson) => {
+    const left = accompanimentByNote(lesson)!;
+    expect(left).toHaveLength(lesson.notes.length);
+    expect(left.flat()).toEqual(lesson.accompaniment!.flatMap((n) => n.midis));
+  });
+
+  it('Romance hai tay: hợp âm giữ cả ô (đoạn A) chỉ đánh ở nốt đầu ô; rải hợp âm (đoạn B) mỗi nốt một nốt đệm', () => {
+    const lesson = LESSONS.find((l) => l.id === 'song-romance-2-hands')!;
+    const left = accompanimentByNote(lesson)!;
+    const D3 = 50, F3 = 53, A3 = 57;
+    expect(left.slice(0, 4)).toEqual([[D3, F3, A3], [], [], [D3, F3, A3]]);
+    // Đoạn B bắt đầu ở ô 17.
+    const b = splitMeasures(lesson.notes, measureLength(lesson.timeSignature)).slice(0, 16).reduce((n, m) => n + m.items.length, 0);
+    expect(left.slice(b, b + 3)).toEqual([[D3], [F3], [A3]]);
+    expect(accompanimentByNote(LESSONS[0])).toBeUndefined();
   });
 
   it('bài không có phần đệm không lọc nốt nào', () => {

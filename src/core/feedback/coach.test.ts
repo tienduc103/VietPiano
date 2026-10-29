@@ -49,6 +49,8 @@ describe('báo cáo cho thầy AI', () => {
       lastEventTime: 0,
       startedAt: 1000,
       finishedAt: 31_000,
+      pendingLeft: [],
+      melodyDone: false,
     };
     const r = practiceReport('Twinkle', state, 'letter');
     expect(r.score).toBe(75);

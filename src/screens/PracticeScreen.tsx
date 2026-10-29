@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { lessonManager } from '../core/lessons/LessonManager';
-import { DURATION_BEATS, isAccompanimentMidi, lessonTempo, measureLength, HAND_LABEL, noteHand, type Finger, type Hand, type Lesson } from '../core/lessons/types';
+import { accompanimentByNote, DURATION_BEATS, isAccompanimentMidi, lessonTempo, measureLength, HAND_LABEL, noteHand, type Finger, type Hand, type Lesson } from '../core/lessons/types';
 import { midiToLabel, pitchToLabel } from '../core/music/notes';
 import { computeAccuracy, PracticeEngine, DEFAULT_PRACTICE_CONFIG, type PracticeState } from '../core/practice/PracticeEngine';
 import { DEFAULT_TEMPO_CONFIG, TempoFollower, type TempoState } from '../core/practice/TempoFollower';
@@ -19,6 +19,7 @@ import { AppVersion } from '../components/AppVersion';
 import { useSettings } from '../store/settingsStore';
 import { useApp } from '../store/appStore';
 import { useMic } from '../store/micStore';
+import { useMidi } from '../store/midiStore';
 import { useWakeLock } from '../hooks/useAppLifecycle';
 import { useSessionRecorder } from '../hooks/useSessionRecorder';
 import { useUiMode } from '../hooks/useUiMode';
@@ -59,7 +60,8 @@ function Practice({ lesson }: { lesson: Lesson }) {
   const micLive = useMic((s) => s.live);
 
   const midis = useMemo(() => lesson.notes.map((n) => n.midi), [lesson]);
-  const engine = useMemo(() => new PracticeEngine(midis, { ...DEFAULT_PRACTICE_CONFIG }), [midis]);
+  const leftHand = useMemo(() => accompanimentByNote(lesson), [lesson]);
+  const engine = useMemo(() => new PracticeEngine(midis, { ...DEFAULT_PRACTICE_CONFIG }, leftHand), [midis, leftHand]);
   const state = useSyncExternalStore(
     (cb) => engine.subscribe(cb),
     () => engine.getState(),
@@ -118,22 +120,27 @@ function Practice({ lesson }: { lesson: Lesson }) {
   const toggleTempoRunRef = useRef(toggleTempoRun);
   toggleTempoRunRef.current = toggleTempoRun;
 
+  // Bài có phần đệm: đàn MIDI gửi đủ nốt hợp âm → chấm cả hai tay; micro chỉ nhận một nốt mỗi lúc → chỉ tay phải.
+  const midiConnected = useMidi((s) => s.status === 'ready' && s.devices.length > 0);
+  const twoHands = !!leftHand && midiConnected && !tempoMode;
   useEffect(
-    () => engine.setConfig({ octaveTolerant: settings.octaveTolerant, advanceOnWrong: mode === 'count' }),
-    [engine, settings.octaveTolerant, mode],
+    () => engine.setConfig({ octaveTolerant: settings.octaveTolerant, advanceOnWrong: mode === 'count', twoHands }),
+    [engine, settings.octaveTolerant, mode, twoHands],
   );
   useWakeLock(true);
 
   // Nối mọi nguồn nốt (micro + đàn MIDI + bàn phím ảo) vào Wait Mode hoặc chế độ chạy theo nhịp.
   const tempoModeRef = useRef(tempoMode);
   tempoModeRef.current = tempoMode;
+  const twoHandsRef = useRef(twoHands);
+  twoHandsRef.current = twoHands;
   useEffect(() => {
     microphoneInput.resetRecognizer();
     const handle = (e: NoteInputEvent) => {
       // Đàn MIDI đã nối thì micro cũng nghe chính tiếng đàn đó → bỏ để một phím không thành hai sự kiện.
       if (e.source === 'microphone' && midiInput.hasDevice()) return;
-      // Bài có phần đệm: nốt tay trái đánh kèm không bị tính là sai.
-      if (isAccompanimentMidi(lesson, e.midi)) return;
+      // Bài có phần đệm, chỉ chấm tay phải: nốt tay trái đánh kèm không bị tính là sai.
+      if (!twoHandsRef.current && isAccompanimentMidi(lesson, e.midi)) return;
       if (tempoModeRef.current) follower.handleOnset(e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time);
       else engine.handleNote(e.midi, e.time);
     };
@@ -181,9 +188,10 @@ function Practice({ lesson }: { lesson: Lesson }) {
   }, [engine, baseC]);
 
   const range = useMemo(() => {
-    const r = keyboardRange(midis);
+    const r = keyboardRange(twoHands && leftHand ? [...midis, ...leftHand.flat()] : midis);
     return { from: Math.min(r.from, baseC), to: Math.max(r.to, baseC + 23) };
-  }, [midis, baseC]);
+  }, [midis, baseC, twoHands, leftHand]);
+  const pendingLeft = useMemo(() => new Set(state.pendingLeft), [state.pendingLeft]);
 
   const expected = tempoMode
     ? tempo.status === 'finished'
@@ -263,6 +271,8 @@ function Practice({ lesson }: { lesson: Lesson }) {
         <FullscreenButton />
       </header>
 
+      {leftHand && <HandsNotice twoHands={twoHands} midiConnected={midiConnected} />}
+
       {/* ── Giữa: khuông nhạc ── */}
       <main className="relative mx-3 min-h-0 flex-1 rounded-2xl bg-white shadow-md shadow-violet-200/60 ring-1 ring-violet-100 dark:bg-slate-900 dark:shadow-none dark:ring-violet-900">
         <ScoreView
@@ -300,6 +310,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
             expectedPitch={currentNote?.midi === expected ? currentNote?.pitch : undefined}
             finger={expectedFinger}
             hand={expectedHand}
+            twoHands={twoHands}
             showFeedback={showFeedback}
             labelStyle={settings.labelStyle}
           />
@@ -329,8 +340,9 @@ function Practice({ lesson }: { lesson: Lesson }) {
           <PianoKeyboard
             from={range.from}
             to={range.to}
-            expected={expected}
+            expected={state.melodyDone ? null : expected}
             expectedFinger={expectedFinger}
+            highlighted={tempoMode ? undefined : pendingLeft}
             detected={micLive?.midi ?? null}
             flash={flash}
             labelStyle={settings.labelStyle}
@@ -368,6 +380,7 @@ function StatusPanel({
   expectedPitch,
   finger,
   hand,
+  twoHands,
   showFeedback,
   labelStyle,
 }: {
@@ -377,6 +390,8 @@ function StatusPanel({
   expectedPitch?: string;
   finger?: Finger;
   hand?: Hand;
+  /** Đang chấm hai tay (đàn MIDI): hiện nốt tay trái còn thiếu. */
+  twoHands?: boolean;
   showFeedback: boolean;
   labelStyle: 'letter' | 'solfege';
 }) {
@@ -415,6 +430,16 @@ function StatusPanel({
           </div>
         </div>
       )}
+      {expected !== null && twoHands && (state.pendingLeft.length > 0 || state.melodyDone) && (
+        <div className="text-center" data-testid="expected-left">
+          <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
+            {state.melodyDone ? 'Đã đúng tay phải — còn tay trái' : 'Kèm tay trái'}
+          </div>
+          <div className="text-2xl font-bold text-amber-600 dark:text-amber-300">
+            {state.pendingLeft.length > 0 ? state.pendingLeft.map((m) => midiToLabel(m, labelStyle)).join(' ') : '✓'}
+          </div>
+        </div>
+      )}
       {expected !== null && hand && (
         <div className="text-center">
           <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400" data-testid="expected-hand">
@@ -428,6 +453,24 @@ function StatusPanel({
         </div>
       )}
     </div>
+  );
+}
+
+/** Báo cho người chơi bài có phần đệm đang được chấm một hay hai tay. */
+function HandsNotice({ twoHands, midiConnected }: { twoHands: boolean; midiConnected: boolean }) {
+  const text = twoHands
+    ? '🎹 Đàn MIDI: chấm cả hai tay. Đánh đúng nốt giai điệu và đủ nốt tay trái (khuông Fa, phím tô vàng) thì mới sang nốt tiếp; nốt tay trái sai cũng tính lỗi.'
+    : midiConnected
+      ? '🎹 Chế độ Theo nhịp chỉ chấm thời điểm giai điệu tay phải. Chọn Chờ nốt hoặc Đếm nốt để chấm cả hai tay qua đàn MIDI.'
+      : '🎤 Micro chỉ nhận một nốt mỗi lúc nên app chỉ chấm giai điệu tay phải; tay trái cứ đánh kèm theo khuông Fa, không bị tính sai. Muốn chấm cả hai tay: nối đàn MIDI (Chrome/Edge trên máy tính, bật ở Cài đặt).';
+  return (
+    <p
+      className={`mx-3 mb-2 rounded-xl px-4 py-2 text-sm ${twoHands ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-200'}`}
+      data-testid="hands-notice"
+      role="note"
+    >
+      {text}
+    </p>
   );
 }
 
