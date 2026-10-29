@@ -133,13 +133,20 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
           </section>
         )}
 
-        <section className="mt-8">
-          <h2 className="mb-3 text-lg font-semibold">Thành tích</h2>
-          <div className="flex flex-wrap gap-2" data-testid="achievements">
-            {badges.map((b) => (
+        <section className="mt-6 flex items-center gap-3">
+          <h2 className="shrink-0 text-base font-semibold">
+            Thành tích{' '}
+            <span className="text-sm font-normal text-slate-500 dark:text-slate-400">
+              {badges.filter((b) => b.earned).length}/{badges.length}
+            </span>
+          </h2>
+          {/* Một dòng, cuộn ngang; thành tích đã đạt lên trước */}
+          <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto whitespace-nowrap py-1" data-testid="achievements">
+            {[...badges].sort((a, b) => Number(b.earned) - Number(a.earned)).map((b) => (
               <span
                 key={b.id}
-                className={`rounded-full px-4 py-2 text-sm font-semibold ${b.earned ? 'bg-amber-100 text-amber-900 ring-2 ring-amber-300 dark:bg-amber-900/50 dark:text-amber-100' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'}`}
+                title={b.title}
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${b.earned ? 'bg-amber-100 text-amber-900 ring-2 ring-amber-300 dark:bg-amber-900/50 dark:text-amber-100' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'}`}
                 data-earned={b.earned}
               >
                 {b.earned ? '🏅 ' : '○ '}
