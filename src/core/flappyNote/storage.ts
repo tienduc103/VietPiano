@@ -5,7 +5,7 @@
  */
 import { applyArcadeResult, sanitizeArcadeRecords, type ArcadeRecords } from '../games/arcade';
 import type { GameRecord } from '../curriculum/progress';
-import type { FlappyDifficulty, FlappyMode } from './FlappyNoteGame';
+import { DIFFICULTIES, type FlappyDifficulty, type FlappyMode } from './FlappyNoteGame';
 import { FLAPPY_LEVELS, findLevel } from './levels';
 
 export interface FlappySettings {
@@ -36,7 +36,6 @@ export const DEFAULT_FLAPPY_SETTINGS: FlappySettings = {
   sound: true,
 };
 
-const DIFFICULTIES: readonly FlappyDifficulty[] = ['easy', 'normal', 'hard'];
 const SETTINGS_KEY = 'vietpiano-flappy-note-settings';
 
 export function sanitizeFlappySettings(raw: unknown): FlappySettings {

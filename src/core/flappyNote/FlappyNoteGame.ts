@@ -6,12 +6,17 @@
  * Ống cản chạy từ phải sang trái; chạm ống / mặt đất mất một mạng rồi được bất tử một lúc (bay xuyên ống,
  * chạm đất thì nảy lên) — hết mạng là thua. Qua đủ `pipes` ống là về đích.
  *
+ * Trường độ (`durations` khác rỗng, độ khó Siêu dễ): mỗi nốt mục tiêu mang một trường độ ghi trên khuông
+ * (chuỗi nốt: theo giai điệu; ngẫu nhiên: bốc từ `durations`) — trường độ càng dài chim được nâng càng cao
+ * (`liftScale`). Chỉ là trường độ ghi trên khuông: không đo thời gian giữ phím (micro không có Note Off).
+ *
  * Trước nốt đúng đầu tiên (`ready`) chim lơ lửng, ống đứng yên: người chơi có thời gian đọc nốt đầu.
  * Toạ độ thế giới: cao `WORLD_HEIGHT`, mặt đất ở `GROUND_Y`, chim ở x = `BIRD_X`; ống có x tăng dần
  * (cách nhau `spacing`), cuộn sang trái với `speed`. Bề ngang hiển thị do màn hình quyết định.
  */
 import type { FlappyNote } from './levels';
 import type { Random } from '../games/random';
+import { DURATION_BEATS, type Duration } from '../lessons/types';
 
 export const WORLD_HEIGHT = 600;
 export const GROUND_Y = 540;
@@ -27,7 +32,8 @@ const STEP_MS = 1000 / 120;
 /** Khung hình bị trễ (tab nền…) → chỉ mô phỏng tối đa chừng này. */
 const MAX_FRAME_MS = 100;
 
-export type FlappyDifficulty = 'easy' | 'normal' | 'hard';
+export type FlappyDifficulty = 'super-easy' | 'easy' | 'normal' | 'hard';
+export const DIFFICULTIES: readonly FlappyDifficulty[] = ['super-easy', 'easy', 'normal', 'hard'];
 export type FlappyStatus = 'ready' | 'playing' | 'paused' | 'won' | 'over';
 export type FlappyMode = 'random' | 'sequence';
 
@@ -54,19 +60,35 @@ export interface FlappyConfig {
   invincibleMs: number;
   /** Bỏ sự kiện quá sát lần chuyển nốt (micro phát lặp nốt vừa đánh); sửa nhanh sau nốt sai thì không bị chặn. */
   minIntervalMs: number;
+  /** Trường độ bốc ngẫu nhiên cho nốt mục tiêu (lặp lại = hay gặp hơn); rỗng = không dùng trường độ, mọi nốt nâng như nhau. */
+  durations: readonly Duration[];
+  /** Số nốt kế tiếp được biết trước. */
+  upcoming: number;
 }
 
+const STANDARD = { durations: [], upcoming: 3 } as const;
+
 export const DIFFICULTY_CONFIG: Record<FlappyDifficulty, FlappyConfig> = {
+  // Mỗi nốt nâng ít (nốt đen ≈ 50 px) nhưng rơi rất chậm → đánh nhiều nốt liên tục; nốt dài bay cao hơn.
+  'super-easy': { gravity: 140, flapVelocity: 120, maxFallSpeed: 150, speed: 80, spacing: 470, gap: 290, maxGapShift: 70, firstPipeOffset: 760, pipes: 10, lives: 7, invincibleMs: 2500, minIntervalMs: 80, durations: ['8', 'q', 'q', 'q', 'h', 'h', 'w'], upcoming: 5 },
   // Nâng một lần ≈ 1,8 s mới rơi về độ cao cũ → đủ thời gian đọc nốt.
-  easy: { gravity: 260, flapVelocity: 230, maxFallSpeed: 260, speed: 110, spacing: 430, gap: 240, maxGapShift: 90, firstPipeOffset: 720, pipes: 12, lives: 5, invincibleMs: 2200, minIntervalMs: 120 },
-  normal: { gravity: 420, flapVelocity: 300, maxFallSpeed: 380, speed: 150, spacing: 410, gap: 205, maxGapShift: 120, firstPipeOffset: 720, pipes: 18, lives: 3, invincibleMs: 1800, minIntervalMs: 120 },
-  hard: { gravity: 650, flapVelocity: 380, maxFallSpeed: 520, speed: 200, spacing: 390, gap: 180, maxGapShift: 150, firstPipeOffset: 760, pipes: 25, lives: 3, invincibleMs: 1500, minIntervalMs: 100 },
+  easy: { gravity: 260, flapVelocity: 230, maxFallSpeed: 260, speed: 110, spacing: 430, gap: 240, maxGapShift: 90, firstPipeOffset: 720, pipes: 12, lives: 5, invincibleMs: 2200, minIntervalMs: 120, ...STANDARD },
+  normal: { gravity: 420, flapVelocity: 300, maxFallSpeed: 380, speed: 150, spacing: 410, gap: 205, maxGapShift: 120, firstPipeOffset: 720, pipes: 18, lives: 3, invincibleMs: 1800, minIntervalMs: 120, ...STANDARD },
+  hard: { gravity: 650, flapVelocity: 380, maxFallSpeed: 520, speed: 200, spacing: 390, gap: 180, maxGapShift: 150, firstPipeOffset: 760, pipes: 25, lives: 3, invincibleMs: 1500, minIntervalMs: 100, ...STANDARD },
 };
 
-export const DIFFICULTY_LABEL: Record<FlappyDifficulty, string> = { easy: 'Dễ', normal: 'Vừa', hard: 'Khó' };
+export const DIFFICULTY_LABEL: Record<FlappyDifficulty, string> = { 'super-easy': 'Siêu dễ', easy: 'Dễ', normal: 'Vừa', hard: 'Khó' };
 
-/** Số nốt kế tiếp được biết trước (hiện ở khu hướng dẫn). */
+/** Số nốt kế tiếp mặc định (hiện ở khu hướng dẫn). */
 export const UPCOMING = 3;
+
+/**
+ * Hệ số vận tốc nâng theo trường độ: độ cao ∝ vận tốc² → nốt đen ×1, trắng ≈ ×1,5, tròn ≈ ×2,5 độ cao; móc đơn ≈ ×0,75.
+ * Không có trường độ → ×1.
+ */
+export function liftScale(duration: Duration | undefined): number {
+  return duration ? Math.sqrt(0.5 + DURATION_BEATS[duration] / 2) : 1;
+}
 
 export interface Pipe {
   id: number;
@@ -167,7 +189,7 @@ export class FlappyNoteGame {
     if (this.pool.length < (this.mode === 'random' ? 2 : 1)) throw new Error('Trò chơi cần ít nhất hai nốt');
     this.config = { ...DIFFICULTY_CONFIG[opts.difficulty ?? 'normal'], ...opts.config };
     this.world = { birdY: WORLD_HEIGHT * 0.42, birdVy: 0, pipes: [], distance: 0, clock: 0, flapAt: -Infinity, crashAt: -Infinity, invincibleUntil: -Infinity };
-    while (this.queue.length < UPCOMING + 1) this.queue.push(this.draw());
+    while (this.queue.length < this.config.upcoming + 1) this.queue.push(this.draw());
     this.spawnPipes();
     const target = this.queue[0];
     this.state = {
@@ -190,15 +212,18 @@ export class FlappyNoteGame {
   }
 
   private draw(): FlappyNote {
+    const { durations } = this.config;
     if (this.mode === 'sequence') {
       const n = this.pool[this.seqIndex % this.pool.length];
       this.seqIndex++;
-      return n;
+      // Giữ trường độ của giai điệu khi chơi có trường độ, bỏ đi khi không.
+      return durations.length > 0 ? { ...n, duration: n.duration ?? 'q' } : { ...n, duration: undefined };
     }
     const prev = this.queue[this.queue.length - 1];
     for (;;) {
       const n = this.pool[Math.floor(this.random() * this.pool.length)];
-      if (n.midi !== prev?.midi) return n;
+      if (n.midi === prev?.midi) continue;
+      return { ...n, duration: durations.length > 0 ? durations[Math.floor(this.random() * durations.length)] : undefined };
     }
   }
 
@@ -274,7 +299,7 @@ export class FlappyNoteGame {
     const w = this.world;
     stat.hits++;
     stat.reactionMs += Math.max(0, w.clock - this.targetSince);
-    w.birdVy = -this.config.flapVelocity;
+    w.birdVy = -this.config.flapVelocity * liftScale(target.duration);
     w.flapAt = w.clock;
     this.queue.shift();
     this.queue.push(this.draw());

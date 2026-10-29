@@ -76,7 +76,9 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              mỗi nốt ĐÚNG = một lần vỗ cánh + sang nốt kế (tối đa 1 nốt/sự kiện; `minIntervalMs` chỉ tính sau lần chuyển nốt),
                              sai → không nâng. `FlappyNoteGame` máy trạng thái + vật lý bước cố định (ready/playing/paused/won/over,
                              va chạm → mất mạng + bất tử), `levels.ts` màn = thế tay 5 ngón (ngón gợi ý) + giai điệu cho chế độ Chuỗi nốt,
-                             độ khó Dễ/Vừa/Khó chỉ đổi vật lý. Canvas `components/flappyNote/FlappyCanvas` đọc `getWorld()` mỗi khung
+                             độ khó Siêu dễ/Dễ/Vừa/Khó chỉ đổi vật lý. Siêu dễ (`durations` khác rỗng): nốt mục tiêu có trường độ
+                             (giai điệu: theo bài; ngẫu nhiên: bốc), nốt dài nâng cao hơn (`liftScale`, KHÔNG đo giữ phím), dải nốt
+                             sắp đánh `NoteStrip` ở đầu khu trò chơi (thẻ khuông vẽ sẵn theo nốt × trường độ: `useStaffCards`). Canvas `components/flappyNote/FlappyCanvas` đọc `getWorld()` mỗi khung
                              (không re-render React); khu hướng dẫn `NoteGuide` (khuông vẽ sẵn, tên nốt, `HandFigure`, 3 nốt tiếp).
                              Kỷ lục theo hồ sơ + màn × độ khó, tổng sao → danh hiệu (`storage.ts`, localStorage)
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt

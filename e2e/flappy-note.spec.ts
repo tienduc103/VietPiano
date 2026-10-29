@@ -66,3 +66,29 @@ test('không đánh tiếp → chim rơi, mất hết mạng, kết quả lưu k
   await expect(page.getByTestId('flappy-level-rh-do-re-mi')).toContainText('kỷ lục');
   await expect(page.getByTestId('flappy-total-stars')).toContainText('★ 0/');
 });
+
+test('Siêu dễ: dải nốt sắp đánh có trường độ; nốt trắng của Mary hiện "nốt trắng"', async ({ page }) => {
+  await page.goto('/?screen=flappy-note');
+  await page.getByTestId('flappy-level-rh-c-position').click();
+  await page.getByRole('button', { name: '🎼 Chuỗi nốt' }).click();
+  await page.getByTestId('flappy-melody-mary').click();
+  await page.getByRole('button', { name: 'Siêu dễ', exact: true }).click();
+  await page.getByTestId('flappy-start').click();
+
+  const strip = page.getByTestId('flappy-strip');
+  await expect(strip.locator('li')).toHaveCount(6);
+  await expect(strip.locator('svg')).toHaveCount(6);
+  await expect(page.getByTestId('flappy-strip-current')).toHaveAttribute('data-duration', 'q');
+  await expect(page.getByTestId('flappy-target-duration')).toHaveText('nốt đen');
+  // Khu hướng dẫn không lặp lại các nốt tiếp theo khi đã có dải nốt.
+  await expect(page.getByTestId('flappy-upcoming')).toHaveCount(0);
+
+  // Mary: E D C D | E E E/h — nốt thứ 7 là nốt trắng.
+  for (const midi of [64, 62, 60, 62, 64, 64]) {
+    await key(page, midi).click();
+    await page.waitForTimeout(120);
+  }
+  await expect(screen(page)).toHaveAttribute('data-target', '64');
+  await expect(page.getByTestId('flappy-strip-current')).toHaveAttribute('data-duration', 'h');
+  await expect(page.getByTestId('flappy-target-duration')).toHaveText('nốt trắng');
+});

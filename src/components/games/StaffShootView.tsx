@@ -24,7 +24,17 @@ const STAFF_BAND = 108;
 
 /** Vẽ sẵn mỗi nốt một khuông nhỏ (SVG) — một lần cho cả ván, không vẽ lại VexFlow mỗi khung hình. */
 export function useStaffSvgs(notes: readonly number[], clef: Clef, nameOf: (midi: number) => string, keySignature?: KeySignature): Map<number, string> | null {
-  const [svgs, setSvgs] = useState<Map<number, string> | null>(null);
+  const cards = useMemo(() => [...new Set(notes)].map((m) => ({ key: m, notation: `${nameOf(m)}/w`, clef })), [notes, clef]);
+  // `nameOf` suy từ spec — cố định trong suốt ván.
+  return useStaffCards(cards, keySignature);
+}
+
+/**
+ * Vẽ sẵn mỗi thẻ một khuông nhỏ (SVG) từ ký hiệu gọn (vd "E4/h" — có trường độ) — một lần cho cả ván.
+ * `cards` phải ổn định (useMemo); khoá tuỳ ý.
+ */
+export function useStaffCards<K>(cards: readonly { key: K; notation: string; clef: Clef }[], keySignature?: KeySignature): Map<K, string> | null {
+  const [svgs, setSvgs] = useState<Map<K, string> | null>(null);
   useEffect(() => {
     let alive = true;
     void scoreFontsReady().then(() => {
@@ -32,13 +42,13 @@ export function useStaffSvgs(notes: readonly number[], clef: Clef, nameOf: (midi
       const host = document.createElement('div');
       host.style.cssText = 'position:absolute;left:-10000px;top:0;visibility:hidden';
       document.body.appendChild(host);
-      const out = new Map<number, string>();
+      const out = new Map<K, string>();
       try {
-        for (const m of new Set(notes)) {
-          const lesson = pieceToLesson({ notation: `${nameOf(m)}/w`, clef, hand: clef === 'bass' ? 'left' : 'right', bpm: 60, timeSignature: [4, 4], keySignature }, `shoot-${m}`);
+        cards.forEach((c, i) => {
+          const lesson = pieceToLesson({ notation: c.notation, clef: c.clef, hand: c.clef === 'bass' ? 'left' : 'right', bpm: 60, timeSignature: [4, 4], keySignature }, `shoot-${i}`);
           const r = renderScore(host, lesson, { showNames: false, labelStyle: 'letter' });
           const svg = host.querySelector('svg');
-          if (!svg) continue;
+          if (!svg) return;
           r.cursor.remove(); // con trỏ nốt hiện tại
           // Cắt dải quanh 5 dòng kẻ (dòng trên y≈70, dưới y≈110) + chỗ cho dòng kẻ phụ — bỏ vùng tên nốt / số ngón.
           const box = svg.getBBox();
@@ -47,8 +57,8 @@ export function useStaffSvgs(notes: readonly number[], clef: Clef, nameOf: (midi
           svg.removeAttribute('width');
           svg.removeAttribute('height');
           svg.removeAttribute('style');
-          out.set(m, svg.outerHTML);
-        }
+          out.set(c.key, svg.outerHTML);
+        });
       } catch (err) {
         console.error('[VietPiano] Lỗi vẽ khuông cho trò chơi', err);
       } finally {
@@ -59,8 +69,7 @@ export function useStaffSvgs(notes: readonly number[], clef: Clef, nameOf: (midi
     return () => {
       alive = false;
     };
-    // `nameOf` suy từ spec — cố định trong suốt ván.
-  }, [notes, clef, keySignature]);
+  }, [cards, keySignature]);
   return svgs;
 }
 

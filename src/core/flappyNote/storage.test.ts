@@ -6,6 +6,7 @@ describe('Flappy Note storage', () => {
     expect(sanitizeFlappySettings(null)).toEqual(DEFAULT_FLAPPY_SETTINGS);
     expect(sanitizeFlappySettings({ levelId: 'không-có', difficulty: 'siêu khó', showName: 'x' })).toMatchObject({ levelId: DEFAULT_FLAPPY_SETTINGS.levelId, difficulty: 'easy', showName: true });
     expect(sanitizeFlappySettings({ levelId: 'treble-wide', mode: 'sequence' }).mode).toBe('random');
+    expect(sanitizeFlappySettings({ difficulty: 'super-easy' }).difficulty).toBe('super-easy');
     expect(sanitizeFlappySettings({ levelId: 'rh-c-position', mode: 'sequence', melodyId: 'mary' })).toMatchObject({ mode: 'sequence', melodyId: 'mary' });
     expect(sanitizeFlappySettings({ levelId: 'rh-c-position', melodyId: 'không-có' }).melodyId).toBe('five-steps');
   });

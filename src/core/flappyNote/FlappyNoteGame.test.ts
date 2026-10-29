@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { seeded } from '../games/random';
-import { BIRD_X, DIFFICULTY_CONFIG, FlappyNoteGame, flappyStars, GROUND_Y, LIFE_BONUS, PIPE_POINTS, PIPE_WIDTH, summarize, UPCOMING, WORLD_HEIGHT, type FlappyConfig } from './FlappyNoteGame';
+import { DURATION_BEATS } from '../lessons/types';
+import { BIRD_X, DIFFICULTY_CONFIG, FlappyNoteGame, flappyStars, GROUND_Y, liftScale, LIFE_BONUS, PIPE_POINTS, PIPE_WIDTH, summarize, UPCOMING, WORLD_HEIGHT, type FlappyConfig } from './FlappyNoteGame';
 import { FLAPPY_LEVELS, findLevel, melodyNotes } from './levels';
 
 const level = findLevel('rh-c-position')!;
@@ -191,6 +192,61 @@ describe('FlappyNoteGame', () => {
   });
 });
 
+describe('Siêu dễ: trường độ', () => {
+  const ode = melodyNotes(level, level.melodies.find((m) => m.id === 'ode-to-joy')!);
+
+  it('ngẫu nhiên: mỗi nốt có trường độ bốc từ danh sách; biết trước nhiều nốt hơn', () => {
+    const g = new FlappyNoteGame(NOTES, { difficulty: 'super-easy' }, seeded(11));
+    const all = [g.getState().target, ...g.getState().upcoming];
+    expect(g.getState().upcoming).toHaveLength(DIFFICULTY_CONFIG['super-easy'].upcoming);
+    for (const n of all) expect(DIFFICULTY_CONFIG['super-easy'].durations).toContain(n.duration);
+    // Đủ nhiều lượt thì gặp nhiều trường độ khác nhau.
+    const seen = new Set<string | undefined>();
+    let t = 0;
+    for (let i = 0; i < 40; i++) {
+      seen.add(g.getState().target.duration);
+      g.answer(g.getState().target.midi, (t += 300));
+      (g.getWorld() as { birdY: number }).birdY = WORLD_HEIGHT / 2;
+    }
+    expect(seen.size).toBeGreaterThanOrEqual(3);
+  });
+
+  it('chuỗi nốt: giữ trường độ của giai điệu; độ khó thường thì bỏ trường độ', () => {
+    const g = new FlappyNoteGame(ode, { mode: 'sequence', difficulty: 'super-easy' });
+    expect([g.getState().target, ...g.getState().upcoming].map((n) => n.duration)).toEqual(['q', 'q', 'q', 'q', 'q', 'q']);
+    const normal = new FlappyNoteGame(ode, { mode: 'sequence', difficulty: 'normal' });
+    expect(normal.getState().target.duration).toBeUndefined();
+    expect(normal.getState().upcoming).toHaveLength(UPCOMING);
+  });
+
+  it('nốt dài bay cao hơn: vận tốc nâng theo trường độ; không trường độ = như nốt đen', () => {
+    expect(liftScale(undefined)).toBe(1);
+    expect(liftScale('q')).toBe(1);
+    expect(liftScale('8')).toBeLessThan(1);
+    expect(liftScale('h')).toBeGreaterThan(1);
+    expect(liftScale('w')).toBeGreaterThan(liftScale('h'));
+    // Giai điệu có nốt trắng: lực nâng lúc đánh đúng nốt đó lớn hơn nốt đen.
+    const notes = melodyNotes(level, { id: 't', label: 't', notation: 'C4 D4/h E4/w', source: 'test' });
+    const g = new FlappyNoteGame(notes, { mode: 'sequence', difficulty: 'super-easy' });
+    const v = g.config.flapVelocity;
+    g.answer(60, 0);
+    expect(g.getWorld().birdVy).toBeCloseTo(-v);
+    g.answer(62, 500);
+    expect(g.getWorld().birdVy).toBeCloseTo(-v * liftScale('h'));
+    g.answer(64, 1000);
+    expect(g.getWorld().birdVy).toBeCloseTo(-v * liftScale('w'));
+  });
+
+  it('siêu dễ rơi chậm hơn dễ và cần đánh dày hơn (một nốt đen nâng thấp hơn)', () => {
+    const se = DIFFICULTY_CONFIG['super-easy'];
+    const easy = DIFFICULTY_CONFIG.easy;
+    expect(se.maxFallSpeed).toBeLessThan(easy.maxFallSpeed);
+    expect(se.flapVelocity ** 2 / se.gravity).toBeLessThan(easy.flapVelocity ** 2 / easy.gravity);
+    expect(se.gap).toBeGreaterThan(easy.gap);
+    expect(se.lives).toBeGreaterThan(easy.lives);
+  });
+});
+
 describe('levels', () => {
   it('nốt trong tầm micro, ngón không trùng trong một tay, giai điệu chỉ dùng nốt của màn', () => {
     for (const l of FLAPPY_LEVELS) {
@@ -206,7 +262,8 @@ describe('levels', () => {
       }
       for (const m of l.melodies) {
         expect(m.source).toBeTruthy();
-        expect(() => melodyNotes(l, m)).not.toThrow();
+        const beats = melodyNotes(l, m).reduce((a, n) => a + DURATION_BEATS[n.duration!], 0);
+        expect(beats % 4, `${l.id}/${m.id} đủ ô nhịp 4/4`).toBe(0);
       }
     }
   });

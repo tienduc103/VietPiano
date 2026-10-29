@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { soundOutput } from '../core/audio/SoundOutput';
 import type { GameRecord } from '../core/curriculum/progress';
-import { DIFFICULTY_LABEL, DIFFICULTY_CONFIG, FlappyNoteGame, summarize, type FlappyDifficulty, type FlappySummary } from '../core/flappyNote/FlappyNoteGame';
+import { DIFFICULTIES, DIFFICULTY_LABEL, DIFFICULTY_CONFIG, FlappyNoteGame, summarize, type FlappyDifficulty, type FlappySummary } from '../core/flappyNote/FlappyNoteGame';
 import { FLAPPY_LEVELS, findLevel, melodyNotes, type FlappyLevel, type FlappyNote } from '../core/flappyNote/levels';
 import {
   bestStarsOfLevel,
@@ -22,9 +22,10 @@ import { virtualInput } from '../core/input/VirtualInputProvider';
 import { midiToLabel, pitchToLabel } from '../core/music/notes';
 import { InputSourceBar } from '../components/curriculum/common';
 import { FlappyCanvas } from '../components/flappyNote/FlappyCanvas';
-import { NoteGuide } from '../components/flappyNote/NoteGuide';
+import { NoteGuide, staffCardKey } from '../components/flappyNote/NoteGuide';
+import { NoteStrip } from '../components/flappyNote/NoteStrip';
 import { Stars, useGameState, useKeyFlash } from '../components/games/shared';
-import { useStaffSvgs } from '../components/games/StaffShootView';
+import { useStaffCards } from '../components/games/StaffShootView';
 import { MicButton } from '../components/MicPanel';
 import { PianoKeyboard } from '../components/PianoKeyboard';
 import { Button, Card, FullscreenButton, Icon, Segmented } from '../components/ui';
@@ -36,6 +37,7 @@ import { useMic } from '../store/micStore';
 import { useSettings } from '../store/settingsStore';
 
 const DIFFICULTY_HELP: Record<FlappyDifficulty, string> = {
+  'super-easy': `Rơi rất chậm, đánh nhiều nốt liên tục; nốt dài (trắng, tròn) bay cao hơn · ${DIFFICULTY_CONFIG['super-easy'].lives} mạng · ${DIFFICULTY_CONFIG['super-easy'].pipes} ống`,
   easy: `Chim bay chậm, khe ống rộng, ${DIFFICULTY_CONFIG.easy.lives} mạng · ${DIFFICULTY_CONFIG.easy.pipes} ống`,
   normal: `Nhanh hơn, khe hẹp hơn, ${DIFFICULTY_CONFIG.normal.lives} mạng · ${DIFFICULTY_CONFIG.normal.pipes} ống`,
   hard: `Rơi nhanh — phải đọc nốt thật nhanh, ${DIFFICULTY_CONFIG.hard.lives} mạng · ${DIFFICULTY_CONFIG.hard.pipes} ống`,
@@ -93,7 +95,7 @@ function FlappySetup({ settings, records, update, onStart }: { settings: FlappyS
     { key: 'showName', label: 'Tên nốt' },
     { key: 'showFinger', label: 'Ngón + bàn tay' },
     { key: 'highlightKey', label: 'Tô phím cần đánh' },
-    { key: 'showUpcoming', label: '3 nốt tiếp theo' },
+    { key: 'showUpcoming', label: 'Nốt tiếp theo' },
     { key: 'sound', label: 'Âm thanh' },
   ];
   return (
@@ -186,7 +188,7 @@ function FlappySetup({ settings, records, update, onStart }: { settings: FlappyS
             </div>
             <div className="grid gap-2">
               <h2 className="text-lg font-bold">Độ khó</h2>
-              <Segmented value={settings.difficulty} onChange={(difficulty) => update({ difficulty })} options={(['easy', 'normal', 'hard'] as const).map((d) => ({ value: d, label: DIFFICULTY_LABEL[d] }))} />
+              <Segmented value={settings.difficulty} onChange={(difficulty) => update({ difficulty })} options={DIFFICULTIES.map((d) => ({ value: d, label: DIFFICULTY_LABEL[d] }))} />
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {DIFFICULTY_HELP[settings.difficulty]} · {starsText(records[flappyKey(level.id, settings.difficulty)])}
               </p>
@@ -260,13 +262,13 @@ function FlappyPlay({
   );
   const state = useGameState(game);
 
-  // Khuông nhạc vẽ sẵn cho từng nốt (khoá Sol tay phải, khoá Fa tay trái).
-  const treble = useMemo(() => level.notes.filter((n) => n.clef === 'treble').map((n) => n.midi), [level]);
-  const bass = useMemo(() => level.notes.filter((n) => n.clef === 'bass').map((n) => n.midi), [level]);
-  const nameOf = (m: number) => level.notes.find((n) => n.midi === m)?.pitch ?? 'C4';
-  const trebleSvgs = useStaffSvgs(treble, 'treble', nameOf);
-  const bassSvgs = useStaffSvgs(bass, 'bass', nameOf);
-  const svgs = useMemo(() => (trebleSvgs && bassSvgs ? new Map([...trebleSvgs, ...bassSvgs]) : null), [trebleSvgs, bassSvgs]);
+  // Khuông nhạc vẽ sẵn cho từng nốt × trường độ có thể gặp (khoá Sol tay phải, khoá Fa tay trái); không trường độ → nốt tròn.
+  const withDurations = game.config.durations.length > 0;
+  const cards = useMemo(() => {
+    const durations = withDurations ? [...new Set([...game.config.durations, ...notes.flatMap((n) => (n.duration ? [n.duration] : []))])] : [undefined];
+    return level.notes.flatMap((n) => durations.map((d) => ({ key: staffCardKey({ ...n, duration: d }), notation: `${n.pitch}/${d ?? 'w'}`, clef: n.clef })));
+  }, [level, notes, withDurations, game.config.durations]);
+  const svgs = useStaffCards(cards);
 
   const keyboard = useMemo(() => keyboardFor(level.notes.map((n) => n.midi)), [level]);
   const keyHints = useMemo(() => keyHintsFor(chooseBaseC([keyboard.from])), [keyboard]);
@@ -399,13 +401,15 @@ function FlappyPlay({
         labelStyle={labelStyle}
         showName={settings.showName}
         showFinger={settings.showFinger}
-        showUpcoming={settings.showUpcoming}
+        // Có dải nốt sắp đánh trong khu trò chơi thì khu hướng dẫn không lặp lại.
+        showUpcoming={settings.showUpcoming && !withDurations}
         kids={kids}
         flash={guideFlash}
       />
 
       <div className="relative min-h-48 flex-1 overflow-hidden rounded-3xl ring-1 ring-sky-200 dark:ring-slate-700">
         <FlappyCanvas game={game} />
+        {withDurations && <NoteStrip notes={[state.target, ...state.upcoming]} svgs={svgs} labelStyle={labelStyle} showName={settings.showName} />}
         {state.status === 'ready' && (
           <Overlay testId="flappy-ready">
             <p className="text-2xl font-extrabold">Đánh nốt {settings.showName ? targetLabel : 'trên khuông'} để cất cánh! 🐤</p>
@@ -454,7 +458,7 @@ function FlappyPlay({
 
 function Overlay({ testId, children }: { testId: string; children: React.ReactNode }) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-6 flex justify-center px-4" data-testid={testId}>
+    <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/3 justify-center px-4" data-testid={testId}>
       <div className="pointer-events-auto grid justify-items-center gap-2 rounded-3xl bg-white/90 px-6 py-4 text-center text-slate-900 shadow-lg ring-2 ring-amber-300 dark:bg-slate-900/90 dark:text-slate-100">{children}</div>
     </div>
   );
