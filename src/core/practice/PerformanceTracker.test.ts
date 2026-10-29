@@ -192,3 +192,56 @@ describe('PerformanceTracker — sắc thái mạnh nhẹ', () => {
     expect('dynamics' in t.result()).toBe(false);
   });
 });
+
+describe('PerformanceTracker — pedal', () => {
+  // Hai ô 2/4 (nốt đen), thay pedal ở đầu ô 2: [0,2] [2,4].
+  const PEDAL = [{ startBeat: 0, endBeat: 2 }, { startBeat: 2, endBeat: 4 }];
+  const play = (t: PerformanceTracker) => [60, 62, 64, 65].forEach((m, i) => t.handleNoteOn(m, at(i)));
+
+  it('đàn MIDI: đạp / thay / nhả đúng ký hiệu → điểm pedal 1; trạng thái pedalDown theo sự kiện', () => {
+    const t = started(quarters([60, 62, 64, 65]), { pedal: PEDAL });
+    t.setPedalInput(true);
+    play(t);
+    t.handlePedal(true, at(0.2));
+    expect(t.getState().pedalDown).toBe(true);
+    t.handlePedal(false, at(2.05));
+    t.handlePedal(true, at(2.3));
+    t.handlePedal(false, at(4.1));
+    expect(t.getState().pedalDown).toBe(false);
+    expect(t.result().pedal).toBe(1);
+  });
+
+  it('không thay pedal → điểm thấp; nguồn vào không có pedal → "không đo"; bài không ký hiệu → không có tiêu chí', () => {
+    const t = started(quarters([60, 62, 64, 65]), { pedal: PEDAL });
+    t.setPedalInput(true);
+    t.handlePedal(true, at(0.2));
+    t.handlePedal(false, at(4.1));
+    expect(t.result().pedal).toBe(0.25);
+    t.setPedalInput(false);
+    expect(t.result().pedal).toBeNull();
+    expect('pedal' in started(quarters([60])).result()).toBe(false);
+  });
+
+  it('đạp sẵn trước khi bấm bắt đầu được tính từ lúc đếm vào; chơi lại xoá sự kiện cũ', () => {
+    const t = new PerformanceTracker(quarters([60, 62, 64, 65]), { bpm: 60, countInBeats: 4, pedal: [{ startBeat: 0, endBeat: 4 }] });
+    t.setPedalInput(true);
+    t.handlePedal(true, -500);
+    t.start(0);
+    t.handlePedal(false, at(4));
+    expect(t.result().pedal).toBe(1);
+    t.restart();
+    expect(t.result().pedal).toBe(0);
+  });
+
+  it('thả phím lúc pedal đang đạp → tiếng còn ngân, không tính giữ thiếu trường độ', () => {
+    const t = started(quarters([60, 62]), { pedal: [{ startBeat: 0, endBeat: 2 }] });
+    t.handleNoteOn(60, at(0));
+    t.handlePedal(true, at(0.1));
+    t.handleNoteOff(60, at(0.3));
+    t.handlePedal(false, at(1.05));
+    t.handleNoteOn(62, at(1));
+    t.handleNoteOff(62, at(1.3));
+    expect(t.getState().heldRatios.slice(0, 2).map((r) => r && Math.round(r * 10) / 10)).toEqual([1, 0.3]);
+  });
+});
+

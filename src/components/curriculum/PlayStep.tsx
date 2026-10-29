@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { lessonTimeline, pieceToLesson, timedNotes, type TimelineNote } from '../../core/curriculum/piece';
+import { lessonTimeline, pedalRanges, pieceToLesson, timedNotes, type TimelineNote } from '../../core/curriculum/piece';
 import { EXTRA_KEY, missedNoteKey, scorePerformance, scoreRhythm, scoreWait, wrongNoteKey, type ExerciseScore } from '../../core/curriculum/scoring';
 import { text, type PlayExercise, type UiMode } from '../../core/curriculum/types';
 import { soundOutput } from '../../core/audio/SoundOutput';
@@ -382,10 +382,17 @@ function TimedRunner({ exercise, lesson, timeline, hand, kind, bpm, mode, scored
         countInBeats: beatsPerMeasure,
         checkPitch: kind === 'performance',
         octaveTolerant: settings.octaveTolerant,
+        pedal: kind === 'performance' ? pedalRanges(lesson) : [],
       }),
     // Đổi BPM giữa chừng dùng setBpm, không tạo lại.
-    [timeline, hand, kind, beatsPerMeasure],
+    [timeline, hand, kind, beatsPerMeasure, lesson],
   );
+  // Pedal vang: chỉ đàn MIDI gửi được (Control Change 64); micro / bàn phím ảo → tiêu chí pedal "không đo".
+  const hasPedal = kind === 'performance' && !!lesson.pedal?.length;
+  const midiConnected = useMidi((s) => s.status === 'ready' && s.devices.length > 0);
+  const pedalInput = midiConnected && settings.inputSource !== 'microphone';
+  useEffect(() => tracker.setPedalInput(pedalInput), [tracker, pedalInput]);
+  useEffect(() => midiInput.onPedal((e) => tracker.handlePedal(e.down, e.time)), [tracker]);
   useEffect(() => tracker.setBpm(bpm, performance.now()), [tracker, bpm]);
   const state = useSyncExternalStore(
     (cb) => tracker.subscribe(cb),
@@ -502,6 +509,22 @@ function TimedRunner({ exercise, lesson, timeline, hand, kind, bpm, mode, scored
         </Button>
       </div>
       {usingMic && metronome && <p className="text-sm text-amber-700 dark:text-amber-300">Đang dùng micro: nên đeo tai nghe để micro không nghe nhầm tiếng metronome.</p>}
+      {hasPedal && (
+        <div className="flex flex-wrap items-center gap-3 text-sm" data-testid="pedal-panel">
+          {pedalInput ? (
+            <span
+              className={`rounded-full px-3 py-1 font-semibold ${state.pedalDown ? 'bg-fuchsia-500 text-white' : 'bg-violet-100 text-violet-700 dark:bg-slate-700 dark:text-slate-300'}`}
+              data-testid="pedal-state"
+            >
+              Pedal: {state.pedalDown ? 'đang đạp' : 'nhả'}
+            </span>
+          ) : (
+            <span className="text-amber-700 dark:text-amber-300" data-testid="pedal-unmeasured">
+              Bài có ký hiệu pedal ("Ped." dưới khuông). Chỉ đàn MIDI gửi được pedal — micro và bàn phím ảo thì tiêu chí Pedal "không đo".
+            </span>
+          )}
+        </div>
+      )}
       {state.status === 'idle' && <p className="text-sm text-slate-500 dark:text-slate-400">Bấm "Bắt đầu": app đếm vào {beatsPerMeasure} phách rồi khuông nhạc chạy theo nhịp. Đánh đúng lúc con trỏ tới nốt.</p>}
       {finished && !scored && <p className="text-center font-semibold text-emerald-700 dark:text-emerald-300">{loop ? 'Hết bài — lặp lại…' : 'Hết bài! Bấm "Chơi lại" để luyện tiếp.'}</p>}
       {settings.showKeyboard && (

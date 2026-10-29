@@ -25,6 +25,7 @@ Trước khi báo xong việc: `npm test && npm run build && npm run test:e2e`.
 src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi thứ ở đây phải có unit test
   music/notes.ts           tần số ↔ MIDI ↔ tên nốt (C4, Đô4), cents
   music/keySignature.ts    hoá biểu ("Dm", "Em"…) + dấu hoá cần vẽ trong ô nhịp (bất thường, dấu hoàn)
+  music/pedal.ts           pedal vang: khoảng đạp theo phách, chấm đạp / nhả theo ký hiệu (`pedalQuality`), ngân khi phát mẫu
   music/dynamics.ts        sắc thái p…f: lực gõ phát mẫu + điểm "Mạnh – nhẹ" TƯƠNG ĐỐI giữa đoạn liền kề
                              (MIDI velocity / RMS micro lúc nhận nốt; bàn phím ảo → không đo) — cấp 6
   audio/AudioInput.ts      getUserMedia + AudioContext + AudioWorklet (singleton, dọn dẹp đầy đủ)
@@ -42,6 +43,7 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   practice/NoteStats.ts       thống kê từng nốt trong phiên (suy từ PracticeState): tốc độ đọc nốt, đúng/sai + nốt nhầm
   lessons/                 kiểu dữ liệu, ký hiệu gọn "C4 D4/h", thư viện bài, LessonManager
   practice/PerformanceTracker.ts  Biểu diễn / Tiết tấu của giáo trình: đồng hồ nhịp CỐ ĐỊNH, chấm cao độ + thời điểm + trường độ (Note Off), dấu lặng
+                           + pedal (`handlePedal`, chỉ đàn MIDI CC 64) khi bài có ký hiệu pedal
   curriculum/              giáo trình (xem docs/curriculum.md): Curriculum → Level → Week → Lesson → Activity/Exercise
     content/                 CHỈ dữ liệu (cấp 1–6: mỗi cấp 20 buổi; `helpers.ts` hàm dựng chung);
                              `extraPractice` = bài thư viện luyện thêm (gộp từ khoá học cũ)
@@ -108,6 +110,9 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   `PracticeEngine` (`twoHands` + `leftHand`) chờ đủ giai điệu + nốt tay trái của bước (thứ tự bất kỳ, 'partial').
   Chỉ micro (`micOnlyInput`) → chỉ chấm tay phải. Hướng dẫn luôn hiện cả hai tay (`components/HandsGuide`)
   kèm thông báo đang chấm một hay hai tay.
+- Pedal vang: `Piece.pedal` theo ô nhịp (`[1, 1], [2, 2]` = thay pedal mỗi ô) → vẽ "Ped." + đường kẻ, khấc "^" chỗ thay;
+  Biểu diễn có thêm tiêu chí "Pedal" (15%). Chỉ đàn MIDI gửi pedal (Control Change 64); micro / bàn phím ảo → "không đo".
+  Thả phím lúc pedal đang đạp không bị tính giữ thiếu trường độ. Giới thiệu ở cấp 6 buổi "Hoàng hôn" (l6-17).
 - Không tạo MIDI giả. `MIDIInputProvider` dùng Web MIDI thật (bật ở Cài đặt → `midiEnabled`, tự kết nối khi mở app).
   Safari và mọi trình duyệt trên iPad (WebKit) không có Web MIDI → báo "không hỗ trợ", dùng micro. MIDI trên iPad
   chỉ có qua app native (Core MIDI). Khi đàn MIDI đã nối, màn Luyện tập bỏ nốt từ micro (micro nghe chính tiếng đàn đó).

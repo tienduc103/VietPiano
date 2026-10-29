@@ -5,6 +5,8 @@
  * Dấu sắc thái (`Piece.dynamics`, theo ô nhịp) vẽ dưới khuông Sol; Biểu diễn có thêm tiêu chí "Mạnh – nhẹ":
  * so độ to TƯƠNG ĐỐI giữa hai đoạn liền kề (đàn MIDI: lực gõ; micro: độ to nghe được; bàn phím ảo: không đo).
  * Bài hai tay (`withLh`): app chỉ chấm giai điệu tay phải như cấp 5.
+ * Pedal vang (`Piece.pedal`, theo ô nhịp): giới thiệu ở buổi "Hoàng hôn" (thay pedal mỗi ô nhịp valse); Biểu diễn có
+ * thêm tiêu chí "Pedal" — chỉ đàn MIDI gửi được pedal, micro / bàn phím ảo "không đo".
  * Giai điệu tự soạn, trừ các bài ghi rõ nguồn phạm vi công cộng (`pd`).
  */
 import type { DynamicMark } from '../../music/dynamics';
@@ -18,6 +20,9 @@ const DYNAMICS_SCORED =
   'Mạnh – nhẹ: app so độ to của mỗi đoạn với đoạn liền trước (không đo độ to tuyệt đối). Đàn MIDI dùng lực gõ; micro dùng độ to nghe được — đặt iPad cố định, đừng xê dịch khi đang chơi. Bàn phím ảo không có lực gõ nên tiêu chí này "không đo".';
 const NOTES = [DYNAMICS_SCORED, NO_FINGER_CHECK];
 const NOTES_HANDS = [DYNAMICS_SCORED, ONLY_MELODY_SCORED, NO_FINGER_CHECK];
+const PEDAL_SCORED =
+  'Pedal: app chấm đạp và nhả pedal vang theo ký hiệu "Ped." dưới khuông (đạp sau khi đánh nốt đầu ô, giữ, nhả rồi đạp lại ở ô sau). Chỉ đàn MIDI gửi được pedal; micro và bàn phím ảo thì tiêu chí này "không đo".';
+const NOTES_PEDAL = [...NOTES_HANDS, PEDAL_SCORED];
 
 /** Gắn dấu sắc thái theo ô nhịp (+ chữ đánh dấu đoạn). */
 const dyn = (piece: Piece, dynamics: Partial<Record<number, DynamicMark>>, sections?: LessonSection[]): Piece => ({ ...piece, dynamics, ...(sections ? { sections } : {}) });
@@ -47,6 +52,8 @@ const Q = {
   keepGoing: { prompt: 'Đang biểu diễn mà lỡ đánh sai một nốt thì nên…', options: ['Chơi tiếp, giữ đúng nhịp', 'Dừng lại, chơi lại từ đầu', 'Bỏ dở bài'], answer: 0 },
   shift: { prompt: 'Bài "Dưới ánh trăng": đoạn B xuống tới Sol3, tay phải làm gì?', options: ['Dời thế tay: ngón 1 đặt ở Sol3', 'Giữ nguyên thế Đô', 'Chuyển sang tay trái'], answer: 0 },
   bow: { prompt: 'Kết thúc buổi biểu diễn, người chơi thường làm gì?', options: ['Đứng dậy cúi chào', 'Chơi tiếp bài khác ngay', 'Tắt đàn rồi đi'], answer: 0 },
+  pedal: { prompt: 'Pedal vang (pedal phải) dùng để làm gì?', options: ['Giữ tiếng đàn ngân sau khi nhấc tay', 'Làm tiếng đàn nhỏ lại', 'Đổi sang tiếng đàn khác'], answer: 0 },
+  pedalChange: { prompt: 'Sang ô nhịp mới (hợp âm mới), thay pedal thế nào cho tiếng không bị nhoè?', options: ['Đánh nốt đầu ô, nhả pedal rồi đạp lại ngay', 'Giữ pedal suốt cả bài', 'Đạp pedal trước rồi mới đánh'], answer: 0 },
 } satisfies Record<string, ChoiceQuestion>;
 
 // Hợp âm tay trái thế gần (như cấp 5).
@@ -233,6 +240,12 @@ const SUNSET = dyn(
   { 1: 'p', 5: 'mf', 9: 'f', 13: 'p' },
   AB(9),
 );
+/** Thay pedal ở đầu mỗi ô nhịp (`[1, 1], [2, 2]…`). */
+const pedalEachMeasure = (measures: number): [number, number][] => Array.from({ length: measures }, (_, i) => [i + 1, i + 1]);
+/** "Hoàng hôn" có pedal: valse thay pedal mỗi ô nhịp — trầm ở phách 1 ngân suốt ô. */
+const SUNSET_PEDAL: Piece = { ...SUNSET, pedal: pedalEachMeasure(16) };
+/** Bài làm quen pedal: tay phải nốt tròn / trắng, thay pedal mỗi ô (tự soạn). */
+const PEDAL_INTRO: Piece = { ...dyn(rh('C4/w:1 | E4/w:3 | G4/h:5 F4/h:4 | E4/w:3', 60, 'Làm quen pedal'), { 1: 'mf', 3: 'p' }), pedal: pedalEachMeasure(4) };
 /** "Khúc tốt nghiệp" — tự soạn, hai tay, hình thức A – B, đủ bốn mức sắc thái (16 ô nhịp). */
 const GRADUATION_6 = dyn(
   withLh(
@@ -625,14 +638,37 @@ const defs: LessonDef[] = [
     weekId: 'l6-w4',
     number: 17,
     title: 'Bài nhạc: Hoàng hôn',
-    description: 'Bài "Hoàng hôn" (tự soạn) valse 3/4, 16 ô nhịp hình thức A – B, tay trái đệm valse, sắc thái p – mf – f – p.',
-    learningObjectives: ['Biểu diễn bài 16 ô nhịp hai tay', 'Đệm valse nhẹ dưới giai điệu', 'Cao trào ở đầu đoạn B'],
+    description: 'Bài "Hoàng hôn" (tự soạn) valse 3/4, 16 ô nhịp hình thức A – B, tay trái đệm valse, sắc thái p – mf – f – p. Làm quen pedal vang: thay pedal mỗi ô nhịp.',
+    learningObjectives: ['Biểu diễn bài 16 ô nhịp hai tay', 'Đệm valse nhẹ dưới giai điệu', 'Đạp, giữ và thay pedal theo ký hiệu "Ped."'],
     estimatedDuration: 25,
     prerequisites: ['l6-16-cresc-dim'],
-    notes: NOTES_HANDS,
+    notes: NOTES_PEDAL,
     ageVariants: KIDS_SLOWER,
-    activities: [{ kind: 'intro', id: 'intro', title: 'Hoàng hôn', pages: [staffPage('Nghe mẫu', 'Đoạn A mặt trời lặn dần, đoạn B rực lên rồi tắt.', SUNSET)] }],
-    exercises: rehearse(SUNSET, 'Biểu diễn hai tay có sắc thái'),
+    activities: [
+      {
+        kind: 'intro',
+        id: 'intro',
+        title: 'Hoàng hôn',
+        pages: [
+          {
+            title: 'Pedal vang',
+            body: 'Pedal phải (pedal vang) nhấc hết bộ giảm âm: nhấc tay khỏi phím mà tiếng vẫn ngân. Đặt gót chân phải trên sàn, mũi chân lên pedal, đạp bằng cổ chân.',
+            kids: 'Pedal giống nút "giữ tiếng": đạp xuống là tiếng đàn ngân dài!',
+          },
+          {
+            title: 'Ký hiệu "Ped." và thay pedal',
+            body: '"Ped." dưới khuông là chỗ đạp, đường kẻ là giữ, gạch đứng là nhả. Sang ô mới: đánh nốt đầu ô TRƯỚC, rồi nhả và đạp lại ngay (pedal nối) — tiếng không đứt mà cũng không nhoè hai hợp âm.',
+            illustration: { type: 'staff', piece: PEDAL_INTRO, listen: true },
+          },
+          staffPage('Nghe mẫu', 'Đoạn A mặt trời lặn dần, đoạn B rực lên rồi tắt. Thay pedal ở đầu mỗi ô nhịp.', SUNSET_PEDAL),
+        ],
+      },
+    ],
+    exercises: [
+      { kind: 'choice-quiz', id: 'quiz', title: 'Câu hỏi: pedal', questions: [Q.pedal, Q.pedalChange], pass: { minAccuracy: 0.5 } },
+      play('pedal', 'Làm quen pedal (tay phải)', 'performance', PEDAL_INTRO),
+      ...rehearse(SUNSET_PEDAL, 'Biểu diễn hai tay có sắc thái và pedal'),
+    ],
     assessment: { passScore: 80, checkpoint: false },
   },
   {
@@ -670,12 +706,12 @@ const defs: LessonDef[] = [
     learningObjectives: ['Biểu diễn liền hai bài nhịp 3/4', 'Tập trung từ đầu đến cuối', 'Sắc thái rõ ràng'],
     estimatedDuration: 25,
     prerequisites: ['l6-18-program'],
-    notes: NOTES_HANDS,
+    notes: NOTES_PEDAL,
     ageVariants: KIDS_SLOWER,
     activities: [],
     exercises: [
       play('perform-minuet', 'Bài 1: Minuet Sol trưởng', 'performance', MINUET, PERFORM_WEIGHT),
-      play('perform-sunset', 'Bài 2: Hoàng hôn', 'performance', SUNSET, PERFORM_WEIGHT),
+      play('perform-sunset', 'Bài 2: Hoàng hôn (có pedal)', 'performance', SUNSET_PEDAL, PERFORM_WEIGHT),
     ],
     assessment: { passScore: 80, checkpoint: false },
   },

@@ -95,6 +95,8 @@ export interface Lesson {
   sections?: LessonSection[];
   /** Dấu sắc thái (p, f…) đặt ở nốt `index` của `notes`, có hiệu lực tới dấu sau. */
   dynamics?: { index: number; mark: DynamicMark }[];
+  /** Ký hiệu pedal vang: đạp từ đầu ô `from` tới hết ô `to` (chỉ số ô từ 0, gồm cả ô lấy đà). */
+  pedal?: { from: number; to: number }[];
   /** Ghi chú nguồn gốc bản nhạc (bản quyền). */
   source?: string;
   /** Nhịp độ gợi ý cho chế độ chạy theo nhịp (nốt đen/phút); mặc định DEFAULT_TEMPO_BPM. */

@@ -150,6 +150,20 @@ body::before {
   font-size: 13px;
 }
 
+/* Ký hiệu pedal: "Ped." nghiêng có chân + đường kẻ tới chỗ nhả. */
+.score-pedal line {
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.score-pedal-text {
+  fill: currentColor;
+  stroke: none;
+  font-size: 17px;
+  font-style: italic;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
 /* Dấu sắc thái kiểu bản in: chữ nghiêng đậm có chân. */
 .score-dynamic {
   fill: currentColor;

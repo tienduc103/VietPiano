@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MIDIInputProvider, parseNoteMessage, parseNoteOn, type MidiAccessLike, type MidiInputLike } from './MIDIInputProvider';
+import { MIDIInputProvider, parseNoteMessage, parseNoteOn, parseSustainPedal, type MidiAccessLike, type MidiInputLike, type PedalInputEvent } from './MIDIInputProvider';
 import type { NoteInputEvent, NoteOffEvent } from './NoteInputProvider';
 
 function fakeInput(id: string, name = `Piano ${id}`): MidiInputLike {
@@ -87,6 +87,28 @@ describe('MIDIInputProvider', () => {
       { midi: 62, time: 2500, source: 'midi' },
       { midi: 62, time: 2600, source: 'midi' },
     ]);
+  });
+
+  it('pedal vang (CC 64): sự kiện đạp / nhả riêng, không thành nốt; CC khác bỏ qua', async () => {
+    expect(parseSustainPedal([0xb0, 64, 127])).toEqual({ down: true, channel: 0 });
+    expect(parseSustainPedal([0xb3, 64, 63])).toEqual({ down: false, channel: 3 });
+    expect(parseSustainPedal([0xb0, 67, 127])).toBeNull();
+    expect(parseSustainPedal([0x90, 64, 127])).toBeNull();
+    const input = fakeInput('a');
+    const p = new MIDIInputProvider(async () => fakeAccess([input]));
+    const pedals: PedalInputEvent[] = [];
+    const ons: NoteInputEvent[] = [];
+    p.onPedal((e) => pedals.push(e));
+    p.onNote((e) => ons.push(e));
+    await p.start();
+    send(input, [0xb0, 64, 127], 3000);
+    send(input, [0xb0, 1, 90], 3100);
+    send(input, [0xb0, 64, 0], 3500);
+    expect(pedals).toEqual([
+      { down: true, time: 3000 },
+      { down: false, time: 3500 },
+    ]);
+    expect(ons).toEqual([]);
   });
 
   it('mỗi lần gõ chỉ một sự kiện, kể cả gõ lại cùng phím', async () => {

@@ -53,6 +53,19 @@ export function parseNoteMessage(data: ArrayLike<number> | null | undefined): Mi
   return { type, midi, velocity, channel: status & 0x0f };
 }
 
+/** Pedal vang (sustain): Control Change 64 (0xBn 64 giá trị); giá trị ≥ 64 = đạp. Thông điệp khác → null. */
+export function parseSustainPedal(data: ArrayLike<number> | null | undefined): { down: boolean; channel: number } | null {
+  if (!data || data.length < 3) return null;
+  if ((data[0] & 0xf0) !== 0xb0 || (data[1] & 0x7f) !== 64) return null;
+  return { down: (data[2] & 0x7f) >= 64, channel: data[0] & 0x0f };
+}
+
+/** Đạp / nhả pedal vang từ đàn MIDI. */
+export interface PedalInputEvent {
+  down: boolean;
+  time: number;
+}
+
 export interface MidiAccessLike {
   inputs: { forEach(cb: (input: MidiInputLike) => void): void };
   onstatechange: ((e: unknown) => void) | null;
@@ -78,6 +91,7 @@ export class MIDIInputProvider implements NoteInputProvider {
   readonly stateChanges = new Emitter<MidiState>();
   private readonly notes = new Emitter<NoteInputEvent>();
   private readonly noteOffs = new Emitter<NoteOffEvent>();
+  private readonly pedals = new Emitter<PedalInputEvent>();
   private readonly request: RequestMidiAccess | null;
   private access: MidiAccessLike | null = null;
   private attached = new Set<MidiInputLike>();
@@ -148,6 +162,11 @@ export class MIDIInputProvider implements NoteInputProvider {
     return this.noteOffs.on(listener);
   }
 
+  /** Đạp / nhả pedal vang (Control Change 64) — chỉ đàn MIDI có; dùng để chấm ký hiệu pedal. */
+  onPedal(listener: (event: PedalInputEvent) => void) {
+    return this.pedals.on(listener);
+  }
+
   /** Gắn bộ nghe vào mọi cổng đang kết nối; gọi lại khi cắm/rút dây. */
   private refresh(): void {
     if (!this.access) return;
@@ -167,10 +186,15 @@ export class MIDIInputProvider implements NoteInputProvider {
   }
 
   private handleMessage(data: Uint8Array | null, timeStamp: number): void {
-    const note = parseNoteMessage(data);
-    if (!note) return;
     // timeStamp của Web MIDI cùng gốc với performance.now(); một số bản cũ trả 0.
     const time = timeStamp > 0 ? timeStamp : performance.now();
+    const pedal = parseSustainPedal(data);
+    if (pedal) {
+      this.pedals.emit({ down: pedal.down, time });
+      return;
+    }
+    const note = parseNoteMessage(data);
+    if (!note) return;
     if (note.type === 'off') this.noteOffs.emit({ midi: note.midi, time, source: 'midi' });
     else this.notes.emit({ midi: note.midi, time, source: 'midi', velocity: note.velocity });
   }

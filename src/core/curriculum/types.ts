@@ -45,6 +45,12 @@ export interface Piece {
    * Biểu diễn có thêm tiêu chí "Mạnh – nhẹ" (so sánh tương đối giữa các đoạn); phát mẫu theo sắc thái.
    */
   dynamics?: Partial<Record<number, DynamicMark>>;
+  /**
+   * Ký hiệu pedal vang theo ô nhịp (số ô như bản in, từ 1): `[1, 2]` = đạp đầu ô 1, giữ, nhả cuối ô 2.
+   * Hai khoảng liền nhau (`[1, 1], [2, 2]`) = thay pedal ở đầu ô 2. Biểu diễn có thêm tiêu chí "Pedal"
+   * (chỉ đàn MIDI gửi được pedal; micro / bàn phím ảo → "không đo").
+   */
+  pedal?: [number, number][];
   /** Chữ đánh dấu đoạn (A, B…) ở đầu ô nhịp. */
   sections?: LessonSection[];
 }

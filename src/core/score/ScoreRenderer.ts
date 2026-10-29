@@ -74,6 +74,15 @@ export const DYNAMIC_OFFSET = 32;
 export const DYNAMIC_BELOW_NOTE = 26;
 /** Khuông đơn có dấu sắc thái: hàng tên nốt lùi xuống nhường chỗ. */
 export const DYNAMIC_SPACE = 22;
+/** Ký hiệu pedal: hàng dưới hàng tên nốt (khoảng cách từ hàng tên nốt), bài có pedal cao thêm `PEDAL_SPACE`. */
+export const PEDAL_OFFSET = 30;
+export const PEDAL_SPACE = 34;
+/** Chiều cao gạch đứng chỗ nhả / thay pedal. */
+const PEDAL_TICK = 10;
+/** Nửa bề ngang khấc "^" ở chỗ thay pedal. */
+const PEDAL_NOTCH = 5;
+/** Chừa chỗ cho chữ "Ped." trước đường kẻ. */
+const PEDAL_TEXT_WIDTH = 34;
 /** Khoảng trống thêm phía trên khi bài có chữ đánh dấu đoạn (khung chữ nằm trên hàng số ngón tay). */
 export const SECTION_SPACE = 24;
 /** Khung chữ đánh dấu đoạn: cạnh vuông, khoảng cách từ đáy khung tới dòng kẻ trên cùng (trên hàng số ngón tay). */
@@ -289,6 +298,15 @@ export function noteCenterX(note: StaveNote): number {
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+function svgLine(x1: number, y1: number, x2: number, y2: number): SVGLineElement {
+  const l = document.createElementNS(SVG_NS, 'line');
+  l.setAttribute('x1', String(x1));
+  l.setAttribute('y1', String(y1));
+  l.setAttribute('x2', String(x2));
+  l.setAttribute('y2', String(y2));
+  return l;
+}
+
 export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreRenderOptions): RenderedScore {
   container.innerHTML = '';
   const renderer = new Renderer(container as HTMLDivElement, Renderer.Backends.SVG);
@@ -299,7 +317,8 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
   const clefs = lessonClefs(lesson);
   const top = STAVE_Y + (lesson.sections?.length ? SECTION_SPACE : 0);
   const ys = clefs.map((_, si) => top + si * GRAND_STAFF_GAP);
-  const height = SCORE_HEIGHT + (top - STAVE_Y) + (labelOffset(lesson) - LABEL_OFFSET) + (clefs.length - 1) * GRAND_STAFF_GAP;
+  const height =
+    SCORE_HEIGHT + (top - STAVE_Y) + (labelOffset(lesson) - LABEL_OFFSET) + (clefs.length - 1) * GRAND_STAFF_GAP + (lesson.pedal?.length ? PEDAL_SPACE : 0);
   const measures = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup);
   const accMeasures = accompanimentMeasures(lesson);
 
@@ -414,6 +433,44 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     t.textContent = d.mark;
     svg.appendChild(t);
   }
+
+  // Ký hiệu pedal: "Ped." + đường kẻ, gạch đứng ở chỗ nhả; thay pedal (khoảng liền sau) vẽ thành khấc "^" trên vạch nhịp.
+  const pedalY = labelY + PEDAL_OFFSET;
+  const pedals = (lesson.pedal ?? []).filter((p) => built[p.from] && built[p.to]);
+  const pedalEndX = (p: { to: number }) => {
+    const st = built[p.to].staves[0];
+    return st.getX() + st.getWidth();
+  };
+  pedals.forEach((p, i) => {
+    const chainedBefore = i > 0 && pedals[i - 1].to + 1 === p.from;
+    const chainedAfter = i < pedals.length - 1 && p.to + 1 === pedals[i + 1].from;
+    const x1 = pedalEndX(p) - (chainedAfter ? 0 : 4);
+    const g = document.createElementNS(SVG_NS, 'g');
+    g.setAttribute('class', 'score-pedal');
+    g.setAttribute('data-pedal', `${p.from}-${p.to}`);
+    let lineStart: number;
+    if (chainedBefore) {
+      // Nửa sau của khấc: từ đỉnh khấc trên vạch nhịp xuống lại đường kẻ.
+      const xn = pedalEndX(pedals[i - 1]);
+      g.appendChild(svgLine(xn, pedalY - PEDAL_TICK, xn + PEDAL_NOTCH, pedalY));
+      lineStart = xn + PEDAL_NOTCH;
+    } else {
+      const x0 = built[p.from].staves[0].getNoteStartX();
+      const t = document.createElementNS(SVG_NS, 'text');
+      t.setAttribute('x', String(x0));
+      t.setAttribute('y', String(pedalY));
+      t.setAttribute('class', 'score-pedal-text');
+      t.textContent = 'Ped.';
+      g.appendChild(t);
+      lineStart = x0 + PEDAL_TEXT_WIDTH;
+    }
+    if (chainedAfter) {
+      g.append(svgLine(lineStart, pedalY, x1 - PEDAL_NOTCH, pedalY), svgLine(x1 - PEDAL_NOTCH, pedalY, x1, pedalY - PEDAL_TICK));
+    } else {
+      g.append(svgLine(lineStart, pedalY, x1, pedalY), svgLine(x1, pedalY, x1, pedalY - PEDAL_TICK));
+    }
+    svg.appendChild(g);
+  });
 
   // Số ngón tay phần đệm: chồng dưới khuông Fa, không tô sáng vì app không chấm phần đệm.
   if (accMeasures) {

@@ -9,6 +9,7 @@ const ADVICE: Record<string, string> = {
   duration: 'Giữ phím đủ số phách của nốt (nốt trắng 2 phách, nốt tròn 4 phách) rồi mới nhấc tay.',
   completion: 'Cố gắng chơi hết bài, đừng dừng giữa chừng — sai cũng cứ chơi tiếp.',
   dynamics: 'Làm rõ mạnh – nhẹ: đoạn "p" đặt ngón nhẹ, đoạn "f" thả sức nặng cánh tay xuống phím; giữ iPad đứng yên một chỗ.',
+  pedal: 'Pedal: đánh nốt đầu ô trước rồi mới đạp; sang ô mới thì nhả và đạp lại ngay sau khi đánh (pedal nối) — gót chân luôn chạm sàn.',
 };
 
 /** Tiêu chí thấp nhất (đo được) trong các bài tập đã làm. */

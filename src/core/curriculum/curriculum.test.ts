@@ -8,7 +8,7 @@ import { LEVEL4_LESSONS, LEVEL4_WEEKS } from './content/level4';
 import { LEVEL5_LESSONS, LEVEL5_WEEKS } from './content/level5';
 import { LEVEL6_LESSONS, LEVEL6_WEEKS } from './content/level6';
 import { keysMatching } from './keys';
-import { lessonTimeline, pieceToLesson } from './piece';
+import { lessonTimeline, pedalRanges, pieceToLesson } from './piece';
 import { orderedLessons } from './unlock';
 import { validateCurriculum, validatePiece } from './validate';
 import type { Curriculum, CurriculumLesson, Piece, PlayExercise } from './types';
@@ -286,6 +286,15 @@ describe('nội dung cấp 6', () => {
     expect(plays.some((x) => x.e.piece.source?.includes('phạm vi công cộng'))).toBe(true);
   });
 
+  it('pedal: buổi đầu dùng pedal có trang giới thiệu + câu hỏi; mọi buổi có bài pedal nhắc cách app chấm pedal', () => {
+    const withPedal = LEVEL6_LESSONS.filter((l) => l.exercises.some((e) => e.kind === 'play' && e.piece.pedal?.length));
+    expect(withPedal.length).toBeGreaterThanOrEqual(2);
+    const first = withPedal[0];
+    expect(first.activities.some((a) => a.pages.some((p) => String(p.body).includes('Ped.')))).toBe(true);
+    expect(first.exercises.some((e) => e.kind === 'choice-quiz' && e.questions.some((q) => String(q.prompt).includes('pedal')))).toBe(true);
+    for (const l of withPedal) expect(l.notes?.some((n) => String(n).startsWith('Pedal:')), l.lessonId).toBe(true);
+  });
+
   it('bài có phần đệm thì buổi nhắc rằng app chỉ chấm tay phải', () => {
     for (const { l, e } of plays) if (e.piece.accompaniment) expect(l.notes?.some((n) => String(n).includes('chỉ chấm giai điệu tay phải')), l.lessonId).toBe(true);
   });
@@ -337,6 +346,17 @@ describe('validateCurriculum bắt lỗi dữ liệu', () => {
     ]);
     expect(validatePiece({ ...piece, dynamics: { 1: 'p', 3: 'f' } }, 'p')[0]).toMatch(/ô nhịp 3/);
     expect(validatePiece({ ...piece, dynamics: { 1: 'p', 2: 'p' } }, 'p')[0]).toMatch(/hai mức/);
+  });
+
+  it('pedal: ô nhịp phải có trong bài, khoảng không ngược / chồng nhau; đổi sang phách', () => {
+    const piece = { clef: 'treble' as const, hand: 'right' as const, bpm: 60, notation: 'C4/w | D4 E4 F4 G4 | C4/w' };
+    expect(validatePiece({ ...piece, pedal: [[1, 2], [3, 3]] }, 'p')).toEqual([]);
+    const lesson = pieceToLesson({ ...piece, pedal: [[1, 2], [3, 3]] }, 'x');
+    expect(lesson.pedal).toEqual([{ from: 0, to: 1 }, { from: 2, to: 2 }]);
+    expect(pedalRanges(lesson)).toEqual([{ startBeat: 0, endBeat: 8 }, { startBeat: 8, endBeat: 12 }]);
+    expect(validatePiece({ ...piece, pedal: [[1, 4]] }, 'p')[0]).toMatch(/Pedal ô 1–4 không có trong bài/);
+    expect(validatePiece({ ...piece, pedal: [[2, 1]] }, 'p')[0]).toMatch(/đứng trước/);
+    expect(validatePiece({ ...piece, pedal: [[1, 2], [2, 3]] }, 'p')[0]).toMatch(/chồng/);
   });
 
   it('phần đệm: khuông đôi + tay phải, đủ phách, cùng số ô, thấp hơn giai điệu', () => {

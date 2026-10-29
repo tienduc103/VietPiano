@@ -12,9 +12,13 @@
  * Nốt `midi = null` là dấu lặng hoặc nốt của tay không luyện: không chấm, không có cửa sổ.
  * Bài có dấu sắc thái (`TimedNote.dynamic`): độ to từng nốt (dB, truyền vào `handleNoteOn`) → điểm mạnh nhẹ
  * tương đối giữa các đoạn (`music/dynamics.ts`).
+ * Bài có ký hiệu pedal (`config.pedal`): sự kiện đạp / nhả (`handlePedal`, chỉ đàn MIDI) → điểm pedal
+ * (`music/pedal.ts`); nguồn vào không có pedal (`setPedalInput(false)`) → "không đo".
+ * Thả phím lúc pedal đang đạp: tiếng vẫn ngân nên không bị tính là giữ thiếu trường độ.
  */
 
 import { dynamicsQuality, type DynamicMark, type DynamicSection } from '../music/dynamics';
+import { pedalQuality, type PedalEvent, type PedalRange } from '../music/pedal';
 import type { NoteResult } from './PracticeEngine';
 
 export interface TimedNote {
@@ -45,6 +49,8 @@ export interface PerformanceConfig {
   onTimeMs: number;
   /** Onset sát onset trước hơn khoảng này bị bỏ qua (micro đôi khi phát lặp). */
   minOnsetIntervalMs: number;
+  /** Ký hiệu pedal của bài (theo phách); rỗng = bài không có pedal. */
+  pedal: readonly PedalRange[];
 }
 
 export const DEFAULT_PERFORMANCE_CONFIG: PerformanceConfig = {
@@ -55,6 +61,7 @@ export const DEFAULT_PERFORMANCE_CONFIG: PerformanceConfig = {
   maxWindowBeats: 0.5,
   onTimeMs: 150,
   minOnsetIntervalMs: 80,
+  pedal: [],
 };
 
 export interface PerformanceState {
@@ -77,6 +84,8 @@ export interface PerformanceState {
   readonly lastOutcome: PerformanceOutcome | null;
   /** Đổi mỗi khi có kết quả mới (để UI hiện hiệu ứng). */
   readonly lastEventTime: number;
+  /** Pedal vang đang đạp (đàn MIDI). */
+  readonly pedalDown: boolean;
 }
 
 export interface PerformanceResult {
@@ -98,6 +107,8 @@ export interface PerformanceResult {
   onTimeRatio: number;
   /** 0..1 mạnh nhẹ đúng sắc thái; null = không đo được; undefined = bài không có dấu sắc thái. */
   dynamics?: number | null;
+  /** 0..1 đạp / nhả pedal đúng ký hiệu; null = nguồn vào không có pedal; undefined = bài không có ký hiệu pedal. */
+  pedal?: number | null;
 }
 
 interface Window {
@@ -117,6 +128,9 @@ export class PerformanceTracker {
   private lastOnsetTime = -Infinity;
   /** Lúc gõ của từng nốt đã chấm (để tính thời gian giữ khi thả phím). */
   private readonly onsetTimes: (number | null)[];
+  private pedalEvents: PedalEvent[] = [];
+  /** Nguồn vào gửi được pedal (đàn MIDI). */
+  private pedalInput = false;
 
   constructor(
     private readonly notes: readonly TimedNote[],
@@ -153,6 +167,7 @@ export class PerformanceTracker {
       lastOffsetMs: null,
       lastOutcome: null,
       lastEventTime: 0,
+      pedalDown: this.state?.pedalDown ?? false,
     };
   }
 
@@ -195,6 +210,8 @@ export class PerformanceTracker {
     const from = s.status === 'paused' ? this.pausedBeat : 0;
     this.pausedBeat = from;
     this.originTime = now + (this.config.countInBeats - from) * this.beatMs;
+    // Đã đạp sẵn trước khi bấm bắt đầu → coi như đạp từ lúc đếm vào.
+    if (s.pedalDown && s.status === 'idle') this.pedalEvents.push({ beat: -this.config.countInBeats, down: true });
     this.setState({ status: 'countIn', beat: from - this.config.countInBeats });
   }
 
@@ -219,6 +236,7 @@ export class PerformanceTracker {
     this.pausedBeat = 0;
     this.lastOnsetTime = -Infinity;
     this.onsetTimes.fill(null);
+    this.pedalEvents = [];
     this.state = this.initialState();
     this.listeners.forEach((l) => l(this.state));
   }
@@ -305,14 +323,31 @@ export class PerformanceTracker {
       const on = this.onsetTimes[i];
       if (on === null || s.playedMidis[i] !== midi || s.heldRatios[i] !== null || time < on) continue;
       const heldRatios = s.heldRatios.slice();
-      heldRatios[i] = (time - on) / this.beatMs / this.notes[i].durationBeats;
+      const ratio = (time - on) / this.beatMs / this.notes[i].durationBeats;
+      // Pedal đang đạp: tiếng vẫn ngân sau khi thả phím → không tính giữ thiếu.
+      heldRatios[i] = s.pedalDown ? Math.max(ratio, 1) : ratio;
       this.setState({ heldRatios });
       return;
     }
   }
 
+  /** Nguồn vào có pedal không (đàn MIDI) — quyết định tiêu chí pedal được đo hay "không đo". */
+  setPedalInput(available: boolean): void {
+    this.pedalInput = available;
+  }
+
+  /** Đạp (`down`) / nhả pedal vang. Ghi lại khi đang đếm vào / đang chạy để chấm. */
+  handlePedal(down: boolean, time: number): void {
+    const s = this.state;
+    if (s.pedalDown === down) return;
+    if (s.status === 'running' || s.status === 'countIn') this.pedalEvents.push({ beat: this.beatAt(time), down });
+    this.setState({ pedalDown: down });
+  }
+
   result(): PerformanceResult {
-    return scorePerformanceState(this.notes, this.state, this.config.onTimeMs, this.windowMs());
+    const r = scorePerformanceState(this.notes, this.state, this.config.onTimeMs, this.windowMs());
+    if (!this.config.pedal.length) return r;
+    return { ...r, pedal: this.pedalInput ? pedalQuality(this.config.pedal, this.pedalEvents, this.endBeat) : null };
   }
 
   private windowMs(): number {

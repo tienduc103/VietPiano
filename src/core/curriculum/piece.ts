@@ -6,6 +6,7 @@
 import { parseAccompaniment, parseNotes, splitMeasures } from '../lessons/notation';
 import { DURATION_BEATS, measureLength, noteHand, type Finger, type Hand, type Lesson } from '../lessons/types';
 import { dynamicAt, DYNAMIC_VELOCITY, type DynamicMark } from '../music/dynamics';
+import type { PedalRange } from '../music/pedal';
 import type { TimedNote } from '../practice/PerformanceTracker';
 import { text, type Piece } from './types';
 
@@ -27,7 +28,35 @@ export function pieceToLesson(piece: Piece, id: string): Lesson {
     ...(piece.sections ? { sections: piece.sections } : {}),
   };
   if (piece.dynamics) lesson.dynamics = dynamicMarks(lesson, piece.dynamics);
+  if (piece.pedal) lesson.pedal = pedalMarks(lesson, piece.pedal);
   return lesson;
+}
+
+/** Pedal theo số ô như bản in (từ 1) → chỉ số ô (từ 0, gồm ô lấy đà). Ô không tồn tại / khoảng ngược / chồng nhau → lỗi. */
+function pedalMarks(lesson: Lesson, ranges: NonNullable<Piece['pedal']>): NonNullable<Lesson['pedal']> {
+  const count = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup).length;
+  const offset = lesson.pickup ? 0 : -1;
+  return ranges.map(([from, to], i) => {
+    const r = { from: from + offset, to: to + offset };
+    if (r.from < 0 || r.to >= count) throw new Error(`Pedal ô ${from}–${to} không có trong bài`);
+    if (r.to < r.from) throw new Error(`Pedal ô ${from}–${to}: ô kết thúc đứng trước ô bắt đầu`);
+    if (i > 0 && from <= ranges[i - 1][1]) throw new Error(`Pedal ô ${from}–${to} chồng lên khoảng trước`);
+    return r;
+  });
+}
+
+/** Ký hiệu pedal của bài → khoảng theo phách (để chấm và phát mẫu). */
+export function pedalRanges(lesson: Lesson): PedalRange[] {
+  if (!lesson.pedal?.length) return [];
+  const measures = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup);
+  const starts: number[] = [];
+  let beat = 0;
+  for (const m of measures) {
+    starts.push(beat);
+    beat += m.beats;
+  }
+  starts.push(beat);
+  return lesson.pedal.map((p) => ({ startBeat: starts[p.from], endBeat: starts[p.to + 1] }));
 }
 
 /** Dấu sắc thái theo ô nhịp (từ 1, ô lấy đà không đánh số) → chỉ số nốt đầu ô. Ô không tồn tại → lỗi. */
