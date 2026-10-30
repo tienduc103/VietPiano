@@ -203,15 +203,18 @@ function HintControls({ settings, update, compact = false }: { settings: Balloon
       <Toggle on={settings.showFinger} onClick={() => update({ showFinger: !settings.showFinger })} testId="balloon-hint-finger">
         Ngón tay
       </Toggle>
+      <Toggle on={settings.showBalloonNames} onClick={() => update({ showBalloonNames: !settings.showBalloonNames })} testId="balloon-hint-balloon-names">
+        Tên trên bóng
+      </Toggle>
       <Toggle on={settings.showKeyLabels} onClick={() => update({ showKeyLabels: !settings.showKeyLabels })} testId="balloon-hint-labels">
         Tên phím
       </Toggle>
       <Toggle on={settings.sound} onClick={() => update({ sound: !settings.sound })} testId="balloon-hint-sound">
         Âm thanh
       </Toggle>
-      {settings.showKeyLabels && (
-        <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Ẩn tên từng phím" data-testid="balloon-hide-keys">
-          <span className="px-1 text-xs text-slate-500 dark:text-slate-400">Ẩn phím:</span>
+      {(settings.showKeyLabels || settings.showBalloonNames) && (
+        <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Ẩn tên từng nốt (trên bóng và phím)" data-testid="balloon-hide-keys">
+          <span className="px-1 text-xs text-slate-500 dark:text-slate-400">Ẩn tên:</span>
           {LETTERS.map((l) => {
             const hidden = settings.hiddenLetters.includes(l);
             return (
@@ -221,7 +224,7 @@ function HintControls({ settings, update, compact = false }: { settings: Balloon
                 aria-pressed={hidden}
                 onClick={() => toggleLetter(l)}
                 data-testid={`balloon-hide-${l}`}
-                title={hidden ? 'Hiện lại tên phím này' : 'Ẩn tên phím này'}
+                title={hidden ? 'Hiện lại tên nốt này' : 'Ẩn tên nốt này (trên bóng và phím)'}
                 className={`min-h-12 min-w-12 rounded-xl px-2 text-sm font-bold ring-2 ${hidden ? 'bg-slate-200 text-slate-400 line-through ring-slate-300 dark:bg-slate-700' : 'bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100'}`}
                 style={hidden ? undefined : { boxShadow: `inset 0 -4px 0 ${LETTER_COLORS[l]}` }}
               >
@@ -341,7 +344,7 @@ function BalloonPlay({
     setRun((r) => r + 1);
   };
   const paused = state.status === 'paused';
-  const urgentName = urgent ? noteName(urgent.note.midi, settings.labelStyle, withOctave) : null;
+  const urgentName = !urgent ? null : !settings.showBalloonNames || settings.hiddenLetters.includes(urgent.note.letter) ? '?' : noteName(urgent.note.midi, settings.labelStyle, withOctave);
 
   return (
     <div
@@ -414,7 +417,7 @@ function BalloonPlay({
       </div>
 
       <div className="relative min-h-48 flex-1 overflow-hidden rounded-3xl ring-1 ring-sky-200 dark:ring-slate-700">
-        <BalloonCanvas game={game} view={{ from: keyboard.from, to: keyboard.to, labelStyle: settings.labelStyle, withOctave, showFinger: settings.showFinger }} />
+        <BalloonCanvas game={game} view={{ from: keyboard.from, to: keyboard.to, labelStyle: settings.labelStyle, withOctave, showFinger: settings.showFinger, hideNames: !settings.showBalloonNames, hiddenLetters: settings.hiddenLetters }} />
         {state.status === 'ready' && (
           <Overlay testId="balloon-ready">
             <p className="text-2xl font-extrabold">Sẵn sàng chưa? 🎈</p>

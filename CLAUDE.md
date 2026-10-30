@@ -89,7 +89,8 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              `BalloonPopGame` máy trạng thái ready/playing/paused/won/over: mỗi sự kiện nổ tối đa 1 quả (quả cao nhất khớp),
                              hai quả cùng `matchKey` không bay cùng lúc, `minIntervalMs` sau lần nổ; độ khó Dễ/Trung bình/Khó (số quả cùng lúc,
                              mạng, số bóng) × tốc độ Vừa/Nhanh. Canvas `components/balloonPop/BalloonCanvas`. Gợi ý: phím cần đánh, ngón tay,
-                             tên phím + ẩn tên từng phím (`hiddenLetters`, `PianoKeyboard.labelFor`). Kỷ lục localStorage theo hồ sơ (`storage.ts`)
+                             tên phím, tên trên bóng (`showBalloonNames`, tắt → "?"), ẩn tên từng nốt cả trên bóng lẫn phím
+                             (`hiddenLetters`, `PianoKeyboard.labelFor`). Kỷ lục localStorage theo hồ sơ (`storage.ts`)
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt
   score/scoreFit.ts        tỉ lệ + vị trí dọc của khuông một dòng (ScoreView, Săn nốt): vùng nhìn co giãn ít (≤ 8%) theo từng nốt
                              → giữ nguyên, khuông không nhảy lên xuống; ô hướng dẫn dưới khuông cũng phải cao cố định

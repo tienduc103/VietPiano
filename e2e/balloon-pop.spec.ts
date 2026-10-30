@@ -45,6 +45,11 @@ test('mục Trò chơi → Bóng bay 1 tay: sai không nổ, đúng nốt thì n
   await expect(key(page, 64)).toHaveText(/E$/);
   await page.getByTestId('balloon-hide-F').click();
   await expect(key(page, 65)).toHaveText(/F$/);
+  // Ẩn tên trên bóng → "?".
+  await expect(page.getByTestId('balloon-target-name')).not.toHaveText('?');
+  await page.getByTestId('balloon-hint-balloon-names').click();
+  await expect(page.getByTestId('balloon-target-name')).toHaveText('?');
+  await page.getByTestId('balloon-hint-balloon-names').click();
 
   // Đúng tên nốt (cùng phím) → nổ.
   await key(page, target).click();

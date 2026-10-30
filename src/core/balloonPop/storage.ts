@@ -21,7 +21,9 @@ export interface BalloonSettings {
   showFinger: boolean;
   /** Tên nốt trên phím đàn. */
   showKeyLabels: boolean;
-  /** Tên nốt bị ẩn trên phím đàn (ẩn từng phím để tự nhớ vị trí). */
+  /** Tên nốt trên quả bóng (tắt → bóng hiện "?", đọc theo màu / phím tô). */
+  showBalloonNames: boolean;
+  /** Nốt bị ẩn tên — cả trên bóng lẫn phím đàn (ẩn từng nốt để tự nhớ). */
   hiddenLetters: Letter[];
   /** Tiếng nổ bóng + tiếng nốt khi bấm piano ảo. */
   sound: boolean;
@@ -36,6 +38,7 @@ export const DEFAULT_BALLOON_SETTINGS: BalloonSettings = {
   showTargetKey: true,
   showFinger: true,
   showKeyLabels: true,
+  showBalloonNames: true,
   hiddenLetters: [],
   sound: true,
 };
@@ -64,6 +67,7 @@ export function sanitizeBalloonSettings(raw: unknown): BalloonSettings {
     showTargetKey: bool('showTargetKey'),
     showFinger: bool('showFinger'),
     showKeyLabels: bool('showKeyLabels'),
+    showBalloonNames: bool('showBalloonNames'),
     hiddenLetters: Array.isArray(s.hiddenLetters) ? LETTERS.filter((l) => (s.hiddenLetters as unknown[]).includes(l)) : [],
     sound: bool('sound'),
   };

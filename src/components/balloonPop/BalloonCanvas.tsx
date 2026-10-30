@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { BalloonPopGame, BalloonState } from '../../core/balloonPop/BalloonPopGame';
-import { LETTERS, noteName, type BalloonLabelStyle } from '../../core/balloonPop/notes';
+import { LETTERS, noteName, type BalloonLabelStyle, type Letter } from '../../core/balloonPop/notes';
 import { isBlackKey } from '../../core/music/notes';
 import { keyCenterPercent } from '../PianoKeyboard';
 
@@ -10,6 +10,10 @@ export interface BalloonView {
   labelStyle: BalloonLabelStyle;
   withOctave: boolean;
   showFinger: boolean;
+  /** Ẩn tên trên mọi quả bóng. */
+  hideNames: boolean;
+  /** Nốt bị ẩn tên (trên bóng hiện "?"). */
+  hiddenLetters: readonly Letter[];
 }
 
 interface Particle {
@@ -156,7 +160,7 @@ function draw(ctx: CanvasRenderingContext2D, game: BalloonPopGame, size: { w: nu
     const sway = Math.sin(now / 500 + b.id) * r * 0.12;
     balloon(ctx, x + sway, y, r, LETTER_COLORS[b.note.letter], i === 0, now);
     // Tên nốt trên bóng
-    const label = noteName(b.note.midi, v.labelStyle, v.withOctave);
+    const label = v.hideNames || v.hiddenLetters.includes(b.note.letter) ? '?' : noteName(b.note.midi, v.labelStyle, v.withOctave);
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = 'rgba(15,23,42,0.55)';
     ctx.lineWidth = 3;
