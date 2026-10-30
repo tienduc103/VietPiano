@@ -28,7 +28,7 @@ import { Stars, useGameState, useKeyFlash } from '../components/games/shared';
 import { useStaffCards } from '../components/games/StaffShootView';
 import { MicButton } from '../components/MicPanel';
 import { PianoKeyboard } from '../components/PianoKeyboard';
-import { Button, Card, FullscreenButton, Icon, Segmented } from '../components/ui';
+import { Button, FullscreenButton, Icon, Segmented } from '../components/ui';
 import { useNoteInput } from '../hooks/useNoteInput';
 import { useUiMode } from '../hooks/useUiMode';
 import { useApp } from '../store/appStore';
@@ -47,79 +47,56 @@ const starsText = (r: GameRecord | undefined) => (r && r.plays > 0 ? `${'★'.re
 /** Thẻ khuông của dải nốt: bỏ số chỉ nhịp cho thật gọn. */
 const STRIP_STAFF = { timeSignature: false };
 
+type Update = (p: Partial<FlappySettings>) => void;
+
 /**
  * Flappy Note: chú chim nốt nhạc bay qua các ống — mỗi nốt đánh ĐÚNG là một lần vỗ cánh.
- * Màn chọn (màn chơi, chế độ, độ khó, gợi ý) → chơi (khu A hướng dẫn nốt · khu B trò chơi · khu C piano ảo) → kết quả.
+ * Một màn duy nhất: chơi (khu A hướng dẫn nốt · khu B trò chơi · khu C piano ảo) + bảng ⚙ Cài đặt (màn chơi, chế độ,
+ * độ khó, gợi ý, nguồn nốt) mở ngay trên màn chơi + kết quả.
  * Nhận nốt từ đàn MIDI, bàn phím máy tính, piano ảo (và micro) qua `useNoteInput`; kỷ lục theo hồ sơ ở localStorage.
  */
 export function FlappyNoteScreen() {
   const [settings, setSettingsState] = useState<FlappySettings>(loadFlappySettings);
-  const [playing, setPlaying] = useState(false);
   const profileKey = useCurriculum((s) => s.profileKey);
   const [records, setRecords] = useState<ArcadeRecords>(() => loadFlappyRecords(profileKey));
   useEffect(() => setRecords(loadFlappyRecords(profileKey)), [profileKey]);
-  const update = (patch: Partial<FlappySettings>) =>
+  const update: Update = (patch) =>
     setSettingsState((s) => {
       const next = { ...s, ...patch };
       saveFlappySettings(next);
       return next;
     });
 
-  if (playing)
-    return (
-      <FlappyPlay
-        settings={settings}
-        records={records}
-        onResult={(key, r) => setRecords((prev) => saveFlappyResult(profileKey, prev, key, r))}
-        onExit={() => setPlaying(false)}
-      />
-    );
-  return (
-    <FlappySetup
-      settings={settings}
-      records={records}
-      update={update}
-      onStart={() => {
-        soundOutput.unlock();
-        setPlaying(true);
-      }}
-    />
-  );
+  return <FlappyPlay settings={settings} update={update} records={records} onResult={(key, r) => setRecords((prev) => saveFlappyResult(profileKey, prev, key, r))} />;
 }
 
-function FlappySetup({ settings, records, update, onStart }: { settings: FlappySettings; records: ArcadeRecords; update: (p: Partial<FlappySettings>) => void; onStart: () => void }) {
-  const navigate = useApp((s) => s.navigate);
+/** Bảng cài đặt mở trên màn chơi: danh hiệu, màn chơi, chế độ + giai điệu, độ khó, gợi ý, nguồn nốt. Đổi màn / chế độ / độ khó → ván mới. */
+function SettingsPanel({ settings, records, update, onClose }: { settings: FlappySettings; records: ArcadeRecords; update: Update; onClose: () => void }) {
   const level = findLevel(settings.levelId) ?? FLAPPY_LEVELS[0];
   const total = totalStars(records);
   const rank = rankFor(total);
   const melody = level.melodies.find((m) => m.id === settings.melodyId);
   const hints: { key: 'showName' | 'showFinger' | 'highlightKey' | 'showUpcoming' | 'sound'; label: string }[] = [
     { key: 'showName', label: 'Tên nốt' },
-    { key: 'showFinger', label: 'Ngón + bàn tay' },
+    { key: 'showFinger', label: 'Ngón tay' },
     { key: 'highlightKey', label: 'Tô phím cần đánh' },
     { key: 'showUpcoming', label: 'Nốt tiếp theo' },
     { key: 'sound', label: 'Âm thanh' },
   ];
   return (
-    <div className="h-full overflow-y-auto" data-testid="flappy-setup">
-      <div className="mx-auto grid max-w-5xl gap-4 px-6 pt-[calc(1rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-6">
-        <header className="flex items-center gap-3 pl-10">
-          <Button variant="ghost" onClick={() => navigate({ name: 'games' })} aria-label="Về mục Trò chơi" className="px-2">
-            <Icon name="back" />
-          </Button>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-3xl font-bold">🐤 Flappy Note</h1>
-            <p className="truncate text-sm text-slate-600 dark:text-slate-300">Mỗi nốt đánh đúng là một lần chú chim vỗ cánh — đọc nốt, đặt đúng ngón, bay qua các ống!</p>
-          </div>
-          <FullscreenButton />
-        </header>
-
-        <Card className="flex flex-wrap items-center gap-4 py-3!">
-          <span className="text-5xl" aria-hidden>
+    <div className="absolute inset-0 z-20 overflow-y-auto bg-slate-900/40 p-3" data-testid="flappy-settings-panel" onClick={onClose}>
+      <section
+        className="mx-auto grid max-w-5xl gap-4 rounded-3xl bg-white p-5 text-slate-900 shadow-xl dark:bg-slate-800 dark:text-slate-100"
+        onClick={(e) => e.stopPropagation()}
+        aria-label="Cài đặt Flappy Note"
+      >
+        <header className="flex flex-wrap items-center gap-4">
+          <h2 className="text-2xl font-bold">⚙ Cài đặt</h2>
+          <span className="text-4xl" aria-hidden>
             {rank.current.icon}
           </span>
           <div className="grid min-w-56 flex-1 gap-1">
-            <p className="text-xl font-bold">{rank.current.title}</p>
+            <p className="font-bold">{rank.current.title}</p>
             <p className="text-sm text-slate-500 dark:text-slate-400" data-testid="flappy-total-stars">
               ★ {total}/{MAX_TOTAL_STARS} sao{rank.next ? ` · còn ${rank.next.stars - total} sao nữa để thành ${rank.next.icon} ${rank.next.title}` : ' · danh hiệu cao nhất!'}
             </p>
@@ -127,13 +104,13 @@ function FlappySetup({ settings, records, update, onStart }: { settings: FlappyS
               <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-fuchsia-500" style={{ width: `${(total / MAX_TOTAL_STARS) * 100}%` }} />
             </div>
           </div>
-          <Button variant="primary" className="min-h-16 min-w-56 text-xl" onClick={onStart} data-testid="flappy-start">
-            ▶ Chơi ngay
+          <Button variant="primary" className="min-w-40 text-lg" onClick={onClose} data-testid="flappy-settings-done">
+            ✓ Xong
           </Button>
-        </Card>
+        </header>
 
-        <section className="grid gap-2">
-          <h2 className="text-lg font-bold">Màn chơi</h2>
+        <div className="grid gap-2">
+          <h3 className="text-lg font-bold">Màn chơi</h3>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="Màn chơi">
             {FLAPPY_LEVELS.map((l) => (
               <button
@@ -143,7 +120,7 @@ function FlappySetup({ settings, records, update, onStart }: { settings: FlappyS
                 aria-checked={l.id === level.id}
                 onClick={() => update({ levelId: l.id, melodyId: l.melodies[0]?.id ?? '', mode: l.melodies.length ? settings.mode : 'random' })}
                 data-testid={`flappy-level-${l.id}`}
-                className={`grid min-h-12 rounded-2xl px-3 py-2 text-left ring-2 transition-colors ${l.id === level.id ? 'bg-sky-500 text-white ring-sky-300' : 'bg-white/90 ring-sky-100 hover:ring-sky-300 dark:bg-slate-800 dark:ring-slate-700'}`}
+                className={`grid min-h-12 rounded-2xl px-3 py-2 text-left ring-2 transition-colors ${l.id === level.id ? 'bg-sky-500 text-white ring-sky-300' : 'bg-white/90 ring-sky-100 hover:ring-sky-300 dark:bg-slate-700 dark:ring-slate-600'}`}
               >
                 <span className="flex items-baseline justify-between gap-2">
                   <span className="font-bold">{l.label}</span>
@@ -153,78 +130,69 @@ function FlappySetup({ settings, records, update, onStart }: { settings: FlappyS
               </button>
             ))}
           </div>
-        </section>
+        </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Card className="grid content-start gap-3 py-4!">
-            <div className="grid gap-2">
-              <h2 className="text-lg font-bold">Chế độ</h2>
-              <Segmented
-                value={settings.mode}
-                onChange={(mode) => update({ mode })}
-                options={[
-                  { value: 'random', label: '🎲 Nốt ngẫu nhiên' },
-                  ...(level.melodies.length ? [{ value: 'sequence' as const, label: '🎼 Chuỗi nốt' }] : []),
-                ]}
-              />
-              {settings.mode === 'sequence' && (
-                <>
-                  <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Giai điệu">
-                    {level.melodies.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={m.id === settings.melodyId}
-                        onClick={() => update({ melodyId: m.id })}
-                        data-testid={`flappy-melody-${m.id}`}
-                        className={`min-h-12 rounded-xl px-3 text-sm font-semibold ring-2 ${m.id === settings.melodyId ? 'bg-fuchsia-500 text-white ring-fuchsia-300' : 'bg-white/90 ring-violet-100 dark:bg-slate-800 dark:ring-violet-900'}`}
-                      >
-                        {m.label}
-                      </button>
-                    ))}
-                  </div>
-                  {melody && <p className="text-xs text-slate-500 dark:text-slate-400">Nguồn: {melody.source}</p>}
-                </>
-              )}
+          <div className="grid content-start gap-2">
+            <h3 className="text-lg font-bold">Chế độ</h3>
+            <Segmented
+              value={settings.mode}
+              onChange={(mode) => update({ mode })}
+              options={[
+                { value: 'random', label: '🎲 Nốt ngẫu nhiên' },
+                ...(level.melodies.length ? [{ value: 'sequence' as const, label: '🎼 Chuỗi nốt' }] : []),
+              ]}
+            />
+            {settings.mode === 'sequence' && (
+              <>
+                <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Giai điệu">
+                  {level.melodies.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={m.id === settings.melodyId}
+                      onClick={() => update({ melodyId: m.id })}
+                      data-testid={`flappy-melody-${m.id}`}
+                      className={`min-h-12 rounded-xl px-3 text-sm font-semibold ring-2 ${m.id === settings.melodyId ? 'bg-fuchsia-500 text-white ring-fuchsia-300' : 'bg-white/90 ring-violet-100 dark:bg-slate-700 dark:ring-violet-900'}`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+                {melody && <p className="text-xs text-slate-500 dark:text-slate-400">Nguồn: {melody.source}</p>}
+              </>
+            )}
+            <h3 className="text-lg font-bold">Độ khó</h3>
+            <Segmented value={settings.difficulty} onChange={(difficulty) => update({ difficulty })} options={DIFFICULTIES.map((d) => ({ value: d, label: DIFFICULTY_LABEL[d] }))} />
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {DIFFICULTY_HELP[settings.difficulty]} · {starsText(records[flappyKey(level.id, settings.difficulty)])}
+            </p>
+          </div>
+          <div className="grid content-start gap-2">
+            <h3 className="text-lg font-bold">Gợi ý</h3>
+            <div className="flex flex-wrap gap-2">
+              {hints.map((h) => (
+                <button
+                  key={h.key}
+                  type="button"
+                  role="switch"
+                  aria-checked={settings[h.key]}
+                  onClick={() => update({ [h.key]: !settings[h.key] })}
+                  data-testid={`flappy-hint-${h.key}`}
+                  className={`min-h-12 rounded-xl px-3 text-sm font-semibold ring-2 transition-colors ${settings[h.key] ? 'bg-violet-600 text-white ring-violet-300' : 'bg-white/90 text-slate-500 ring-slate-200 dark:bg-slate-700 dark:ring-slate-600'}`}
+                >
+                  {settings[h.key] ? '✓ ' : ''}
+                  {h.label}
+                </button>
+              ))}
             </div>
-            <div className="grid gap-2">
-              <h2 className="text-lg font-bold">Độ khó</h2>
-              <Segmented value={settings.difficulty} onChange={(difficulty) => update({ difficulty })} options={DIFFICULTIES.map((d) => ({ value: d, label: DIFFICULTY_LABEL[d] }))} />
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {DIFFICULTY_HELP[settings.difficulty]} · {starsText(records[flappyKey(level.id, settings.difficulty)])}
-              </p>
-            </div>
-          </Card>
-
-          <Card className="grid content-start gap-3 py-4!">
-            <div className="grid gap-2">
-              <h2 className="text-lg font-bold">Gợi ý</h2>
-              <div className="flex flex-wrap gap-2">
-                {hints.map((h) => (
-                  <button
-                    key={h.key}
-                    type="button"
-                    role="switch"
-                    aria-checked={settings[h.key]}
-                    onClick={() => update({ [h.key]: !settings[h.key] })}
-                    data-testid={`flappy-hint-${h.key}`}
-                    className={`min-h-12 rounded-xl px-3 text-sm font-semibold ring-2 transition-colors ${settings[h.key] ? 'bg-violet-600 text-white ring-violet-300' : 'bg-white/90 text-slate-500 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700'}`}
-                  >
-                    {settings[h.key] ? '✓ ' : ''}
-                    {h.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <h2 className="text-lg font-bold">Nguồn nốt</h2>
-              <InputSourceBar />
-              <p className="text-xs text-slate-500 dark:text-slate-400">Đàn MIDI · bàn phím máy tính (A S D F… từ nốt Đô) · piano ảo trên màn hình luôn dùng được.</p>
-            </div>
-          </Card>
+            <h3 className="text-lg font-bold">Nguồn nốt</h3>
+            <InputSourceBar />
+            <p className="text-xs text-slate-500 dark:text-slate-400">Đàn MIDI · bàn phím máy tính (A S D F… từ nốt Đô) · piano ảo trên màn hình luôn dùng được.</p>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
@@ -237,14 +205,14 @@ function runNotes(level: FlappyLevel, s: FlappySettings): FlappyNote[] {
 
 function FlappyPlay({
   settings,
+  update,
   records,
   onResult,
-  onExit,
 }: {
   settings: FlappySettings;
+  update: Update;
   records: ArcadeRecords;
   onResult: (key: string, r: { score: number; stars: number }) => void;
-  onExit: () => void;
 }) {
   const navigate = useApp((s) => s.navigate);
   const labelStyle = useSettings((s) => s.settings.labelStyle);
@@ -263,16 +231,18 @@ function FlappyPlay({
     [notes, settings.mode, settings.difficulty, run],
   );
   const state = useGameState(game);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const panelOpenRef = useRef(panelOpen);
+  panelOpenRef.current = panelOpen;
 
-  // Khuông nhạc vẽ sẵn cho từng nốt × trường độ có thể gặp (khoá Sol tay phải, khoá Fa tay trái); không trường độ → nốt tròn.
+  // Dải nốt giữa màn (Siêu dễ): thẻ khuông thật ngắn vẽ sẵn cho từng nốt × trường độ có thể gặp
+  // (khoá Sol tay phải, khoá Fa tay trái; chỉ khoá nhạc + nốt, không số chỉ nhịp) để tập đọc nốt.
   const withDurations = game.config.durations.length > 0;
-  const cards = useMemo(() => {
-    const durations = withDurations ? [...new Set([...game.config.durations, ...notes.flatMap((n) => (n.duration ? [n.duration] : []))])] : [undefined];
-    return level.notes.flatMap((n) => durations.map((d) => ({ key: staffCardKey({ ...n, duration: d }), notation: `${n.pitch}/${d ?? 'w'}`, clef: n.clef })));
+  const stripCards = useMemo(() => {
+    if (!withDurations) return [];
+    const durations = [...new Set([...game.config.durations, ...notes.flatMap((n) => (n.duration ? [n.duration] : []))])];
+    return level.notes.flatMap((n) => durations.map((d) => ({ key: staffCardKey({ ...n, duration: d }), notation: `${n.pitch}/${d}`, clef: n.clef })));
   }, [level, notes, withDurations, game.config.durations]);
-  const svgs = useStaffCards(cards);
-  // Dải nốt giữa màn: khuông thật ngắn — chỉ khoá nhạc + nốt (không số chỉ nhịp) để tập đọc nốt.
-  const stripCards = useMemo(() => (withDurations ? cards : []), [cards, withDurations]);
   const stripSvgs = useStaffCards(stripCards, undefined, STRIP_STAFF);
 
   const keyboard = useMemo(() => keyboardFor(level.notes.map((n) => n.midi)), [level]);
@@ -286,6 +256,8 @@ function FlappyPlay({
   useNoteInput(
     {
       onNote: (e) => {
+        // Đang mở bảng cài đặt → không cất cánh / không tính nốt.
+        if (panelOpenRef.current) return;
         const r = game.answer(e.midi, e.time);
         // Piano ảo / bàn phím máy tính không có tiếng — phát nốt để nghe cao độ (đàn MIDI tự có tiếng).
         if (r !== 'ignored' && e.source === 'virtual' && sfxRef.current) soundOutput.playNote(e.midi, 0.35);
@@ -319,6 +291,8 @@ function FlappyPlay({
 
   // Kết thúc ván → lưu kỷ lục (một lần).
   const [result, setResult] = useState<{ summary: FlappySummary; previousBest: number; rankBefore: string; rankAfter: string } | null>(null);
+  // Đổi cài đặt → ván mới: bỏ kết quả của ván cũ.
+  useEffect(() => setResult(null), [game]);
   useEffect(() => {
     if (state.status !== 'won' && state.status !== 'over') return;
     const summary = summarize(game);
@@ -348,12 +322,22 @@ function FlappyPlay({
     setResult(null);
     setRun((r) => r + 1);
   };
+  const openSettings = () => {
+    game.pause(performance.now());
+    setPanelOpen(true);
+  };
+  const closeSettings = () => {
+    setPanelOpen(false);
+    // Ván đã kết thúc (kết quả đang mở) → đóng bảng là vào ván mới với cài đặt hiện tại.
+    const { status } = game.getState();
+    if (status === 'won' || status === 'over') restart();
+  };
   const paused = state.status === 'paused';
   const targetLabel = pitchToLabel(state.target.pitch, labelStyle);
 
   return (
     <div
-      className="flex h-full flex-col gap-2 px-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] sm:px-4"
+      className="relative flex h-full flex-col gap-2 px-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] sm:px-4"
       data-testid="flappy-screen"
       data-status={state.status}
       data-target={state.target.midi}
@@ -361,7 +345,7 @@ function FlappyPlay({
       data-pipes={state.pipesPassed}
     >
       <header className="flex flex-wrap items-center gap-2 pl-10">
-        <Button variant="ghost" className="px-2" aria-label="Về màn chọn Flappy Note" onClick={onExit}>
+        <Button variant="ghost" className="px-2" aria-label="Về mục Trò chơi" onClick={() => navigate({ name: 'games' })}>
           <Icon name="back" />
         </Button>
         <div className="min-w-0 flex-1 basis-48">
@@ -382,6 +366,9 @@ function FlappyPlay({
           <span className={`text-fuchsia-600 transition-opacity dark:text-fuchsia-300 ${state.combo >= 2 ? 'opacity-100' : 'opacity-0'}`}>Chuỗi ×{state.combo}</span>
         </div>
         {inputSource !== 'midi' && <MicButton compact />}
+        <Button onClick={openSettings} data-testid="flappy-settings" aria-label="Cài đặt">
+          ⚙ Cài đặt
+        </Button>
         <Button
           variant="primary"
           onClick={() => (paused ? game.resume(performance.now()) : game.pause(performance.now()))}
@@ -402,7 +389,6 @@ function FlappyPlay({
       <NoteGuide
         target={state.target}
         upcoming={state.upcoming}
-        svgs={svgs}
         labelStyle={labelStyle}
         showName={settings.showName}
         showFinger={settings.showFinger}
@@ -415,13 +401,16 @@ function FlappyPlay({
       <div className="relative min-h-48 flex-1 overflow-hidden rounded-3xl ring-1 ring-sky-200 dark:ring-slate-700">
         <FlappyCanvas game={game} />
         {withDurations && <NoteStrip notes={[state.target, ...state.upcoming]} svgs={stripSvgs} />}
-        {state.status === 'ready' && (
+        {state.status === 'ready' && !panelOpen && (
           <Overlay testId="flappy-ready">
             <p className="text-2xl font-extrabold">Đánh nốt {settings.showName ? targetLabel : 'trên khuông'} để cất cánh! 🐤</p>
             <p className="text-sm opacity-80">Mỗi nốt đúng = một lần vỗ cánh. Đánh sai thì chim không bay lên.</p>
+            <Button className="min-h-12" onClick={openSettings} data-testid="flappy-ready-settings">
+              ⚙ Đổi màn / độ khó
+            </Button>
           </Overlay>
         )}
-        {paused && (
+        {paused && !panelOpen && (
           <Overlay testId="flappy-paused">
             <p className="text-2xl font-extrabold">⏸ Đang tạm dừng</p>
             <Button variant="primary" onClick={() => game.resume(performance.now())}>
@@ -429,7 +418,7 @@ function FlappyPlay({
             </Button>
           </Overlay>
         )}
-        {result && (
+        {result && !panelOpen && (
           <ResultPanel
             result={result}
             labelStyle={labelStyle}
@@ -437,7 +426,7 @@ function FlappyPlay({
             record={records[recordKey]}
             stats={state.stats}
             onAgain={restart}
-            onSetup={onExit}
+            onSetup={openSettings}
             onGames={() => navigate({ name: 'games' })}
           />
         )}
@@ -457,6 +446,8 @@ function FlappyPlay({
           onRelease={(m) => virtualInput.release(m)}
         />
       </div>
+
+      {panelOpen && <SettingsPanel settings={settings} records={records} update={update} onClose={closeSettings} />}
     </div>
   );
 }

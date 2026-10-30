@@ -80,7 +80,9 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              độ khó Siêu dễ/Dễ/Vừa/Khó chỉ đổi vật lý. Siêu dễ (`durations` khác rỗng): nốt mục tiêu có trường độ
                              (giai điệu: theo bài; ngẫu nhiên: bốc), nốt dài nâng cao hơn (`liftScale`, KHÔNG đo giữ phím), dải nốt
                              sắp đánh `NoteStrip` ở đầu khu trò chơi (thẻ khuông vẽ sẵn theo nốt × trường độ: `useStaffCards`). Canvas `components/flappyNote/FlappyCanvas` đọc `getWorld()` mỗi khung
-                             (không re-render React); khu hướng dẫn `NoteGuide` (khuông vẽ sẵn, tên nốt, `HandFigure`, 3 nốt tiếp).
+                             (không re-render React); khu hướng dẫn `NoteGuide` (một khuông lớn: nốt cần đánh tô màu + các nốt tiếp theo, vẽ lại mỗi lần đổi nốt;
+                             hai tay → khuông đôi; rồi tên nốt, ngón). Một màn duy nhất: vào thẳng màn chơi, bảng ⚙ Cài đặt mở trên màn chơi
+                             (đang mở → bỏ qua nốt; đổi màn / chế độ / độ khó → ván mới).
                              Kỷ lục theo hồ sơ + màn × độ khó, tổng sao → danh hiệu (`storage.ts`, localStorage)
   balloonPop/              "Bóng bay nốt nhạc" (`screens/BalloonPopScreen`, route `balloon-pop`, `?screen=balloon-pop`): bóng mang tên nốt
                              bay lên THẲNG phía trên phím của nó (`keyCenterPercent`), đánh đúng → nổ, bay khỏi mép trên → mất mạng.
