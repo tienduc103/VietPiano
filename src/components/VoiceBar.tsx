@@ -29,32 +29,31 @@ export function VoiceBar({ mode }: { mode?: UiMode }) {
     voiceTeacher.replay();
   };
 
+  // Gọn một dòng: chữ vừa phải, nút chỉ có icon (vẫn ≥ 48px cho cảm ứng).
   return (
     <div
-      className="flex flex-wrap items-center gap-2 rounded-2xl bg-amber-50 px-3 py-2 ring-1 ring-amber-200 dark:bg-amber-950/60 dark:ring-amber-800"
+      className="flex w-fit max-w-full items-center gap-1 rounded-xl bg-amber-50 py-0.5 pr-1 pl-2 ring-1 ring-amber-200 dark:bg-amber-950/60 dark:ring-amber-800"
       data-testid="voice-bar"
       data-speaking={state.speaking || undefined}
     >
-      <span className={`text-3xl ${state.speaking ? 'animate-bounce' : ''}`} aria-hidden>
+      <span className={`text-xl ${state.speaking ? 'animate-bounce' : ''}`} aria-hidden>
         👩‍🏫
       </span>
-      <p className="min-w-40 flex-1 text-lg font-semibold text-amber-900 dark:text-amber-100" aria-live="polite" data-testid="voice-caption">
+      <p className="min-w-0 flex-1 px-1 text-base leading-snug font-medium text-amber-900 dark:text-amber-100" aria-live="polite" data-testid="voice-caption">
         {state.caption ?? 'Cô giáo sẽ hướng dẫn bé nhé!'}
         {state.silent && !muted && (
-          <span className="block text-sm font-normal text-amber-700 dark:text-amber-300" data-testid="voice-no-tts">
+          <span className="block text-xs font-normal text-amber-700 dark:text-amber-300" data-testid="voice-no-tts">
             Máy này chưa có giọng đọc tiếng Việt — cô chỉ hiện chữ.
           </span>
         )}
       </p>
       {!state.unlocked && !muted ? (
-        <Button variant="primary" onClick={replay} data-testid="voice-unlock">
-          <Icon name="volume" />
-          Bật tiếng cô giáo
+        <Button variant="primary" onClick={replay} aria-label="Bật tiếng cô giáo" title="Bật tiếng cô giáo" className="px-3" data-testid="voice-unlock">
+          <Icon name="volume" className="h-5 w-5" />
         </Button>
       ) : (
-        <Button onClick={replay} disabled={!state.lastCue || muted} aria-label="Nghe lại" title="Nghe lại" data-testid="voice-replay">
-          <Icon name="restart" />
-          Nghe lại
+        <Button variant="ghost" onClick={replay} disabled={!state.lastCue || muted} aria-label="Nghe lại" title="Nghe lại" className="px-3" data-testid="voice-replay">
+          <Icon name="restart" className="h-5 w-5" />
         </Button>
       )}
       <Button
@@ -63,12 +62,20 @@ export function VoiceBar({ mode }: { mode?: UiMode }) {
         aria-pressed={!muted}
         aria-label={muted ? 'Bật giọng cô giáo' : 'Tắt giọng cô giáo'}
         title={muted ? 'Bật giọng cô giáo' : 'Tắt giọng cô giáo'}
+        className="px-3"
         data-testid="voice-mute"
       >
-        <Icon name={muted ? 'volumeOff' : 'volume'} />
+        <Icon name={muted ? 'volumeOff' : 'volume'} className="h-5 w-5" />
       </Button>
-      <Button variant="ghost" onClick={() => update({ voiceRate: nextSpeed.rate })} aria-label={`Tốc độ đọc: ${speed.label}`} title="Tốc độ đọc" data-testid="voice-speed">
-        🐢 {speed.label}
+      <Button
+        variant="ghost"
+        onClick={() => update({ voiceRate: nextSpeed.rate })}
+        aria-label={`Tốc độ đọc: ${speed.label}`}
+        title={`Tốc độ đọc: ${speed.label}`}
+        className="px-2 text-sm"
+        data-testid="voice-speed"
+      >
+        {speed.label}
       </Button>
     </div>
   );

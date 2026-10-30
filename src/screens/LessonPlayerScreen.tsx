@@ -216,7 +216,7 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
       <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
         <div className="mx-auto max-w-6xl">
           {phase !== 'game' && (
-            <div className="mb-3">
+            <div className="mb-2">
               <VoiceBar mode={mode} />
             </div>
           )}
