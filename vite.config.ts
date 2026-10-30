@@ -75,7 +75,9 @@ export default defineConfig({
       workbox: {
         // Font Bravura của VexFlow được nhúng trong bundle JS nên chunk khá lớn.
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest,mp3,m4a}'],
+        // Giọng cô giáo thu sẵn (public/voice, ~12 MB, `npm run voice`) cũng được tải về để học offline;
+        // tên file theo nội dung câu nên deploy lại chỉ tải câu mới.
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest,mp3,m4a}', 'voice/index.json'],
       },
     }),
   ],

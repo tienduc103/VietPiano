@@ -257,14 +257,15 @@ function VoiceTeacherSettings() {
   const current = voiceSpeaker.currentVoice();
   const test = () => {
     voiceTeacher.unlock();
-    voiceTeacher.say(phrases.say('Chào bé! Cô sẽ cùng bé học đàn nhé.', 'lesson_start', 'voice_test'));
+    voiceTeacher.say(phrases.voiceTest());
   };
   return (
     <Card>
       <h2 className="text-xl font-semibold">Cô giáo giọng nói</h2>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         Đọc hướng dẫn bằng tiếng Việt cho bé chưa biết đọc: lời dặn của bài, nốt cần đánh, khen khi đúng, nhắc nhẹ khi sai.
-        Dùng giọng đọc có sẵn trên máy (iPad: vào Cài đặt → Trợ năng → Nội dung được đọc → Giọng nói → Tiếng Việt để tải giọng).
+        Cô dùng giọng thu sẵn đi kèm app (giọng nữ miền Bắc, chạy offline, mọi trình duyệt); câu chưa thu thì đọc bằng giọng có sẵn trên máy
+        (iPad: Cài đặt → Trợ năng → Nội dung được đọc → Giọng nói → Tiếng Việt).
         Khi dùng micro, nốt đàn trong lúc cô đang nói bị bỏ qua (micro nghe thấy loa) — đàn MIDI không bị ảnh hưởng.
       </p>
       <div className="mt-2 divide-y divide-slate-200 dark:divide-slate-700">
@@ -317,7 +318,12 @@ function VoiceTeacherSettings() {
           checked={s.voiceAllowOnline}
           onChange={(v) => update({ voiceAllowOnline: v })}
         />
-        <Row label={current ? `Đang dùng: ${current.name}` : voiceSpeaker.ttsSupported ? 'Máy chưa có giọng tiếng Việt dùng được — cô chỉ hiện chữ' : 'Trình duyệt không hỗ trợ đọc chữ — cô chỉ hiện chữ'}>
+        <Row
+          label={[
+            voiceSpeaker.recordedLines > 0 ? `Giọng thu sẵn: ${voiceSpeaker.recordedLines} câu` : 'Chưa có giọng thu sẵn',
+            current ? `giọng máy: ${current.name}` : 'máy không có giọng tiếng Việt',
+          ].join(' · ')}
+        >
           <Button onClick={test} data-testid="voice-test">
             <Icon name="volume" /> Nghe thử
           </Button>
@@ -329,7 +335,7 @@ function VoiceTeacherSettings() {
 
 /** Đổi khi danh sách giọng của trình duyệt đổi (Chrome nạp bất đồng bộ). */
 function voiceVoicesKey(): string {
-  return voiceSpeaker
+  return `${voiceSpeaker.recordedLines}|` + voiceSpeaker
     .vietnameseVoices()
     .map((v) => v.name)
     .join('|');

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { countWords, keyPositionHint, midiToSpeech, phrases, pitchToSpeech } from './phrases';
-import { pickVietnameseVoice } from './speakers';
+import { pickVietnameseVoice, speechParts } from './speakers';
 
 describe('tên nốt đọc cho bé', () => {
   it('Đô Rê Mi Fa Sol La Si, thăng / giáng, không đọc quãng tám', () => {
@@ -69,5 +69,26 @@ describe('chọn giọng tiếng Việt', () => {
 
   it('không có giọng tiếng Việt → null', () => {
     expect(pickVietnameseVoice([v('Samantha', 'en-US')])).toBeNull();
+  });
+});
+
+describe('ghép giọng thu sẵn', () => {
+  const index = new Map([
+    ['Giỏi lắm!', 'u/a.mp3'],
+    ['Nốt Đô.', 'u/b.mp3'],
+  ]);
+
+  it('mỗi câu đơn một file, câu thiếu file đọc bằng giọng máy (gộp câu liền nhau)', () => {
+    expect(speechParts('Giỏi lắm! Nốt Đô.', undefined, index, true)).toEqual([{ url: 'u/a.mp3' }, { url: 'u/b.mp3' }]);
+    expect(speechParts('Giỏi lắm! Thử lại. Nhé! Nốt Đô.', undefined, index, true)).toEqual([{ url: 'u/a.mp3' }, { tts: 'Thử lại. Nhé!' }, { url: 'u/b.mp3' }]);
+  });
+
+  it('không có giọng máy: bỏ câu thiếu file; không có gì → rỗng', () => {
+    expect(speechParts('Giỏi lắm! Thử lại.', undefined, index, false)).toEqual([{ url: 'u/a.mp3' }]);
+    expect(speechParts('Thử lại.', undefined, index, false)).toEqual([]);
+  });
+
+  it('file riêng của câu (audioAsset) được ưu tiên', () => {
+    expect(speechParts('Giỏi lắm!', 'voice/x.mp3', index, true, (a) => `/base/${a}`)).toEqual([{ url: '/base/voice/x.mp3' }]);
   });
 });

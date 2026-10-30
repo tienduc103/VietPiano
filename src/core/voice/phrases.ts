@@ -125,6 +125,11 @@ export const phrases = {
     return { id: 'quiz_prompt', trigger: 'note_expected', instructionText: prompt };
   },
 
+  /** Nút "Nghe thử" ở Cài đặt. */
+  voiceTest(): VoiceCue {
+    return { id: 'voice_test', trigger: 'lesson_start', instructionText: 'Chào bé! Cô sẽ cùng bé học đàn nhé.' };
+  },
+
   /** Câu đọc tự do (lời dặn trang giới thiệu, đề bài tìm phím). */
   say(textToSay: string, trigger: VoiceCue['trigger'] = 'step_start', id?: string): VoiceCue {
     return { id: id ?? trigger, trigger, instructionText: textToSay };

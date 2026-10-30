@@ -16,6 +16,7 @@ Không backend, không gửi âm thanh lên mạng, chạy offline. Tuỳ chọn
 | `npm run test:e2e` | Playwright (Chromium, viewport iPad ngang, micro giả bằng file WAV) |
 | `npm run icons` | Sinh lại icon PNG từ `public/favicon.svg` |
 | `npm run release` | Phát hành: tăng `VERSION`, commit riêng file đó + tag (`-- --dry-run`, `-- --no-git`) |
+| `npm run voice` | Tạo mp3 giọng cô giáo còn thiếu (cần `pip install edge-tts`; `-- --dry-run`, `-- --prune`) — chạy lại sau khi sửa câu / nội dung bài |
 
 Trước khi báo xong việc: `npm test && npm run build && npm run test:e2e`.
 
@@ -96,7 +97,10 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              `blocksMic` → `useNoteInput` bỏ nốt MICRO lúc cô đang nói (MIDI không ảnh hưởng);
                              `WaitVoiceCoach.ts` Wait Mode → lời nói (khen thưa, nốt kế chỉ đọc nếu bé chưa đánh sau 1.5 s, sai tăng
                              `helpLevel` → hiện tên nốt / bàn phím nhấp nháy, nhắc khi chưa thao tác `voiceRemindSec`);
-                             `speakers.ts` HybridSpeaker: file `audioAsset` trong `public/` → TTS vi-VN (ưu tiên nữ miền Bắc) → chỉ chữ.
+                             `speakers.ts` HybridSpeaker: `audioAsset` → giọng thu sẵn `public/voice/index.json` (câu đơn → mp3
+                             HoaiMy, tách câu theo dấu chấm, phát nối; tạo bằng `npm run voice` từ `catalog.ts` `voiceLines`)
+                             → TTS vi-VN của máy (ưu tiên nữ miền Bắc) cho câu chưa thu → chỉ chữ. Đổi câu trong `phrases.ts` /
+                             nội dung bài mà chưa chạy `npm run voice` → câu đó đọc bằng giọng máy (Chrome Windows: im lặng).
                              Giọng trực tuyến (Edge Natural/Google) tắt mặc định (`voiceAllowOnline`); `teacher.ts` singleton.
                              Dữ liệu bài: `voice?: VoiceCue[]` ở CurriculumLesson / Exercise, `voice?` ở IntroPage (validate kiểm tra).
                              UI: `components/VoiceBar` (bong bóng chữ, Nghe lại, tắt tiếng `voiceMuted`, tốc độ), hook `useVoiceTeacher`
