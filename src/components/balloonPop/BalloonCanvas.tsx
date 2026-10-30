@@ -33,6 +33,27 @@ interface Particle {
   text: string;
   color: string;
   size: number;
+  /** Trọng lực (px/s²) — tia pháo hoa rơi dần. */
+  gravity?: number;
+}
+
+const FIREWORK_COLORS = ['#f43f5e', '#f59e0b', '#facc15', '#22c55e', '#06b6d4', '#6366f1', '#d946ef'];
+
+/** Pháo hoa: vài chùm nổ lệch giờ khắp trời + dòng chữ khen. */
+function fireworks(particles: Particle[], size: { w: number; h: number }, t: number, combo: number) {
+  for (let k = 0; k < 5; k++) {
+    const x = size.w * (0.15 + Math.random() * 0.7);
+    const y = size.h * (0.15 + Math.random() * 0.4);
+    const born = t + k * 260;
+    const color = FIREWORK_COLORS[(k * 3 + combo) % FIREWORK_COLORS.length];
+    const n = 32;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const v = 160 + Math.random() * 90;
+      particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, born, life: 1300, text: i % 3 ? '●' : '✦', color: i % 4 ? color : '#ffffff', size: 15, gravity: 160 });
+    }
+  }
+  particles.push({ x: size.w / 2, y: size.h * 0.42, vx: 0, vy: -30, born: t, life: 2000, text: `🎆 ${combo} nốt đúng liên tục!`, color: '#be185d', size: 34 });
 }
 
 /** Màu bóng theo tên nốt (Đô đỏ → Si tím) — cùng nốt luôn cùng màu ở mọi quãng tám. */
@@ -96,6 +117,7 @@ export function BalloonCanvas({ game, view }: { game: BalloonPopGame; view: Ball
           particles.push({ x: size.w / 2, y: size.h * 0.5, vx: 0, vy: -40, born: t, life: 600, text: '✕', color: '#e11d48', size: 40 });
         }
       }
+      if (s.fireworks > prev.fireworks) fireworks(particles, size, t, s.combo);
       prev = s;
     });
 
@@ -145,8 +167,8 @@ function placeCards(game: BalloonPopGame, cards: Map<number, HTMLDivElement>, si
     const el = cards.get(b.id);
     if (!el) continue;
     const { x, y, r } = balloonAt(game, b, size, v, now);
-    const w = r * 1.55;
-    const h = r * 1.35;
+    const w = r * 1.1;
+    const h = r * 1.6;
     el.style.width = `${w}px`;
     el.style.height = `${h}px`;
     el.style.transform = `translate(${x - w / 2}px, ${y - h / 2 - r * 0.05}px)`;
@@ -165,7 +187,7 @@ function radiusFor(size: { w: number; h: number }, v: BalloonView): number {
   const keyW = size.w / Math.max(1, whites);
   const r = Math.max(18, Math.min(size.h * 0.09, 48, keyW * 0.95));
   // Hình nốt cần chỗ cho khuông: bóng to hơn (có thể chờm sang phím bên cạnh).
-  return v.display === 'staff' ? Math.max(r, Math.min(size.h * 0.13, 66)) : r;
+  return v.display === 'staff' ? Math.max(r, Math.min(size.h * 0.16, 80)) : r;
 }
 
 function position(midi: number, progress: number, size: { w: number; h: number }, v: BalloonView): { x: number; y: number; r: number } {
@@ -213,6 +235,21 @@ function draw(ctx: CanvasRenderingContext2D, game: BalloonPopGame, size: { w: nu
     const { x: sx, y, r } = balloonAt(game, b, size, v, now);
     const x = sx - Math.sin(now / 500 + b.id) * r * 0.12;
     balloon(ctx, sx, y, r, LETTER_COLORS[b.note.letter], i === 0, now);
+    // Bóng của đợt nhanh: vệt gió phía dưới + tia sét
+    if (b.rush) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.lineWidth = 2;
+      for (const dx of [-0.45, 0, 0.45]) {
+        ctx.beginPath();
+        ctx.moveTo(sx + dx * r, y + r * 1.2);
+        ctx.lineTo(sx + dx * r, y + r * (1.55 + Math.abs(dx)));
+        ctx.stroke();
+      }
+      ctx.font = `${Math.round(r * 0.55)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚡', sx + r * 0.85, y - r * 0.85);
+    }
     // Tên nốt trên bóng (Hình nốt: thẻ khuông HTML đè lên)
     if (v.display !== 'staff') {
       const hidden = v.display === 'ear' || v.hiddenLetters.includes(b.note.letter);
@@ -250,13 +287,14 @@ function draw(ctx: CanvasRenderingContext2D, game: BalloonPopGame, size: { w: nu
       particles.splice(i, 1);
       continue;
     }
+    if (age < 0) continue;
     const k = age / 1000;
     ctx.globalAlpha = 1 - age / pt.life;
     ctx.fillStyle = pt.color;
     ctx.font = `800 ${pt.size}px system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(pt.text, pt.x + pt.vx * k, pt.y + pt.vy * k);
+    ctx.fillText(pt.text, pt.x + pt.vx * k, pt.y + pt.vy * k + ((pt.gravity ?? 0) * k * k) / 2);
   }
   ctx.globalAlpha = 1;
 }

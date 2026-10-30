@@ -88,10 +88,16 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              / full phím (phím trắng C2–C6, đúng quãng tám); ngón thế Đô / ngón gam Đô trưởng; tên Đô Rê Mi Pha Sol La Si.
                              `BalloonPopGame` máy trạng thái ready/playing/paused/won/over: mỗi sự kiện nổ tối đa 1 quả (quả cao nhất khớp),
                              hai quả cùng `matchKey` không bay cùng lúc, `minIntervalMs` sau lần nổ; độ khó Dễ/Trung bình/Khó (số quả cùng lúc,
-                             mạng, số bóng) × tốc độ Vừa/Nhanh. Canvas `components/balloonPop/BalloonCanvas`. Một màn duy nhất: chơi +
+                             mạng, số bóng 40/60/80) × tốc độ Vừa/Nhanh; cứ 20 quả nhanh thêm 10% (`rampFactor`, tối đa ×1.5), đầu mỗi mốc
+                             một đợt 5 quả nhanh + dày hơn (`rush`, thêm 1 quả cùng lúc). Nốt bốc trước vào hàng chờ (`upcoming`, xem trước 3 quả
+                             ở góc trên phải; thả quả đầu hàng không trùng `matchKey` quả đang bay); đúng liên tục mỗi 10 nốt → `fireworks` (pháo hoa).
+                             Kiểu chơi Thường / Tìm nốt (`game`): Tìm nốt = bảng chọn nốt (`huntLetters` → `huntPool`), `huntConfig`
+                             (không giới hạn bóng, không mạng, không tăng tốc theo mốc); tốc độ `speed` áp ngay cho mọi quả đang bay
+                             (tiến độ cộng dồn mỗi khung): đúng −0.1, sai / bay mất +0.1 (0.5–3), sai 20 lần (`mistakeLimit`) → hết ván. Canvas `components/balloonPop/BalloonCanvas`. Một màn duy nhất: chơi +
                              bảng ⚙ Cài đặt mở trên màn chơi (mở giữa ván → tạm dừng; đổi chế độ/độ khó/tốc độ → ván mới).
                              Nốt trên bóng (`display`, một nút xoay vòng): Đô Rê Mi / CDEFGAB / Hình nốt (thẻ khuông HTML bám theo bóng —
-                             font Bravura không vẽ được lên canvas; trường độ ngẫu nhiên `BALLOON_DURATIONS`, chỉ để đọc) / "?" (mỗi quả
+                             font Bravura không vẽ được lên canvas; `useNoteCards`: chỉ khuông ngắn + nốt, KHÔNG vẽ khoá, khoá Sol/Fa/Đô
+                             chọn trong cài đặt `staffClef`, mặc định Sol; trường độ ngẫu nhiên `BALLOON_DURATIONS`, chỉ để đọc) / "?" (mỗi quả
                              bay lên kèm tiếng nốt, nút Nghe lại; micro tự bỏ nốt lúc app phát). Gợi ý: phím cần đánh, ngón tay, tên phím
                              (theo kiểu chữ gần nhất `labelStyle`), ẩn tên từng nốt cả trên bóng lẫn phím (`hiddenLetters`,
                              `PianoKeyboard.labelFor`). Kỷ lục localStorage theo hồ sơ (`storage.ts`)

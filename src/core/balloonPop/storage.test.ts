@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { balloonKey, DEFAULT_BALLOON_SETTINGS, nextDisplay, sanitizeBalloonSettings, totalBalloonStars } from './storage';
+import { notePool } from './notes';
+import { balloonKey, DEFAULT_BALLOON_SETTINGS, huntPool, nextDisplay, sanitizeBalloonSettings, totalBalloonStars } from './storage';
 
 describe('Bóng bay storage', () => {
   it('cài đặt hỏng → mặc định; tay theo chế độ; ẩn phím chỉ giữ tên hợp lệ', () => {
@@ -12,6 +13,10 @@ describe('Bóng bay storage', () => {
     // Bản cũ chưa có `display` → theo kiểu tên đã chọn.
     expect(sanitizeBalloonSettings({ labelStyle: 'letter' })).toMatchObject({ display: 'letter', labelStyle: 'letter' });
     expect(sanitizeBalloonSettings({ display: 'ear', labelStyle: 'letter' })).toMatchObject({ display: 'ear', labelStyle: 'letter' });
+    // Khoá hình nốt: mặc định khoá Sol.
+    expect(sanitizeBalloonSettings({}).staffClef).toBe('treble');
+    expect(sanitizeBalloonSettings({ staffClef: 'alto' }).staffClef).toBe('alto');
+    expect(sanitizeBalloonSettings({ staffClef: 'tenor' }).staffClef).toBe('treble');
   });
 
   it('nút hiển thị xoay vòng Đô Rê Mi → CDEFGAB → Hình nốt → ? → Đô Rê Mi; tên phím theo chế độ chữ gần nhất', () => {
@@ -27,6 +32,16 @@ describe('Bóng bay storage', () => {
   it('khoá kỷ lục + tổng sao', () => {
     expect(balloonKey({ mode: 'one-hand', hand: 'left', difficulty: 'hard', speed: 'fast' })).toBe('one-hand-left:hard:fast');
     expect(balloonKey({ mode: 'full', hand: 'both', difficulty: 'easy', speed: 'medium' })).toBe('full:easy:medium');
+    expect(balloonKey({ mode: 'one-hand', hand: 'right', difficulty: 'easy', speed: 'medium', game: 'hunt', huntLetters: ['C', 'G'] })).toBe('one-hand-right:hunt-CG:easy:medium');
     expect(totalBalloonStars({ a: { plays: 1, bestScore: 10, bestStars: 2 }, b: { plays: 3, bestScore: 5, bestStars: 3 } })).toBe(5);
+  });
+
+  it('Tìm nốt: kiểu chơi + nốt đã chọn; nốt không có trong chế độ → cả tập', () => {
+    expect(sanitizeBalloonSettings({})).toMatchObject({ game: 'classic', huntLetters: ['C', 'D', 'E', 'F', 'G', 'A', 'B'] });
+    expect(sanitizeBalloonSettings({ game: 'hunt', huntLetters: ['G', 'C', 'X'] })).toMatchObject({ game: 'hunt', huntLetters: ['C', 'G'] });
+    expect(sanitizeBalloonSettings({ game: 'lạ', huntLetters: [] })).toMatchObject({ game: 'classic', huntLetters: ['C', 'D', 'E', 'F', 'G', 'A', 'B'] });
+    expect(huntPool(notePool('one-hand'), ['E']).map((n) => n.midi)).toEqual([64]);
+    expect(huntPool(notePool('two-hands'), ['C', 'D']).map((n) => n.midi)).toEqual([48, 50, 60, 62]);
+    expect(huntPool(notePool('one-hand'), ['A', 'B'])).toHaveLength(5);
   });
 });

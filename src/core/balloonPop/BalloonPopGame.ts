@@ -7,6 +7,13 @@
  * Hai bóng cùng khoá so nốt (`matchKey`) không bay cùng lúc → một lần đánh không bao giờ mơ hồ.
  *
  * Độ khó (Dễ / Trung bình / Khó): số bóng cùng lúc, nhịp thả, số mạng, số bóng; tốc độ (Vừa / Nhanh) nhân thời gian bay.
+ * Cứ mỗi `RAMP_EVERY` quả: nhanh thêm `RAMP_STEP` (tối đa `RAMP_MAX`), mở đầu mốc là một đợt `RUSH_SIZE` quả bay dồn dập
+ * + nhanh hơn (`rush`), xong đợt về tốc độ của mốc. Nốt sắp thả được bốc trước (`upcoming`) để màn hình cho xem trước.
+ * Đúng liên tục mỗi `FIREWORK_EVERY` nốt → `fireworks` tăng (pháo hoa).
+ *
+ * Kiểu "Tìm nốt" (`config.mistakeLimit`): không giới hạn số bóng, không tính mạng, không tăng tốc theo mốc. Tốc độ bay
+ * thích nghi (`speed`, áp ngay cho mọi quả đang bay): đúng → chậm lại `HUNT_STEP`, sai hoặc bóng bay mất → nhanh thêm
+ * `HUNT_STEP` (trong [`HUNT_MIN_SPEED`, `HUNT_MAX_SPEED`]); sai đủ `mistakeLimit` lần → hết ván.
  * Vị trí ngang của bóng do màn hình quyết định (thẳng phím đàn), lõi chỉ giữ tiến độ bay 0 → 1.
  */
 import type { Random } from '../games/random';
@@ -37,13 +44,39 @@ export interface BalloonConfig {
   lives: number;
   /** Bỏ sự kiện quá sát lần nổ trước (micro lặp lại nốt vừa đánh). */
   minIntervalMs: number;
+  /** Kiểu Tìm nốt: số lần sai (kể cả bóng bay mất) thì hết ván. */
+  mistakeLimit?: number;
 }
 
 export const DIFFICULTY_CONFIG: Record<BalloonDifficulty, BalloonConfig> = {
-  easy: { maxActive: 1, spawnIntervalMs: 2500, emptyGapMs: 700, firstSpawnMs: 600, riseMs: 10000, balloons: 15, lives: 5, minIntervalMs: 120 },
-  normal: { maxActive: 2, spawnIntervalMs: 2800, emptyGapMs: 600, firstSpawnMs: 600, riseMs: 8500, balloons: 20, lives: 4, minIntervalMs: 120 },
-  hard: { maxActive: 4, spawnIntervalMs: 1900, emptyGapMs: 500, firstSpawnMs: 600, riseMs: 7000, balloons: 30, lives: 3, minIntervalMs: 100 },
+  easy: { maxActive: 1, spawnIntervalMs: 2500, emptyGapMs: 700, firstSpawnMs: 600, riseMs: 10000, balloons: 40, lives: 5, minIntervalMs: 120 },
+  normal: { maxActive: 2, spawnIntervalMs: 2800, emptyGapMs: 600, firstSpawnMs: 600, riseMs: 8500, balloons: 60, lives: 4, minIntervalMs: 120 },
+  hard: { maxActive: 4, spawnIntervalMs: 1900, emptyGapMs: 500, firstSpawnMs: 600, riseMs: 7000, balloons: 80, lives: 3, minIntervalMs: 100 },
 };
+
+/** Mỗi chừng này quả thì lên một mốc tốc độ. */
+export const RAMP_EVERY = 20;
+/** Mỗi mốc nhanh thêm (tỉ lệ so với tốc độ đầu ván). */
+export const RAMP_STEP = 0.1;
+export const RAMP_MAX = 1.5;
+/** Đợt bóng nhanh ở đầu mỗi mốc: số quả, bay nhanh hơn, thả dày hơn, thêm một quả cùng lúc. */
+export const RUSH_SIZE = 5;
+export const RUSH_SPEED = 1.3;
+export const RUSH_INTERVAL = 0.5;
+/** Số quả sắp thả cho xem trước. */
+export const UPCOMING = 3;
+/** Đúng liên tục mỗi chừng này nốt → pháo hoa. */
+export const FIREWORK_EVERY = 10;
+
+/** Hệ số tốc độ của quả thứ `index` (0 = quả đầu): 1 → 1.1 → 1.2 … (tối đa `RAMP_MAX`). */
+export function rampFactor(index: number): number {
+  return Math.min(RAMP_MAX, 1 + RAMP_STEP * Math.floor(index / RAMP_EVERY));
+}
+
+/** Quả thứ `index` thuộc đợt bóng nhanh (5 quả đầu của mỗi mốc, trừ mốc đầu ván). */
+export function isRush(index: number): boolean {
+  return index >= RAMP_EVERY && index % RAMP_EVERY < RUSH_SIZE;
+}
 
 /** Nhanh: bay và thả bóng nhanh hơn chừng này lần. */
 export const SPEED_FACTOR: Record<BalloonSpeed, number> = { medium: 1, fast: 1.5 };
@@ -52,6 +85,21 @@ export function balloonConfig(difficulty: BalloonDifficulty, speed: BalloonSpeed
   const c = DIFFICULTY_CONFIG[difficulty];
   const k = SPEED_FACTOR[speed];
   return { ...c, riseMs: Math.round(c.riseMs / k), spawnIntervalMs: Math.round(c.spawnIntervalMs / k) };
+}
+
+export const HUNT_MISTAKES = 20;
+export const HUNT_STEP = 0.1;
+export const HUNT_MIN_SPEED = 0.5;
+export const HUNT_MAX_SPEED = 3;
+
+/** Kiểu Tìm nốt: như độ khó × tốc độ đã chọn, nhưng chơi tới khi sai `HUNT_MISTAKES` lần. */
+export function huntConfig(difficulty: BalloonDifficulty, speed: BalloonSpeed): BalloonConfig {
+  return { ...balloonConfig(difficulty, speed), balloons: Infinity, lives: Infinity, mistakeLimit: HUNT_MISTAKES };
+}
+
+/** Sao kiểu Tìm nốt (theo số bóng nổ trước khi sai đủ): 1★ ≥ 10, 2★ ≥ 25, 3★ ≥ 50. */
+export function huntStars(popped: number): 0 | 1 | 2 | 3 {
+  return popped >= 50 ? 3 : popped >= 25 ? 2 : popped >= 10 ? 1 : 0;
 }
 
 /** Trường độ bốc ngẫu nhiên cho hình nốt trên bóng (chế độ hiển thị Hình nốt) — chỉ để đọc, không chấm giữ phím. */
@@ -64,6 +112,14 @@ export interface Balloon {
   /** Đồng hồ trò chơi lúc thả (ms). */
   spawnedAt: number;
   riseMs: number;
+  /** Thuộc đợt bóng nhanh. */
+  rush: boolean;
+}
+
+/** Quả sắp thả (xem trước). */
+export interface UpcomingBalloon {
+  note: BalloonNote;
+  duration: Duration;
 }
 
 export interface NoteStat {
@@ -81,6 +137,8 @@ export interface BalloonState {
   readonly status: BalloonStatus;
   /** Bóng đang bay, theo thứ tự thả (quả đầu bay cao nhất). */
   readonly balloons: readonly Balloon[];
+  /** Quả sắp thả theo thứ tự (tối đa `UPCOMING`, không vượt số quả còn lại). */
+  readonly upcoming: readonly UpcomingBalloon[];
   readonly spawned: number;
   readonly popped: number;
   readonly escaped: number;
@@ -89,6 +147,12 @@ export interface BalloonState {
   readonly lives: number;
   readonly combo: number;
   readonly bestCombo: number;
+  /** Hệ số tốc độ bay hiện tại của mọi quả (kiểu Tìm nốt thay đổi theo đúng / sai; kiểu thường luôn 1). */
+  readonly speed: number;
+  /** Kiểu Tìm nốt: số lần sai + bóng bay mất. */
+  readonly mistakes: number;
+  /** Số lần đạt mốc đúng liên tục (mỗi `FIREWORK_EVERY` nốt) — tăng → bắn pháo hoa. */
+  readonly fireworks: number;
   readonly lastOutcome: 'pop' | 'wrong' | 'escape' | null;
   readonly lastMidi: number | null;
   /** performance.now() của sự kiện gần nhất. */
@@ -124,6 +188,9 @@ export class BalloonPopGame {
   private nextId = 0;
   private lastPopAt = -Infinity;
   private lastDrawn: number | null = null;
+  private queue: UpcomingBalloon[] = [];
+  /** Tiến độ bay của từng quả (cộng dồn theo `speed` mỗi khung). */
+  private readonly progress = new Map<number, number>();
 
   constructor(
     readonly mode: BalloonMode,
@@ -131,12 +198,14 @@ export class BalloonPopGame {
     config: BalloonConfig,
     private readonly random: Random = Math.random,
   ) {
-    if (pool.length < 2) throw new Error('Trò chơi cần ít nhất hai nốt');
+    if (pool.length < 1) throw new Error('Trò chơi cần ít nhất một nốt');
     this.config = config;
     this.nextSpawnAt = config.firstSpawnMs;
+    while (this.queue.length < UPCOMING) this.queue.push(this.draw());
     this.state = {
       status: 'ready',
       balloons: [],
+      upcoming: this.queue.slice(0, config.balloons),
       spawned: 0,
       popped: 0,
       escaped: 0,
@@ -145,6 +214,9 @@ export class BalloonPopGame {
       lives: config.lives,
       combo: 0,
       bestCombo: 0,
+      speed: 1,
+      mistakes: 0,
+      fireworks: 0,
       lastOutcome: null,
       lastMidi: null,
       lastEventTime: 0,
@@ -164,7 +236,11 @@ export class BalloonPopGame {
 
   /** Tiến độ bay 0 (mép dưới) → 1 (mép trên). */
   progressOf(b: Balloon): number {
-    return Math.min(1, Math.max(0, (this.clock - b.spawnedAt) / b.riseMs));
+    return Math.min(1, this.progress.get(b.id) ?? 0);
+  }
+
+  get hunt(): boolean {
+    return this.config.mistakeLimit !== undefined;
   }
 
   /** Quả cần đánh trước nhất (bay cao nhất). */
@@ -189,6 +265,7 @@ export class BalloonPopGame {
 
   get stars(): 0 | 1 | 2 | 3 {
     const s = this.state;
+    if (this.hunt) return huntStars(s.popped);
     return balloonStars({ won: s.status === 'won', popped: s.popped, total: this.config.balloons, escaped: s.escaped, accuracy: this.accuracy });
   }
 
@@ -228,12 +305,13 @@ export class BalloonPopGame {
         st.confusedWith = { ...st.confusedWith, [midi]: (st.confusedWith[midi] ?? 0) + 1 };
         stats[top.note.midi] = st;
       }
-      this.setState({ ...base, wrongs: s.wrongs + 1, combo: 0, lastOutcome: 'wrong', stats });
+      this.setState({ ...base, wrongs: s.wrongs + 1, combo: 0, lastOutcome: 'wrong', stats, ...this.mistake() });
       return 'wrong';
     }
     this.lastPopAt = now;
     const progress = this.progressOf(hit);
     const balloons = s.balloons.filter((b) => b !== hit);
+    this.progress.delete(hit.id);
     const st = s.stats[hit.note.midi];
     const combo = s.combo + 1;
     this.setState({
@@ -242,8 +320,10 @@ export class BalloonPopGame {
       popped: s.popped + 1,
       combo,
       bestCombo: Math.max(s.bestCombo, combo),
+      fireworks: combo % FIREWORK_EVERY === 0 ? s.fireworks + 1 : s.fireworks,
       score: s.score + POP_POINTS + Math.round(HEIGHT_POINTS * (1 - progress)) + COMBO_POINTS * Math.min(s.combo, MAX_COMBO_BONUS),
       lastOutcome: 'pop',
+      speed: this.hunt ? Math.max(HUNT_MIN_SPEED, round1(s.speed - HUNT_STEP)) : s.speed,
       lastBalloon: { balloon: hit, progress },
       stats: { ...s.stats, [hit.note.midi]: { ...st, hits: st.hits + 1 } },
     });
@@ -261,6 +341,7 @@ export class BalloonPopGame {
     const dt = Math.min(MAX_FRAME_MS, Math.max(0, now - (this.lastNow ?? now)));
     this.lastNow = now;
     this.clock += dt;
+    for (const b of this.state.balloons) this.progress.set(b.id, (this.progress.get(b.id) ?? 0) + (dt / b.riseMs) * this.state.speed);
 
     for (const b of this.state.balloons) {
       if (this.progressOf(b) < 1) continue;
@@ -268,13 +349,15 @@ export class BalloonPopGame {
       if (this.state.status !== 'playing') return;
     }
     const c = this.config;
-    if (this.state.spawned < c.balloons && this.state.balloons.length < c.maxActive && this.clock >= this.nextSpawnAt) this.spawn();
+    const maxActive = c.maxActive + (!this.hunt && isRush(this.state.spawned) ? 1 : 0);
+    if (this.state.spawned < c.balloons && this.state.balloons.length < maxActive && this.clock >= this.nextSpawnAt) this.spawn();
   }
 
   private escape(b: Balloon, now: number): void {
     const s = this.state;
     const st = s.stats[b.note.midi];
-    const lives = s.lives - 1;
+    const lives = this.hunt ? s.lives : s.lives - 1;
+    this.progress.delete(b.id);
     this.setState({
       balloons: s.balloons.filter((x) => x !== b),
       escaped: s.escaped + 1,
@@ -286,8 +369,18 @@ export class BalloonPopGame {
       lastBalloon: { balloon: b, progress: 1 },
       stats: { ...s.stats, [b.note.midi]: { ...st, escapes: st.escapes + 1 } },
       status: lives <= 0 ? 'over' : 'playing',
+      ...this.mistake(),
     });
-    if (lives > 0) this.afterRemove();
+    if (this.state.status === 'playing') this.afterRemove();
+  }
+
+  /** Kiểu Tìm nốt: một lần sai → nhanh thêm, đủ giới hạn → hết ván. Kiểu thường: không đổi gì. */
+  private mistake(): Partial<BalloonState> {
+    const limit = this.config.mistakeLimit;
+    if (limit === undefined) return {};
+    const s = this.state;
+    const mistakes = s.mistakes + 1;
+    return { mistakes, speed: Math.min(HUNT_MAX_SPEED, round1(s.speed + HUNT_STEP)), ...(mistakes >= limit ? { status: 'over' as const } : {}) };
   }
 
   /** Sau khi một quả biến mất: hết bóng → thắng; trời trống → thả quả kế sớm. */
@@ -301,28 +394,47 @@ export class BalloonPopGame {
     this.nextSpawnAt = Math.min(this.nextSpawnAt, this.clock + this.config.emptyGapMs);
   }
 
+  /**
+   * Thả quả sắp thả đầu tiên KHÔNG trùng khoá so nốt với quả đang bay (hàng chờ có thể bị vượt lên);
+   * cả hàng chờ đều trùng → chờ tới khi có quả nổ / bay mất.
+   */
   private spawn(): void {
     const s = this.state;
-    const note = this.draw();
-    const duration = BALLOON_DURATIONS[Math.floor(this.random() * BALLOON_DURATIONS.length)];
-    const balloon: Balloon = { id: this.nextId++, note, duration, spawnedAt: this.clock, riseMs: this.config.riseMs };
+    const busy = new Set(s.balloons.map((b) => matchKey(this.mode, b.note.midi)));
+    const pick = this.queue.findIndex((u) => !busy.has(matchKey(this.mode, u.note.midi)));
+    if (pick < 0) return;
+    const [{ note, duration }] = this.queue.splice(pick, 1);
+    this.queue.push(this.draw());
+    const index = s.spawned;
+    const rush = !this.hunt && isRush(index);
+    const factor = this.hunt ? 1 : rampFactor(index) * (rush ? RUSH_SPEED : 1);
+    const balloon: Balloon = { id: this.nextId++, note, duration, spawnedAt: this.clock, riseMs: Math.round(this.config.riseMs / factor), rush };
     const st = s.stats[note.midi] ?? emptyStat(note.midi);
-    this.nextSpawnAt = this.clock + this.config.spawnIntervalMs;
-    this.setState({ balloons: [...s.balloons, balloon], spawned: s.spawned + 1, stats: { ...s.stats, [note.midi]: { ...st, shown: st.shown + 1 } } });
+    const spawned = index + 1;
+    this.nextSpawnAt = this.hunt
+      ? this.clock + Math.round(this.config.spawnIntervalMs / s.speed)
+      : this.clock + Math.round((this.config.spawnIntervalMs / rampFactor(spawned)) * (isRush(spawned) ? RUSH_INTERVAL : 1));
+    this.progress.set(balloon.id, 0);
+    this.setState({
+      balloons: [...s.balloons, balloon],
+      upcoming: this.queue.slice(0, Math.max(0, this.config.balloons - spawned)),
+      spawned,
+      stats: { ...s.stats, [note.midi]: { ...st, shown: st.shown + 1 } },
+    });
   }
 
-  /** Bốc nốt: không trùng khoá so nốt với quả đang bay, không lặp quả vừa thả. */
-  private draw(): BalloonNote {
-    const busy = new Set(this.state.balloons.map((b) => matchKey(this.mode, b.note.midi)));
+  /** Bốc trước một quả cho hàng chờ: không lặp nốt vừa bốc; trường độ ngẫu nhiên (cho hình nốt). */
+  private draw(): UpcomingBalloon {
     const last = this.lastDrawn;
-    let options = this.pool.filter((n) => !busy.has(matchKey(this.mode, n.midi)) && n.midi !== last);
-    if (options.length === 0) options = this.pool.filter((n) => !busy.has(matchKey(this.mode, n.midi)));
-    if (options.length === 0) options = [...this.pool];
+    const others = this.pool.filter((n) => n.midi !== last);
+    const options = others.length > 0 ? others : this.pool;
     const note = options[Math.floor(this.random() * options.length)];
     this.lastDrawn = note.midi;
-    return note;
+    return { note, duration: BALLOON_DURATIONS[Math.floor(this.random() * BALLOON_DURATIONS.length)] };
   }
 }
+
+const round1 = (x: number) => Math.round(x * 10) / 10;
 
 function emptyStat(midi: number): NoteStat {
   return { midi, shown: 0, hits: 0, escapes: 0, wrongs: 0, confusedWith: {} };

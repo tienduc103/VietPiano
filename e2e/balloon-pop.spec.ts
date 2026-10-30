@@ -27,6 +27,8 @@ test('mục Trò chơi → Bóng bay (một màn, ⚙ Cài đặt): sai không n
     await page.getByRole('button', { name: 'Tay phải' }).click();
     await page.getByRole('button', { name: 'Dễ', exact: true }).click();
     await page.getByRole('button', { name: 'Vừa', exact: true }).click();
+    // Khoá đọc hình nốt (mặc định Sol).
+    await page.getByRole('button', { name: 'Khoá Đô', exact: true }).click();
   });
 
   await page.getByTestId('balloon-go').click();
@@ -61,6 +63,8 @@ test('mục Trò chơi → Bóng bay (một màn, ⚙ Cài đặt): sai không n
   await expect(page.getByTestId('balloon-target-name')).toHaveText('?');
   const card = page.getByTestId('balloon-staff-card').first();
   await expect(card.locator('svg')).toBeVisible();
+  // Chỉ khuông ngắn + hình nốt: không vẽ khoá / số chỉ nhịp.
+  await expect(card.locator('.vf-clef, .vf-timesignature')).toHaveCount(0);
   expect(['w', 'h', 'q', '8']).toContain(await card.getAttribute('data-duration'));
   // Tên phím vẫn theo kiểu chữ gần nhất.
   await expect(key(page, 65)).toHaveText(/F$/);
@@ -119,4 +123,63 @@ test('không đánh → bóng bay mất, hết mạng, kết quả lưu kỷ l�
   await expect(page.getByTestId('balloon-weak-notes')).toBeVisible();
   await page.getByTestId('balloon-change').click();
   await expect(page.getByTestId('balloon-total-stars')).toContainText('kỷ lục');
+});
+
+test('góc trên phải: bóng sắp bay ra đúng thứ tự; đúng 10 nốt liên tục → pháo hoa', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto('/?screen=balloon-pop');
+  await configure(page, async () => {
+    await page.getByTestId('balloon-mode-one-hand').click();
+    await page.getByRole('button', { name: 'Dễ', exact: true }).click();
+  });
+  await page.getByTestId('balloon-go').click();
+  const upcoming = page.getByTestId('balloon-upcoming');
+  await expect(upcoming).toHaveAttribute('data-speed', '1.0');
+  await expect(page.getByTestId('balloon-upcoming-item')).toHaveCount(3);
+  for (let i = 0; i < 10; i++) {
+    const next = Number(await page.getByTestId('balloon-upcoming-item').first().getAttribute('data-midi'));
+    const target = await waitBalloon(page);
+    // Dễ: mỗi lần một quả → quả bay ra chính là quả đầu hàng chờ.
+    expect(target).toBe(next);
+    await expect(screen(page)).toHaveAttribute('data-fireworks', '0');
+    await key(page, target).click();
+    await expect(screen(page)).toHaveAttribute('data-popped', String(i + 1));
+  }
+  await expect(screen(page)).toHaveAttribute('data-fireworks', '1');
+});
+
+test('Tìm nốt: chỉ bóng nốt đã chọn; đúng → chậm lại, sai → nhanh dần; sai 20 lần → hết ván', async ({ page }) => {
+  await page.goto('/?screen=balloon-pop');
+  await configure(page, async () => {
+    await page.getByTestId('balloon-mode-one-hand').click();
+    await page.getByRole('button', { name: 'Tay phải' }).click();
+    await page.getByRole('button', { name: 'Dễ', exact: true }).click();
+    await page.getByRole('button', { name: '🔎 Tìm nốt', exact: true }).click();
+    // Chỉ giữ Mi.
+    for (const l of ['C', 'D', 'F', 'G', 'A', 'B']) await page.getByTestId(`balloon-hunt-${l}`).click();
+    await expect(page.getByTestId('balloon-hunt-E')).toHaveAttribute('aria-pressed', 'true');
+    // Không bỏ được nốt cuối cùng.
+    await page.getByTestId('balloon-hunt-E').click();
+    await expect(page.getByTestId('balloon-hunt-E')).toHaveAttribute('aria-pressed', 'true');
+  });
+  await expect(page.getByTestId('balloon-hunt-notes')).toContainText('Mi');
+  await page.getByTestId('balloon-go').click();
+  expect(await waitBalloon(page)).toBe(64);
+  await expect(page.getByTestId('balloon-mistakes')).toHaveText('✕ 0/20');
+
+  await key(page, 60).click();
+  await expect(screen(page)).toHaveAttribute('data-mistakes', '1');
+  await expect(screen(page)).toHaveAttribute('data-speed', '1.1');
+  await key(page, 64).click();
+  await expect(screen(page)).toHaveAttribute('data-popped', '1');
+  await expect(screen(page)).toHaveAttribute('data-speed', '1');
+  // Sự kiện sát lần nổ (< minIntervalMs) bị bỏ — chờ qua.
+  await page.waitForTimeout(300);
+
+  for (let i = 2; i <= 20; i++) {
+    await key(page, 60).click();
+    await expect(screen(page)).toHaveAttribute('data-mistakes', String(i));
+  }
+  await expect(screen(page)).toHaveAttribute('data-status', 'over');
+  await expect(page.getByTestId('balloon-result')).toContainText('tìm được 1 nốt');
 });
