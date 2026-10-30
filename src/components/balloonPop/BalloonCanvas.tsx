@@ -1,20 +1,27 @@
 import { useEffect, useRef } from 'react';
-import type { BalloonPopGame, BalloonState } from '../../core/balloonPop/BalloonPopGame';
-import { LETTERS, noteName, type BalloonLabelStyle, type Letter } from '../../core/balloonPop/notes';
+import type { Balloon, BalloonPopGame, BalloonState } from '../../core/balloonPop/BalloonPopGame';
+import { LETTERS, noteName, type Letter } from '../../core/balloonPop/notes';
+import type { BalloonDisplay } from '../../core/balloonPop/storage';
+import type { Duration } from '../../core/lessons/types';
+import { useGameState } from '../games/shared';
 import { isBlackKey } from '../../core/music/notes';
 import { keyCenterPercent } from '../PianoKeyboard';
 
 export interface BalloonView {
   from: number;
   to: number;
-  labelStyle: BalloonLabelStyle;
   withOctave: boolean;
   showFinger: boolean;
-  /** Ẩn tên trên mọi quả bóng. */
-  hideNames: boolean;
-  /** Nốt bị ẩn tên (trên bóng hiện "?"). */
+  /** Cách hiện nốt trên bóng: tên chữ, hình nốt (thẻ khuông HTML bám theo bóng), "?" (nghe đoán). */
+  display: BalloonDisplay;
+  /** Nốt bị ẩn tên (chế độ tên chữ → bóng hiện "?"). */
   hiddenLetters: readonly Letter[];
+  /** Thẻ khuông vẽ sẵn theo `staffKey` (chế độ Hình nốt). */
+  staffSvgs: Map<string, string> | null;
 }
+
+/** Khoá thẻ khuông của một quả: cao độ + trường độ. */
+export const staffKey = (midi: number, duration: Duration) => `${midi}/${duration}`;
 
 interface Particle {
   x: number;
@@ -41,11 +48,15 @@ const hash = (k: number) => {
  * Khu trò chơi Bóng bay: canvas vẽ trời, mây và các quả bóng — mỗi quả bay thẳng phía trên phím đàn của nó
  * (cùng cách chia phím với `PianoKeyboard`). Vòng requestAnimationFrame gọi `game.tick` rồi vẽ thẳng từ trạng thái
  * trò chơi, không re-render React mỗi khung. Quả cần đánh trước (bay cao nhất) có viền sáng.
+ * Chế độ Hình nốt: mỗi quả có một thẻ khuông (SVG vẽ sẵn — font Bravura chỉ có trong trang, không vẽ được lên canvas);
+ * React chỉ render lại danh sách thẻ khi bóng xuất hiện / nổ, vị trí thẻ đặt mỗi khung trong vòng vẽ.
  */
 export function BalloonCanvas({ game, view }: { game: BalloonPopGame; view: BalloonView }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef(view);
   viewRef.current = view;
+  const cards = useRef(new Map<number, HTMLDivElement>());
+  const { balloons } = useGameState(game);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -93,6 +104,7 @@ export function BalloonCanvas({ game, view }: { game: BalloonPopGame; view: Ball
       const now = performance.now();
       game.tick(now);
       draw(ctx, game, size, viewRef.current, now, particles);
+      placeCards(game, cards.current, size, viewRef.current, now);
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
@@ -103,14 +115,57 @@ export function BalloonCanvas({ game, view }: { game: BalloonPopGame; view: Ball
     };
   }, [game]);
 
-  return <canvas ref={canvasRef} className="h-full w-full touch-none select-none" aria-label="Bóng bay nốt nhạc bay lên" data-testid="balloon-canvas" />;
+  return (
+    <>
+      <canvas ref={canvasRef} className="h-full w-full touch-none select-none" aria-label="Bóng bay nốt nhạc bay lên" data-testid="balloon-canvas" />
+      {view.display === 'staff' &&
+        balloons.map((b) => (
+          <div
+            key={b.id}
+            ref={(el) => {
+              if (el) cards.current.set(b.id, el);
+              else cards.current.delete(b.id);
+            }}
+            className="pointer-events-none absolute top-0 left-0 rounded-xl bg-white/95 text-slate-900 shadow [&>svg]:h-full [&>svg]:w-full"
+            style={{ visibility: 'hidden' }}
+            data-testid="balloon-staff-card"
+            data-midi={b.note.midi}
+            data-duration={b.duration}
+            dangerouslySetInnerHTML={{ __html: view.staffSvgs?.get(staffKey(b.note.midi, b.duration)) ?? '' }}
+          />
+        ))}
+    </>
+  );
+}
+
+/** Đặt thẻ khuông vào giữa quả bóng (cùng vị trí + đung đưa như hình vẽ trên canvas). */
+function placeCards(game: BalloonPopGame, cards: Map<number, HTMLDivElement>, size: { w: number; h: number }, v: BalloonView, now: number) {
+  if (cards.size === 0) return;
+  for (const b of game.getState().balloons) {
+    const el = cards.get(b.id);
+    if (!el) continue;
+    const { x, y, r } = balloonAt(game, b, size, v, now);
+    const w = r * 1.55;
+    const h = r * 1.35;
+    el.style.width = `${w}px`;
+    el.style.height = `${h}px`;
+    el.style.transform = `translate(${x - w / 2}px, ${y - h / 2 - r * 0.05}px)`;
+    el.style.visibility = 'visible';
+  }
+}
+
+function balloonAt(game: BalloonPopGame, b: Balloon, size: { w: number; h: number }, v: BalloonView, now: number) {
+  const { x, y, r } = position(b.note.midi, game.progressOf(b), size, v);
+  return { x: x + Math.sin(now / 500 + b.id) * r * 0.12, y, r };
 }
 
 function radiusFor(size: { w: number; h: number }, v: BalloonView): number {
   let whites = 0;
   for (let m = v.from; m <= v.to; m++) if (!isBlackKey(m)) whites++;
   const keyW = size.w / Math.max(1, whites);
-  return Math.max(18, Math.min(size.h * 0.09, 48, keyW * 0.95));
+  const r = Math.max(18, Math.min(size.h * 0.09, 48, keyW * 0.95));
+  // Hình nốt cần chỗ cho khuông: bóng to hơn (có thể chờm sang phím bên cạnh).
+  return v.display === 'staff' ? Math.max(r, Math.min(size.h * 0.13, 66)) : r;
 }
 
 function position(midi: number, progress: number, size: { w: number; h: number }, v: BalloonView): { x: number; y: number; r: number } {
@@ -155,30 +210,34 @@ function draw(ctx: CanvasRenderingContext2D, game: BalloonPopGame, size: { w: nu
 
   const state = game.getState();
   state.balloons.forEach((b, i) => {
-    const p = game.progressOf(b);
-    const { x, y, r } = position(b.note.midi, p, size, v);
-    const sway = Math.sin(now / 500 + b.id) * r * 0.12;
-    balloon(ctx, x + sway, y, r, LETTER_COLORS[b.note.letter], i === 0, now);
-    // Tên nốt trên bóng
-    const label = v.hideNames || v.hiddenLetters.includes(b.note.letter) ? '?' : noteName(b.note.midi, v.labelStyle, v.withOctave);
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = 'rgba(15,23,42,0.55)';
-    ctx.lineWidth = 3;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    const fs = Math.round(r * (label.length > 3 ? 0.55 : label.length > 2 ? 0.65 : 0.8));
-    ctx.font = `800 ${fs}px system-ui, sans-serif`;
-    ctx.strokeText(label, x + sway, y - r * 0.08);
-    ctx.fillText(label, x + sway, y - r * 0.08);
+    const { x: sx, y, r } = balloonAt(game, b, size, v, now);
+    const x = sx - Math.sin(now / 500 + b.id) * r * 0.12;
+    balloon(ctx, sx, y, r, LETTER_COLORS[b.note.letter], i === 0, now);
+    // Tên nốt trên bóng (Hình nốt: thẻ khuông HTML đè lên)
+    if (v.display !== 'staff') {
+      const hidden = v.display === 'ear' || v.hiddenLetters.includes(b.note.letter);
+      const label = hidden ? '?' : noteName(b.note.midi, v.display === 'letter' ? 'letter' : 'solfege', v.withOctave);
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = 'rgba(15,23,42,0.55)';
+      ctx.lineWidth = 3;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const fs = Math.round(r * (label.length > 3 ? 0.55 : label.length > 2 ? 0.65 : 0.8));
+      ctx.font = `800 ${fs}px system-ui, sans-serif`;
+      ctx.strokeText(label, sx, y - r * 0.08);
+      ctx.fillText(label, sx, y - r * 0.08);
+    }
     // Ngón tay + tay (T/P) dưới nút buộc
     if (v.showFinger) {
       const fy = y + r * 1.75;
       ctx.fillStyle = b.note.hand === 'left' ? '#0284c7' : '#ea580c';
       ctx.beginPath();
-      ctx.arc(x, fy, r * 0.42, 0, Math.PI * 2);
+      ctx.arc(x, fy, Math.min(r, 48) * 0.42, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
-      ctx.font = `800 ${Math.round(r * 0.5)}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = `800 ${Math.round(Math.min(r, 48) * 0.5)}px system-ui, sans-serif`;
       ctx.fillText(`${b.note.hand === 'left' ? 'T' : 'P'}${b.note.finger}`, x, fy + 1);
     }
   });

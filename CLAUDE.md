@@ -88,9 +88,13 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              / full phím (phím trắng C2–C6, đúng quãng tám); ngón thế Đô / ngón gam Đô trưởng; tên Đô Rê Mi Pha Sol La Si.
                              `BalloonPopGame` máy trạng thái ready/playing/paused/won/over: mỗi sự kiện nổ tối đa 1 quả (quả cao nhất khớp),
                              hai quả cùng `matchKey` không bay cùng lúc, `minIntervalMs` sau lần nổ; độ khó Dễ/Trung bình/Khó (số quả cùng lúc,
-                             mạng, số bóng) × tốc độ Vừa/Nhanh. Canvas `components/balloonPop/BalloonCanvas`. Gợi ý: phím cần đánh, ngón tay,
-                             tên phím, tên trên bóng (`showBalloonNames`, tắt → "?"), ẩn tên từng nốt cả trên bóng lẫn phím
-                             (`hiddenLetters`, `PianoKeyboard.labelFor`). Kỷ lục localStorage theo hồ sơ (`storage.ts`)
+                             mạng, số bóng) × tốc độ Vừa/Nhanh. Canvas `components/balloonPop/BalloonCanvas`. Một màn duy nhất: chơi +
+                             bảng ⚙ Cài đặt mở trên màn chơi (mở giữa ván → tạm dừng; đổi chế độ/độ khó/tốc độ → ván mới).
+                             Nốt trên bóng (`display`, một nút xoay vòng): Đô Rê Mi / CDEFGAB / Hình nốt (thẻ khuông HTML bám theo bóng —
+                             font Bravura không vẽ được lên canvas; trường độ ngẫu nhiên `BALLOON_DURATIONS`, chỉ để đọc) / "?" (mỗi quả
+                             bay lên kèm tiếng nốt, nút Nghe lại; micro tự bỏ nốt lúc app phát). Gợi ý: phím cần đánh, ngón tay, tên phím
+                             (theo kiểu chữ gần nhất `labelStyle`), ẩn tên từng nốt cả trên bóng lẫn phím (`hiddenLetters`,
+                             `PianoKeyboard.labelFor`). Kỷ lục localStorage theo hồ sơ (`storage.ts`)
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt
   score/scoreFit.ts        tỉ lệ + vị trí dọc của khuông một dòng (ScoreView, Săn nốt): vùng nhìn co giãn ít (≤ 8%) theo từng nốt
                              → giữ nguyên, khuông không nhảy lên xuống; ô hướng dẫn dưới khuông cũng phải cao cố định

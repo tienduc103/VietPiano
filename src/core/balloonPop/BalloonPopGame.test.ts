@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { seeded } from '../games/random';
-import { balloonConfig, BalloonPopGame, balloonStars, DIFFICULTY_CONFIG, LIFE_BONUS, summarize, type BalloonConfig } from './BalloonPopGame';
+import { BALLOON_DURATIONS, balloonConfig, BalloonPopGame, balloonStars, DIFFICULTY_CONFIG, LIFE_BONUS, summarize, type BalloonConfig } from './BalloonPopGame';
 import { keyboardRange, letterOf, matches, noteName, notePool, type BalloonMode } from './notes';
 
 function run(game: BalloonPopGame, from: number, to: number, step = 16): number {
@@ -93,7 +93,8 @@ describe('BalloonPopGame', () => {
     run(g, 0, 1300);
     const bs = g.getState().balloons;
     expect(bs.length).toBe(3);
-    // Không hai quả cùng tên nốt cùng lúc.
+    // Không hai quả cùng tên nốt cùng lúc; mỗi quả có trường độ để vẽ hình nốt.
+    expect(bs.every((b) => BALLOON_DURATIONS.includes(b.duration))).toBe(true);
     expect(new Set(bs.map((b) => b.note.letter)).size).toBe(3);
     const top = bs[0];
     expect(g.answer(top.note.midi, 1300)).toBe('pop');

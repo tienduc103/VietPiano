@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { soundOutput } from '../core/audio/SoundOutput';
 import {
   BALLOON_DIFFICULTIES,
+  BALLOON_DURATIONS,
   BALLOON_SPEEDS,
   balloonConfig,
   BalloonPopGame,
@@ -13,18 +14,31 @@ import {
   type BalloonSummary,
 } from '../core/balloonPop/BalloonPopGame';
 import { BALLOON_MODES, exactPitch, HAND_LABEL, keyboardRange, letterOf, LETTERS, MODE_INFO, noteName, notePool, SOLFEGE } from '../core/balloonPop/notes';
-import { balloonKey, handFor, loadBalloonRecords, loadBalloonSettings, saveBalloonResult, saveBalloonSettings, totalBalloonStars, type BalloonSettings } from '../core/balloonPop/storage';
+import {
+  balloonKey,
+  DISPLAY_LABEL,
+  handFor,
+  loadBalloonRecords,
+  loadBalloonSettings,
+  nextDisplay,
+  saveBalloonResult,
+  saveBalloonSettings,
+  totalBalloonStars,
+  type BalloonSettings,
+} from '../core/balloonPop/storage';
 import type { GameRecord } from '../core/curriculum/progress';
 import type { ArcadeRecords } from '../core/games/arcade';
 import { FINGER_NAME } from '../core/flappyNote/levels';
 import { chooseBaseC, keyHintsFor } from '../core/input/keyMapping';
 import { virtualInput } from '../core/input/VirtualInputProvider';
-import { BalloonCanvas, LETTER_COLORS } from '../components/balloonPop/BalloonCanvas';
+import { midiToName } from '../core/music/notes';
+import { BalloonCanvas, LETTER_COLORS, staffKey } from '../components/balloonPop/BalloonCanvas';
 import { HandFigure, InputSourceBar } from '../components/curriculum/common';
 import { Stars, useGameState, useKeyFlash } from '../components/games/shared';
+import { useStaffCards } from '../components/games/StaffShootView';
 import { MicButton } from '../components/MicPanel';
 import { PianoKeyboard } from '../components/PianoKeyboard';
-import { Button, Card, FullscreenButton, Icon, Segmented } from '../components/ui';
+import { Button, FullscreenButton, Icon, Segmented } from '../components/ui';
 import { useNoteInput } from '../hooks/useNoteInput';
 import { useApp } from '../store/appStore';
 import { useCurriculum } from '../store/curriculumStore';
@@ -38,17 +52,19 @@ const DIFFICULTY_HELP: Record<BalloonDifficulty, string> = {
 };
 
 const starsText = (r: GameRecord | undefined) => (r && r.plays > 0 ? `${'★'.repeat(r.bestStars)}${'☆'.repeat(3 - r.bestStars)} · kỷ lục ${r.bestScore}` : 'Chưa chơi');
+/** Thẻ khuông trên bóng: bỏ số chỉ nhịp cho thật gọn. */
+const CARD_STAFF = { timeSignature: false };
 
 type Update = (p: Partial<BalloonSettings>) => void;
 
 /**
- * Bóng bay nốt nhạc: bóng mang tên nốt bay lên thẳng phía trên phím đàn — đánh đúng nốt để nổ bóng trước khi bóng bay mất.
- * Màn chọn (chế độ 1 tay / 2 tay / 7 nốt / full phím, độ khó, tốc độ, gợi ý) → chơi (bóng · piano ảo) → kết quả.
+ * Bóng bay nốt nhạc: bóng mang nốt bay lên thẳng phía trên phím đàn — đánh đúng nốt để nổ bóng trước khi bóng bay mất.
+ * Một màn duy nhất: chơi (bóng · piano ảo) + bảng ⚙ Cài đặt (chế độ 1 tay / 2 tay / 7 nốt / full phím, tay, độ khó, tốc độ,
+ * nguồn nốt, gợi ý) mở ngay trên màn chơi + kết quả. Nốt trên bóng: tên Đô Rê Mi / CDEFGAB, hình nốt, hoặc "?" nghe đoán.
  * Nhận nốt từ đàn MIDI, bàn phím máy tính, piano ảo và micro qua `useNoteInput`; kỷ lục theo hồ sơ ở localStorage.
  */
 export function BalloonPopScreen() {
   const [settings, setSettingsState] = useState<BalloonSettings>(loadBalloonSettings);
-  const [playing, setPlaying] = useState(false);
   const profileKey = useCurriculum((s) => s.profileKey);
   const [records, setRecords] = useState<ArcadeRecords>(() => loadBalloonRecords(profileKey));
   useEffect(() => setRecords(loadBalloonRecords(profileKey)), [profileKey]);
@@ -59,66 +75,31 @@ export function BalloonPopScreen() {
       return next;
     });
 
-  if (playing)
-    return (
-      <BalloonPlay
-        settings={settings}
-        update={update}
-        records={records}
-        onResult={(key, r) => setRecords((prev) => saveBalloonResult(profileKey, prev, key, r))}
-        onExit={() => setPlaying(false)}
-      />
-    );
-  return (
-    <BalloonSetup
-      settings={settings}
-      records={records}
-      update={update}
-      onStart={() => {
-        soundOutput.unlock();
-        setPlaying(true);
-      }}
-    />
-  );
+  return <BalloonPlay settings={settings} update={update} records={records} onResult={(key, r) => setRecords((prev) => saveBalloonResult(profileKey, prev, key, r))} />;
 }
 
-function BalloonSetup({ settings, records, update, onStart }: { settings: BalloonSettings; records: ArcadeRecords; update: Update; onStart: () => void }) {
-  const navigate = useApp((s) => s.navigate);
+/** Bảng cài đặt mở trên màn chơi: chế độ, tay, độ khó, tốc độ, nguồn nốt, gợi ý. Đổi chế độ / độ khó / tốc độ → ván mới. */
+function SettingsPanel({ settings, records, update, onClose }: { settings: BalloonSettings; records: ArcadeRecords; update: Update; onClose: () => void }) {
   const hands = MODE_INFO[settings.mode].hands;
   return (
-    <div className="h-full overflow-y-auto" data-testid="balloon-setup">
-      <div className="mx-auto grid max-w-5xl gap-4 px-6 pt-[calc(1rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-6">
-        <header className="flex items-center gap-3 pl-10">
-          <Button variant="ghost" onClick={() => navigate({ name: 'games' })} aria-label="Về mục Trò chơi" className="px-2">
-            <Icon name="back" />
+    <div className="absolute inset-0 z-20 overflow-y-auto bg-slate-900/40 p-3" data-testid="balloon-settings-panel" onClick={onClose}>
+      <section
+        className="mx-auto grid max-w-4xl gap-4 rounded-3xl bg-white p-5 text-slate-900 shadow-xl dark:bg-slate-800 dark:text-slate-100"
+        onClick={(e) => e.stopPropagation()}
+        aria-label="Cài đặt trò Bóng bay"
+      >
+        <header className="flex flex-wrap items-center gap-3">
+          <h2 className="flex-1 text-2xl font-bold">⚙ Cài đặt</h2>
+          <span className="text-sm text-slate-500 dark:text-slate-400" data-testid="balloon-total-stars">
+            ★ {totalBalloonStars(records)} sao · {starsText(records[balloonKey(settings)])}
+          </span>
+          <Button variant="primary" onClick={onClose} data-testid="balloon-settings-done">
+            ✓ Xong
           </Button>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-3xl font-bold">🎈 Bóng bay nốt nhạc</h1>
-            <p className="truncate text-sm text-slate-600 dark:text-slate-300">Bóng bay lên phía trên phím đàn — đánh đúng nốt để làm nổ bóng trước khi bóng bay mất!</p>
-          </div>
-          <FullscreenButton />
         </header>
 
-        <Card className="flex flex-wrap items-center gap-4 py-3!">
-          <span className="text-5xl" aria-hidden>
-            🎈
-          </span>
-          <div className="grid min-w-56 flex-1 gap-1">
-            <p className="text-xl font-bold">
-              {MODE_INFO[settings.mode].label}
-              {hands.length > 0 && ` · ${HAND_LABEL[settings.hand]}`} · {DIFFICULTY_LABEL[settings.difficulty]} · {SPEED_LABEL[settings.speed]}
-            </p>
-            <p className="text-sm text-slate-500 dark:text-slate-400" data-testid="balloon-total-stars">
-              ★ {totalBalloonStars(records)} sao · {starsText(records[balloonKey(settings)])}
-            </p>
-          </div>
-          <Button variant="primary" className="min-h-16 min-w-56 text-xl" onClick={onStart} data-testid="balloon-start">
-            ▶ Chơi ngay
-          </Button>
-        </Card>
-
-        <section className="grid gap-2">
-          <h2 className="text-lg font-bold">Chế độ</h2>
+        <div className="grid gap-2">
+          <h3 className="text-lg font-bold">Chế độ</h3>
           <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Chế độ">
             {BALLOON_MODES.map((m) => (
               <button
@@ -128,7 +109,7 @@ function BalloonSetup({ settings, records, update, onStart }: { settings: Balloo
                 aria-checked={m === settings.mode}
                 onClick={() => update({ mode: m, hand: handFor(m, settings.hand) })}
                 data-testid={`balloon-mode-${m}`}
-                className={`grid min-h-12 rounded-2xl px-3 py-2 text-left ring-2 transition-colors ${m === settings.mode ? 'bg-pink-500 text-white ring-pink-300' : 'bg-white/90 ring-pink-100 hover:ring-pink-300 dark:bg-slate-800 dark:ring-slate-700'}`}
+                className={`grid min-h-12 rounded-2xl px-3 py-2 text-left ring-2 transition-colors ${m === settings.mode ? 'bg-pink-500 text-white ring-pink-300' : 'bg-white/90 ring-pink-100 hover:ring-pink-300 dark:bg-slate-700 dark:ring-slate-600'}`}
               >
                 <span className="font-bold">{MODE_INFO[m].label}</span>
                 <span className="text-sm opacity-80">{MODE_INFO[m].description}</span>
@@ -136,32 +117,26 @@ function BalloonSetup({ settings, records, update, onStart }: { settings: Balloo
             ))}
           </div>
           {hands.length > 0 && <Segmented value={settings.hand} onChange={(hand) => update({ hand })} options={hands.map((h) => ({ value: h, label: HAND_LABEL[h] }))} />}
-        </section>
+        </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Card className="grid content-start gap-3 py-4!">
-            <div className="grid gap-2">
-              <h2 className="text-lg font-bold">Độ khó</h2>
-              <Segmented value={settings.difficulty} onChange={(difficulty) => update({ difficulty })} options={BALLOON_DIFFICULTIES.map((d) => ({ value: d, label: DIFFICULTY_LABEL[d] }))} />
-              <p className="text-sm text-slate-500 dark:text-slate-400">{DIFFICULTY_HELP[settings.difficulty]}</p>
-            </div>
-            <div className="grid gap-2">
-              <h2 className="text-lg font-bold">Tốc độ</h2>
-              <Segmented value={settings.speed} onChange={(speed) => update({ speed })} options={BALLOON_SPEEDS.map((s) => ({ value: s, label: SPEED_LABEL[s] }))} />
-              <p className="text-sm text-slate-500 dark:text-slate-400">Mỗi quả bay hết màn hình trong khoảng {(balloonConfig(settings.difficulty, settings.speed).riseMs / 1000).toFixed(1)} giây.</p>
-            </div>
-            <div className="grid gap-2">
-              <h2 className="text-lg font-bold">Nguồn nốt</h2>
-              <InputSourceBar />
-              <p className="text-xs text-slate-500 dark:text-slate-400">Đàn MIDI · micro · bàn phím máy tính (A S D F… từ nốt Đô) · piano ảo trên màn hình.</p>
-            </div>
-          </Card>
-          <Card className="grid content-start gap-3 py-4!">
-            <h2 className="text-lg font-bold">Gợi ý</h2>
+          <div className="grid content-start gap-2">
+            <h3 className="text-lg font-bold">Độ khó</h3>
+            <Segmented value={settings.difficulty} onChange={(difficulty) => update({ difficulty })} options={BALLOON_DIFFICULTIES.map((d) => ({ value: d, label: DIFFICULTY_LABEL[d] }))} />
+            <p className="text-sm text-slate-500 dark:text-slate-400">{DIFFICULTY_HELP[settings.difficulty]}</p>
+            <h3 className="text-lg font-bold">Tốc độ</h3>
+            <Segmented value={settings.speed} onChange={(speed) => update({ speed })} options={BALLOON_SPEEDS.map((s) => ({ value: s, label: SPEED_LABEL[s] }))} />
+            <p className="text-sm text-slate-500 dark:text-slate-400">Mỗi quả bay hết màn hình trong khoảng {(balloonConfig(settings.difficulty, settings.speed).riseMs / 1000).toFixed(1)} giây.</p>
+          </div>
+          <div className="grid content-start gap-2">
+            <h3 className="text-lg font-bold">Nguồn nốt</h3>
+            <InputSourceBar />
+            <p className="text-xs text-slate-500 dark:text-slate-400">Đàn MIDI · micro · bàn phím máy tính (A S D F… từ nốt Đô) · piano ảo trên màn hình.</p>
+            <h3 className="text-lg font-bold">Hiển thị &amp; gợi ý</h3>
             <HintControls settings={settings} update={update} />
-          </Card>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
@@ -182,20 +157,23 @@ function Toggle({ on, onClick, testId, children }: { on: boolean; onClick: () =>
   );
 }
 
-/** Gợi ý dùng chung ở màn chọn và trong lúc chơi: kiểu tên nốt, phím cần đánh, ngón tay, tên phím + ẩn từng phím. */
+/** Gợi ý dùng chung ở bảng cài đặt và thanh trên màn chơi: cách hiện nốt trên bóng, phím cần đánh, ngón tay, tên phím + ẩn từng nốt. */
 function HintControls({ settings, update, compact = false }: { settings: BalloonSettings; update: Update; compact?: boolean }) {
   const toggleLetter = (l: (typeof LETTERS)[number]) =>
     update({ hiddenLetters: settings.hiddenLetters.includes(l) ? settings.hiddenLetters.filter((x) => x !== l) : LETTERS.filter((x) => x === l || settings.hiddenLetters.includes(x)) });
+  const textOnBalloon = settings.display === 'letter' || settings.display === 'solfege';
   return (
     <div className={`flex flex-wrap items-center ${compact ? 'gap-1.5' : 'gap-2'}`}>
       <button
         type="button"
-        onClick={() => update({ labelStyle: settings.labelStyle === 'letter' ? 'solfege' : 'letter' })}
-        data-testid="balloon-label-style"
-        aria-label="Đổi kiểu tên nốt"
+        onClick={() => update(nextDisplay(settings))}
+        data-testid="balloon-display"
+        data-display={settings.display}
+        aria-label={`Nốt trên bóng: ${DISPLAY_LABEL[settings.display]} — bấm để đổi`}
+        title="Đổi cách hiện nốt trên bóng: Đô Rê Mi → CDEFGAB → Hình nốt → ? (nghe đoán)"
         className="min-h-12 rounded-xl bg-fuchsia-600 px-3 text-sm font-bold text-white ring-2 ring-fuchsia-300"
       >
-        {settings.labelStyle === 'letter' ? 'C D E F G A B' : 'Đô Rê Mi Pha Sol La Si'} ⇄
+        {DISPLAY_LABEL[settings.display]} ⇄
       </button>
       <Toggle on={settings.showTargetKey} onClick={() => update({ showTargetKey: !settings.showTargetKey })} testId="balloon-hint-target">
         Phím cần đánh
@@ -203,16 +181,13 @@ function HintControls({ settings, update, compact = false }: { settings: Balloon
       <Toggle on={settings.showFinger} onClick={() => update({ showFinger: !settings.showFinger })} testId="balloon-hint-finger">
         Ngón tay
       </Toggle>
-      <Toggle on={settings.showBalloonNames} onClick={() => update({ showBalloonNames: !settings.showBalloonNames })} testId="balloon-hint-balloon-names">
-        Tên trên bóng
-      </Toggle>
       <Toggle on={settings.showKeyLabels} onClick={() => update({ showKeyLabels: !settings.showKeyLabels })} testId="balloon-hint-labels">
         Tên phím
       </Toggle>
       <Toggle on={settings.sound} onClick={() => update({ sound: !settings.sound })} testId="balloon-hint-sound">
         Âm thanh
       </Toggle>
-      {(settings.showKeyLabels || settings.showBalloonNames) && (
+      {(settings.showKeyLabels || textOnBalloon) && (
         <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Ẩn tên từng nốt (trên bóng và phím)" data-testid="balloon-hide-keys">
           <span className="px-1 text-xs text-slate-500 dark:text-slate-400">Ẩn tên:</span>
           {LETTERS.map((l) => {
@@ -251,32 +226,42 @@ function BalloonPlay({
   update,
   records,
   onResult,
-  onExit,
 }: {
   settings: BalloonSettings;
   update: Update;
   records: ArcadeRecords;
   onResult: (key: string, r: { score: number; stars: number }) => void;
-  onExit: () => void;
 }) {
   const navigate = useApp((s) => s.navigate);
   const inputSource = useSettings((s) => s.settings.inputSource);
   const micStatus = useMic((s) => s.status);
   const micLive = useMic((s) => s.live);
-  const { mode, hand, difficulty, speed } = settings;
+  const { mode, hand, difficulty, speed, display } = settings;
   const recordKey = balloonKey(settings);
   const keyboard = useMemo(() => keyboardRange(mode, hand), [mode, hand]);
   const keyHints = useMemo(() => keyHintsFor(chooseBaseC([keyboard.from])), [keyboard]);
   const withOctave = exactPitch(mode);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const [run, setRun] = useState(0);
+  const pool = useMemo(() => notePool(mode, hand), [mode, hand]);
   const game = useMemo(
-    () => new BalloonPopGame(mode, notePool(mode, hand), balloonConfig(difficulty, speed)),
-    // Ván mới mỗi lần "Chơi lại".
-    [mode, hand, difficulty, speed, run],
+    () => new BalloonPopGame(mode, pool, balloonConfig(difficulty, speed)),
+    // Ván mới mỗi lần "Chơi lại" / đổi chế độ.
+    [mode, pool, difficulty, speed, run],
   );
   const state = useGameState(game);
   const urgent = state.balloons[0] ?? null;
+
+  // Hình nốt: vẽ sẵn mỗi nốt × trường độ một thẻ khuông (tay trái khoá Fa, tay phải khoá Sol) — chỉ khi đang dùng chế độ này.
+  const cards = useMemo(
+    () =>
+      display === 'staff'
+        ? pool.flatMap((n) => BALLOON_DURATIONS.map((d) => ({ key: staffKey(n.midi, d), notation: `${midiToName(n.midi)}/${d}`, clef: n.hand === 'left' ? ('bass' as const) : ('treble' as const) })))
+        : [],
+    [pool, display],
+  );
+  const staffSvgs = useStaffCards(cards, undefined, CARD_STAFF);
 
   const micRunning = micStatus === 'running';
   // Tiếng hiệu ứng lọt vào micro → chỉ phát khi micro tắt.
@@ -296,18 +281,22 @@ function BalloonPlay({
     { baseMidi: keyboard.from },
   );
 
-  // Hiệu ứng âm thanh: nổ bóng, bóng bay mất.
+  // Hiệu ứng âm thanh: nổ bóng, bóng bay mất. Chế độ "?": mỗi quả bay lên kèm tiếng nốt của nó (micro tự bỏ nốt lúc app phát).
   const prev = useRef(state);
   useEffect(() => {
     const p = prev.current;
     prev.current = state;
+    if (display === 'ear' && state.spawned > p.spawned) {
+      const b = state.balloons[state.balloons.length - 1];
+      if (b) soundOutput.playNote(b.note.midi, 0.9);
+    }
     if (!sfxRef.current) return;
     if (state.popped > p.popped) {
       soundOutput.scheduleNote(96, 0.02, 0.05, 60);
       soundOutput.scheduleNote(103, 0.06, 0.08, 50);
     }
     if (state.escaped > p.escaped) soundOutput.scheduleNote(43, 0, 0.3, 90);
-  }, [state]);
+  }, [state, display]);
 
   // App vào nền / chuyển tab → tạm dừng.
   useEffect(() => {
@@ -320,6 +309,7 @@ function BalloonPlay({
 
   // Kết thúc ván → lưu kỷ lục (một lần).
   const [result, setResult] = useState<{ summary: BalloonSummary; previousBest: number } | null>(null);
+  useEffect(() => setResult(null), [game]);
   useEffect(() => {
     if (state.status !== 'won' && state.status !== 'over') return;
     const summary = summarize(game);
@@ -338,17 +328,28 @@ function BalloonPlay({
     return noteName(m, settings.labelStyle, withOctave);
   };
 
+  const start = () => {
+    soundOutput.unlock();
+    game.start(performance.now());
+  };
   const restart = () => {
     soundOutput.unlock();
     setResult(null);
     setRun((r) => r + 1);
   };
+  const openSettings = () => {
+    game.pause(performance.now());
+    setResult(null);
+    setPanelOpen(true);
+  };
   const paused = state.status === 'paused';
-  const urgentName = !urgent ? null : !settings.showBalloonNames || settings.hiddenLetters.includes(urgent.note.letter) ? '?' : noteName(urgent.note.midi, settings.labelStyle, withOctave);
+  // Tên chỉ hiện ở chế độ tên chữ (hình nốt / nghe đoán: người chơi tự đọc / tự nghe).
+  const urgentName = !urgent ? null : display === 'staff' || display === 'ear' || settings.hiddenLetters.includes(urgent.note.letter) ? '?' : noteName(urgent.note.midi, display, withOctave);
+  const hint = display === 'staff' ? 'đọc hình nốt' : display === 'ear' ? 'nghe đoán nốt' : withOctave ? 'phải đúng phím' : 'chỉ cần đúng tên nốt';
 
   return (
     <div
-      className="flex h-full flex-col gap-2 px-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] sm:px-4"
+      className="relative flex h-full flex-col gap-2 px-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] sm:px-4"
       data-testid="balloon-screen"
       data-status={state.status}
       data-urgent={urgent?.note.midi ?? ''}
@@ -357,14 +358,14 @@ function BalloonPlay({
       data-lives={state.lives}
     >
       <header className="flex flex-wrap items-center gap-2 pl-10">
-        <Button variant="ghost" className="px-2" aria-label="Về màn chọn Bóng bay" onClick={onExit}>
+        <Button variant="ghost" className="px-2" aria-label="Về mục Trò chơi" onClick={() => navigate({ name: 'games' })}>
           <Icon name="back" />
         </Button>
         <div className="min-w-0 flex-1 basis-48">
           <h1 className="truncate text-xl font-bold">🎈 Bóng bay · {MODE_INFO[mode].label}</h1>
           <p className="truncate text-sm text-slate-500 dark:text-slate-400">
             {MODE_INFO[mode].hands.length > 0 && `${HAND_LABEL[hand]} · `}
-            {DIFFICULTY_LABEL[difficulty]} · {SPEED_LABEL[speed]} · {withOctave ? 'phải đúng phím' : 'chỉ cần đúng tên nốt'}
+            {DIFFICULTY_LABEL[difficulty]} · {SPEED_LABEL[speed]} · {hint}
           </p>
         </div>
         <div className="flex items-center gap-4 text-lg font-bold tabular-nums">
@@ -379,6 +380,9 @@ function BalloonPlay({
           <span className={`text-fuchsia-600 transition-opacity dark:text-fuchsia-300 ${state.combo >= 2 ? 'opacity-100' : 'opacity-0'}`}>Chuỗi ×{state.combo}</span>
         </div>
         {inputSource !== 'midi' && <MicButton compact />}
+        <Button onClick={openSettings} data-testid="balloon-settings" aria-label="Cài đặt">
+          ⚙ Cài đặt
+        </Button>
         <Button
           variant="primary"
           onClick={() => (paused ? game.resume(performance.now()) : game.pause(performance.now()))}
@@ -410,6 +414,11 @@ function BalloonPlay({
               </span>
             )}
           </div>
+          {display === 'ear' && (
+            <Button onClick={() => urgent && soundOutput.playNote(urgent.note.midi, 0.9)} disabled={!urgent} data-testid="balloon-replay" aria-label="Nghe lại nốt của bóng cần nổ trước">
+              🔊 Nghe lại
+            </Button>
+          )}
         </div>
         <div className="ml-auto">
           <HintControls settings={settings} update={update} compact />
@@ -417,19 +426,30 @@ function BalloonPlay({
       </div>
 
       <div className="relative min-h-48 flex-1 overflow-hidden rounded-3xl ring-1 ring-sky-200 dark:ring-slate-700">
-        <BalloonCanvas game={game} view={{ from: keyboard.from, to: keyboard.to, labelStyle: settings.labelStyle, withOctave, showFinger: settings.showFinger, hideNames: !settings.showBalloonNames, hiddenLetters: settings.hiddenLetters }} />
-        {state.status === 'ready' && (
+        <BalloonCanvas game={game} view={{ from: keyboard.from, to: keyboard.to, withOctave, showFinger: settings.showFinger, display, hiddenLetters: settings.hiddenLetters, staffSvgs }} />
+        {state.status === 'ready' && !panelOpen && (
           <Overlay testId="balloon-ready">
             <p className="text-2xl font-extrabold">Sẵn sàng chưa? 🎈</p>
             <p className="text-sm opacity-80">
-              Bóng bay lên phía trên phím của nó. Đánh đúng {withOctave ? 'phím (đúng quãng tám)' : 'tên nốt'} để làm nổ bóng!
+              {MODE_INFO[mode].label}
+              {MODE_INFO[mode].hands.length > 0 && ` · ${HAND_LABEL[hand]}`} · {DIFFICULTY_LABEL[difficulty]} · {SPEED_LABEL[speed]} · {starsText(records[recordKey])}
             </p>
-            <Button variant="primary" className="min-h-14 text-lg" onClick={() => game.start(performance.now())} data-testid="balloon-go">
-              <Icon name="play" /> Bắt đầu
-            </Button>
+            <p className="text-sm opacity-80">
+              {display === 'ear'
+                ? 'Mỗi quả bay lên kèm tiếng nốt — nghe rồi đánh đúng nốt đó để làm nổ bóng!'
+                : `Bóng bay lên phía trên phím của nó. Đánh đúng ${withOctave ? 'phím (đúng quãng tám)' : 'tên nốt'} để làm nổ bóng!`}
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button variant="primary" className="min-h-14 text-lg" onClick={start} data-testid="balloon-go">
+                <Icon name="play" /> Bắt đầu
+              </Button>
+              <Button className="min-h-14" onClick={openSettings} data-testid="balloon-ready-settings">
+                ⚙ Đổi chế độ
+              </Button>
+            </div>
           </Overlay>
         )}
-        {paused && (
+        {paused && !panelOpen && (
           <Overlay testId="balloon-paused">
             <p className="text-2xl font-extrabold">⏸ Đang tạm dừng</p>
             <Button variant="primary" onClick={() => game.resume(performance.now())}>
@@ -437,14 +457,14 @@ function BalloonPlay({
             </Button>
           </Overlay>
         )}
-        {result && (
+        {result && !panelOpen && (
           <ResultPanel
             result={result}
             name={(m) => noteName(m, settings.labelStyle, withOctave)}
             record={records[recordKey]}
             stats={state.stats}
             onAgain={restart}
-            onSetup={onExit}
+            onSetup={openSettings}
             onGames={() => navigate({ name: 'games' })}
           />
         )}
@@ -466,13 +486,15 @@ function BalloonPlay({
           onRelease={(m) => virtualInput.release(m)}
         />
       </div>
+
+      {panelOpen && <SettingsPanel settings={settings} records={records} update={update} onClose={() => setPanelOpen(false)} />}
     </div>
   );
 }
 
 function Overlay({ testId, children }: { testId: string; children: React.ReactNode }) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-center px-4" data-testid={testId}>
+    <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 flex -translate-y-1/2 justify-center px-4" data-testid={testId}>
       <div className="pointer-events-auto grid justify-items-center gap-2 rounded-3xl bg-white/90 px-6 py-4 text-center text-slate-900 shadow-lg ring-2 ring-pink-300 dark:bg-slate-900/90 dark:text-slate-100">{children}</div>
     </div>
   );
@@ -497,7 +519,7 @@ function ResultPanel({
 }) {
   const s = result.summary;
   return (
-    <div className="absolute inset-0 grid place-items-center overflow-y-auto bg-slate-900/40 p-3" data-testid="balloon-result" data-won={s.won} data-stars={s.stars}>
+    <div className="absolute inset-0 z-10 grid place-items-center overflow-y-auto bg-slate-900/40 p-3" data-testid="balloon-result" data-won={s.won} data-stars={s.stars}>
       <section className="grid w-full max-w-xl gap-3 rounded-3xl bg-white p-5 text-center text-slate-900 shadow-xl dark:bg-slate-800 dark:text-slate-100">
         <Stars stars={s.stars} className="text-5xl" />
         <h2 className="text-2xl font-extrabold">{s.won ? (s.stars === 3 ? 'Không sót quả nào! 🏆' : 'Hoàn thành! 🎉') : 'Bóng bay mất nhiều quá — thử lại nhé! 🎈'}</h2>
@@ -530,7 +552,7 @@ function ResultPanel({
             <Icon name="restart" /> Chơi lại
           </Button>
           <Button onClick={onSetup} data-testid="balloon-change">
-            Đổi chế độ
+            ⚙ Đổi chế độ
           </Button>
           <Button variant="ghost" onClick={onGames}>
             Về Trò chơi

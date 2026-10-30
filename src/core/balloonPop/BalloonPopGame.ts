@@ -10,6 +10,7 @@
  * Vị trí ngang của bóng do màn hình quyết định (thẳng phím đàn), lõi chỉ giữ tiến độ bay 0 → 1.
  */
 import type { Random } from '../games/random';
+import type { Duration } from '../lessons/types';
 import { matchKey, matches, type BalloonMode, type BalloonNote } from './notes';
 
 export type BalloonDifficulty = 'easy' | 'normal' | 'hard';
@@ -53,9 +54,13 @@ export function balloonConfig(difficulty: BalloonDifficulty, speed: BalloonSpeed
   return { ...c, riseMs: Math.round(c.riseMs / k), spawnIntervalMs: Math.round(c.spawnIntervalMs / k) };
 }
 
+/** Trường độ bốc ngẫu nhiên cho hình nốt trên bóng (chế độ hiển thị Hình nốt) — chỉ để đọc, không chấm giữ phím. */
+export const BALLOON_DURATIONS: readonly Duration[] = ['w', 'h', 'q', '8'];
+
 export interface Balloon {
   id: number;
   note: BalloonNote;
+  duration: Duration;
   /** Đồng hồ trò chơi lúc thả (ms). */
   spawnedAt: number;
   riseMs: number;
@@ -299,7 +304,8 @@ export class BalloonPopGame {
   private spawn(): void {
     const s = this.state;
     const note = this.draw();
-    const balloon: Balloon = { id: this.nextId++, note, spawnedAt: this.clock, riseMs: this.config.riseMs };
+    const duration = BALLOON_DURATIONS[Math.floor(this.random() * BALLOON_DURATIONS.length)];
+    const balloon: Balloon = { id: this.nextId++, note, duration, spawnedAt: this.clock, riseMs: this.config.riseMs };
     const st = s.stats[note.midi] ?? emptyStat(note.midi);
     this.nextSpawnAt = this.clock + this.config.spawnIntervalMs;
     this.setState({ balloons: [...s.balloons, balloon], spawned: s.spawned + 1, stats: { ...s.stats, [note.midi]: { ...st, shown: st.shown + 1 } } });

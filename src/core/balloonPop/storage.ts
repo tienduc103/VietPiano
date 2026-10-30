@@ -7,13 +7,29 @@ import { applyArcadeResult, sanitizeArcadeRecords, type ArcadeRecords } from '..
 import { BALLOON_DIFFICULTIES, BALLOON_SPEEDS, type BalloonDifficulty, type BalloonSpeed } from './BalloonPopGame';
 import { BALLOON_MODES, LETTERS, MODE_INFO, type BalloonLabelStyle, type BalloonMode, type HandChoice, type Letter } from './notes';
 
+/**
+ * Cách hiện nốt trên bóng (một nút xoay vòng): tên Đô Rê Mi…, tên CDEFGAB, hình nốt trên khuông (trường độ ngẫu nhiên),
+ * hoặc "?" — mỗi quả bay lên kèm tiếng nốt để nghe đoán.
+ */
+export type BalloonDisplay = 'solfege' | 'letter' | 'staff' | 'ear';
+export const BALLOON_DISPLAYS: readonly BalloonDisplay[] = ['solfege', 'letter', 'staff', 'ear'];
+export const DISPLAY_LABEL: Record<BalloonDisplay, string> = { solfege: 'Đô Rê Mi Pha Sol La Si', letter: 'C D E F G A B', staff: '♩ Hình nốt', ear: '? Nghe đoán nốt' };
+
+/** Chế độ hiển thị kế tiếp; chuyển sang chế độ tên chữ thì tên phím đàn đổi theo. */
+export function nextDisplay(s: Pick<BalloonSettings, 'display' | 'labelStyle'>): Pick<BalloonSettings, 'display' | 'labelStyle'> {
+  const display = BALLOON_DISPLAYS[(BALLOON_DISPLAYS.indexOf(s.display) + 1) % BALLOON_DISPLAYS.length];
+  return { display, labelStyle: display === 'letter' || display === 'solfege' ? display : s.labelStyle };
+}
+
 export interface BalloonSettings {
   mode: BalloonMode;
   /** Tay luyện (chế độ 1 tay / 7 nốt); chế độ khác bỏ qua. */
   hand: HandChoice;
   difficulty: BalloonDifficulty;
   speed: BalloonSpeed;
-  /** Tên nốt CDEFGAB hay Đô Rê Mi Pha Sol La Si (trên bóng + phím đàn). */
+  /** Cách hiện nốt trên bóng. */
+  display: BalloonDisplay;
+  /** Tên nốt CDEFGAB hay Đô Rê Mi Pha Sol La Si trên phím đàn (theo chế độ tên chữ gần nhất). */
   labelStyle: BalloonLabelStyle;
   /** Tô phím cần đánh trên piano ảo. */
   showTargetKey: boolean;
@@ -21,8 +37,6 @@ export interface BalloonSettings {
   showFinger: boolean;
   /** Tên nốt trên phím đàn. */
   showKeyLabels: boolean;
-  /** Tên nốt trên quả bóng (tắt → bóng hiện "?", đọc theo màu / phím tô). */
-  showBalloonNames: boolean;
   /** Nốt bị ẩn tên — cả trên bóng lẫn phím đàn (ẩn từng nốt để tự nhớ). */
   hiddenLetters: Letter[];
   /** Tiếng nổ bóng + tiếng nốt khi bấm piano ảo. */
@@ -34,11 +48,11 @@ export const DEFAULT_BALLOON_SETTINGS: BalloonSettings = {
   hand: 'right',
   difficulty: 'easy',
   speed: 'medium',
+  display: 'solfege',
   labelStyle: 'solfege',
   showTargetKey: true,
   showFinger: true,
   showKeyLabels: true,
-  showBalloonNames: true,
   hiddenLetters: [],
   sound: true,
 };
@@ -58,16 +72,17 @@ export function sanitizeBalloonSettings(raw: unknown): BalloonSettings {
   const s = raw as Partial<Record<keyof BalloonSettings, unknown>>;
   const bool = (k: keyof BalloonSettings) => (typeof s[k] === 'boolean' ? (s[k] as boolean) : (d[k] as boolean));
   const mode = BALLOON_MODES.includes(s.mode as BalloonMode) ? (s.mode as BalloonMode) : d.mode;
+  const labelStyle = s.labelStyle === 'letter' || s.labelStyle === 'solfege' ? s.labelStyle : d.labelStyle;
   return {
     mode,
     hand: handFor(mode, s.hand),
     difficulty: BALLOON_DIFFICULTIES.includes(s.difficulty as BalloonDifficulty) ? (s.difficulty as BalloonDifficulty) : d.difficulty,
     speed: BALLOON_SPEEDS.includes(s.speed as BalloonSpeed) ? (s.speed as BalloonSpeed) : d.speed,
-    labelStyle: s.labelStyle === 'letter' || s.labelStyle === 'solfege' ? s.labelStyle : d.labelStyle,
+    display: BALLOON_DISPLAYS.includes(s.display as BalloonDisplay) ? (s.display as BalloonDisplay) : labelStyle,
+    labelStyle,
     showTargetKey: bool('showTargetKey'),
     showFinger: bool('showFinger'),
     showKeyLabels: bool('showKeyLabels'),
-    showBalloonNames: bool('showBalloonNames'),
     hiddenLetters: Array.isArray(s.hiddenLetters) ? LETTERS.filter((l) => (s.hiddenLetters as unknown[]).includes(l)) : [],
     sound: bool('sound'),
   };

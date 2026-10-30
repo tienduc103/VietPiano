@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { balloonKey, DEFAULT_BALLOON_SETTINGS, sanitizeBalloonSettings, totalBalloonStars } from './storage';
+import { balloonKey, DEFAULT_BALLOON_SETTINGS, nextDisplay, sanitizeBalloonSettings, totalBalloonStars } from './storage';
 
 describe('Bóng bay storage', () => {
   it('cài đặt hỏng → mặc định; tay theo chế độ; ẩn phím chỉ giữ tên hợp lệ', () => {
@@ -9,6 +9,19 @@ describe('Bóng bay storage', () => {
     expect(sanitizeBalloonSettings({ mode: 'seven', hand: 'both' }).hand).toBe('both');
     expect(sanitizeBalloonSettings({ mode: 'full', hand: 'left' }).hand).toBe('both');
     expect(sanitizeBalloonSettings({ hiddenLetters: ['E', 'C', 'H', 3] }).hiddenLetters).toEqual(['C', 'E']);
+    // Bản cũ chưa có `display` → theo kiểu tên đã chọn.
+    expect(sanitizeBalloonSettings({ labelStyle: 'letter' })).toMatchObject({ display: 'letter', labelStyle: 'letter' });
+    expect(sanitizeBalloonSettings({ display: 'ear', labelStyle: 'letter' })).toMatchObject({ display: 'ear', labelStyle: 'letter' });
+  });
+
+  it('nút hiển thị xoay vòng Đô Rê Mi → CDEFGAB → Hình nốt → ? → Đô Rê Mi; tên phím theo chế độ chữ gần nhất', () => {
+    let s = nextDisplay({ display: 'solfege', labelStyle: 'solfege' });
+    expect(s).toEqual({ display: 'letter', labelStyle: 'letter' });
+    s = nextDisplay(s);
+    expect(s).toEqual({ display: 'staff', labelStyle: 'letter' });
+    s = nextDisplay(s);
+    expect(s).toEqual({ display: 'ear', labelStyle: 'letter' });
+    expect(nextDisplay(s)).toEqual({ display: 'solfege', labelStyle: 'solfege' });
   });
 
   it('khoá kỷ lục + tổng sao', () => {
