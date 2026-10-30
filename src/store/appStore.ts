@@ -21,6 +21,8 @@ export type Route =
   | { name: 'note-hunter' }
   /** Flappy Note: chim bay qua ống, mỗi nốt đánh đúng là một lần vỗ cánh. */
   | { name: 'flappy-note' }
+  /** Bóng bay nốt nhạc: bóng bay lên trên phím đàn, đánh đúng nốt để nổ bóng. */
+  | { name: 'balloon-pop' }
   | { name: 'practice'; lessonId: string }
   | { name: 'settings' };
 
@@ -32,6 +34,7 @@ export function initialRoute(search = typeof location === 'undefined' ? '' : loc
   if (screen === 'games') return { name: 'games' };
   if (screen === 'note-hunter') return { name: 'note-hunter' };
   if (screen === 'flappy-note') return { name: 'flappy-note' };
+  if (screen === 'balloon-pop') return { name: 'balloon-pop' };
   return { name: 'dashboard' };
 }
 

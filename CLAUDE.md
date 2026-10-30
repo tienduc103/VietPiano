@@ -82,6 +82,14 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              sắp đánh `NoteStrip` ở đầu khu trò chơi (thẻ khuông vẽ sẵn theo nốt × trường độ: `useStaffCards`). Canvas `components/flappyNote/FlappyCanvas` đọc `getWorld()` mỗi khung
                              (không re-render React); khu hướng dẫn `NoteGuide` (khuông vẽ sẵn, tên nốt, `HandFigure`, 3 nốt tiếp).
                              Kỷ lục theo hồ sơ + màn × độ khó, tổng sao → danh hiệu (`storage.ts`, localStorage)
+  balloonPop/              "Bóng bay nốt nhạc" (`screens/BalloonPopScreen`, route `balloon-pop`, `?screen=balloon-pop`): bóng mang tên nốt
+                             bay lên THẲNG phía trên phím của nó (`keyCenterPercent`), đánh đúng → nổ, bay khỏi mép trên → mất mạng.
+                             `notes.ts` chế độ 1 tay·5 nốt / 2 tay·5 nốt / 1–2 tay·7 nốt (chỉ so tên nốt CDEFGAB, `matchKey` = pitch class)
+                             / full phím (phím trắng C2–C6, đúng quãng tám); ngón thế Đô / ngón gam Đô trưởng; tên Đô Rê Mi Pha Sol La Si.
+                             `BalloonPopGame` máy trạng thái ready/playing/paused/won/over: mỗi sự kiện nổ tối đa 1 quả (quả cao nhất khớp),
+                             hai quả cùng `matchKey` không bay cùng lúc, `minIntervalMs` sau lần nổ; độ khó Dễ/Trung bình/Khó (số quả cùng lúc,
+                             mạng, số bóng) × tốc độ Vừa/Nhanh. Canvas `components/balloonPop/BalloonCanvas`. Gợi ý: phím cần đánh, ngón tay,
+                             tên phím + ẩn tên từng phím (`hiddenLetters`, `PianoKeyboard.labelFor`). Kỷ lục localStorage theo hồ sơ (`storage.ts`)
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt
   score/scoreFit.ts        tỉ lệ + vị trí dọc của khuông một dòng (ScoreView, Săn nốt): vùng nhìn co giãn ít (≤ 8%) theo từng nốt
                              → giữ nguyên, khuông không nhảy lên xuống; ô hướng dẫn dưới khuông cũng phải cao cố định

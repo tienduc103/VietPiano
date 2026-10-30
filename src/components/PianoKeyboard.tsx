@@ -25,6 +25,8 @@ interface Props {
   fingers?: Readonly<Record<number, number>>;
   /** Hiện tên mọi phím trắng (mặc định chỉ hiện nốt Đô và nốt cần đánh). */
   allLabels?: boolean;
+  /** Chữ trên từng phím trắng (thay cách hiện mặc định); "" = ẩn tên phím đó. */
+  labelFor?: (midi: number) => string;
 }
 
 function keyClasses(midi: number, black: boolean, p: Props): string {
@@ -49,7 +51,7 @@ export function keyCenterPercent(midi: number, from: number, to: number): number
 }
 
 export const PianoKeyboard = memo(function PianoKeyboard(props: Props) {
-  const { from, to, labelStyle, keyHints, onPress, onRelease, fingers, allLabels } = props;
+  const { from, to, labelStyle, keyHints, onPress, onRelease, fingers, allLabels, labelFor } = props;
   const whites: number[] = [];
   const blacks: { midi: number; whiteIndex: number }[] = [];
   for (let m = from; m <= to; m++) {
@@ -90,7 +92,7 @@ export const PianoKeyboard = memo(function PianoKeyboard(props: Props) {
                 {fingerOf(m)}
               </span>
             )}
-            {allLabels || midiToPitchClass(m) === 0 || props.expected === m ? midiToLabel(m, labelStyle) : ''}
+            {labelFor ? labelFor(m) : allLabels || midiToPitchClass(m) === 0 || props.expected === m ? midiToLabel(m, labelStyle) : ''}
           </button>
         ))}
       </div>

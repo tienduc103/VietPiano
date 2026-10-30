@@ -39,7 +39,7 @@ const loadTab = (): Tab => {
 const starsText = (r: GameRecord | undefined) => (r && r.plays > 0 ? `${'★'.repeat(r.bestStars)}${'☆'.repeat(3 - r.bestStars)} · kỷ lục ${r.bestScore}` : 'Chưa chơi');
 
 /**
- * Mục Trò chơi: tab "Theo trò chơi" (Trò chơi mới — Săn nốt, Flappy Note, trò tự do — ở trên, trò theo bài học ở dưới;
+ * Mục Trò chơi: tab "Theo trò chơi" (Trò chơi mới — Săn nốt, Flappy Note, Bóng bay, trò tự do — ở trên, trò theo bài học ở dưới;
  * chọn trò → chọn buổi học / mức chơi) và tab "Theo buổi học"
  * (chọn cấp → các buổi, mỗi buổi liệt kê trò của nó). Mọi buổi đều mở (mở khoá chỉ là gợi ý), buổi chưa học có nhãn.
  * Kỷ lục trò của buổi học dùng chung với trò sau buổi (`LessonRecord.games`); trò tự do lưu riêng (`arcade.ts`).
@@ -208,7 +208,7 @@ export function GamesScreen() {
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     {source === 'lesson'
                       ? 'Nội dung lấy từ buổi học (nốt, tiết tấu, thế tay của buổi) — chọn trò rồi chọn buổi. Kỷ lục dùng chung với trò sau buổi.'
-                      : 'Không gắn với buổi học — Săn nốt, Flappy Note và các trò có mức chơi soạn sẵn.'}
+                      : 'Không gắn với buổi học — Săn nốt, Flappy Note, Bóng bay và các trò có mức chơi soạn sẵn.'}
                   </p>
                 </div>
                 {source === 'arcade' && (
@@ -239,6 +239,20 @@ export function GamesScreen() {
                       <span className="flex-1">
                         <span className="block text-xl font-bold">Flappy Note</span>
                         <span className="block text-sm opacity-90">Mỗi nốt đánh đúng là một lần chú chim vỗ cánh — bay qua các ống! Đọc nốt, số ngón 1–5, phản xạ · MIDI, bàn phím máy tính, piano ảo.</span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate({ name: 'balloon-pop' })}
+                      data-testid="open-balloon-pop"
+                      className="flex min-h-16 items-center gap-4 rounded-2xl bg-gradient-to-r from-pink-500 to-orange-400 px-5 py-4 text-left text-white shadow-md shadow-pink-500/30 hover:brightness-110"
+                    >
+                      <span className="text-4xl" aria-hidden>
+                        🎈
+                      </span>
+                      <span className="flex-1">
+                        <span className="block text-xl font-bold">Bóng bay nốt nhạc</span>
+                        <span className="block text-sm opacity-90">Bóng bay lên trên phím đàn — đánh đúng nốt để nổ bóng! 1 tay, 2 tay, 7 nốt, full phím · Dễ / Trung bình / Khó · MIDI, micro, piano ảo.</span>
                       </span>
                     </button>
                   </div>
