@@ -19,14 +19,47 @@ const miniKey = (midi: number): Illustration => ({ type: 'keyboard', ...MINI, hi
 const staffNote = (pitch: string): Illustration => ({ type: 'staff', piece: { ...rh(`${pitch}/w`), timeSignature: [4, 4] } });
 const finger = (n: number): Illustration => ({ type: 'hand', hand: 'right', highlight: n });
 
-/** Nốt Đô ở bốn trường độ: tròn, trắng, đen, móc đơn — tên trường độ ghi dưới từng nốt. */
+/** Nốt Đô ở năm trường độ: tròn, trắng, đen, móc đơn, móc đôi — tên trường độ ghi dưới từng nốt. */
 const C_DURATIONS: Illustration = {
   type: 'staff',
-  // Ô cuối: nốt trắng trước, móc đơn sau — móc đơn đứng sát nhau, cuối ô còn chỗ cho chữ hai dòng.
-  piece: { ...rh('C4/w | C4/h C4/h | C4 C4 C4 C4 | C4/h C4/8 C4/8 C4/8 C4/8'), timeSignature: [4, 4] },
+  // Móc đơn / móc đôi đứng sát nhau → đặt sau một nốt dài (trắng) để chữ hai dòng bên dưới không chạm nhau.
+  piece: { ...rh('C4/w | C4/h C4/h | C4 C4 C4 C4 | C4/h C4/8 C4/8 C4/8 C4/8 | C4/h C4/16 C4/16 C4/16 C4/16 C4'), timeSignature: [4, 4] },
   listen: true,
-  noteLabels: ['Tròn', 'Trắng', 'Trắng', 'Đen', 'Đen', 'Đen', 'Đen', 'Trắng', 'Móc đơn', 'Móc đơn', 'Móc đơn', 'Móc đơn'],
+  noteLabels: [
+    'Tròn',
+    'Trắng',
+    'Trắng',
+    'Đen',
+    'Đen',
+    'Đen',
+    'Đen',
+    'Trắng',
+    'Móc đơn',
+    'Móc đơn',
+    'Móc đơn',
+    'Móc đơn',
+    'Trắng',
+    'Móc đôi',
+    'Móc đôi',
+    'Móc đôi',
+    'Móc đôi',
+    'Đen',
+  ],
 };
+
+/** Tên trường độ (đáp án bài đố) và một ô nhịp toàn nốt Đô cùng trường độ (ô 4/4 phải đủ phách). */
+const DURATION_NAMES = ['Tròn', 'Trắng', 'Đen', 'Móc đơn', 'Móc đôi'];
+const DURATION_BARS = ['C4/w', 'C4/h C4/h', 'C4 C4 C4 C4', Array(8).fill('C4/8').join(' '), Array(16).fill('C4/16').join(' ')];
+
+/** Bài đố trường độ: mỗi trường độ hỏi 2 lần (10 câu), thứ tự câu xáo mỗi lần làm. */
+const durationQuestions: ChoiceQuestion[] = [0, 1].flatMap(() =>
+  DURATION_BARS.map((bar, answer) => ({
+    prompt: 'Các nốt Đô này là nốt gì?',
+    illustration: { type: 'staff' as const, piece: { ...rh(bar), timeSignature: [4, 4] as [number, 4] }, caption: 'Nhìn hình nốt', hideNames: true },
+    options: DURATION_NAMES,
+    answer,
+  })),
+);
 
 /** Câu đố chọn hình; nhãn trung tính "Hình 1…" để không lộ đáp án. */
 function pictureQuestion(prompt: string, images: Illustration[], answer: number): ChoiceQuestion {
@@ -70,12 +103,6 @@ const C_LESSON = {
           illustration: { type: 'staff', piece: { ...rh('C4 C4 C4 C4'), timeSignature: [4, 4] }, listen: true },
         },
         {
-          title: 'Nốt Đô dài, ngắn khác nhau',
-          body: 'Cùng là nốt Đô nhưng hình nốt cho biết ngân dài bao lâu: nốt tròn 4 phách, nốt trắng 2 phách, nốt đen 1 phách, nốt móc đơn nửa phách. Bấm Nghe mẫu để nghe.',
-          kids: 'Bạn Đô có nhiều chiếc áo: áo tròn ngân thật dài, áo móc đơn chạy thật nhanh!',
-          illustration: C_DURATIONS,
-        },
-        {
           title: 'Ngón 1 tay phải đánh Đô',
           body: 'Ngón cái tay phải là ngón 1. Đặt ngón 1 lên Đô giữa — đây là "nhà" của bàn tay phải.',
           kids: 'Ngón cái là ngón số 1. Đặt ngón cái lên bạn Đô nào!',
@@ -87,10 +114,26 @@ const C_LESSON = {
           kids: 'Có Đô thấp, Đô giữa, Đô cao. Nghe xem bạn nào cao nhất!',
           illustration: { type: 'keyboard', ...KEYS, highlight: [48, 60, 72], listen: [48, 60, 72] },
         },
+        {
+          title: 'Nốt Đô dài, ngắn khác nhau',
+          body: 'Cùng là nốt Đô nhưng hình nốt cho biết ngân dài bao lâu: nốt tròn 4 phách, nốt trắng 2 phách, nốt đen 1 phách, nốt móc đơn nửa phách, móc đôi một phần tư phách. Bấm Nghe mẫu để nghe.',
+          kids: 'Bạn Đô có nhiều chiếc áo: áo tròn ngân thật dài, áo móc đơn chạy thật nhanh!',
+          illustration: { ...C_DURATIONS, caption: 'Các trường độ của nốt Đô' },
+        },
       ],
     },
   ],
   exercises: [
+    {
+      kind: 'choice-quiz',
+      id: 'duration-quiz',
+      title: 'Câu đố: nốt Đô này là nốt gì?',
+      instructions: 'Nhìn hình nốt trên khuông rồi chọn tên trường độ. Sai thì chọn lại nhé.',
+      retry: true,
+      shuffle: true,
+      questions: durationQuestions,
+      pass: { minCorrect: 7 },
+    },
     {
       kind: 'choice-quiz',
       id: 'picture-quiz',

@@ -4,6 +4,7 @@ import { QuizEngine, type QuizState } from '../../core/curriculum/QuizEngine';
 import { questionKey, scoreQuiz, wrongNoteKey, type ExerciseScore } from '../../core/curriculum/scoring';
 import { text, type ChoiceQuizExercise, type KeyQuizExercise, type NoteReadingExercise, type Piece, type UiMode } from '../../core/curriculum/types';
 import { midiToLabel, midiToName, pitchToLabel, requireMidi } from '../../core/music/notes';
+import { shuffle } from '../../core/games/random';
 import { virtualInput } from '../../core/input/VirtualInputProvider';
 import { useNoteInput } from '../../hooks/useNoteInput';
 import { useSettings } from '../../store/settingsStore';
@@ -125,7 +126,9 @@ function useKeyQuizVoice(exercise: KeyQuizExercise, state: QuizState<number>, mo
 
 export function ChoiceQuizStep({ exercise, mode, onDone }: StepProps<ChoiceQuizExercise>) {
   const retry = exercise.retry ?? false;
-  const engine = useMemo(() => new QuizEngine<number>(exercise.questions.map((q) => (i: number) => i === q.answer), { retry, minIntervalMs: 0 }), [exercise, retry]);
+  // Bài đố ngẫu nhiên: xáo thứ tự câu một lần khi mở bài (làm lại → bài tập dựng lại → thứ tự mới).
+  const questions = useMemo(() => (exercise.shuffle ? shuffle(exercise.questions) : exercise.questions), [exercise]);
+  const engine = useMemo(() => new QuizEngine<number>(questions.map((q) => (i: number) => i === q.answer), { retry, minIntervalMs: 0 }), [questions, retry]);
   const state = useEngine(engine);
   // Sau mỗi câu: giữ câu vừa trả lời trên màn hình một lúc để thấy đáp án đúng.
   const [reveal, setReveal] = useState<{ q: number; chosen: number } | null>(null);
@@ -140,12 +143,12 @@ export function ChoiceQuizStep({ exercise, mode, onDone }: StepProps<ChoiceQuizE
         correct: state.correct,
         rounds: engine.rounds,
         answered: state.results.filter((r) => r !== 'pending').length,
-        mistakes: state.mistakes.map((m) => questionKey(text(exercise.questions[m.round].prompt))),
+        mistakes: state.mistakes.map((m) => questionKey(text(questions[m.round].prompt))),
       }),
     ),
   );
   const shown = reveal ? reveal.q : state.index;
-  const q = exercise.questions[shown];
+  const q = questions[shown];
   const choose = (i: number) => {
     if (reveal || state.status === 'finished') return;
     setReveal({ q: state.index, chosen: i });

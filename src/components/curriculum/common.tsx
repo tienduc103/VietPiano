@@ -32,7 +32,7 @@ export function StaticScore({
   id: string;
   showNames?: boolean;
   noteLabels?: readonly string[];
-  /** Trong thẻ có sẵn nền: bỏ nền + viền riêng, căn khuông nhạc vào giữa. */
+  /** Trong thẻ có sẵn nền: bỏ nền + viền riêng, căn khuông nhạc vào giữa; khuông dài hơn thẻ → thu nhỏ cho vừa bề ngang. */
   bare?: boolean;
 }) {
   const labelStyle = useSettings((s) => s.settings.labelStyle);
@@ -42,13 +42,23 @@ export function StaticScore({
   const contentWidth = useScoreContentWidth(hostRef, !!bare);
   // Khuông đôi (bài hai tay / có phần đệm) cần cao hơn: số ngón dưới hợp âm trầm không bị cắt.
   const height = piece.clef === 'grand' ? 'h-72' : 'h-48';
+  const baseHeight = piece.clef === 'grand' ? 288 : 192;
+  const hostWidth = useElementWidth(hostRef, !!bare);
   const score = <ScoreView lesson={lesson} index={0} results={NO_RESULTS} status="finished" wrongPulse={0} showNames={(showNames ?? true) || !!noteLabels} labelStyle={labelStyle} />;
   if (bare) {
-    // Tỉ lệ khuông nhạc chỉ theo chiều cao → thu khung về đúng bề rộng khuông rồi căn giữa (không đổi cỡ khuông).
+    // Khuông dài hơn thẻ → thu nhỏ phần hiển thị (transform, không đổi khung ScoreView đo) cho vừa; luôn căn giữa.
+    const fit = contentWidth > 0 && hostWidth > 0 ? Math.min(1, (hostWidth - 4) / contentWidth) : 1;
     return (
       // Khuông một dòng chừa chỗ dòng kẻ phụ phía trên → kéo sát tiêu đề thẻ cho cân.
-      <div ref={hostRef} className={`${height} -mt-4 -mb-2 flex justify-center`}>
-        <div className="h-full max-w-full" style={{ width: contentWidth ? `${Math.ceil(contentWidth)}px` : '100%' }}>
+      <div ref={hostRef} className="relative -mt-4 -mb-2 w-full min-w-0" style={{ height: baseHeight * fit }} data-fit={fit.toFixed(2)}>
+        <div
+          className="absolute top-0"
+          style={
+            contentWidth > 0
+              ? { height: baseHeight, width: Math.ceil(contentWidth), left: '50%', transform: `translateX(-50%) scale(${fit})`, transformOrigin: 'top center' }
+              : { height: baseHeight, width: '100%', left: 0 }
+          }
+        >
           {score}
         </div>
       </div>
@@ -61,6 +71,19 @@ export function StaticScore({
   );
 }
 
+/** Bề rộng phần tử (px), theo dõi khi đổi cỡ. */
+function useElementWidth(ref: React.RefObject<HTMLElement | null>, enabled: boolean): number {
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || !enabled) return;
+    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref, enabled]);
+  return width;
+}
+
 /** Bề rộng khuông nhạc đã vẽ (px trên màn hình) — đo khung chứa SVG mà ScoreView đặt bề rộng theo tỉ lệ. */
 function useScoreContentWidth(hostRef: React.RefObject<HTMLDivElement | null>, enabled: boolean): number {
   const [width, setWidth] = useState(0);
@@ -69,7 +92,8 @@ function useScoreContentWidth(hostRef: React.RefObject<HTMLDivElement | null>, e
     if (!host || !enabled) return;
     let observed: Element | null = null;
     const ro = new ResizeObserver(() => {
-      const w = observed?.getBoundingClientRect().width ?? 0;
+      // offsetWidth: bề rộng bố cục, không tính transform scale (khung bị thu nhỏ khi khuông dài).
+      const w = observed instanceof HTMLElement ? observed.offsetWidth : 0;
       if (w > 0) setWidth((prev) => (Math.abs(prev - w) > 1 ? w : prev));
     });
     const attach = () => {
@@ -94,7 +118,7 @@ function useScoreContentWidth(hostRef: React.RefObject<HTMLDivElement | null>, e
 /** Thẻ hình có tiêu đề: nền trắng, tiêu đề nhỏ bên trái, nút (nghe) bên phải. */
 function FigureCard({ caption, action, children, testId }: { caption: string; action?: ReactNode; children: ReactNode; testId?: string }) {
   return (
-    <figure className="grid gap-2 rounded-3xl bg-white px-5 py-4 shadow-sm ring-1 ring-violet-100 dark:bg-slate-900 dark:ring-violet-900" data-testid={testId}>
+    <figure className="grid min-w-0 gap-2 rounded-3xl bg-white px-5 py-4 shadow-sm ring-1 ring-violet-100 dark:bg-slate-900 dark:ring-violet-900" data-testid={testId}>
       <figcaption className="flex min-h-12 flex-wrap items-center justify-between gap-3">
         <span className="text-sm font-bold tracking-wide text-violet-700 uppercase dark:text-violet-300">{caption}</span>
         {action}
@@ -360,13 +384,13 @@ export function IllustrationView({ ill, id }: { ill: Illustration; id: string })
       if (ill.caption) {
         return (
           <FigureCard caption={text(ill.caption)} action={ill.listen ? <ListenButton piece={ill.piece} /> : undefined} testId="figure-staff">
-            <StaticScore piece={ill.piece} id={id} noteLabels={ill.noteLabels} bare />
+            <StaticScore piece={ill.piece} id={id} noteLabels={ill.noteLabels} showNames={ill.hideNames ? false : undefined} bare />
           </FigureCard>
         );
       }
       return (
         <div className="grid gap-3">
-          <StaticScore piece={ill.piece} id={id} noteLabels={ill.noteLabels} />
+          <StaticScore piece={ill.piece} id={id} noteLabels={ill.noteLabels} showNames={ill.hideNames ? false : undefined} />
           {ill.listen && (
             <div>
               <ListenButton piece={ill.piece} />

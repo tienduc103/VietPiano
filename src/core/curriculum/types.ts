@@ -87,6 +87,8 @@ export type Illustration =
       noteLabels?: string[];
       /** Có tiêu đề → hiện trong thẻ trắng (tiêu đề + nút nghe ở góc phải), khuông nhạc căn giữa. */
       caption?: Text;
+      /** Không ghi tên nốt dưới khuông (câu đố đọc hình nốt). */
+      hideNames?: boolean;
     }
   | { type: 'counting'; piece: Piece; /** Chữ đếm dưới từng nốt, vd ["1", "2-3-4"]. */ counts: string[] };
 
@@ -185,6 +187,8 @@ export interface ChoiceQuizExercise extends ExerciseBase {
   questions: ChoiceQuestion[];
   /** Sai thì chọn lại tới khi đúng (chấm theo lần đầu) — mặc định false: mỗi câu một lần. */
   retry?: boolean;
+  /** Xáo thứ tự câu hỏi mỗi lần làm (bài đố ngẫu nhiên). */
+  shuffle?: boolean;
 }
 
 /**

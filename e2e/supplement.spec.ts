@@ -43,15 +43,30 @@ test('giáo trình bổ sung — nốt Đô: giới thiệu → câu đố chọ
   await expect(page.locator('[data-testid="illustration-keyboard"] [data-highlighted]')).toHaveCount(3); // C3, C4, C5
   // Cùng trang: khuông nhạc nốt Đô các trường độ, tên trường độ dưới từng nốt.
   const labels = page.getByTestId('intro-step').locator('text.score-label');
-  await expect(labels).toHaveCount(12);
+  await expect(labels).toHaveCount(18);
   await expect(labels.first()).toHaveText('Tròn');
-  await expect(labels.last()).toHaveText('Mócđơn'); // hai dòng (tspan)
-  for (let i = 0; i < 3; i++) await page.getByTestId('intro-next').click();
-  // Khuông nhạc: nốt Đô ở các trường độ khác nhau, có nghe mẫu.
+  await expect(labels.nth(13)).toHaveText('Mócđôi'); // hai dòng (tspan)
+  for (let i = 0; i < 5; i++) await page.getByTestId('intro-next').click();
+  // Trang cuối phần giới thiệu: nốt Đô ở các trường độ khác nhau, có nghe mẫu.
   await expect(page.getByTestId('step-title')).toHaveText('Nốt Đô dài, ngắn khác nhau');
-  await expect(page.getByTestId('intro-step').locator('svg .vf-stavenote')).toHaveCount(12);
+  await expect(page.getByTestId('intro-step').locator('svg .vf-stavenote')).toHaveCount(18);
   await expect(page.getByTestId('listen')).toBeVisible();
-  for (let i = 0; i < 3; i++) await page.getByTestId('intro-next').click();
+  await page.getByTestId('intro-next').click();
+
+  // Ngay sau đó: đố trường độ — 10 câu, thứ tự ngẫu nhiên. Đáp án suy từ số nốt trong ô nhịp.
+  await expect(page.getByTestId('step-title')).toHaveText('Câu đố: nốt Đô này là nốt gì?');
+  const byCount: Record<number, number> = { 1: 0, 2: 1, 4: 2, 8: 3, 16: 4 };
+  const seen = new Set<number>();
+  for (let i = 0; i < 10; i++) {
+    await expect(page.getByTestId('round-dots').locator('span').nth(i)).toHaveClass(/fuchsia/);
+    const count = await page.getByTestId('choice-quiz').locator('svg .vf-stavenote').count();
+    seen.add(count);
+    await page.getByTestId(`choice-${byCount[count]}`).click();
+    await expect(page.getByTestId('round-dots').locator('span').nth(i)).toHaveClass(/emerald/, { timeout: 3000 });
+  }
+  expect([...seen].sort((a, b) => a - b)).toEqual([1, 2, 4, 8, 16]);
+  await expect(page.getByTestId('exercise-score')).toHaveText('100/100');
+  await page.getByTestId('exercise-next').click();
 
   // Câu đố chọn hình: sai thì chọn lại (không lộ đáp án), đúng thì sang câu sau.
   const quiz = page.getByTestId('choice-quiz');

@@ -6,6 +6,8 @@ import { lessonTimeline, pieceToLesson } from './piece';
 import { validateCurriculum } from './validate';
 import type { ChoiceQuizExercise, Curriculum, Illustration } from './types';
 
+const pictureQuiz = () => SUPPLEMENT_LESSONS[0].exercises.find((e) => e.id === 'picture-quiz') as ChoiceQuizExercise;
+
 describe('giáo trình bổ sung "Làm quen từng nốt"', () => {
   it('hợp lệ (đáp án, hình, tầm micro, giọng nói…)', () => {
     expect(validateCurriculum(SUPPLEMENT)).toEqual([]);
@@ -23,8 +25,8 @@ describe('giáo trình bổ sung "Làm quen từng nốt"', () => {
   it('mỗi buổi theo khuôn: giới thiệu → câu đố chọn hình → luyện phím, có thẻ nốt + ≥ 2 trò để chọn', () => {
     for (const l of SUPPLEMENT_LESSONS) {
       expect(l.activities.map((a) => a.kind)).toEqual(['intro']);
-      expect(l.exercises.map((e) => e.kind)).toEqual(['choice-quiz', 'key-quiz']);
-      const quiz = l.exercises[0] as ChoiceQuizExercise;
+      expect(l.exercises.map((e) => e.kind)).toEqual(['choice-quiz', 'choice-quiz', 'key-quiz']);
+      const quiz = l.exercises.find((e) => e.id === 'picture-quiz') as ChoiceQuizExercise;
       expect(quiz.questions.every((q) => q.optionImages?.length === q.options.length)).toBe(true);
       expect(l.activities[0].pages.some((p) => p.illustration?.type === 'keyboard' && p.illustration.listen?.length)).toBe(true);
       expect(SUPPLEMENT_NOTE[l.lessonId]).toBeDefined();
@@ -34,7 +36,7 @@ describe('giáo trình bổ sung "Làm quen từng nốt"', () => {
 
   it('bài Đô: phần giới thiệu có khuông nhạc với nốt Đô ở nhiều trường độ (tròn, trắng, đen, móc đơn)', () => {
     const pages = SUPPLEMENT_LESSONS[0].activities[0].pages;
-    const NAME: Record<number, string> = { 4: 'Tròn', 2: 'Trắng', 1: 'Đen', 0.5: 'Móc đơn' };
+    const NAME: Record<number, string> = { 4: 'Tròn', 2: 'Trắng', 1: 'Đen', 0.5: 'Móc đơn', 0.25: 'Móc đôi' };
     const durationStaves = pages.flatMap((p) => [p.illustration, ...(p.moreIllustrations ?? [])]).filter((ill) => ill?.type === 'staff' && ill.noteLabels);
     expect(durationStaves.length).toBeGreaterThanOrEqual(2);
     // Trang mở đầu: khuông nhạc trường độ ở trên, bàn phím ở dưới — mỗi hình một thẻ có tiêu đề.
@@ -46,14 +48,37 @@ describe('giáo trình bổ sung "Làm quen từng nốt"', () => {
       if (ill?.type !== 'staff') continue;
       const notes = lessonTimeline(pieceToLesson(ill.piece, 'sup-c'));
       expect(notes.every((n) => n.midiNote === 60)).toBe(true);
-      expect(new Set(notes.map((n) => n.durationBeats))).toEqual(new Set([0.5, 1, 2, 4]));
+      expect(new Set(notes.map((n) => n.durationBeats))).toEqual(new Set([0.25, 0.5, 1, 2, 4]));
       // Chữ dưới từng nốt đúng tên trường độ của nốt đó.
       expect(ill.noteLabels).toEqual(notes.map((n) => NAME[n.durationBeats]));
     }
   });
 
+  it('bài Đô: ngay sau trang trường độ là bài đố 10 câu ngẫu nhiên (tròn, trắng, đen, móc đơn, móc đôi)', () => {
+    const lesson = SUPPLEMENT_LESSONS[0];
+    const pages = lesson.activities[0].pages;
+    expect(pages[pages.length - 1].title).toBe('Nốt Đô dài, ngắn khác nhau');
+    const quiz = lesson.exercises[0] as ChoiceQuizExercise;
+    expect(quiz.id).toBe('duration-quiz');
+    expect(quiz.shuffle).toBe(true);
+    expect(quiz.questions).toHaveLength(10);
+    const NAME: Record<number, string> = { 4: 'Tròn', 2: 'Trắng', 1: 'Đen', 0.5: 'Móc đơn', 0.25: 'Móc đôi' };
+    const asked = new Map<string, number>();
+    for (const q of quiz.questions) {
+      expect(q.options).toEqual(['Tròn', 'Trắng', 'Đen', 'Móc đơn', 'Móc đôi']);
+      if (q.illustration?.type !== 'staff') throw new Error('câu hỏi phải có khuông nhạc');
+      const notes = lessonTimeline(pieceToLesson(q.illustration.piece, 'q'));
+      // Một ô nhịp toàn nốt Đô cùng trường độ; đáp án đúng là tên trường độ đó.
+      expect(notes.every((n) => n.midiNote === 60 && n.durationBeats === notes[0].durationBeats)).toBe(true);
+      const name = NAME[notes[0].durationBeats];
+      expect(q.options[q.answer]).toBe(name);
+      asked.set(name, (asked.get(name) ?? 0) + 1);
+    }
+    expect([...asked.values()]).toEqual([2, 2, 2, 2, 2]);
+  });
+
   it('bài Đô: câu đố có đủ 3 dạng hình (phím, khuông, ngón tay); thẻ phím không hiện tên nốt', () => {
-    const quiz = SUPPLEMENT_LESSONS[0].exercises[0] as ChoiceQuizExercise;
+    const quiz = pictureQuiz();
     const types = new Set(quiz.questions.flatMap((q) => q.optionImages!.map((i) => i.type)));
     expect(types).toEqual(new Set(['keyboard', 'staff', 'hand']));
     for (const q of quiz.questions) {
@@ -64,7 +89,7 @@ describe('giáo trình bổ sung "Làm quen từng nốt"', () => {
   });
 
   it('bài Đô: đáp án đúng là hình có nốt Đô / ngón 1', () => {
-    const quiz = SUPPLEMENT_LESSONS[0].exercises[0] as ChoiceQuizExercise;
+    const quiz = pictureQuiz();
     const isC = (img: Illustration) =>
       img.type === 'keyboard' ? Array.isArray(img.highlight) && img.highlight.every((m) => m % 12 === 0) : img.type === 'staff' ? img.piece.notation.startsWith('C4') : img.type === 'hand' && img.highlight === 1;
     for (const q of quiz.questions) {
@@ -87,7 +112,7 @@ describe('giáo trình bổ sung "Làm quen từng nốt"', () => {
   });
 
   it('validate báo lỗi khi số hình khác số lựa chọn', () => {
-    const quiz = SUPPLEMENT_LESSONS[0].exercises[0] as ChoiceQuizExercise;
+    const quiz = pictureQuiz();
     const broken: Curriculum = {
       ...SUPPLEMENT,
       levels: [
