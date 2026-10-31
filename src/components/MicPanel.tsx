@@ -1,5 +1,6 @@
 import { midiToLabel, type NoteLabelStyle } from '../core/music/notes';
 import { useMic, toggleMicrophone } from '../store/micStore';
+import { useMidi } from '../store/midiStore';
 import { useSettings } from '../store/settingsStore';
 import { Icon } from './ui';
 
@@ -112,12 +113,15 @@ export function DetectedNote({ labelStyle }: { labelStyle: NoteLabelStyle }) {
 
 /**
  * Nút micro nổi, luôn hiển thị (trừ khi tắt trong Cài đặt): bấm để bật/tắt micro;
- * khi micro chạy thì hiện nốt đang nghe + cents. Vị trí do nơi dùng truyền vào qua `className`.
+ * khi micro chạy thì hiện nốt đang nghe + cents. Khi đàn MIDI đã nối thì hiện "Đã kết nối MIDI" + phím vừa bấm
+ * trên đàn (màn luyện tập lúc đó bỏ nốt micro); góc nút có chấm trạng thái micro, bấm vẫn bật/tắt micro.
+ * Vị trí do nơi dùng truyền vào qua `className`.
  */
 export function FloatingMicNote({ className }: { className: string }) {
   const enabled = useSettings((s) => s.settings.showFloatingNote);
   const status = useMic((s) => s.status);
   const paused = useMic((s) => s.pausedByBackground);
+  const midiDevice = useMidi((s) => (s.status === 'ready' ? (s.devices[0]?.name ?? null) : null));
   if (!enabled) return null;
   const on = status === 'running';
   const resumable = status === 'suspended' || paused;
@@ -128,11 +132,16 @@ export function FloatingMicNote({ className }: { className: string }) {
       onClick={() => void toggleMicrophone()}
       data-testid="floating-mic"
       aria-pressed={on}
+      title={midiDevice ? `Đã kết nối đàn MIDI: ${midiDevice}` : undefined}
       aria-label={
-        on ? 'Tắt micro (nút nổi)' : resumable ? 'Bật lại micro (nút nổi)' : failed ? 'Lỗi micro — bấm để thử lại (nút nổi)' : 'Bật micro (nút nổi)'
+        midiDevice
+          ? `Đã kết nối MIDI — ${on ? 'tắt' : 'bật'} micro (nút nổi)`
+          : on ? 'Tắt micro (nút nổi)' : resumable ? 'Bật lại micro (nút nổi)' : failed ? 'Lỗi micro — bấm để thử lại (nút nổi)' : 'Bật micro (nút nổi)'
       }
       className={`z-10 flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-2xl px-3 py-1.5 shadow-lg ring-1 transition-colors select-none ${
-        on
+        midiDevice
+          ? 'relative bg-white/90 ring-sky-400/70 dark:bg-slate-800/90'
+          : on
           ? 'bg-white/90 ring-emerald-400/60 dark:bg-slate-800/90'
           : resumable
             ? 'animate-pulse bg-orange-500 text-white ring-orange-600/40'
@@ -141,8 +150,44 @@ export function FloatingMicNote({ className }: { className: string }) {
               : 'bg-white/90 text-violet-900 ring-slate-900/10 dark:bg-slate-800/90 dark:text-slate-100 dark:ring-white/10'
       } ${className}`}
     >
-      {on ? <LiveNote /> : <Icon name={status === 'starting' ? 'mic' : 'micOff'} />}
+      {midiDevice ? (
+        <>
+          <MidiNote />
+          {/* Chấm trạng thái micro (bấm nút vẫn bật/tắt micro). */}
+          <span
+            className={`absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white dark:ring-slate-800 ${
+              on ? 'bg-emerald-500 text-white' : 'bg-slate-300 text-slate-600 dark:bg-slate-600 dark:text-slate-200'
+            }`}
+            aria-hidden
+          >
+            <Icon name={on ? 'mic' : 'micOff'} className="h-3 w-3" />
+          </span>
+        </>
+      ) : on ? (
+        <LiveNote />
+      ) : (
+        <Icon name={status === 'starting' ? 'mic' : 'micOff'} />
+      )}
     </button>
+  );
+}
+
+function MidiNote() {
+  const lastNote = useMidi((s) => s.lastNote);
+  const seq = useMidi((s) => s.noteSeq);
+  const held = useMidi((s) => s.held > 0);
+  const labelStyle = useSettings((s) => s.settings.labelStyle);
+  return (
+    <>
+      <Icon name="keyboard" className="h-5 w-5 shrink-0 text-sky-600 dark:text-sky-300" />
+      <span className="min-w-12 text-center leading-tight" data-testid="floating-midi-note">
+        {/* key = seq → bấm lại cùng phím vẫn nảy lại. */}
+        <span key={seq} className={`block text-2xl font-bold tabular-nums ${seq > 0 ? 'animate-pop' : ''} ${held ? 'text-sky-600 dark:text-sky-300' : ''}`}>
+          {lastNote === null ? '…' : midiToLabel(lastNote, labelStyle)}
+        </span>
+        <span className="block text-[10px] text-slate-500 dark:text-slate-400">Đã kết nối MIDI</span>
+      </span>
+    </>
   );
 }
 

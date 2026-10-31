@@ -481,12 +481,16 @@ test('đàn MIDI: bật trong Cài đặt, thấy tên đàn, nốt từ đàn c
   await expect(page.getByTestId('midi-status')).toContainText('Đã kết nối: Test Piano');
   await midiNote(page, 60);
   await expect(page.getByTestId('midi-last-note')).toHaveText('C4');
+  // Nút nổi: đổi sang "Đã kết nối MIDI" + phím vừa bấm trên đàn.
+  await expect(page.getByTestId('floating-midi-note')).toContainText('Đã kết nối MIDI');
+  await expect(page.getByTestId('floating-midi-note')).toContainText('C4');
 
   await page.getByRole('button', { name: 'Quay lại' }).click();
   await openLesson(page, 'scale-c-major');
   await expect(page.getByTestId('midi-badge')).toHaveText('MIDI: Test Piano');
   await midiNote(page, 60);
   await expect(page.getByTestId('expected-note')).toHaveText('D4');
+  await expect(page.getByTestId('floating-midi-note')).toContainText('C4');
   await page.waitForTimeout(150);
   await midiNote(page, 65);
   await expect(page.getByTestId('status-title')).toHaveText('Sai');
@@ -495,6 +499,7 @@ test('đàn MIDI: bật trong Cài đặt, thấy tên đàn, nốt từ đàn c
   // Rút dây → nhãn báo chưa thấy đàn; cài đặt được nhớ sau khi tải lại.
   await page.evaluate(() => (window as unknown as { __midi: { unplug(): void } }).__midi.unplug());
   await expect(page.getByTestId('midi-badge')).toHaveText('Chưa thấy đàn MIDI');
+  await expect(page.getByTestId('floating-midi-note')).toHaveCount(0);
   await page.reload();
   await page.getByTestId('lesson-scale-c-major').click();
   await expect(page.getByTestId('midi-badge')).toHaveText('MIDI: Test Piano');
