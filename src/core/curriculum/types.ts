@@ -76,13 +76,22 @@ export type Illustration =
       listen?: number[];
     }
   | { type: 'hand'; hand: 'right' | 'left'; /** Ngón được tô nổi. */ highlight?: number }
-  | { type: 'staff'; piece: Piece; /** Cho nghe mẫu. */ listen?: boolean }
+  | {
+      type: 'staff';
+      piece: Piece;
+      /** Cho nghe mẫu. */
+      listen?: boolean;
+      /** Chữ dưới từng nốt thay tên nốt (vd tên trường độ "Tròn", "Móc đơn"); chữ có dấu cách xuống hai dòng. */
+      noteLabels?: string[];
+    }
   | { type: 'counting'; piece: Piece; /** Chữ đếm dưới từng nốt, vd ["1", "2-3-4"]. */ counts: string[] };
 
 export interface IntroPage {
   title?: Text;
   body: Text;
   illustration?: Illustration;
+  /** Hình thêm, hiện dưới `illustration` (vd bàn phím + khuông nhạc trên cùng một trang). */
+  moreIllustrations?: Illustration[];
   /** Lời nhắc cho bé (Kids Mode) — thay `body` nếu có. */
   kids?: Text;
   /** Câu cô giáo đọc khi mở trang (mặc định đọc `kids` / `body`). */

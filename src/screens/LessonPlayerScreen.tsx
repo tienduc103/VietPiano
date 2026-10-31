@@ -376,6 +376,7 @@ function IntroStep({ activity, mode, onDone }: { activity: Activity; mode: UiMod
       </div>
       <p className={mode === 'kids' ? 'text-2xl leading-relaxed' : 'text-lg'}>{shown}</p>
       {p.illustration && <IllustrationView ill={p.illustration} id={`${activity.id}-${page}`} />}
+      {p.moreIllustrations?.map((ill, i) => <IllustrationView key={`${page}-${i}`} ill={ill} id={`${activity.id}-${page}-more${i}`} />)}
       <div className="flex gap-3">
         <Button onClick={() => setPage((x) => x - 1)} disabled={page === 0}>
           <Icon name="back" /> Trước

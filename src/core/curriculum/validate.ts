@@ -88,6 +88,10 @@ function validateIllustration(ill: Illustration | undefined, where: string): str
   if (!ill) return [];
   if (ill.type === 'staff' || ill.type === 'counting') {
     const errors = validatePiece(ill.piece, where);
+    if (ill.type === 'staff' && ill.noteLabels && errors.length === 0) {
+      const notes = pieceToLesson(ill.piece, where).notes.filter((n) => !n.rest).length;
+      if (ill.noteLabels.length !== notes) errors.push(`${where}: ${ill.noteLabels.length} chữ dưới nốt cho ${notes} nốt`);
+    }
     if (ill.type === 'counting' && errors.length === 0) {
       const notes = pieceToLesson(ill.piece, where).notes.length;
       if (ill.counts.length !== notes) errors.push(`${where}: ${ill.counts.length} chữ đếm cho ${notes} nốt`);
@@ -161,6 +165,7 @@ export function validateCurriculum(curriculum: Curriculum): string[] {
       l.activities.forEach((a) =>
         a.pages.forEach((p, pi) => {
           errors.push(...validateIllustration(p.illustration, `${at}/${a.id}#${pi + 1}`));
+          p.moreIllustrations?.forEach((ill, j) => errors.push(...validateIllustration(ill, `${at}/${a.id}#${pi + 1}/hình ${j + 2}`)));
           errors.push(...validateVoice(p.voice && [p.voice], `${at}/${a.id}#${pi + 1}`));
         }),
       );

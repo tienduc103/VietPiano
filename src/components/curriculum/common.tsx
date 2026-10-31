@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { highlightedKeys } from '../../core/curriculum/keys';
 import { accompanimentTimeline, lessonTimeline, pedalRanges, pieceToLesson } from '../../core/curriculum/piece';
 import { sustainUnderPedal } from '../../core/music/pedal';
@@ -17,16 +17,55 @@ import { Button, Icon } from '../ui';
 
 const NO_RESULTS: never[] = [];
 
-/** Khuông nhạc tĩnh (không con trỏ) cho hình minh hoạ / câu hỏi. */
-export function StaticScore({ piece, id, showNames }: { piece: Piece; id: string; showNames?: boolean }) {
+/**
+ * Khuông nhạc tĩnh (không con trỏ) cho hình minh hoạ / câu hỏi.
+ * `noteLabels`: chữ dưới từng nốt thay tên nốt (theo thứ tự nốt, bỏ dấu lặng); chữ có dấu cách xuống hai dòng.
+ */
+export function StaticScore({ piece, id, showNames, noteLabels }: { piece: Piece; id: string; showNames?: boolean; noteLabels?: readonly string[] }) {
   const labelStyle = useSettings((s) => s.settings.labelStyle);
   const lesson = useMemo(() => pieceToLesson(piece, id), [piece, id]);
+  const hostRef = useRef<HTMLDivElement>(null);
+  useNoteLabels(hostRef, noteLabels);
   return (
     // Khuông đôi (bài hai tay / có phần đệm) cần cao hơn: số ngón dưới hợp âm trầm không bị cắt.
-    <div className={`${piece.clef === 'grand' ? 'h-72' : 'h-48'} rounded-2xl bg-white ring-1 ring-violet-100 dark:bg-slate-900 dark:ring-violet-900`}>
-      <ScoreView lesson={lesson} index={0} results={NO_RESULTS} status="finished" wrongPulse={0} showNames={showNames ?? true} labelStyle={labelStyle} />
+    <div ref={hostRef} className={`${piece.clef === 'grand' ? 'h-72' : 'h-48'} rounded-2xl bg-white ring-1 ring-violet-100 dark:bg-slate-900 dark:ring-violet-900`}>
+      <ScoreView lesson={lesson} index={0} results={NO_RESULTS} status="finished" wrongPulse={0} showNames={(showNames ?? true) || !!noteLabels} labelStyle={labelStyle} />
     </div>
   );
+}
+
+/**
+ * Thay chữ tên nốt (`.score-label`, ScoreView vẽ theo thứ tự nốt) bằng chữ tuỳ ý. ScoreView vẽ lại SVG khi đổi cỡ /
+ * nạp font → theo dõi thay đổi và ghi lại (chỉ ghi khi khác, nên không lặp vô hạn).
+ */
+function useNoteLabels(hostRef: React.RefObject<HTMLDivElement | null>, labels: readonly string[] | undefined) {
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host || !labels) return;
+    const apply = () =>
+      host.querySelectorAll<SVGTextElement>('text.score-label').forEach((el, i) => {
+        const want = labels[i];
+        if (want === undefined || el.dataset.custom === want) return;
+        el.dataset.custom = want;
+        el.classList.add('score-label-custom');
+        // Chữ dài hơn tên nốt: nhỏ hơn một chút để không chạm nhau ở nốt móc đơn.
+        el.style.fontSize = '13px';
+        const words = want.split(' ');
+        const x = el.getAttribute('x') ?? '0';
+        el.textContent = '';
+        words.forEach((w, j) => {
+          const span = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+          span.setAttribute('x', x);
+          if (j > 0) span.setAttribute('dy', '1.1em');
+          span.textContent = w;
+          el.appendChild(span);
+        });
+      });
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(host, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [hostRef, labels]);
 }
 
 /** Phát mẫu bản nhạc bằng tiếng đàn tổng hợp. Lúc đang phát, nốt từ micro bị bỏ qua (micro nghe thấy loa). */
@@ -229,7 +268,7 @@ export function IllustrationView({ ill, id }: { ill: Illustration; id: string })
     case 'staff':
       return (
         <div className="grid gap-3">
-          <StaticScore piece={ill.piece} id={id} />
+          <StaticScore piece={ill.piece} id={id} noteLabels={ill.noteLabels} />
           {ill.listen && (
             <div>
               <ListenButton piece={ill.piece} />

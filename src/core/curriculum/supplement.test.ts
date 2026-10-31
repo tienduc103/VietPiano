@@ -34,13 +34,20 @@ describe('giáo trình bổ sung "Làm quen từng nốt"', () => {
 
   it('bài Đô: phần giới thiệu có khuông nhạc với nốt Đô ở nhiều trường độ (tròn, trắng, đen, móc đơn)', () => {
     const pages = SUPPLEMENT_LESSONS[0].activities[0].pages;
-    const durations = new Set<number>();
-    for (const p of pages) {
-      if (p.illustration?.type !== 'staff') continue;
-      const notes = lessonTimeline(pieceToLesson(p.illustration.piece, 'sup-c'));
-      if (notes.every((n) => n.midiNote === 60)) notes.forEach((n) => durations.add(n.durationBeats));
+    const NAME: Record<number, string> = { 4: 'Tròn', 2: 'Trắng', 1: 'Đen', 0.5: 'Móc đơn' };
+    const durationStaves = pages.flatMap((p) => [p.illustration, ...(p.moreIllustrations ?? [])]).filter((ill) => ill?.type === 'staff' && ill.noteLabels);
+    expect(durationStaves.length).toBeGreaterThanOrEqual(2);
+    // Trang mở đầu có cả bàn phím lẫn khuông nhạc trường độ.
+    expect(pages[0].illustration?.type).toBe('keyboard');
+    expect(pages[0].moreIllustrations?.some((ill) => ill.type === 'staff' && ill.noteLabels)).toBe(true);
+    for (const ill of durationStaves) {
+      if (ill?.type !== 'staff') continue;
+      const notes = lessonTimeline(pieceToLesson(ill.piece, 'sup-c'));
+      expect(notes.every((n) => n.midiNote === 60)).toBe(true);
+      expect(new Set(notes.map((n) => n.durationBeats))).toEqual(new Set([0.5, 1, 2, 4]));
+      // Chữ dưới từng nốt đúng tên trường độ của nốt đó.
+      expect(ill.noteLabels).toEqual(notes.map((n) => NAME[n.durationBeats]));
     }
-    expect([...durations].sort((a, b) => a - b)).toEqual([0.5, 1, 2, 4]);
   });
 
   it('bài Đô: câu đố có đủ 3 dạng hình (phím, khuông, ngón tay); thẻ phím không hiện tên nốt', () => {

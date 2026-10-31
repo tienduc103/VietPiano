@@ -19,6 +19,15 @@ const miniKey = (midi: number): Illustration => ({ type: 'keyboard', ...MINI, hi
 const staffNote = (pitch: string): Illustration => ({ type: 'staff', piece: { ...rh(`${pitch}/w`), timeSignature: [4, 4] } });
 const finger = (n: number): Illustration => ({ type: 'hand', hand: 'right', highlight: n });
 
+/** Nốt Đô ở bốn trường độ: tròn, trắng, đen, móc đơn — tên trường độ ghi dưới từng nốt. */
+const C_DURATIONS: Illustration = {
+  type: 'staff',
+  // Ô cuối: nốt trắng trước, móc đơn sau — móc đơn đứng sát nhau, cuối ô còn chỗ cho chữ hai dòng.
+  piece: { ...rh('C4/w | C4/h C4/h | C4 C4 C4 C4 | C4/h C4/8 C4/8 C4/8 C4/8'), timeSignature: [4, 4] },
+  listen: true,
+  noteLabels: ['Tròn', 'Trắng', 'Trắng', 'Đen', 'Đen', 'Đen', 'Đen', 'Trắng', 'Móc đơn', 'Móc đơn', 'Móc đơn', 'Móc đơn'],
+};
+
 /** Câu đố chọn hình; nhãn trung tính "Hình 1…" để không lộ đáp án. */
 function pictureQuestion(prompt: string, images: Illustration[], answer: number): ChoiceQuestion {
   return { prompt, options: images.map((_, i) => `Hình ${i + 1}`), optionImages: images, answer };
@@ -43,9 +52,10 @@ const C_LESSON = {
       pages: [
         {
           title: 'Đây là nốt Đô',
-          body: 'Các phím đang sáng đều là nốt Đô (C). Bấm 🔊 để nghe tiếng Đô giữa, hoặc chạm vào một phím Đô.',
-          kids: 'Đây là bạn Đô! Bấm cái loa để nghe bạn ấy hát nhé.',
+          body: 'Các phím đang sáng đều là nốt Đô (C). Bấm 🔊 để nghe tiếng Đô giữa, hoặc chạm vào một phím Đô. Bên dưới là nốt Đô trên khuông nhạc với các trường độ khác nhau.',
+          kids: 'Đây là bạn Đô! Bấm cái loa để nghe bạn ấy hát nhé. Dưới khuông nhạc là bạn Đô dài, ngắn khác nhau.',
           illustration: { type: 'keyboard', ...KEYS, highlight: 'all-c', listen: [60] },
+          moreIllustrations: [C_DURATIONS],
         },
         {
           title: 'Đô nằm bên trái 2 phím đen',
@@ -63,7 +73,7 @@ const C_LESSON = {
           title: 'Nốt Đô dài, ngắn khác nhau',
           body: 'Cùng là nốt Đô nhưng hình nốt cho biết ngân dài bao lâu: nốt tròn 4 phách, nốt trắng 2 phách, nốt đen 1 phách, nốt móc đơn nửa phách. Bấm Nghe mẫu để nghe.',
           kids: 'Bạn Đô có nhiều chiếc áo: áo tròn ngân thật dài, áo móc đơn chạy thật nhanh!',
-          illustration: { type: 'staff', piece: { ...rh('C4/w | C4/h C4/h | C4 C4 C4 C4 | C4/8 C4/8 C4/8 C4/8 C4/h'), timeSignature: [4, 4] }, listen: true },
+          illustration: C_DURATIONS,
         },
         {
           title: 'Ngón 1 tay phải đánh Đô',

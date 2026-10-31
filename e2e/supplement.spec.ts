@@ -41,6 +41,11 @@ test('giáo trình bổ sung — nốt Đô: giới thiệu → câu đố chọ
   await expect(page.getByTestId('step-title')).toHaveText('Đây là nốt Đô');
   await expect(page.getByTestId('listen-notes')).toBeVisible();
   await expect(page.locator('[data-testid="illustration-keyboard"] [data-highlighted]')).toHaveCount(3); // C3, C4, C5
+  // Cùng trang: khuông nhạc nốt Đô các trường độ, tên trường độ dưới từng nốt.
+  const labels = page.getByTestId('intro-step').locator('text.score-label');
+  await expect(labels).toHaveCount(12);
+  await expect(labels.first()).toHaveText('Tròn');
+  await expect(labels.last()).toHaveText('Mócđơn'); // hai dòng (tspan)
   for (let i = 0; i < 3; i++) await page.getByTestId('intro-next').click();
   // Khuông nhạc: nốt Đô ở các trường độ khác nhau, có nghe mẫu.
   await expect(page.getByTestId('step-title')).toHaveText('Nốt Đô dài, ngắn khác nhau');
