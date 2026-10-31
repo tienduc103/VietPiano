@@ -195,6 +195,30 @@ describe('thư viện bài học', () => {
     expect(lesson.pedal).toEqual(Array.from({ length: count }, (_, i) => ({ from: i, to: i })));
   });
 
+  it('Für Elise hai tay: 17 ô (gồm ô lấy đà), tay trái nghỉ ở ô chỉ có tay phải, pedal ở ô rải hợp âm', () => {
+    const lesson = LESSONS.find((l) => l.id === 'song-fur-elise-2-hands')!;
+    const full = measureLength(lesson.timeSignature);
+    expect(splitMeasures(lesson.notes, full, lesson.pickup)).toHaveLength(17);
+    const acc = splitMeasures(lesson.accompaniment!, full, lesson.pickup);
+    const silent = acc.map((m, i) => (m.items.every((n) => n.midis.length === 0) ? i : -1)).filter((i) => i >= 0);
+    expect(silent).toEqual([0, 1, 5, 9, 13]);
+    // Pedal đúng ở các ô tay trái có nốt.
+    expect(lesson.pedal!.map((p) => p.from)).toEqual(acc.map((_, i) => i).filter((i) => !silent.includes(i)));
+    // Ô 2: nốt La4 chờ cả ba nốt rải tay trái; nốt kế (Đô4) tay trái đang nghỉ.
+    const left = accompanimentByNote(lesson)!;
+    const a4 = lesson.notes.findIndex((n) => n.pitch === 'A4');
+    expect(left[a4].pitches).toEqual(['A2', 'E3', 'A3']);
+    expect(left[a4 + 1]).toMatchObject({ midis: [], held: [] });
+  });
+
+  it('dấu lặng tay trái "R" trong phần đệm', () => {
+    expect(parseAccompaniment('R/8 C3+E3/q')).toEqual([
+      { pitches: [], midis: [], duration: '8', fingers: [], fingersCircled: [] },
+      expect.objectContaining({ pitches: ['C3', 'E3'] }),
+    ]);
+    expect(() => parseAccompaniment('R:1')).toThrow();
+  });
+
   it('đệm bắt đầu lúc giai điệu nghỉ → gộp vào nốt giai điệu kế tiếp', () => {
     const lesson = { notes: parseNotes('C4 R D4/h'), accompaniment: parseAccompaniment('C3 G2 E2/h') };
     const left = accompanimentByNote(lesson)!;

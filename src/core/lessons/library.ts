@@ -24,6 +24,17 @@ export const ROMANCE_ACCOMPANIMENT =
   'G2:5 Bb2:(3) D3:1 | G2 Bb2 D3 | A2:5 C#3:(3) E3:1 | A2 C#3 E3 | D3 F3 A3 | D3 F3 A3 | ' +
   'A2 C#3 E3 | A2 C#3 E3 | D3 F3 A3 | D3/hd';
 
+/** Für Elise hai tay, ô 1–7 của chủ đề (tay phải, có số ngón): bài thư viện không có dấu lặng → nốt trước nghỉ kéo dài (A4/8d). */
+const ELISE_THEME_RH =
+  'E5/16:5 D#5/16:4 E5/16:5 B4/16:2 D5/16:4 C5/16:3 | A4/8d:1 C4/16:1 E4/16:2 A4/16:3 | B4/8d:4 E4/16:1 G#4/16:3 B4/16:4 | ' +
+  'C5/8d:5 E4/16:1 E5/16:5 D#5/16:4 | E5/16:5 D#5/16:4 E5/16:5 B4/16:2 D5/16:4 C5/16:3 | A4/8d:1 C4/16:1 E4/16:2 A4/16:3 | ' +
+  'B4/8d:4 E4/16:1 C5/16:4 B4/16:3';
+
+/** Tay trái ô 1–7: rải hợp âm La thứ / Mi trưởng ba móc kép rồi nghỉ; ô chỉ có tay phải → lặng cả ô. */
+const ELISE_THEME_LH =
+  'R/qd | A2/16:5 E3/16:2 A3/16:1 R/16 R/8 | E2/16:5 E3/16:2 G#3/16:1 R/16 R/8 | A2/16 E3/16 A3/16 R/16 R/8 | ' +
+  'R/qd | A2/16:5 E3/16:2 A3/16:1 R/16 R/8 | E2/16:5 E3/16:2 G#3/16:1 R/16 R/8';
+
 /** Năm đoạn của các bài bé ba ngón dài (1 – 2 – 3, 3 – 4 – 5): tròn/trắng → trắng chấm → đen → đen chấm + móc đơn → tổng hợp. */
 const KIDS_123_SECTIONS = [
   { measure: 1, label: 'A' },
@@ -690,6 +701,29 @@ const defs: LessonDef[] = [
       'E5/16 D#5/16 | E5/16 D#5/16 E5/16 B4/16 D5/16 C5/16 | A4/8d C4/16 E4/16 A4/16 | B4/8d E4/16 G#4/16 B4/16 | ' +
       'C5/8d E4/16 E5/16 D#5/16 | E5/16 D#5/16 E5/16 B4/16 D5/16 C5/16 | A4/8d C4/16 E4/16 A4/16 | ' +
       'B4/8d E4/16 C5/16 B4/16 | A4/qd',
+  },
+  {
+    id: 'song-fur-elise-2-hands',
+    title: 'Für Elise (hai tay)',
+    description:
+      'Chủ đề chính (La thứ, nhịp 3/8) chơi hai lần như bản gốc (khung 1 rồi khung 2): tay phải giai điệu, tay trái rải hợp âm, ' +
+      'có ký hiệu pedal vang. Đàn MIDI: chấm cả hai tay. Micro: chỉ chấm giai điệu tay phải, tay trái đánh kèm theo khuông Fa.',
+    category: 'song',
+    clef: 'grand',
+    timeSignature: [3, 8],
+    keySignature: 'Am',
+    pickup: 0.5,
+    difficulty: 3,
+    hand: 'both',
+    tempo: 60,
+    source: 'L. v. Beethoven (1810) — phạm vi công cộng; ô 1–8 hai lần, ô lấy đà của lần nhắc lại gộp vào khung 1',
+    notation:
+      // Ô lấy đà · ô 1–7 · khung 1 (A4 + ô lấy đà của lần nhắc lại) · ô 1–7 · khung 2 (kết).
+      'E5/16:5 D#5/16:4 | ' + ELISE_THEME_RH + ' | A4/q:2 E5/16:5 D#5/16:4 | ' + ELISE_THEME_RH + ' | A4/qd:2',
+    accompanimentNotation:
+      'R/8 | ' + ELISE_THEME_LH + ' | A2/16:5 E3/16:2 A3/16:1 R/16 R/8 | ' + ELISE_THEME_LH + ' | A2/16:5 E3/16:2 A3/16:1 R/16 R/8',
+    // Pedal vang: đạp ở mỗi ô tay trái rải hợp âm (thay pedal mỗi ô), nhả ở ô chỉ có tay phải (chỉ số ô gồm ô lấy đà).
+    pedal: [2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15, 16].map((i) => ({ from: i, to: i })),
   },
   {
     id: 'song-happy-birthday',

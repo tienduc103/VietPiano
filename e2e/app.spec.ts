@@ -12,7 +12,7 @@ test('thư viện hiển thị đủ nhóm bài học', async ({ page }) => {
   for (const name of ['Nhận biết nốt', 'Gam', 'Bài tập tay phải', 'Bài tập tay trái', 'Bài tập hai tay', 'Bé tự học theo số ngón tay', 'Bài hát']) {
     await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
   }
-  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(24);
+  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(25);
 });
 
 test('dòng phiên bản hiện ở cuối mọi màn hình', async ({ page }) => {
@@ -540,6 +540,25 @@ test('Romance hai tay: hướng dẫn cả hai tay; bàn phím ảo / đàn MIDI
   await expect(page.getByTestId('progress-text')).toHaveText('2/92');
 });
 
+test('Für Elise hai tay: có pedal, tay trái nghỉ ở ô chỉ có tay phải, rải hợp âm chấm cả hai tay', async ({ page }) => {
+  await openLesson(page, 'song-fur-elise-2-hands');
+  await expect(page.locator('.score-pedal').first()).toBeAttached();
+  await expect(page.getByTestId('hands-notice')).toContainText('Bàn phím ảo: chấm cả hai tay');
+  // Ô lấy đà + ô 1: chỉ tay phải.
+  const right = [76, 75, 76, 75, 76, 71, 74, 72];
+  for (const [i, m] of right.entries()) {
+    await expect(page.getByTestId('expected-left')).toHaveText('nghỉ');
+    await page.locator(`[data-midi="${m}"]`).click();
+    await expect(page.getByTestId('progress-text')).toHaveText(`${i + 1}/70`);
+    await page.waitForTimeout(150);
+  }
+  // Ô 2: La4 kèm rải La thứ A2 E3 A3 tay trái.
+  await expect(page.getByTestId('expected-left')).toHaveText('A2E3A3');
+  await page.locator('[data-midi="69"]').click();
+  for (const m of [45, 52, 57]) await page.locator(`[data-midi="${m}"]`).click();
+  await expect(page.getByTestId('progress-text')).toHaveText('9/70');
+});
+
 test('đàn MIDI: trình duyệt không có Web MIDI (như iPad) thì báo rõ', async ({ page }) => {
   await page.addInitScript(() => {
     delete (Navigator.prototype as unknown as Record<string, unknown>).requestMIDIAccess;
@@ -569,7 +588,7 @@ test('trang chủ là Dashboard giáo trình; Curriculum Browser có 6 cấp, c�
   // Thư viện bài nằm ngay dưới phần giáo trình của trang chủ; nút "Thư viện bài" cuộn xuống.
   await page.getByRole('button', { name: 'Về trang chủ' }).click();
   await expect(page.getByTestId('dashboard').getByTestId('library')).toBeAttached();
-  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(24);
+  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(25);
   // Mép trên thư viện có thể đã lọt vào cuối màn hình (trang chủ ngắn) — so vị trí thay vì "có trong khung nhìn".
   const libraryTop = async () => (await page.getByTestId('library').boundingBox())?.y ?? Infinity;
   expect(await libraryTop()).toBeGreaterThan(400);

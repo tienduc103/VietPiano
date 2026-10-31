@@ -47,6 +47,7 @@ export function parseNotes(source: string): LessonNote[] {
 /**
  * Phân tích phần đệm: "D3+F3+A3/hd:5+3+1 | G2:5 Bb2:3 D3:1".
  * Các nốt hợp âm nối bằng "+", ngón tay ghi theo đúng thứ tự đó ("+" để trống = không ghi ngón, "(3)" = khoanh tròn).
+ * Dấu lặng tay trái: "R" ("R/8" …), không ghi ngón → mục có `pitches` rỗng.
  */
 export function parseAccompaniment(source: string): AccompanimentNote[] {
   const result: AccompanimentNote[] = [];
@@ -55,6 +56,11 @@ export function parseAccompaniment(source: string): AccompanimentNote[] {
     const [main, fingerPart] = tok.split(':');
     const [chord, dur = 'q'] = main.split('/');
     if (!(dur in DURATION_BEATS)) throw new Error(`Trường độ không hợp lệ: "${tok}"`);
+    if (chord === REST_PITCH) {
+      if (fingerPart !== undefined) throw new Error(`Dấu lặng không có số ngón: "${tok}"`);
+      result.push({ pitches: [], midis: [], duration: dur as Duration, fingers: [], fingersCircled: [] });
+      continue;
+    }
     const fingerToks = fingerPart === undefined ? [] : fingerPart.split('+');
     const notes = chord.split('+').map((pitch, i) => {
       const f = fingerToks[i] ? parseFinger(fingerToks[i], tok) : undefined;

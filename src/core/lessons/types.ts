@@ -57,7 +57,7 @@ export const REST_PITCH = 'R';
  * Đàn MIDI / bàn phím ảo (chế độ Chờ/Đếm nốt): chấm cả hai tay theo `accompanimentByNote`.
  */
 export interface AccompanimentNote {
-  /** Các nốt của hợp âm, từ thấp lên cao. */
+  /** Các nốt của hợp âm, từ thấp lên cao; rỗng = dấu lặng tay trái. */
   pitches: string[];
   midis: number[];
   duration: Duration;

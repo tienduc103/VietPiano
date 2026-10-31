@@ -167,7 +167,7 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
 - Giáo trình: Wait Mode KHÔNG có tiêu chí nhịp; trường độ chỉ chấm khi có Note Off (MIDI / bàn phím ảo), micro → "không đo"
   và chia lại trọng số. Mở khoá chỉ là gợi ý (quyết định sản phẩm), Kids/Adult chỉ khác trình bày — cùng engine.
 - Chỉ nhận diện **một nốt tại một thời điểm**. Không giả vờ hỗ trợ hợp âm.
-  Bài có `accompaniment` (ký hiệu "D3+F3+A3/hd:5+3+1"): phần đệm tay trái vẽ trên khuông Fa cùng lúc với giai điệu,
+  Bài có `accompaniment` (ký hiệu "D3+F3+A3/hd:5+3+1"; dấu lặng tay trái "R/8" → `pitches` rỗng): phần đệm tay trái vẽ trên khuông Fa cùng lúc với giai điệu,
   micro → app chỉ chấm giai điệu tay phải; nốt thấp hơn giai điệu bị bỏ qua (`isAccompanimentMidi`).
   Đàn MIDI / bàn phím ảo (micro tắt) → chấm cả hai tay (màn Luyện tập Chờ/Đếm nốt + bài Chờ nốt giáo trình):
   `accompanimentByNote` gán nốt đệm cho nốt giai điệu (`LeftHandStep`: nốt, ngón, hợp âm đang giữ),
@@ -177,7 +177,7 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
 - Pedal vang: `Piece.pedal` theo ô nhịp (`[1, 1], [2, 2]` = thay pedal mỗi ô) → vẽ "Ped." + đường kẻ, khấc "^" chỗ thay;
   Biểu diễn có thêm tiêu chí "Pedal" (15%). Chỉ đàn MIDI gửi pedal (Control Change 64); micro / bàn phím ảo → "không đo".
   Thả phím lúc pedal đang đạp không bị tính giữ thiếu trường độ. Giới thiệu ở cấp 6 buổi "Hoàng hôn" (l6-17); cùng buổi có bài thử sức không bắt buộc Romance d'Amour hai tay
-  có pedal (bài Thư viện `song-romance-2-hands` cũng có ký hiệu pedal nhưng màn Luyện tập không chấm pedal).
+  có pedal (bài Thư viện `song-romance-2-hands`, `song-fur-elise-2-hands` cũng có ký hiệu pedal nhưng màn Luyện tập không chấm pedal).
 - Không tạo MIDI giả. `MIDIInputProvider` dùng Web MIDI thật (bật ở Cài đặt → `midiEnabled`, tự kết nối khi mở app).
   Safari và mọi trình duyệt trên iPad (WebKit) không có Web MIDI → báo "không hỗ trợ", dùng micro. MIDI trên iPad
   chỉ có qua app native (Core MIDI). Khi đàn MIDI đã nối, màn Luyện tập bỏ nốt từ micro (micro nghe chính tiếng đàn đó).

@@ -129,6 +129,7 @@ export function accompanimentMeasures(lesson: Lesson): Measure<AccompanimentNote
  * Bắt đầu dưới điểm thấp nhất của nốt (đầu nốt, đuôi nốt quay xuống) để số không đè lên đuôi nốt.
  */
 export function accompanimentFingerRows(note: AccompanimentNote, staveNote: StaveNote, staveBottom: number): { text: string; y: number }[] {
+  if (!note.fingers.some(Boolean)) return [];
   const { topY, baseY } = staveNote.getStemExtents();
   const lowest = Math.max(staveBottom, ...staveNote.getYs(), staveNote.getStemDirection() < 0 ? Math.max(topY, baseY) : -Infinity);
   const rows: { text: string; y: number }[] = [];
@@ -177,6 +178,7 @@ function createAccompanimentNotes(lesson: Lesson, items: readonly AccompanimentN
   const accidentals = measureAccidentals(items.flatMap((n) => n.pitches), lesson.keySignature);
   let k = 0;
   return items.map((n) => {
+    if (n.pitches.length === 0) return createRest(n.duration, 'bass');
     const note = new StaveNote({ keys: n.pitches.map(toVexKey), duration: n.duration, clef: 'bass', autoStem: true });
     if (n.duration.endsWith('d')) Dot.buildAndAttach([note], { all: true });
     n.pitches.forEach((_, pi) => {
