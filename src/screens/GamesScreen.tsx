@@ -255,6 +255,18 @@ export function GamesScreen() {
                         <span className="block text-sm opacity-90">Bóng bay lên trên phím đàn — đánh đúng nốt để nổ bóng! 1 tay, 2 tay, 7 nốt, full phím · Dễ / Trung bình / Khó · MIDI, micro, piano ảo.</span>
                       </span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate({ name: 'tomato-harvest' })}
+                      data-testid="open-tomato-harvest"
+                      className="flex min-h-16 items-center gap-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-lime-500 to-amber-400 px-5 py-4 text-left text-white shadow-md shadow-emerald-500/30 hover:brightness-110"
+                    >
+                      <span className="text-4xl" aria-hidden>🐰🍅</span>
+                      <span className="flex-1">
+                        <span className="block text-xl font-bold">Thu hoạch cà chua</span>
+                        <span className="block text-sm opacity-90">Đọc nốt giúp thỏ hái 50 quả · 3 cấp độ · cà chua vàng, mưa, bướm, sâu và cúp gia đình · không giới hạn thời gian.</span>
+                      </span>
+                    </button>
                   </div>
                 )}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,0 +1,29 @@
+@keyframes tomato-bunny-hop { 0%,100% { transform: translateY(0) rotate(0) } 45% { transform: translateY(-28px) rotate(-8deg) } }
+@keyframes tomato-golden-glow { 0%,100% { filter: drop-shadow(0 0 4px #fde047); transform: scale(1) } 50% { filter: drop-shadow(0 0 14px #facc15); transform: scale(1.18) } }
+@keyframes tomato-giant-pop { 0% { transform: scale(.2) rotate(-20deg) } 70% { transform: scale(1.2) rotate(5deg) } 100% { transform: scale(1) rotate(0) } }
+@keyframes tomato-regrow { 0%,100% { transform: scale(.7) } 50% { transform: scale(1.1) } }
+@keyframes tomato-rain { 0% { opacity: 0; transform: translateY(-20px) } 20%,80% { opacity: 1 } 100% { opacity: 0; transform: translateY(25px) } }
+@keyframes tomato-butterfly { 0% { left: -15%; top: 65% } 30% { left: 25%; top: 15% } 65% { left: 58%; top: 48% } 100% { left: 102%; top: 8% } }
+@keyframes tomato-worm-attack { from { transform: translateX(100px) } to { transform: translateX(-20px) } }
+@keyframes tomato-worm-flee { from { transform: translateX(0) scaleX(1) } to { transform: translateX(160px) scaleX(-1); opacity: 0 } }
+@keyframes tomato-shield { 0%,100% { filter: none } 50% { filter: drop-shadow(0 0 18px #38bdf8); transform: scale(1.2) } }
+@keyframes tomato-victory { from { transform: scale(.75); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+
+.tomato-bunny-hop { animation: tomato-bunny-hop .65s ease-in-out; }
+.tomato-golden { animation: tomato-golden-glow 1.2s ease-in-out infinite; }
+.tomato-giant { animation: tomato-giant-pop .7s cubic-bezier(.2,.9,.3,1.3); }
+.tomato-regrow { animation: tomato-regrow 1.2s ease-in-out infinite; }
+.tomato-rain { animation: tomato-rain 2.6s ease-in-out both; }
+.tomato-butterfly { animation: tomato-butterfly 1.5s ease-in-out both; }
+.tomato-worm-attack { animation: tomato-worm-attack .65s ease-out both; }
+.tomato-worm-flee { animation: tomato-worm-flee .9s ease-in both; }
+.tomato-shield { animation: tomato-shield .8s ease-in-out; }
+.tomato-victory { animation: tomato-victory .45s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tomato-bunny-hop, .tomato-golden, .tomato-giant, .tomato-regrow, .tomato-rain,
+  .tomato-butterfly, .tomato-worm-attack, .tomato-worm-flee, .tomato-shield, .tomato-victory {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

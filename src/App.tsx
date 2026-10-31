@@ -11,6 +11,7 @@ import { GamesScreen } from './screens/GamesScreen';
 import { NoteHunterScreen } from './screens/NoteHunterScreen';
 import { FlappyNoteScreen } from './screens/FlappyNoteScreen';
 import { BalloonPopScreen } from './screens/BalloonPopScreen';
+import { TomatoHarvestScreen } from './screens/TomatoHarvestScreen';
 import { SupplementScreen } from './screens/SupplementScreen';
 import { useCurriculum } from './store/curriculumStore';
 import { useProfiles } from './store/profileStore';
@@ -46,11 +47,12 @@ export function App() {
       {route.name === 'note-hunter' && <NoteHunterScreen />}
       {route.name === 'flappy-note' && <FlappyNoteScreen />}
       {route.name === 'balloon-pop' && <BalloonPopScreen key={route.preset ? JSON.stringify(route.preset) : 'free'} preset={route.preset} returnTo={route.returnTo} />}
+      {route.name === 'tomato-harvest' && <TomatoHarvestScreen />}
       {route.name === 'supplement' && <SupplementScreen />}
       {route.name === 'practice' && <PracticeScreen lessonId={route.lessonId} />}
       {route.name === 'settings' && <SettingsScreen />}
       {/* Màn hình Luyện tập tự đặt nút trong khung khuông nhạc (góc phải dưới có bàn phím ảo + nút điều khiển). */}
-      {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && route.name !== 'flappy-note' && route.name !== 'balloon-pop' && (
+      {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && route.name !== 'flappy-note' && route.name !== 'balloon-pop' && route.name !== 'tomato-harvest' && (
         <FloatingMicNote className="fixed right-[calc(12px+env(safe-area-inset-right,0px))] bottom-[calc(12px+env(safe-area-inset-bottom,0px))]" />
       )}
       <FloatingReloadButton />

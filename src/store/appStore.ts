@@ -32,6 +32,8 @@ export type Route =
       /** Nút "Quay lại" về màn này thay vì mục Trò chơi. */
       returnTo?: Route;
     }
+  /** Thu hoạch cà chua: đọc nốt để giúp thỏ thu hoạch nông trại. */
+  | { name: 'tomato-harvest' }
   | { name: 'practice'; lessonId: string }
   | { name: 'settings' };
 
@@ -45,6 +47,7 @@ export function initialRoute(search = typeof location === 'undefined' ? '' : loc
   if (screen === 'note-hunter') return { name: 'note-hunter' };
   if (screen === 'flappy-note') return { name: 'flappy-note' };
   if (screen === 'balloon-pop') return { name: 'balloon-pop' };
+  if (screen === 'tomato-harvest') return { name: 'tomato-harvest' };
   return { name: 'dashboard' };
 }
 
