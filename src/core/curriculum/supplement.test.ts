@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CURRICULUM } from './content/curriculum';
 import { isSupplementLesson, SUPPLEMENT, SUPPLEMENT_GAMES, SUPPLEMENT_LESSONS, SUPPLEMENT_NOTE } from './content/supplement';
 import { keysMatching, matchesKeyTarget } from './keys';
+import { lessonTimeline, pieceToLesson } from './piece';
 import { validateCurriculum } from './validate';
 import type { ChoiceQuizExercise, Curriculum, Illustration } from './types';
 
@@ -29,6 +30,17 @@ describe('giáo trình bổ sung "Làm quen từng nốt"', () => {
       expect(SUPPLEMENT_NOTE[l.lessonId]).toBeDefined();
       expect(SUPPLEMENT_GAMES[l.lessonId]?.length ?? 0).toBeGreaterThanOrEqual(2);
     }
+  });
+
+  it('bài Đô: phần giới thiệu có khuông nhạc với nốt Đô ở nhiều trường độ (tròn, trắng, đen, móc đơn)', () => {
+    const pages = SUPPLEMENT_LESSONS[0].activities[0].pages;
+    const durations = new Set<number>();
+    for (const p of pages) {
+      if (p.illustration?.type !== 'staff') continue;
+      const notes = lessonTimeline(pieceToLesson(p.illustration.piece, 'sup-c'));
+      if (notes.every((n) => n.midiNote === 60)) notes.forEach((n) => durations.add(n.durationBeats));
+    }
+    expect([...durations].sort((a, b) => a - b)).toEqual([0.5, 1, 2, 4]);
   });
 
   it('bài Đô: câu đố có đủ 3 dạng hình (phím, khuông, ngón tay); thẻ phím không hiện tên nốt', () => {

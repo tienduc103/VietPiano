@@ -60,6 +60,12 @@ const C_LESSON = {
           illustration: { type: 'staff', piece: { ...rh('C4 C4 C4 C4'), timeSignature: [4, 4] }, listen: true },
         },
         {
+          title: 'Nốt Đô dài, ngắn khác nhau',
+          body: 'Cùng là nốt Đô nhưng hình nốt cho biết ngân dài bao lâu: nốt tròn 4 phách, nốt trắng 2 phách, nốt đen 1 phách, nốt móc đơn nửa phách. Bấm Nghe mẫu để nghe.',
+          kids: 'Bạn Đô có nhiều chiếc áo: áo tròn ngân thật dài, áo móc đơn chạy thật nhanh!',
+          illustration: { type: 'staff', piece: { ...rh('C4/w | C4/h C4/h | C4 C4 C4 C4 | C4/8 C4/8 C4/8 C4/8 C4/h'), timeSignature: [4, 4] }, listen: true },
+        },
+        {
           title: 'Ngón 1 tay phải đánh Đô',
           body: 'Ngón cái tay phải là ngón 1. Đặt ngón 1 lên Đô giữa — đây là "nhà" của bàn tay phải.',
           kids: 'Ngón cái là ngón số 1. Đặt ngón cái lên bạn Đô nào!',

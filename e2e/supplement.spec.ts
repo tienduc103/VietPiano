@@ -41,7 +41,12 @@ test('giáo trình bổ sung — nốt Đô: giới thiệu → câu đố chọ
   await expect(page.getByTestId('step-title')).toHaveText('Đây là nốt Đô');
   await expect(page.getByTestId('listen-notes')).toBeVisible();
   await expect(page.locator('[data-testid="illustration-keyboard"] [data-highlighted]')).toHaveCount(3); // C3, C4, C5
-  for (let i = 0; i < 5; i++) await page.getByTestId('intro-next').click();
+  for (let i = 0; i < 3; i++) await page.getByTestId('intro-next').click();
+  // Khuông nhạc: nốt Đô ở các trường độ khác nhau, có nghe mẫu.
+  await expect(page.getByTestId('step-title')).toHaveText('Nốt Đô dài, ngắn khác nhau');
+  await expect(page.getByTestId('intro-step').locator('svg .vf-stavenote')).toHaveCount(12);
+  await expect(page.getByTestId('listen')).toBeVisible();
+  for (let i = 0; i < 3; i++) await page.getByTestId('intro-next').click();
 
   // Câu đố chọn hình: sai thì chọn lại (không lộ đáp án), đúng thì sang câu sau.
   const quiz = page.getByTestId('choice-quiz');
