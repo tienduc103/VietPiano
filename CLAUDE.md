@@ -177,7 +177,7 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
 - Pedal vang: `Piece.pedal` theo ô nhịp (`[1, 1], [2, 2]` = thay pedal mỗi ô) → vẽ "Ped." + đường kẻ, khấc "^" chỗ thay;
   Biểu diễn có thêm tiêu chí "Pedal" (15%). Chỉ đàn MIDI gửi pedal (Control Change 64); micro / bàn phím ảo → "không đo".
   Thả phím lúc pedal đang đạp không bị tính giữ thiếu trường độ. Giới thiệu ở cấp 6 buổi "Hoàng hôn" (l6-17); cùng buổi có bài thử sức không bắt buộc Romance d'Amour hai tay
-  có pedal (bài Thư viện `song-romance-2-hands`, `song-fur-elise-2-hands` cũng có ký hiệu pedal nhưng màn Luyện tập không chấm pedal).
+  có pedal (bài Thư viện `song-romance-2-hands`, `song-fur-elise-2-hands` và 5 bài `song-{ode-to-joy,amazing-grace,silent-night,greensleeves,auld-lang-syne}-2-hands` (thay pedal mỗi ô) cũng có ký hiệu pedal nhưng màn Luyện tập không chấm pedal).
 - Không tạo MIDI giả. `MIDIInputProvider` dùng Web MIDI thật (bật ở Cài đặt → `midiEnabled`, tự kết nối khi mở app).
   Safari và mọi trình duyệt trên iPad (WebKit) không có Web MIDI → báo "không hỗ trợ", dùng micro. MIDI trên iPad
   chỉ có qua app native (Core MIDI). Khi đàn MIDI đã nối, màn Luyện tập bỏ nốt từ micro (micro nghe chính tiếng đàn đó).

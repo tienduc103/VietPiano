@@ -35,6 +35,20 @@ const ELISE_THEME_LH =
   'R/qd | A2/16:5 E3/16:2 A3/16:1 R/16 R/8 | E2/16:5 E3/16:2 G#3/16:1 R/16 R/8 | A2/16 E3/16 A3/16 R/16 R/8 | ' +
   'R/qd | A2/16:5 E3/16:2 A3/16:1 R/16 R/8 | E2/16:5 E3/16:2 G#3/16:1 R/16 R/8';
 
+/** Ode to Joy hai tay, giai điệu 8 ô (thế Đô, có số ngón) — chơi hai lần: đoạn A rồi đoạn B. */
+const ODE_MELODY =
+  'E4:3 E4 F4:4 G4:5 | G4 F4 E4 D4:2 | C4:1 C4 D4 E4 | E4/qd:3 D4/8 D4/h | ' +
+  'E4:3 E4 F4:4 G4:5 | G4 F4 E4 D4:2 | C4:1 C4 D4 E4 | D4/qd:2 C4/8:1 C4/h';
+
+/** Auld Lang Syne hai tay, ô 1–7 của giai điệu (ô 8 khác nhau giữa hai lần: lần 1 có nốt lấy đà cho lần 2). */
+const AULD_RH =
+  'F4/qd F4/8 F4 A4 | G4/qd F4/8 G4 A4 | F4/qd F4/8 A4 C5 | D5/hd D5 | ' +
+  'C5/qd A4/8 A4 F4 | G4/qd F4/8 G4 A4 | F4/qd D4/8 D4 C4';
+
+/** Pedal thay mỗi ô nhịp từ ô `first` tới ô `last` (chỉ số ô gồm cả ô lấy đà). */
+const pedalEachMeasure = (first: number, last: number) =>
+  Array.from({ length: last - first + 1 }, (_, i) => ({ from: first + i, to: first + i }));
+
 /** Năm đoạn của các bài bé ba ngón dài (1 – 2 – 3, 3 – 4 – 5): tròn/trắng → trắng chấm → đen → đen chấm + móc đơn → tổng hợp. */
 const KIDS_123_SECTIONS = [
   { measure: 1, label: 'A' },
@@ -724,6 +738,136 @@ const defs: LessonDef[] = [
       'R/8 | ' + ELISE_THEME_LH + ' | A2/16:5 E3/16:2 A3/16:1 R/16 R/8 | ' + ELISE_THEME_LH + ' | A2/16:5 E3/16:2 A3/16:1 R/16 R/8',
     // Pedal vang: đạp ở mỗi ô tay trái rải hợp âm (thay pedal mỗi ô), nhả ở ô chỉ có tay phải (chỉ số ô gồm ô lấy đà).
     pedal: [2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15, 16].map((i) => ({ from: i, to: i })),
+  },
+  {
+    id: 'song-ode-to-joy-2-hands',
+    title: 'Ode to Joy (hai tay)',
+    description:
+      'Khúc hoan ca (Đô trưởng, nhịp 4/4) chơi hai lần: đoạn A tay trái giữ hợp âm cả ô, đoạn B rải hợp âm từng nốt đen; pedal thay mỗi ô. ' +
+      'Đàn MIDI: chấm cả hai tay. Micro: chỉ chấm giai điệu tay phải, tay trái đánh kèm theo khuông Fa.',
+    category: 'song',
+    clef: 'grand',
+    timeSignature: [4, 4],
+    difficulty: 2,
+    hand: 'both',
+    tempo: 90,
+    sections: [
+      { measure: 1, label: 'A' },
+      { measure: 9, label: 'B' },
+    ],
+    source: 'L. v. Beethoven (1824) — phạm vi công cộng; phần đệm tự soạn (Đô – Sol)',
+    notation: ODE_MELODY + ' | ' + ODE_MELODY,
+    accompanimentNotation:
+      // Đoạn A: hợp âm giữ cả ô (Sol trưởng thế đảo B2–D3–G3 để tay không phải dời).
+      'C3+E3+G3/w:5+3+1 | B2+D3+G3/w:5+3+1 | C3+E3+G3/w:5+3+1 | B2+D3+G3/w:5+3+1 | ' +
+      'C3+E3+G3/w | B2+D3+G3/w | C3+E3+G3/w | C3+E3+G3/w | ' +
+      // Đoạn B: rải hợp âm lên – xuống.
+      'C3:5 E3:3 G3:1 E3:3 | B2:5 D3:3 G3:1 D3:3 | C3 E3 G3 E3 | B2 D3 G3 D3 | ' +
+      'C3 E3 G3 E3 | B2 D3 G3 D3 | C3 E3 G3 E3 | C3+E3+G3/w:5+3+1',
+    pedal: pedalEachMeasure(0, 15),
+  },
+  {
+    id: 'song-amazing-grace-2-hands',
+    title: 'Amazing Grace (hai tay)',
+    description:
+      'Thánh ca (Sol trưởng, nhịp 3/4, có nhịp lấy đà): tay trái giữ hợp âm cả ô (Sol, Đô, Mi thứ, Rê), pedal thay mỗi ô. ' +
+      'Đàn MIDI: chấm cả hai tay. Micro: chỉ chấm giai điệu tay phải, tay trái đánh kèm theo khuông Fa.',
+    category: 'song',
+    clef: 'grand',
+    timeSignature: [3, 4],
+    keySignature: 'G',
+    pickup: 1,
+    difficulty: 2,
+    hand: 'both',
+    tempo: 80,
+    source: 'Giai điệu "New Britain" (1829), lời John Newton — phạm vi công cộng; phần đệm tự soạn',
+    notation:
+      'D4 | G4/h B4/8 G4/8 | B4/h A4 | G4/h E4 | D4/h D4 | G4/h B4/8 G4/8 | B4/h A4/8 B4/8 | D5/hd | D5/h B4 | ' +
+      'D5/qd B4/8 D5/8 B4/8 | G4/h D4 | E4/qd G4/8 G4/8 E4/8 | D4/h D4 | G4/h B4/8 G4/8 | B4/h A4 | G4/hd',
+    accompanimentNotation:
+      'R/q | G2+B2+D3/hd:5+3+1 | G2+B2+D3/hd | G2+C3+E3/hd:5+2+1 | G2+B2+D3/hd:5+3+1 | G2+B2+D3/hd | G2+B2+E3/hd:5+3+1 | ' +
+      'F#2+A2+D3/hd:5+4+1 | G2+B2+D3/hd:5+3+1 | G2+B2+D3/hd | G2+B2+D3/hd | G2+C3+E3/hd:5+2+1 | G2+B2+D3/hd:5+3+1 | ' +
+      'G2+B2+D3/hd | F#2+A2+D3/hd:5+4+1 | G2+B2+D3/hd:5+3+1',
+    // Ô lấy đà (chỉ số 0) không đạp; thay pedal mỗi ô từ ô 1.
+    pedal: pedalEachMeasure(1, 15),
+  },
+  {
+    id: 'song-silent-night-2-hands',
+    title: 'Silent Night (hai tay)',
+    description:
+      'Đêm thánh vô cùng (Đô trưởng, nhịp 3/4): tay trái rải hợp âm Đô – Sol – Fa từng nốt đen, pedal thay mỗi ô cho tiếng ngân liền. ' +
+      'Đàn MIDI: chấm cả hai tay. Micro: chỉ chấm giai điệu tay phải, tay trái đánh kèm theo khuông Fa.',
+    category: 'song',
+    clef: 'grand',
+    timeSignature: [3, 4],
+    difficulty: 3,
+    hand: 'both',
+    tempo: 80,
+    source: 'Franz Xaver Gruber (1818) — phạm vi công cộng; phần đệm tự soạn',
+    notation:
+      'G4/qd A4/8 G4 | E4/hd | G4/qd A4/8 G4 | E4/hd | D5/h D5 | B4/hd | C5/h C5 | G4/hd | ' +
+      'A4/h A4 | C5/qd B4/8 A4 | G4/qd A4/8 G4 | E4/hd | A4/h A4 | C5/qd B4/8 A4 | G4/qd A4/8 G4 | E4/hd | ' +
+      'D5/h D5 | F5/qd D5/8 B4 | C5/hd | E5/hd | C5 G4 E4 | G4/qd F4/8 D4 | C4/hd',
+    accompanimentNotation:
+      'C3:5 E3:3 G3:1 | C3 E3 G3 | C3 E3 G3 | C3 E3 G3 | B2:5 D3:3 G3:1 | B2 D3 G3 | C3:5 E3:3 G3:1 | C3 E3 G3 | ' +
+      'A2:5 C3:3 F3:1 | A2 C3 F3 | C3:5 E3:3 G3:1 | C3 E3 G3 | A2:5 C3:3 F3:1 | A2 C3 F3 | C3:5 E3:3 G3:1 | C3 E3 G3 | ' +
+      'B2:5 D3:3 G3:1 | B2 D3:3 F3:2 | C3:5 E3:3 G3:1 | C3 E3 G3 | C3 E3 G3 | B2:5 D3:3 F3:2 | C3+E3+G3/hd:5+3+1',
+    pedal: pedalEachMeasure(0, 22),
+  },
+  {
+    id: 'song-greensleeves-2-hands',
+    title: 'Greensleeves (hai tay)',
+    description:
+      'Dân ca Anh (La thứ, nhịp 3/4, có nhịp lấy đà): tay trái rải hợp âm từng nốt đen, có Sol thăng ở hợp âm Mi trưởng; pedal thay mỗi ô. ' +
+      'Đàn MIDI: chấm cả hai tay. Micro: chỉ chấm giai điệu tay phải, tay trái đánh kèm theo khuông Fa.',
+    category: 'song',
+    clef: 'grand',
+    timeSignature: [3, 4],
+    keySignature: 'Am',
+    pickup: 1,
+    difficulty: 3,
+    hand: 'both',
+    tempo: 90,
+    source: 'Dân ca Anh thế kỷ 16 — phạm vi công cộng; phần đệm tự soạn',
+    notation:
+      'A4 | C5/h D5 | E5/qd F5/8 E5 | D5/h B4 | G4/qd A4/8 B4 | C5/h A4 | A4/qd G#4/8 A4 | B4/h G#4 | E4/h A4 | ' +
+      'C5/h D5 | E5/qd F5/8 E5 | D5/h B4 | G4/qd A4/8 B4 | C5/qd B4/8 A4 | G#4/qd F#4/8 G#4 | A4/hd',
+    accompanimentNotation:
+      'R/q | A2:5 C3:3 E3:1 | C3:5 E3:3 G3:1 | G2:5 B2:3 D3:1 | E2:5 G2:3 B2:1 | A2:5 C3:3 E3:1 | F2:5 A2:3 C3:1 | ' +
+      'E2:5 G#2:3 B2:1 | A2:5 C3:3 E3:1 | A2 C3 E3 | C3:5 E3:3 G3:1 | G2:5 B2:3 D3:1 | E2:5 G2:3 B2:1 | ' +
+      'A2:5 C3:3 E3:1 | E2:5 G#2:3 B2:1 | A2+C3+E3/hd:5+3+1',
+    pedal: pedalEachMeasure(1, 15),
+  },
+  {
+    id: 'song-auld-lang-syne-2-hands',
+    title: 'Auld Lang Syne (hai tay)',
+    description:
+      'Bài ca tạm biệt (Fa trưởng, nhịp 4/4, có nhịp lấy đà) chơi hai lần: đoạn A tay trái giữ hợp âm cả ô, đoạn B rải hợp âm; pedal thay mỗi ô. ' +
+      'Đàn MIDI: chấm cả hai tay. Micro: chỉ chấm giai điệu tay phải, tay trái đánh kèm theo khuông Fa.',
+    category: 'song',
+    clef: 'grand',
+    timeSignature: [4, 4],
+    keySignature: 'F',
+    pickup: 1,
+    difficulty: 3,
+    hand: 'both',
+    tempo: 80,
+    sections: [
+      { measure: 1, label: 'A' },
+      { measure: 9, label: 'B' },
+    ],
+    source: 'Dân ca Scotland, lời Robert Burns (1788) — phạm vi công cộng; phần đệm tự soạn',
+    // Ô 8 lần 1: Fa trắng chấm + Đô lấy đà cho lần nhắc lại.
+    notation: 'C4 | ' + AULD_RH + ' | F4/hd C4 | ' + AULD_RH + ' | F4/w',
+    accompanimentNotation:
+      'R/q | ' +
+      // Đoạn A: hợp âm giữ cả ô (Fa, Đô, Si giáng, Rê thứ).
+      'A2+C3+F3/w:5+3+1 | G2+C3+E3/w:5+2+1 | A2+C3+F3/w:5+3+1 | Bb2+D3+F3/w:5+3+1 | ' +
+      'A2+C3+F3/w:5+3+1 | G2+C3+E3/w:5+2+1 | A2+D3+F3/w:5+2+1 | A2+C3+F3/w:5+3+1 | ' +
+      // Đoạn B: rải hợp âm lên – xuống.
+      'A2:5 C3:3 F3:1 C3:3 | G2:5 C3:2 E3:1 C3:2 | A2:5 C3:3 F3:1 C3:3 | Bb2:5 D3:3 F3:1 D3:3 | ' +
+      'A2:5 C3:3 F3:1 C3:3 | G2:5 C3:2 E3:1 C3:2 | A2:5 D3:2 F3:1 D3:2 | A2+C3+F3/w:5+3+1',
+    pedal: pedalEachMeasure(1, 16),
   },
   {
     id: 'song-happy-birthday',

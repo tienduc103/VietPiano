@@ -211,6 +211,23 @@ describe('thư viện bài học', () => {
     expect(left[a4 + 1]).toMatchObject({ midis: [], held: [] });
   });
 
+  const pedalSongs = [
+    'song-ode-to-joy-2-hands',
+    'song-amazing-grace-2-hands',
+    'song-silent-night-2-hands',
+    'song-greensleeves-2-hands',
+    'song-auld-lang-syne-2-hands',
+  ];
+
+  it.each(pedalSongs)('%s: hai tay, pedal thay mỗi ô có tay trái (ô lấy đà không đạp)', (id) => {
+    const lesson = LESSONS.find((l) => l.id === id)!;
+    expect(lesson).toMatchObject({ clef: 'grand', hand: 'both', category: 'song' });
+    const acc = splitMeasures(lesson.accompaniment!, measureLength(lesson.timeSignature), lesson.pickup);
+    const played = acc.map((m, i) => (m.items.some((n) => n.midis.length) ? i : -1)).filter((i) => i >= 0);
+    expect(lesson.pedal).toEqual(played.map((i) => ({ from: i, to: i })));
+    expect(played).toHaveLength(lesson.pickup ? acc.length - 1 : acc.length);
+  });
+
   it('dấu lặng tay trái "R" trong phần đệm', () => {
     expect(parseAccompaniment('R/8 C3+E3/q')).toEqual([
       { pitches: [], midis: [], duration: '8', fingers: [], fingersCircled: [] },
