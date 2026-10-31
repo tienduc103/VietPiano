@@ -7,15 +7,15 @@ import { applyArcadeResult, sanitizeArcadeRecords, type ArcadeRecords } from '..
 import { BALLOON_DIFFICULTIES, BALLOON_SPEEDS, type BalloonDifficulty, type BalloonSpeed } from './BalloonPopGame';
 import { BALLOON_MODES, LETTERS, MODE_INFO, type BalloonLabelStyle, type BalloonMode, type BalloonNote, type HandChoice, type Letter } from './notes';
 
-/** Kiểu chơi: Thường (đủ số bóng, mạng, tăng tốc theo mốc) / Tìm nốt (chọn nốt, tốc độ theo đúng sai, sai 20 lần là hết). */
+/** Kiểu chơi: Thường (đủ số bóng, mạng, tăng tốc theo mốc) / Tìm nốt (tính điểm: chọn nốt cần tìm, nốt khác là bom, nổ 10 bom là hết). */
 export type BalloonGameType = 'classic' | 'hunt';
 export const BALLOON_GAME_TYPES: readonly BalloonGameType[] = ['classic', 'hunt'];
 export const GAME_TYPE_LABEL: Record<BalloonGameType, string> = { classic: '🎈 Thường', hunt: '🔎 Tìm nốt' };
 
-/** Tập nốt kiểu Tìm nốt: nốt của chế độ có tên đã chọn; không nốt nào trùng → cả tập của chế độ. */
-export function huntPool(pool: readonly BalloonNote[], letters: readonly Letter[]): BalloonNote[] {
+/** Nốt cần tìm (MIDI) trong tập của chế độ: nốt có tên đã chọn; không nốt nào trùng → cả tập (không có bom). */
+export function huntTargets(pool: readonly BalloonNote[], letters: readonly Letter[]): number[] {
   const picked = pool.filter((n) => letters.includes(n.letter));
-  return picked.length > 0 ? picked : [...pool];
+  return (picked.length > 0 ? picked : pool).map((n) => n.midi);
 }
 
 /**
@@ -58,6 +58,8 @@ export interface BalloonSettings {
   showFinger: boolean;
   /** Tên nốt trên phím đàn. */
   showKeyLabels: boolean;
+  /** Piano ảo dưới khu chơi (ẩn → chỉ đánh bằng đàn thật / micro / bàn phím máy tính, khu chơi rộng hơn). */
+  showKeyboard: boolean;
   /** Nốt bị ẩn tên — cả trên bóng lẫn phím đàn (ẩn từng nốt để tự nhớ). */
   hiddenLetters: Letter[];
   /** Tiếng nổ bóng + tiếng nốt khi bấm piano ảo. */
@@ -77,6 +79,7 @@ export const DEFAULT_BALLOON_SETTINGS: BalloonSettings = {
   showTargetKey: true,
   showFinger: true,
   showKeyLabels: true,
+  showKeyboard: true,
   hiddenLetters: [],
   sound: true,
 };
@@ -111,6 +114,7 @@ export function sanitizeBalloonSettings(raw: unknown): BalloonSettings {
     showTargetKey: bool('showTargetKey'),
     showFinger: bool('showFinger'),
     showKeyLabels: bool('showKeyLabels'),
+    showKeyboard: bool('showKeyboard'),
     hiddenLetters: Array.isArray(s.hiddenLetters) ? LETTERS.filter((l) => (s.hiddenLetters as unknown[]).includes(l)) : [],
     sound: bool('sound'),
   };

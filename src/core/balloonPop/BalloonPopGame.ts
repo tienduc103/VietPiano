@@ -11,9 +11,11 @@
  * + nhanh hơn (`rush`), xong đợt về tốc độ của mốc. Nốt sắp thả được bốc trước (`upcoming`) để màn hình cho xem trước.
  * Đúng liên tục mỗi `FIREWORK_EVERY` nốt → `fireworks` tăng (pháo hoa).
  *
- * Kiểu "Tìm nốt" (`config.mistakeLimit`): không giới hạn số bóng, không tính mạng, không tăng tốc theo mốc. Tốc độ bay
- * thích nghi (`speed`, áp ngay cho mọi quả đang bay): đúng → chậm lại `HUNT_STEP`, sai hoặc bóng bay mất → nhanh thêm
- * `HUNT_STEP` (trong [`HUNT_MIN_SPEED`, `HUNT_MAX_SPEED`]); sai đủ `mistakeLimit` lần → hết ván.
+ * Kiểu "Tìm nốt" (`config.hunt`): không giới hạn số bóng, không tính mạng, không tăng tốc theo mốc. Bóng mang cả nốt cần
+ * tìm (`targets`) lẫn nốt khác (`bomb`, khoảng 1/3). Đánh trúng bóng nốt khác → bom nổ: mọi bóng trên trời biến mất,
+ * trừ `BOMB_PENALTY` điểm (không dưới 0); nổ `bombLimit` bom → hết ván. Bóng nốt khác bay mất thì không sao.
+ * Tốc độ bay thích nghi (`speed`, áp ngay cho mọi quả đang bay): đúng → chậm lại `HUNT_STEP`; sai, nổ bom hoặc bóng
+ * nốt cần tìm bay mất → nhanh thêm `HUNT_STEP` (trong [`HUNT_MIN_SPEED`, `HUNT_MAX_SPEED`]).
  * Vị trí ngang của bóng do màn hình quyết định (thẳng phím đàn), lõi chỉ giữ tiến độ bay 0 → 1.
  */
 import type { Random } from '../games/random';
@@ -44,8 +46,8 @@ export interface BalloonConfig {
   lives: number;
   /** Bỏ sự kiện quá sát lần nổ trước (micro lặp lại nốt vừa đánh). */
   minIntervalMs: number;
-  /** Kiểu Tìm nốt: số lần sai (kể cả bóng bay mất) thì hết ván. */
-  mistakeLimit?: number;
+  /** Kiểu Tìm nốt: nốt cần tìm (MIDI; nốt khác trong tập là bom) + số bom nổ thì hết ván. */
+  hunt?: { targets: readonly number[]; bombLimit: number };
 }
 
 export const DIFFICULTY_CONFIG: Record<BalloonDifficulty, BalloonConfig> = {
@@ -87,14 +89,17 @@ export function balloonConfig(difficulty: BalloonDifficulty, speed: BalloonSpeed
   return { ...c, riseMs: Math.round(c.riseMs / k), spawnIntervalMs: Math.round(c.spawnIntervalMs / k) };
 }
 
-export const HUNT_MISTAKES = 20;
+export const HUNT_BOMBS = 10;
+export const BOMB_PENALTY = 10;
+/** Tỉ lệ bóng nốt cần tìm (còn lại là bom) khi có cả hai loại. */
+export const TARGET_SHARE = 2 / 3;
 export const HUNT_STEP = 0.1;
 export const HUNT_MIN_SPEED = 0.5;
 export const HUNT_MAX_SPEED = 3;
 
-/** Kiểu Tìm nốt: như độ khó × tốc độ đã chọn, nhưng chơi tới khi sai `HUNT_MISTAKES` lần. */
-export function huntConfig(difficulty: BalloonDifficulty, speed: BalloonSpeed): BalloonConfig {
-  return { ...balloonConfig(difficulty, speed), balloons: Infinity, lives: Infinity, mistakeLimit: HUNT_MISTAKES };
+/** Kiểu Tìm nốt: như độ khó × tốc độ đã chọn, nhưng chơi tới khi nổ `HUNT_BOMBS` bom. */
+export function huntConfig(difficulty: BalloonDifficulty, speed: BalloonSpeed, targets: readonly number[]): BalloonConfig {
+  return { ...balloonConfig(difficulty, speed), balloons: Infinity, lives: Infinity, hunt: { targets, bombLimit: HUNT_BOMBS } };
 }
 
 /** Sao kiểu Tìm nốt (theo số bóng nổ trước khi sai đủ): 1★ ≥ 10, 2★ ≥ 25, 3★ ≥ 50. */
@@ -114,6 +119,8 @@ export interface Balloon {
   riseMs: number;
   /** Thuộc đợt bóng nhanh. */
   rush: boolean;
+  /** Kiểu Tìm nốt: nốt không cần tìm — đánh trúng là nổ bom. */
+  bomb: boolean;
 }
 
 /** Quả sắp thả (xem trước). */
@@ -149,11 +156,13 @@ export interface BalloonState {
   readonly bestCombo: number;
   /** Hệ số tốc độ bay hiện tại của mọi quả (kiểu Tìm nốt thay đổi theo đúng / sai; kiểu thường luôn 1). */
   readonly speed: number;
-  /** Kiểu Tìm nốt: số lần sai + bóng bay mất. */
-  readonly mistakes: number;
+  /** Kiểu Tìm nốt: số bom đã nổ. */
+  readonly bombs: number;
+  /** Bom vừa nổ: các quả bị nổ theo + tiến độ bay lúc đó (hiệu ứng). */
+  readonly lastBlast: readonly { balloon: Balloon; progress: number }[];
   /** Số lần đạt mốc đúng liên tục (mỗi `FIREWORK_EVERY` nốt) — tăng → bắn pháo hoa. */
   readonly fireworks: number;
-  readonly lastOutcome: 'pop' | 'wrong' | 'escape' | null;
+  readonly lastOutcome: 'pop' | 'wrong' | 'escape' | 'bomb' | null;
   readonly lastMidi: number | null;
   /** performance.now() của sự kiện gần nhất. */
   readonly lastEventTime: number;
@@ -215,7 +224,8 @@ export class BalloonPopGame {
       combo: 0,
       bestCombo: 0,
       speed: 1,
-      mistakes: 0,
+      bombs: 0,
+      lastBlast: [],
       fireworks: 0,
       lastOutcome: null,
       lastMidi: null,
@@ -240,12 +250,12 @@ export class BalloonPopGame {
   }
 
   get hunt(): boolean {
-    return this.config.mistakeLimit !== undefined;
+    return this.config.hunt !== undefined;
   }
 
-  /** Quả cần đánh trước nhất (bay cao nhất). */
+  /** Quả cần đánh trước nhất (bay cao nhất, không phải bom). */
   get urgent(): Balloon | null {
-    return this.state.balloons[0] ?? null;
+    return urgentOf(this.state);
   }
 
   subscribe(listener: (s: BalloonState) => void): () => void {
@@ -287,7 +297,7 @@ export class BalloonPopGame {
     this.setState({ status: 'playing' });
   }
 
-  answer(midi: number, now: number): 'pop' | 'wrong' | 'ignored' {
+  answer(midi: number, now: number): 'pop' | 'wrong' | 'bomb' | 'ignored' {
     if (this.state.status !== 'playing') return 'ignored';
     if (now - this.lastPopAt < this.config.minIntervalMs) return 'ignored';
     // Tính tới thời điểm sự kiện (quả có thể vừa bay mất).
@@ -296,17 +306,37 @@ export class BalloonPopGame {
     if (s.status !== 'playing') return 'ignored';
     const base = { lastMidi: midi, lastEventTime: now };
     const hit = s.balloons.find((b) => matches(this.mode, b.note, midi));
-    if (!hit) {
+    if (!hit || hit.bomb) {
       const stats = { ...s.stats };
-      const top = s.balloons[0];
+      const top = urgentOf(s);
       if (top) {
         const st = { ...stats[top.note.midi] };
         st.wrongs++;
         st.confusedWith = { ...st.confusedWith, [midi]: (st.confusedWith[midi] ?? 0) + 1 };
         stats[top.note.midi] = st;
       }
-      this.setState({ ...base, wrongs: s.wrongs + 1, combo: 0, lastOutcome: 'wrong', stats, ...this.mistake() });
-      return 'wrong';
+      const wrong = { ...base, wrongs: s.wrongs + 1, combo: 0, stats, ...this.speedUp() };
+      if (!hit) {
+        this.setState({ ...wrong, lastOutcome: 'wrong' });
+        return 'wrong';
+      }
+      // Bom: nổ hết bóng trên trời.
+      this.lastPopAt = now;
+      const lastBlast = s.balloons.map((b) => ({ balloon: b, progress: this.progressOf(b) }));
+      this.progress.clear();
+      const bombs = s.bombs + 1;
+      this.setState({
+        ...wrong,
+        balloons: [],
+        bombs,
+        score: Math.max(0, s.score - BOMB_PENALTY),
+        lastOutcome: 'bomb',
+        lastBalloon: { balloon: hit, progress: this.progressOf(hit) },
+        lastBlast,
+        status: bombs >= this.config.hunt!.bombLimit ? 'over' : 'playing',
+      });
+      if (this.state.status === 'playing') this.afterRemove();
+      return 'bomb';
     }
     this.lastPopAt = now;
     const progress = this.progressOf(hit);
@@ -355,6 +385,13 @@ export class BalloonPopGame {
 
   private escape(b: Balloon, now: number): void {
     const s = this.state;
+    if (b.bomb) {
+      // Bóng nốt khác bay mất: đúng ý, không tính gì.
+      this.progress.delete(b.id);
+      this.setState({ balloons: s.balloons.filter((x) => x !== b) });
+      this.afterRemove();
+      return;
+    }
     const st = s.stats[b.note.midi];
     const lives = this.hunt ? s.lives : s.lives - 1;
     this.progress.delete(b.id);
@@ -369,18 +406,14 @@ export class BalloonPopGame {
       lastBalloon: { balloon: b, progress: 1 },
       stats: { ...s.stats, [b.note.midi]: { ...st, escapes: st.escapes + 1 } },
       status: lives <= 0 ? 'over' : 'playing',
-      ...this.mistake(),
+      ...this.speedUp(),
     });
     if (this.state.status === 'playing') this.afterRemove();
   }
 
-  /** Kiểu Tìm nốt: một lần sai → nhanh thêm, đủ giới hạn → hết ván. Kiểu thường: không đổi gì. */
-  private mistake(): Partial<BalloonState> {
-    const limit = this.config.mistakeLimit;
-    if (limit === undefined) return {};
-    const s = this.state;
-    const mistakes = s.mistakes + 1;
-    return { mistakes, speed: Math.min(HUNT_MAX_SPEED, round1(s.speed + HUNT_STEP)), ...(mistakes >= limit ? { status: 'over' as const } : {}) };
+  /** Kiểu Tìm nốt: một lần sai → bóng nhanh thêm. Kiểu thường: không đổi gì. */
+  private speedUp(): Partial<BalloonState> {
+    return this.hunt ? { speed: Math.min(HUNT_MAX_SPEED, round1(this.state.speed + HUNT_STEP)) } : {};
   }
 
   /** Sau khi một quả biến mất: hết bóng → thắng; trời trống → thả quả kế sớm. */
@@ -396,19 +429,31 @@ export class BalloonPopGame {
 
   /**
    * Thả quả sắp thả đầu tiên KHÔNG trùng khoá so nốt với quả đang bay (hàng chờ có thể bị vượt lên);
-   * cả hàng chờ đều trùng → chờ tới khi có quả nổ / bay mất.
+   * cả hàng chờ đều trùng → bốc thêm một quả không trùng thả luôn (vd Tìm nốt chỉ một nốt: hàng chờ hay toàn nốt đó);
+   * không bốc được → chờ tới khi có quả nổ / bay mất.
    */
   private spawn(): void {
     const s = this.state;
     const busy = new Set(s.balloons.map((b) => matchKey(this.mode, b.note.midi)));
-    const pick = this.queue.findIndex((u) => !busy.has(matchKey(this.mode, u.note.midi)));
-    if (pick < 0) return;
-    const [{ note, duration }] = this.queue.splice(pick, 1);
-    this.queue.push(this.draw());
+    const free = (u: UpcomingBalloon) => !busy.has(matchKey(this.mode, u.note.midi));
+    const pick = this.queue.findIndex(free);
+    let next: UpcomingBalloon | undefined;
+    if (pick >= 0) {
+      next = this.queue.splice(pick, 1)[0];
+      this.queue.push(this.draw());
+    } else {
+      for (let k = 0; k < 12 && !next; k++) {
+        const u = this.draw();
+        if (free(u)) next = u;
+      }
+    }
+    if (!next) return;
+    const { note, duration } = next;
     const index = s.spawned;
     const rush = !this.hunt && isRush(index);
     const factor = this.hunt ? 1 : rampFactor(index) * (rush ? RUSH_SPEED : 1);
-    const balloon: Balloon = { id: this.nextId++, note, duration, spawnedAt: this.clock, riseMs: Math.round(this.config.riseMs / factor), rush };
+    const bomb = this.hunt && !this.config.hunt!.targets.includes(note.midi);
+    const balloon: Balloon = { id: this.nextId++, note, duration, spawnedAt: this.clock, riseMs: Math.round(this.config.riseMs / factor), rush, bomb };
     const st = s.stats[note.midi] ?? emptyStat(note.midi);
     const spawned = index + 1;
     this.nextSpawnAt = this.hunt
@@ -423,11 +468,21 @@ export class BalloonPopGame {
     });
   }
 
-  /** Bốc trước một quả cho hàng chờ: không lặp nốt vừa bốc; trường độ ngẫu nhiên (cho hình nốt). */
+  /**
+   * Bốc trước một quả cho hàng chờ: không lặp nốt vừa bốc; trường độ ngẫu nhiên (cho hình nốt).
+   * Tìm nốt: nốt cần tìm chiếm `TARGET_SHARE`, còn lại là bom.
+   */
   private draw(): UpcomingBalloon {
     const last = this.lastDrawn;
-    const others = this.pool.filter((n) => n.midi !== last);
-    const options = others.length > 0 ? others : this.pool;
+    let pool = this.pool;
+    const hunt = this.config.hunt;
+    if (hunt) {
+      const targets = pool.filter((n) => hunt.targets.includes(n.midi));
+      const bombs = pool.filter((n) => !hunt.targets.includes(n.midi));
+      if (targets.length > 0 && bombs.length > 0) pool = this.random() < TARGET_SHARE ? targets : bombs;
+    }
+    const others = pool.filter((n) => n.midi !== last);
+    const options = others.length > 0 ? others : pool;
     const note = options[Math.floor(this.random() * options.length)];
     this.lastDrawn = note.midi;
     return { note, duration: BALLOON_DURATIONS[Math.floor(this.random() * BALLOON_DURATIONS.length)] };
@@ -435,6 +490,11 @@ export class BalloonPopGame {
 }
 
 const round1 = (x: number) => Math.round(x * 10) / 10;
+
+/** Quả cần đánh trước nhất: bay cao nhất trong số không phải bom. */
+export function urgentOf(s: Pick<BalloonState, 'balloons'>): Balloon | null {
+  return s.balloons.find((b) => !b.bomb) ?? null;
+}
 
 function emptyStat(midi: number): NoteStat {
   return { midi, shown: 0, hits: 0, escapes: 0, wrongs: 0, confusedWith: {} };

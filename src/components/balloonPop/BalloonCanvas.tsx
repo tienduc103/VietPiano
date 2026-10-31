@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { Balloon, BalloonPopGame, BalloonState } from '../../core/balloonPop/BalloonPopGame';
+import { BOMB_PENALTY, urgentOf, type Balloon, type BalloonPopGame, type BalloonState } from '../../core/balloonPop/BalloonPopGame';
 import { LETTERS, noteName, type Letter } from '../../core/balloonPop/notes';
 import type { BalloonDisplay } from '../../core/balloonPop/storage';
 import type { Duration } from '../../core/lessons/types';
@@ -113,6 +113,19 @@ export function BalloonCanvas({ game, view }: { game: BalloonPopGame; view: Ball
         } else if (s.lastOutcome === 'escape' && last) {
           const { x } = position(last.balloon.note.midi, 1, size, v);
           particles.push({ x, y: 40, vx: 0, vy: 40, born: t, life: 1000, text: '−1 ❤️', color: '#e11d48', size: 24 });
+        } else if (s.lastOutcome === 'bomb' && last) {
+          // Bom: chớp sáng + mảnh vỡ ở mọi quả bị nổ theo.
+          const { x, y } = position(last.balloon.note.midi, last.progress, size, v);
+          particles.push({ x, y: Math.min(Math.max(y, 70), size.h - 70), vx: 0, vy: 0, born: t, life: 700, text: '💥', color: '#f97316', size: 120 });
+          particles.push({ x: size.w / 2, y: size.h * 0.4, vx: 0, vy: -30, born: t, life: 1400, text: `💣 BÙM! −${BOMB_PENALTY} điểm`, color: '#dc2626', size: 34 });
+          for (const { balloon: b, progress } of s.lastBlast) {
+            const p = position(b.note.midi, progress, size, v);
+            const color = LETTER_COLORS[b.note.letter];
+            for (let i = 0; i < 8; i++) {
+              const a = (i / 8) * Math.PI * 2;
+              particles.push({ x: p.x, y: p.y, vx: Math.cos(a) * 260, vy: Math.sin(a) * 260, born: t, life: 650, text: '●', color, size: 14, gravity: 300 });
+            }
+          }
         } else if (s.lastOutcome === 'wrong') {
           particles.push({ x: size.w / 2, y: size.h * 0.5, vx: 0, vy: -40, born: t, life: 600, text: '✕', color: '#e11d48', size: 40 });
         }
@@ -148,7 +161,7 @@ export function BalloonCanvas({ game, view }: { game: BalloonPopGame; view: Ball
               if (el) cards.current.set(b.id, el);
               else cards.current.delete(b.id);
             }}
-            className="pointer-events-none absolute top-0 left-0 rounded-xl bg-white/95 text-slate-900 shadow [&>svg]:h-full [&>svg]:w-full"
+            className="pointer-events-none absolute top-0 left-0 text-slate-950 [&>svg]:h-full [&>svg]:w-full"
             style={{ visibility: 'hidden' }}
             data-testid="balloon-staff-card"
             data-midi={b.note.midi}
@@ -231,10 +244,11 @@ function draw(ctx: CanvasRenderingContext2D, game: BalloonPopGame, size: { w: nu
   }
 
   const state = game.getState();
-  state.balloons.forEach((b, i) => {
+  const urgent = urgentOf(state);
+  state.balloons.forEach((b) => {
     const { x: sx, y, r } = balloonAt(game, b, size, v, now);
     const x = sx - Math.sin(now / 500 + b.id) * r * 0.12;
-    balloon(ctx, sx, y, r, LETTER_COLORS[b.note.letter], i === 0, now);
+    balloon(ctx, sx, y, r, LETTER_COLORS[b.note.letter], b === urgent, now);
     // Bóng của đợt nhanh: vệt gió phía dưới + tia sét
     if (b.rush) {
       ctx.strokeStyle = 'rgba(255,255,255,0.8)';

@@ -78,6 +78,12 @@ test('mục Trò chơi → Bóng bay (một màn, ⚙ Cài đặt): sai không n
   await display.click();
   await expect(display).toHaveAttribute('data-display', 'solfege');
 
+  // Ẩn / hiện bàn phím ảo.
+  await page.getByTestId('balloon-hint-keyboard').click();
+  await expect(page.getByTestId('balloon-keyboard')).toBeHidden();
+  await page.getByTestId('balloon-hint-keyboard').click();
+  await expect(page.getByTestId('balloon-keyboard')).toBeVisible();
+
   // Đúng nốt → nổ.
   await key(page, target).click();
   await expect(screen(page)).toHaveAttribute('data-popped', '1');
@@ -148,14 +154,15 @@ test('góc trên phải: bóng sắp bay ra đúng thứ tự; đúng 10 nốt l
   await expect(screen(page)).toHaveAttribute('data-fireworks', '1');
 });
 
-test('Tìm nốt: chỉ bóng nốt đã chọn; đúng → chậm lại, sai → nhanh dần; sai 20 lần → hết ván', async ({ page }) => {
+test('Tìm nốt: chọn nốt cần tìm, nốt khác là bom — trúng bom nổ hết bóng, trừ điểm; nổ 10 bom → hết ván', async ({ page }) => {
+  test.setTimeout(120_000);
   await page.goto('/?screen=balloon-pop');
   await configure(page, async () => {
     await page.getByTestId('balloon-mode-one-hand').click();
     await page.getByRole('button', { name: 'Tay phải' }).click();
-    await page.getByRole('button', { name: 'Dễ', exact: true }).click();
+    await page.getByRole('button', { name: 'Khó', exact: true }).click();
     await page.getByRole('button', { name: '🔎 Tìm nốt', exact: true }).click();
-    // Chỉ giữ Mi.
+    // Chỉ tìm Mi.
     for (const l of ['C', 'D', 'F', 'G', 'A', 'B']) await page.getByTestId(`balloon-hunt-${l}`).click();
     await expect(page.getByTestId('balloon-hunt-E')).toHaveAttribute('aria-pressed', 'true');
     // Không bỏ được nốt cuối cùng.
@@ -164,22 +171,24 @@ test('Tìm nốt: chỉ bóng nốt đã chọn; đúng → chậm lại, sai �
   });
   await expect(page.getByTestId('balloon-hunt-notes')).toContainText('Mi');
   await page.getByTestId('balloon-go').click();
-  expect(await waitBalloon(page)).toBe(64);
-  await expect(page.getByTestId('balloon-mistakes')).toHaveText('✕ 0/20');
+  await expect(page.getByTestId('balloon-hunt-targets')).toContainText('Mi');
+  await expect(page.getByTestId('balloon-bombs')).toHaveText('💣 0/10');
 
-  await key(page, 60).click();
-  await expect(screen(page)).toHaveAttribute('data-mistakes', '1');
-  await expect(screen(page)).toHaveAttribute('data-speed', '1.1');
+  // Bóng cần nổ trước luôn là Mi (bỏ qua bom); đúng → chậm lại.
+  expect(await waitBalloon(page)).toBe(64);
   await key(page, 64).click();
   await expect(screen(page)).toHaveAttribute('data-popped', '1');
-  await expect(screen(page)).toHaveAttribute('data-speed', '1');
-  // Sự kiện sát lần nổ (< minIntervalMs) bị bỏ — chờ qua.
-  await page.waitForTimeout(300);
+  await expect(screen(page)).toHaveAttribute('data-speed', '0.9');
 
-  for (let i = 2; i <= 20; i++) {
-    await key(page, 60).click();
-    await expect(screen(page)).toHaveAttribute('data-mistakes', String(i));
+  for (let i = 1; i <= 10; i++) {
+    await expect(screen(page)).not.toHaveAttribute('data-bomb-midi', '', { timeout: 15_000 });
+    const bomb = Number(await screen(page).getAttribute('data-bomb-midi'));
+    // Sự kiện sát lần nổ trước (< minIntervalMs) bị bỏ — chờ qua.
+    await page.waitForTimeout(150);
+    await key(page, bomb).click();
+    await expect(screen(page)).toHaveAttribute('data-bombs', String(i));
+    if (i < 10) await expect(screen(page)).toHaveAttribute('data-balloons', '0');
   }
   await expect(screen(page)).toHaveAttribute('data-status', 'over');
-  await expect(page.getByTestId('balloon-result')).toContainText('tìm được 1 nốt');
+  await expect(page.getByTestId('balloon-result')).toContainText('Nổ 10 bom');
 });

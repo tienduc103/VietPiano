@@ -93,9 +93,10 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              mạng, số bóng 40/60/80) × tốc độ Vừa/Nhanh; cứ 20 quả nhanh thêm 10% (`rampFactor`, tối đa ×1.5), đầu mỗi mốc
                              một đợt 5 quả nhanh + dày hơn (`rush`, thêm 1 quả cùng lúc). Nốt bốc trước vào hàng chờ (`upcoming`, xem trước 3 quả
                              ở góc trên phải; thả quả đầu hàng không trùng `matchKey` quả đang bay); đúng liên tục mỗi 10 nốt → `fireworks` (pháo hoa).
-                             Kiểu chơi Thường / Tìm nốt (`game`): Tìm nốt = bảng chọn nốt (`huntLetters` → `huntPool`), `huntConfig`
-                             (không giới hạn bóng, không mạng, không tăng tốc theo mốc); tốc độ `speed` áp ngay cho mọi quả đang bay
-                             (tiến độ cộng dồn mỗi khung): đúng −0.1, sai / bay mất +0.1 (0.5–3), sai 20 lần (`mistakeLimit`) → hết ván. Canvas `components/balloonPop/BalloonCanvas`. Một màn duy nhất: chơi +
+                             Kiểu chơi Thường / Tìm nốt (`game`): Tìm nốt tính điểm = bảng chọn nốt cần tìm (`huntLetters` → `huntTargets`),
+                             `huntConfig` (không giới hạn bóng, không mạng, không tăng tốc theo mốc); nốt khác của chế độ là bom (`bomb`, ~1/3):
+                             trúng bom → nổ hết bóng, −10 điểm, nổ 10 bom → hết ván; `urgentOf` = quả cao nhất không phải bom. Tốc độ `speed`
+                             áp ngay cho mọi quả đang bay (tiến độ cộng dồn mỗi khung): đúng −0.1, sai / bom / bóng cần tìm bay mất +0.1 (0.5–3). Canvas `components/balloonPop/BalloonCanvas`. Một màn duy nhất: chơi +
                              bảng ⚙ Cài đặt mở trên màn chơi (mở giữa ván → tạm dừng; đổi chế độ/độ khó/tốc độ → ván mới).
                              Nốt trên bóng (`display`, một nút xoay vòng): Đô Rê Mi / CDEFGAB / Hình nốt (thẻ khuông HTML bám theo bóng —
                              font Bravura không vẽ được lên canvas; `useNoteCards`: chỉ khuông ngắn + nốt, KHÔNG vẽ khoá, khoá Sol/Fa/Đô

@@ -6,7 +6,8 @@ import {
   BalloonPopGame,
   balloonStars,
   DIFFICULTY_CONFIG,
-  HUNT_MISTAKES,
+  BOMB_PENALTY,
+  HUNT_BOMBS,
   huntConfig,
   huntStars,
   isRush,
@@ -15,6 +16,8 @@ import {
   RUSH_SPEED,
   summarize,
   UPCOMING,
+  urgentOf,
+  type Balloon,
   type BalloonConfig,
 } from './BalloonPopGame';
 import { keyboardRange, letterOf, matches, noteName, notePool, type BalloonMode } from './notes';
@@ -229,60 +232,106 @@ describe('BalloonPopGame', () => {
 });
 
 describe('Tìm nốt', () => {
-  const hunt = (letters: string[], seed = 1) => {
-    const pool = notePool('one-hand').filter((n) => letters.includes(n.letter));
-    const g = new BalloonPopGame('one-hand', pool, { ...huntConfig('easy', 'medium'), firstSpawnMs: 0 }, seeded(seed));
+  /** 1 tay phải (Đô–Sol), nốt cần tìm theo tên; nốt còn lại là bom. */
+  const hunt = (letters: string[], config: Partial<BalloonConfig> = {}, seed = 1) => {
+    const pool = notePool('one-hand');
+    const targets = pool.filter((n) => letters.includes(n.letter)).map((n) => n.midi);
+    const g = new BalloonPopGame('one-hand', pool, { ...huntConfig('easy', 'medium', targets), firstSpawnMs: 0, ...config }, seeded(seed));
     g.start(0);
     return g;
   };
-
-  it('chỉ thả nốt đã chọn (kể cả chỉ một nốt), không giới hạn số bóng', () => {
-    const g = hunt(['E']);
-    let t = 0;
-    for (let i = 0; i < 30; i++) {
-      t = run(g, t, t + 1000);
-      expect(g.urgent!.note.letter).toBe('E');
-      expect(g.answer(g.urgent!.note.midi, t)).toBe('pop');
+  /** Chạy tới khi có quả thoả điều kiện bay trên trời. */
+  const waitFor = (g: BalloonPopGame, t: number, ok: (b: Balloon) => boolean): [number, Balloon] => {
+    for (let i = 0; i < 500; i++) {
+      const b = g.getState().balloons.find(ok);
+      if (b) return [t, b];
+      t = run(g, t, t + 100);
     }
-    expect(g.getState().status).toBe('playing');
-    expect(g.getState().upcoming.every((u) => u.note.letter === 'E')).toBe(true);
+    throw new Error('không thấy quả cần chờ');
+  };
+
+  it('thả cả nốt cần tìm lẫn bom (khoảng 2/3 là nốt cần tìm); quả cần đánh trước bỏ qua bom', () => {
+    const g = hunt(['E'], { maxActive: 3, spawnIntervalMs: 300 });
+    const seen: Balloon[] = [];
+    let t = 0;
+    let most = 0;
+    for (let i = 0; i < 300; i++) {
+      t = run(g, t, t + 400);
+      most = Math.max(most, g.getState().balloons.length);
+      for (const b of g.getState().balloons) if (!seen.includes(b)) seen.push(b);
+      const u = g.urgent;
+      if (u) {
+        expect(u.bomb).toBe(false);
+        expect(urgentOf(g.getState())).toBe(u);
+        g.answer(u.note.midi, t);
+      }
+    }
+    expect(seen.every((b) => b.bomb === (b.note.letter !== 'E'))).toBe(true);
+    const share = seen.filter((b) => !b.bomb).length / seen.length;
+    expect(share).toBeGreaterThan(0.5);
+    expect(share).toBeLessThan(0.8);
+    // Chỉ một nốt cần tìm: hàng chờ toàn Mi lúc Mi đang bay vẫn thả được bom → nhiều quả cùng bay.
+    expect(most).toBe(3);
   });
 
-  it('đúng → mọi quả chậm lại (tối thiểu 0.5); sai → nhanh dần, áp ngay cho quả đang bay', () => {
+  it('đánh trúng bom → nổ hết bóng, trừ 10 điểm (không dưới 0), nhanh thêm; nổ 10 bom → hết ván', () => {
+    const g = hunt(['C', 'E'], { maxActive: 3, spawnIntervalMs: 300 });
+    let [t, target] = waitFor(g, 0, (b) => !b.bomb);
+    expect(g.answer(target.note.midi, t)).toBe('pop');
+    const score = g.getState().score;
+    expect(score).toBeGreaterThan(BOMB_PENALTY);
+    expect(g.getState().speed).toBe(0.9);
+    t += 200;
+    let bomb: Balloon;
+    [t, bomb] = waitFor(g, t, (b) => b.bomb);
+    const flying = g.getState().balloons.length;
+    expect(g.answer(bomb.note.midi, t)).toBe('bomb');
+    let s = g.getState();
+    expect(s).toMatchObject({ bombs: 1, balloons: [], score: score - BOMB_PENALTY, combo: 0, speed: 1, lastOutcome: 'bomb' });
+    expect(s.lastBlast).toHaveLength(flying);
+    expect(s.popped).toBe(1);
+    for (let i = 2; i <= HUNT_BOMBS; i++) {
+      [t, bomb] = waitFor(g, t + 200, (b) => b.bomb);
+      expect(g.answer(bomb.note.midi, t)).toBe('bomb');
+      expect(g.getState().score).toBe(0);
+    }
+    s = g.getState();
+    expect(s).toMatchObject({ status: 'over', bombs: HUNT_BOMBS });
+  });
+
+  it('đúng → mọi quả chậm lại (tối thiểu 0.5); sai / bóng cần tìm bay mất → nhanh dần; bom bay mất không sao', () => {
     const g = hunt(['C', 'G']);
-    let t = run(g, 0, 500);
-    const b = g.urgent!;
-    const wrong = b.note.letter === 'C' ? 64 : 62;
+    let [t, b] = waitFor(g, 0, (x) => !x.bomb);
+    const wrong = 61; // phím đen: không khớp quả nào
     expect(g.answer(wrong, t)).toBe('wrong');
     expect(g.getState().speed).toBe(1.1);
-    expect(g.getState().mistakes).toBe(1);
     // Quả đang bay đi nhanh hơn 1.1 lần.
     const p0 = g.progressOf(b);
     t = run(g, t, t + 1000);
     expect(g.progressOf(b) - p0).toBeCloseTo((1000 / b.riseMs) * 1.1, 2);
     expect(g.answer(b.note.midi, t)).toBe('pop');
     expect(g.getState().speed).toBe(1);
-    for (let i = 0; i < 8; i++) {
-      t = run(g, t, t + 1000);
-      g.answer(g.urgent!.note.midi, t);
+    // Để quả cần tìm bay mất → nhanh thêm, không mất mạng, chưa hết ván.
+    [t, b] = waitFor(g, t + 200, (x) => !x.bomb);
+    const escapedBefore = g.getState().escaped;
+    while (g.getState().balloons.includes(b)) t = run(g, t, t + 500);
+    expect(g.getState().escaped).toBe(escapedBefore + 1);
+    expect(g.getState()).toMatchObject({ status: 'playing', lives: Infinity });
+    expect(g.getState().speed).toBeGreaterThanOrEqual(1.1);
+    // Bom bay mất: không đổi tốc độ, không tính bay mất.
+    const g2 = hunt(['C'], {}, 3);
+    let [t2, bomb2] = waitFor(g2, 0, (x) => x.bomb);
+    const s2 = { speed: g2.getState().speed, escaped: g2.getState().escaped };
+    while (g2.getState().balloons.includes(bomb2)) t2 = run(g2, t2, t2 + 500);
+    expect(g2.getState()).toMatchObject({ ...s2, status: 'playing' });
+    // Đúng liên tục → chậm dần tới 0.5.
+    const g3 = hunt(['C', 'D', 'E', 'F', 'G']);
+    let t3 = 0;
+    for (let i = 0; i < 12; i++) {
+      t3 = run(g3, t3, t3 + 1000);
+      g3.answer(g3.urgent!.note.midi, t3);
     }
-    expect(g.getState().speed).toBe(0.5);
-  });
-
-  it('sai đủ 20 lần (bóng bay mất cũng tính) → hết ván; không mất mạng', () => {
-    const g = hunt(['C', 'D']);
-    let t = run(g, 0, 500);
-    for (let i = 0; i < HUNT_MISTAKES - 1; i++) {
-      const wrong = g.urgent!.note.letter === 'C' ? 64 : 60;
-      expect(g.answer(wrong, t + 5)).toBe('wrong');
-      t += 10;
-    }
-    expect(g.getState().status).toBe('playing');
-    expect(g.getState().speed).toBe(2.9);
-    // Để quả bay mất → lần sai thứ 20.
-    run(g, t, t + 20_000);
-    expect(g.getState()).toMatchObject({ status: 'over', mistakes: HUNT_MISTAKES, escaped: 1, speed: 3 });
-    expect(g.getState().lives).toBe(Infinity);
+    expect(g3.getState().speed).toBe(0.5);
     expect([0, 9, 10, 25, 50].map(huntStars)).toEqual([0, 0, 1, 2, 3]);
   });
 });

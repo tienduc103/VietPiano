@@ -8,8 +8,10 @@ import {
   BalloonPopGame,
   DIFFICULTY_CONFIG,
   DIFFICULTY_LABEL,
-  HUNT_MISTAKES,
+  BOMB_PENALTY,
+  HUNT_BOMBS,
   huntConfig,
+  urgentOf,
   RAMP_EVERY,
   rampFactor,
   RUSH_SIZE,
@@ -28,7 +30,7 @@ import {
   GAME_TYPE_LABEL,
   BALLOON_GAME_TYPES,
   handFor,
-  huntPool,
+  huntTargets,
   loadBalloonRecords,
   loadBalloonSettings,
   nextDisplay,
@@ -193,7 +195,7 @@ function UpcomingPanel({ state, settings, withOctave, staffSvgs }: { state: Ball
                 style={{ background: `radial-gradient(circle at 35% 30%, #fff 0, ${LETTER_COLORS[u.note.letter]} 35%)` }}
               >
                 {svg ? (
-                  <span className="h-10 w-7 rounded-md bg-white/95 text-slate-900 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+                  <span className="h-10 w-7 text-slate-950 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: svg }} />
                 ) : (
                   <span>{hidden || display === 'staff' ? '?' : noteName(u.note.midi, display === 'letter' ? 'letter' : 'solfege', withOctave)}</span>
                 )}
@@ -219,7 +221,8 @@ function HuntPicker({ settings, update }: { settings: BalloonSettings; update: U
   return (
     <div className="grid gap-2 rounded-2xl bg-violet-50 p-3 dark:bg-slate-700/60" data-testid="balloon-hunt-picker">
       <p className="text-sm">
-        Chọn nốt cần tìm. Đánh <b>đúng</b> → bóng bay <b>chậm lại</b>; đánh <b>sai</b> hoặc để bóng bay mất → bóng <b>nhanh dần</b>. Sai {HUNT_MISTAKES} lần là hết ván.
+        Chọn nốt cần tìm — bóng nốt khác là <b>💣 bom</b>: đánh trúng thì nổ hết bóng, trừ {BOMB_PENALTY} điểm; nổ {HUNT_BOMBS} bom là hết ván. Đánh{' '}
+        <b>đúng</b> → bóng bay <b>chậm lại</b>; đánh <b>sai</b> / nổ bom / để bóng cần tìm bay mất → bóng <b>nhanh dần</b>.
       </p>
       <div className="flex flex-wrap gap-2" role="group" aria-label="Nốt cần tìm">
         {LETTERS.map((l) => {
@@ -280,6 +283,9 @@ function HintControls({ settings, update, compact = false }: { settings: Balloon
       >
         {DISPLAY_LABEL[settings.display]} ⇄
       </button>
+      <Toggle on={settings.showKeyboard} onClick={() => update({ showKeyboard: !settings.showKeyboard })} testId="balloon-hint-keyboard">
+        Bàn phím
+      </Toggle>
       <Toggle on={settings.showTargetKey} onClick={() => update({ showTargetKey: !settings.showTargetKey })} testId="balloon-hint-target">
         Phím cần đánh
       </Toggle>
@@ -351,18 +357,18 @@ function BalloonPlay({
   const [run, setRun] = useState(0);
   const hunt = settings.game === 'hunt';
   const huntKey = settings.huntLetters.join('');
-  const pool = useMemo(
-    () => (hunt ? huntPool(notePool(mode, hand), settings.huntLetters) : notePool(mode, hand)),
-    // `huntKey` đại diện cho `settings.huntLetters`.
-    [mode, hand, hunt, huntKey],
-  );
+  const pool = useMemo(() => notePool(mode, hand), [mode, hand]);
+  // Tìm nốt: nốt cần tìm (còn lại là bom). `huntKey` đại diện cho `settings.huntLetters`.
+  const targets = useMemo(() => huntTargets(pool, settings.huntLetters), [pool, huntKey]);
+  const targetNames = [...new Set(pool.filter((n) => targets.includes(n.midi)).map((n) => n.letter))].map((l) => noteName(pool.find((n) => n.letter === l)!.midi, settings.labelStyle, false));
   const game = useMemo(
-    () => new BalloonPopGame(mode, pool, hunt ? huntConfig(difficulty, speed) : balloonConfig(difficulty, speed)),
+    () => new BalloonPopGame(mode, pool, hunt ? huntConfig(difficulty, speed, targets) : balloonConfig(difficulty, speed)),
     // Ván mới mỗi lần "Chơi lại" / đổi chế độ.
-    [mode, pool, hunt, difficulty, speed, run],
+    [mode, pool, hunt, targets, difficulty, speed, run],
   );
   const state = useGameState(game);
-  const urgent = state.balloons[0] ?? null;
+  // Quả cần đánh trước (bỏ qua bom).
+  const urgent = urgentOf(state);
 
   // Hình nốt: vẽ sẵn mỗi nốt × trường độ một thẻ khuông (tay trái khoá Fa, tay phải khoá Sol) — chỉ khi đang dùng chế độ này.
   const cards = useMemo(
@@ -407,6 +413,10 @@ function BalloonPlay({
       soundOutput.scheduleNote(103, 0.06, 0.08, 50);
     }
     if (state.escaped > p.escaped) soundOutput.scheduleNote(43, 0, 0.3, 90);
+    if (state.bombs > p.bombs) {
+      soundOutput.scheduleNote(31, 0, 0.5, 110);
+      soundOutput.scheduleNote(36, 0.04, 0.4, 100);
+    }
   }, [state, display]);
 
   // App vào nền / chuyển tab → tạm dừng.
@@ -431,7 +441,7 @@ function BalloonPlay({
     // Chỉ chạy khi ván vừa kết thúc.
   }, [state.status, game]);
 
-  const flash = useKeyFlash(state.lastEventTime, state.lastMidi, state.lastOutcome === 'pop' ? 'hit' : state.lastOutcome === 'wrong' ? 'wrong' : null);
+  const flash = useKeyFlash(state.lastEventTime, state.lastMidi, state.lastOutcome === 'pop' ? 'hit' : state.lastOutcome === 'wrong' || state.lastOutcome === 'bomb' ? 'wrong' : null);
   const highlighted = useMemo(() => (settings.showTargetKey ? new Set(state.balloons.slice(1).map((b) => b.note.midi)) : undefined), [state.balloons, settings.showTargetKey]);
   const labelFor = (m: number) => {
     const l = letterOf(m);
@@ -468,7 +478,8 @@ function BalloonPlay({
       data-popped={state.popped}
       data-lives={state.lives}
       data-fireworks={state.fireworks}
-      data-mistakes={state.mistakes}
+      data-bombs={state.bombs}
+      data-bomb-midi={state.balloons.find((b) => b.bomb)?.note.midi ?? ''}
       data-speed={state.speed}
     >
       <header className="flex flex-wrap items-center gap-2 pl-10">
@@ -492,11 +503,11 @@ function BalloonPlay({
           </span>
           {hunt ? (
             <span
-              aria-label={`Sai ${state.mistakes} trên ${HUNT_MISTAKES} lần`}
-              data-testid="balloon-mistakes"
-              className={state.mistakes >= HUNT_MISTAKES - 5 ? 'text-rose-600 dark:text-rose-400' : ''}
+              aria-label={`Đã nổ ${state.bombs} trên ${HUNT_BOMBS} bom`}
+              data-testid="balloon-bombs"
+              className={state.bombs >= HUNT_BOMBS - 3 ? 'text-rose-600 dark:text-rose-400' : ''}
             >
-              ✕ {state.mistakes}/{HUNT_MISTAKES}
+              💣 {state.bombs}/{HUNT_BOMBS}
             </span>
           ) : (
             <span aria-label={`${state.lives} mạng`} data-testid="balloon-lives">
@@ -541,6 +552,12 @@ function BalloonPlay({
               </span>
             )}
           </div>
+          {hunt && (
+            <div className="grid rounded-2xl bg-amber-50 px-3 py-1 dark:bg-amber-950/40" data-testid="balloon-hunt-targets">
+              <span className="text-xs text-slate-500 dark:text-slate-400">🔎 Chỉ nổ nốt</span>
+              <span className="font-extrabold">{targetNames.join(' · ')}</span>
+            </div>
+          )}
           {display === 'ear' && (
             <Button onClick={() => urgent && soundOutput.playNote(urgent.note.midi, 0.9)} disabled={!urgent} data-testid="balloon-replay" aria-label="Nghe lại nốt của bóng cần nổ trước">
               🔊 Nghe lại
@@ -564,8 +581,7 @@ function BalloonPlay({
             </p>
             {hunt && (
               <p className="text-sm font-semibold" data-testid="balloon-hunt-notes">
-                🔎 Tìm nốt: {[...new Set(pool.map((n) => n.letter))].map((l) => noteName(pool.find((n) => n.letter === l)!.midi, settings.labelStyle, false)).join(' · ')} — đúng thì
-                bóng chậm lại, sai thì nhanh dần, sai {HUNT_MISTAKES} lần là hết.
+                🔎 Tìm nốt: {targetNames.join(' · ')} — bóng nốt khác là 💣 bom (nổ hết bóng, −{BOMB_PENALTY} điểm), nổ {HUNT_BOMBS} bom là hết ván.
               </p>
             )}
             <p className="text-sm opacity-80">
@@ -604,7 +620,8 @@ function BalloonPlay({
         )}
       </div>
 
-      <div className={`shrink-0 ${mode === 'full' ? 'h-32 sm:h-36' : 'h-28 sm:h-32'}`} data-testid="balloon-keyboard">
+      {/* Ẩn bàn phím: bóng vẫn bay theo vị trí phím (cùng cách chia), khu chơi giãn xuống chỗ bàn phím. */}
+      <div className={`shrink-0 ${mode === 'full' ? 'h-32 sm:h-36' : 'h-28 sm:h-32'}`} data-testid="balloon-keyboard" hidden={!settings.showKeyboard}>
         <PianoKeyboard
           from={keyboard.from}
           to={keyboard.to}
@@ -660,7 +677,7 @@ function ResultPanel({
         <Stars stars={s.stars} className="text-5xl" />
         <h2 className="text-2xl font-extrabold">
           {hunt
-            ? `Hết ${HUNT_MISTAKES} lần sai — tìm được ${s.popped} nốt! ${s.stars > 0 ? '🎉' : '🔎'}`
+            ? `Nổ ${HUNT_BOMBS} bom — tìm được ${s.popped} nốt! ${s.stars > 0 ? '🎉' : '🔎'}`
             : s.won
               ? s.stars === 3
                 ? 'Không sót quả nào! 🏆'
