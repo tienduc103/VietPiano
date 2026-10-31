@@ -74,7 +74,10 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              IDLE/PLAYING/WAITING_FOR_NOTE/PAUSED/COMPLETED, chế độ wait/note/rhythm, chỉ nhận noteOn MỚI (phím giữ từ trước
                              không tính, `earlyGraceMs`, `minRepeatMs`); `AudioScheduler` lên lịch trước ngắn, không vượt `stopBeat()`,
                              tạm dừng huỷ nốt; nốt mục tiêu không tự phát. Micro: `useNoteInput({ playbackGuard: false })` + `isLikelyEcho`
-                             (bỏ nốt trùng/hoạ âm nốt app đang phát; tuỳ chọn tai nghe). Kết quả: localStorage theo hồ sơ (`storage.ts`)
+                             (bỏ nốt trùng/hoạ âm nốt app đang phát; tuỳ chọn tai nghe). Kết quả: localStorage theo hồ sơ (`storage.ts`).
+                             Một màn duy nhất: vào thẳng màn chơi (lớp phủ "Sẵn sàng" + Bắt đầu), bảng ⚙ Cài đặt mở trên màn chơi
+                             (bài, nốt mục tiêu, cách chơi, nguồn nốt, lần chơi gần đây; mở giữa ván → tạm dừng, bỏ nốt; đổi bài / nốt /
+                             cách chơi → ván mới, đổi tốc độ → `setTempo` giữ vị trí)
   flappyNote/              "Flappy Note" (`screens/FlappyNoteScreen`, route `flappy-note`, `?screen=flappy-note`): chim rơi theo trọng lực,
                              mỗi nốt ĐÚNG = một lần vỗ cánh + sang nốt kế (tối đa 1 nốt/sự kiện; `minIntervalMs` chỉ tính sau lần chuyển nốt),
                              sai → không nâng. `FlappyNoteGame` máy trạng thái + vật lý bước cố định (ready/playing/paused/won/over,
@@ -204,6 +207,10 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
 - VexFlow dùng entry `vexflow/bravura` (font nhúng → offline). Màu khuông nhạc qua `currentColor` + CSS
   (`.score-note.is-current` …) — không vẽ lại khi chuyển nốt.
 - UI tiếng Việt, nút ≥ 48px cho cảm ứng, tối ưu iPad ngang, hỗ trợ dark mode (`.dark` trên `<html>`).
+- Trò chơi: cài đặt của game LUÔN nằm trong màn chơi — vào thẳng màn chơi, nút ⚙ Cài đặt mở bảng đè lên màn chơi
+  (không có màn cài đặt / màn chọn riêng trước khi chơi). Mở giữa ván → tạm dừng và bỏ qua nốt vào; đổi thứ làm thay đổi
+  ván (bài, nốt mục tiêu, chế độ, độ khó…) → ván mới; lớp phủ "Sẵn sàng" / tổng kết có nút mở bảng cài đặt.
+  Mẫu: Flappy Note, Bóng bay nốt nhạc, Săn nốt.
 - Không tuyên bố đã kiểm thử trên iPad thật nếu chưa có bằng chứng; e2e chạy trên Chromium.
 
 ## Quy ước

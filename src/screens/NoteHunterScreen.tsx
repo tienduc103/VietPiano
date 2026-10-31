@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { soundOutput } from '../core/audio/SoundOutput';
 import { keyboardFor } from '../core/games/gameForLesson';
 import type { NoteInputEvent } from '../core/input/NoteInputProvider';
@@ -66,6 +66,8 @@ function noteName(song: HunterSong, midi: number, style: NoteLabelStyle): string
 
 /**
  * Săn nốt (Note Hunter): chọn nốt mục tiêu → bản nhạc tự chạy, dừng ở mỗi nốt mục tiêu chờ người chơi đánh đúng.
+ * Một màn duy nhất: vào thẳng màn chơi, bảng ⚙ Cài đặt (bài, nốt mục tiêu, cách chơi, nguồn nốt, lần chơi gần đây)
+ * mở trên màn chơi — mở giữa ván → tạm dừng; đổi bài / nốt / cách chơi → ván mới; đổi tốc độ → giữ vị trí.
  * Cột trái: danh sách mục tiêu + nốt hiện tại thật lớn; cột phải: khuông nhạc đang chạy; dưới: bàn phím ảo.
  */
 export function NoteHunterScreen() {
@@ -81,52 +83,64 @@ export function NoteHunterScreen() {
     });
   const songs = useMemo(() => hunterSongs(), []);
   const song = findSong(settings.songId) ?? songs[0];
-  const [game, setGame] = useState<NoteHunterGame | null>(null);
-  const [gameKey, setGameKey] = useState(0);
   const [runs, setRuns] = useState<HunterRun[]>(() => loadRuns(profileId));
   useEffect(() => setRuns(loadRuns(profileId)), [profileId]);
+  const [panelOpen, setPanelOpen] = useState(false);
+  // Tăng → ván mới cùng cài đặt; `autoStart` → ván mới chạy ngay (nút "Luyện nốt hay sai").
+  const [run, setRun] = useState(0);
+  const autoStart = useRef(false);
 
-  const start = (targets = settings.targets) => {
-    const s = findSong(settings.songId) ?? songs[0];
-    const g = new NoteHunterGame(s, targets, { mode: settings.mode, bpm: settings.bpm });
-    if (!g.hasTargets()) return;
+  const gameKey = `${song.songId}|${settings.targets.join(',')}|${settings.mode}|${run}`;
+  const game = useMemo(
+    () => new NoteHunterGame(song, settings.targets, { mode: settings.mode, bpm: settings.bpm }),
+    // Ván mới khi đổi bài / nốt mục tiêu / cách chơi (`gameKey` gói các giá trị đó); tốc độ đổi tại chỗ (effect dưới).
+    [gameKey],
+  );
+  useEffect(() => {
+    if (game.config.bpm !== settings.bpm) game.setTempo(settings.bpm, performance.now());
+  }, [game, settings.bpm]);
+  useEffect(() => {
+    if (!autoStart.current || !game.hasTargets()) return;
+    autoStart.current = false;
     soundOutput.unlock();
-    g.start(performance.now());
-    setGame(g);
-    setGameKey((k) => k + 1);
-  };
+    game.start(performance.now());
+  }, [game]);
 
-  if (!game) {
-    return <HunterSetup settings={settings} song={song} songs={songs} runs={runs} labelStyle={labelStyle} onChange={setSettings} onStart={() => start()} onBack={back} />;
-  }
   return (
     <HunterPlay
       key={gameKey}
       game={game}
       settings={settings}
       labelStyle={labelStyle}
+      panelOpen={panelOpen}
       onChange={setSettings}
-      onExit={() => setGame(null)}
-      onSaved={(run) => setRuns(saveRun(profileId, run))}
-      onPractice={(targets) => {
-        setSettings({ targets });
-        start(targets);
+      onBack={back}
+      onOpenSettings={() => {
+        game.pause(performance.now());
+        setPanelOpen(true);
       }}
-    />
+      onSaved={(r) => setRuns(saveRun(profileId, r))}
+      onPractice={(targets) => {
+        autoStart.current = true;
+        setSettings({ targets });
+        setRun((n) => n + 1);
+      }}
+    >
+      {panelOpen && <SettingsPanel settings={settings} song={song} songs={songs} runs={runs} labelStyle={labelStyle} onChange={setSettings} onClose={() => setPanelOpen(false)} />}
+    </HunterPlay>
   );
 }
 
-// ── Cài đặt ─────────────────────────────────────────────────────────
+// ── Bảng cài đặt (mở trên màn chơi) ─────────────────────────────────
 
-function HunterSetup({
+function SettingsPanel({
   settings,
   song,
   songs,
   runs,
   labelStyle,
   onChange,
-  onStart,
-  onBack,
+  onClose,
 }: {
   settings: HunterSettings;
   song: HunterSong;
@@ -134,33 +148,38 @@ function HunterSetup({
   runs: HunterRun[];
   labelStyle: NoteLabelStyle;
   onChange: (patch: Partial<HunterSettings>) => void;
-  onStart: () => void;
-  onBack: () => void;
+  onClose: () => void;
 }) {
   const range = TARGET_RANGES.find((r) => r.id === settings.rangeId) ?? TARGET_RANGES[0];
   const inSong = useMemo(() => new Set(songMidis(song)), [song]);
   const selected = new Set(settings.targets);
-  const count = targetIndices(song, settings.targets).length;
   const toggle = (m: number) => onChange({ targets: selected.has(m) ? settings.targets.filter((x) => x !== m) : [...settings.targets, m].sort((a, b) => a - b) });
   const songRuns = runs.filter((r) => r.songId === song.songId).slice(0, 5);
 
   return (
-    <div className="h-full overflow-y-auto" data-testid="hunter-setup">
-      <div className="mx-auto grid max-w-6xl gap-5 px-4 pt-[calc(1.5rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-10 sm:px-6">
-        <header className="flex flex-wrap items-center gap-3 pl-10">
-          <Button variant="ghost" onClick={onBack} aria-label="Quay lại" className="px-2">
-            <Icon name="back" />
-          </Button>
+    <div
+      className="absolute inset-0 z-40 overflow-y-auto bg-slate-900/40 p-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))]"
+      data-testid="hunter-settings-panel"
+      onClick={onClose}
+    >
+      <section
+        className="mx-auto grid max-w-6xl gap-4 rounded-3xl bg-slate-50 p-4 text-slate-900 shadow-xl sm:p-5 dark:bg-slate-900 dark:text-slate-100"
+        onClick={(e) => e.stopPropagation()}
+        aria-label="Cài đặt trò Săn nốt"
+      >
+        <header className="flex flex-wrap items-center gap-3">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold">🎯 Săn nốt</h1>
-            <p className="text-slate-500 dark:text-slate-400">Chọn nốt cần săn — bản nhạc tự chạy và dừng ở mỗi nốt đó chờ bạn đánh đúng.</p>
+            <h2 className="text-2xl font-bold">⚙ Cài đặt Săn nốt</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Chọn nốt cần săn — bản nhạc tự chạy và dừng ở mỗi nốt đó chờ bạn đánh đúng.</p>
           </div>
-          <FullscreenButton />
+          <Button variant="primary" onClick={onClose} data-testid="hunter-settings-done">
+            ✓ Xong
+          </Button>
         </header>
 
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid gap-4 lg:grid-cols-2">
           <Card>
-            <h2 className="mb-3 text-xl font-bold">Bài nhạc</h2>
+            <h3 className="mb-3 text-xl font-bold">Bài nhạc</h3>
             <div className="grid max-h-80 gap-2 overflow-y-auto pr-1" role="listbox" aria-label="Chọn bài nhạc">
               {songs.map((s) => (
                 <button
@@ -185,7 +204,7 @@ function HunterSetup({
           </Card>
 
           <Card>
-            <h2 className="mb-3 text-xl font-bold">Nốt mục tiêu</h2>
+            <h3 className="mb-3 text-xl font-bold">Nốt mục tiêu</h3>
             <div className="mb-3 flex flex-wrap gap-2">
               <Segmented
                 value={range.id}
@@ -229,10 +248,13 @@ function HunterSetup({
               </Button>
             </div>
             <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Chấm xanh = nốt có trong bài. Nhận nốt theo đúng cao độ và quãng 8 (Đô4 ≠ Đô5).</p>
+            <div className="mt-3">
+              <TargetCount song={song} targets={settings.targets} labelStyle={labelStyle} />
+            </div>
           </Card>
 
           <Card>
-            <h2 className="mb-3 text-xl font-bold">Cách chơi</h2>
+            <h3 className="mb-3 text-xl font-bold">Cách chơi</h3>
             <Segmented value={settings.mode} options={(['wait', 'note', 'rhythm'] as const).map((m) => ({ value: m, label: MODE_LABEL[m] }))} onChange={(mode) => onChange({ mode })} />
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-300" data-testid="hunter-mode-help">
               {MODE_HELP[settings.mode]}
@@ -260,34 +282,14 @@ function HunterSetup({
           </Card>
 
           <Card>
-            <h2 className="mb-3 text-xl font-bold">Nguồn nốt</h2>
+            <h3 className="mb-3 text-xl font-bold">Nguồn nốt</h3>
             <InputSettings settings={settings} onChange={onChange} />
           </Card>
         </div>
 
-        <Card className="flex flex-wrap items-center gap-4">
-          <div className="flex-1">
-            {count > 0 ? (
-              <p className="text-lg" data-testid="hunter-target-count">
-                <b>{song.title}</b>: <b>{count}</b> nốt mục tiêu ({settings.targets.filter((m) => inSong.has(m)).map((m) => noteName(song, m, labelStyle)).join(', ')})
-              </p>
-            ) : (
-              <p className="text-lg font-semibold text-rose-600 dark:text-rose-400" data-testid="hunter-no-targets" role="alert">
-                {settings.targets.length === 0
-                  ? 'Chưa chọn nốt mục tiêu nào.'
-                  : `Bài "${song.title}" không có nốt nào trong số đã chọn (${settings.targets.map((m) => noteName(song, m, labelStyle)).join(', ')}).`}{' '}
-                Hãy chọn nốt có chấm xanh, bấm "+ Mọi nốt có trong bài", hoặc đổi bài.
-              </p>
-            )}
-          </div>
-          <Button variant="primary" className="min-w-48 text-lg" disabled={count === 0} onClick={onStart} data-testid="hunter-start">
-            <Icon name="play" /> Bắt đầu
-          </Button>
-        </Card>
-
         {songRuns.length > 0 && (
           <Card>
-            <h2 className="mb-2 text-xl font-bold">Lần chơi gần đây — {song.title}</h2>
+            <h3 className="mb-2 text-xl font-bold">Lần chơi gần đây — {song.title}</h3>
             <ul className="grid gap-1 text-sm" data-testid="hunter-history">
               {songRuns.map((r) => (
                 <li key={r.at} className="flex flex-wrap gap-x-4 tabular-nums">
@@ -304,8 +306,29 @@ function HunterSetup({
             </ul>
           </Card>
         )}
-      </div>
+      </section>
     </div>
+  );
+}
+
+/** Số nốt mục tiêu trong bài, hoặc báo rõ khi bài không có nốt nào trong số đã chọn (không cho bắt đầu). */
+function TargetCount({ song, targets, labelStyle, testPrefix = 'hunter' }: { song: HunterSong; targets: number[]; labelStyle: NoteLabelStyle; testPrefix?: string }) {
+  const inSong = useMemo(() => new Set(songMidis(song)), [song]);
+  const count = targetIndices(song, targets).length;
+  if (count > 0) {
+    return (
+      <p data-testid={`${testPrefix}-target-count`}>
+        <b>{song.title}</b>: <b>{count}</b> nốt mục tiêu ({targets.filter((m) => inSong.has(m)).map((m) => noteName(song, m, labelStyle)).join(', ')})
+      </p>
+    );
+  }
+  return (
+    <p className="font-semibold text-rose-600 dark:text-rose-400" data-testid={`${testPrefix}-no-targets`} role="alert">
+      {targets.length === 0
+        ? 'Chưa chọn nốt mục tiêu nào.'
+        : `Bài "${song.title}" không có nốt nào trong số đã chọn (${targets.map((m) => noteName(song, m, labelStyle)).join(', ')}).`}{' '}
+      Mở ⚙ Cài đặt: chọn nốt có chấm xanh, bấm "+ Mọi nốt có trong bài", hoặc đổi bài.
+    </p>
   );
 }
 
@@ -362,18 +385,26 @@ function HunterPlay({
   game,
   settings,
   labelStyle,
+  panelOpen,
   onChange,
-  onExit,
+  onBack,
+  onOpenSettings,
   onSaved,
   onPractice,
+  children,
 }: {
   game: NoteHunterGame;
   settings: HunterSettings;
   labelStyle: NoteLabelStyle;
+  /** Bảng ⚙ Cài đặt đang mở trên màn chơi → bỏ qua nốt, ẩn lớp phủ. */
+  panelOpen: boolean;
   onChange: (patch: Partial<HunterSettings>) => void;
-  onExit: () => void;
+  onBack: () => void;
+  onOpenSettings: () => void;
   onSaved: (run: HunterRun) => void;
   onPractice: (targets: number[]) => void;
+  /** Bảng cài đặt (vẽ đè lên màn chơi). */
+  children?: ReactNode;
 }) {
   const state = useHunterState(game)!;
   const song = game.song;
@@ -386,6 +417,8 @@ function HunterPlay({
   const [micWrongStreak, setMicWrongStreak] = useState(0);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  const panelOpenRef = useRef(panelOpen);
+  panelOpenRef.current = panelOpen;
 
   // Vòng khung hình: đồng hồ → lịch âm thanh → con trỏ (DOM trực tiếp). Chạy cả khi tạm dừng để huỷ âm thanh.
   useEffect(() => {
@@ -431,6 +464,7 @@ function HunterPlay({
 
   const onNote = useCallback(
     (e: NoteInputEvent) => {
+      if (panelOpenRef.current) return;
       const s = settingsRef.current;
       const verdict = filterHunterEvent(e, { setting: s.input, midiConnected: midiInput.hasDevice(), headphones: s.headphones, played: scheduler.recentPlayback(e.time) });
       if (verdict !== 'accept') return;
@@ -456,7 +490,15 @@ function HunterPlay({
   const summary = useMemo(() => summarize(state.targets), [state.targets]);
   const resolved = state.targets.filter((t) => t.status !== 'pending').length;
   const keyFlash = useFlash(state);
+  const canStart = game.hasTargets();
+  const start = () => {
+    if (!canStart) return;
+    soundOutput.unlock();
+    scheduler.reset();
+    game.start(now());
+  };
   const togglePlay = () => {
+    if (!canStart) return;
     if (status === 'PLAYING' || status === 'WAITING_FOR_NOTE') game.pause(now());
     else if (status === 'PAUSED') {
       soundOutput.unlock();
@@ -468,6 +510,7 @@ function HunterPlay({
     }
   };
   const restart = () => {
+    if (!canStart) return;
     soundOutput.unlock();
     scheduler.reset();
     setMicWrongStreak(0);
@@ -476,18 +519,13 @@ function HunterPlay({
   const playing = status === 'PLAYING' || status === 'WAITING_FOR_NOTE';
 
   return (
-    <div className="flex h-full flex-col gap-2 px-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] sm:px-4" data-testid="hunter-screen" data-status={status}>
+    <div
+      className="relative flex h-full flex-col gap-2 px-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] sm:px-4"
+      data-testid="hunter-screen"
+      data-status={status}
+    >
       <header className="flex flex-wrap items-center gap-2 pl-10">
-        <Button
-          variant="ghost"
-          className="px-2"
-          aria-label="Về cài đặt Săn nốt"
-          onClick={() => {
-            game.reset();
-            scheduler.reset();
-            onExit();
-          }}
-        >
+        <Button variant="ghost" className="px-2" aria-label="Quay lại" onClick={onBack}>
           <Icon name="back" />
         </Button>
         <div className="min-w-0 flex-1 basis-56">
@@ -508,11 +546,14 @@ function HunterPlay({
           </div>
         </div>
         {(settings.input === 'microphone' || (settings.input === 'auto' && !midiConnected)) && <MicButton compact />}
-        <Button variant="primary" onClick={togglePlay} data-testid="hunter-play-toggle" aria-label={playing ? 'Tạm dừng' : 'Phát'} className="min-w-28">
+        <Button onClick={onOpenSettings} data-testid="hunter-open-settings" aria-label="Cài đặt">
+          ⚙ Cài đặt
+        </Button>
+        <Button variant="primary" onClick={togglePlay} disabled={!canStart} data-testid="hunter-play-toggle" aria-label={playing ? 'Tạm dừng' : 'Phát'} className="min-w-28">
           <Icon name={playing ? 'pause' : 'play'} />
           {playing ? 'Dừng' : status === 'PAUSED' ? 'Tiếp tục' : 'Phát'}
         </Button>
-        <Button onClick={restart} data-testid="hunter-restart" aria-label="Chơi lại từ đầu">
+        <Button onClick={restart} disabled={!canStart} data-testid="hunter-restart" aria-label="Chơi lại từ đầu">
           <Icon name="restart" />
         </Button>
         <FullscreenButton />
@@ -532,7 +573,26 @@ function HunterPlay({
         }}
       />
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-2 gap-3 md:grid-cols-2 md:grid-rows-1">
+      <div className="relative grid min-h-0 flex-1 grid-cols-1 grid-rows-2 gap-3 md:grid-cols-2 md:grid-rows-1">
+        {status === 'IDLE' && !panelOpen && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4" data-testid="hunter-ready">
+            <div className="pointer-events-auto grid max-w-xl justify-items-center gap-2 rounded-3xl bg-white/95 px-6 py-4 text-center shadow-lg ring-2 ring-violet-300 dark:bg-slate-900/95">
+              <p className="text-2xl font-extrabold">🎯 Sẵn sàng săn nốt?</p>
+              <p className="text-sm opacity-80">
+                {MODE_LABEL[game.config.mode]} · {state.bpm} BPM — {MODE_HELP[game.config.mode]}
+              </p>
+              <TargetCount song={song} targets={[...game.targetSet]} labelStyle={labelStyle} testPrefix="hunter-ready" />
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button variant="primary" className="min-h-14 min-w-40 text-lg" disabled={!canStart} onClick={start} data-testid="hunter-start">
+                  <Icon name="play" /> Bắt đầu
+                </Button>
+                <Button className="min-h-14" onClick={onOpenSettings} data-testid="hunter-ready-settings">
+                  ⚙ Đổi bài / nốt
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex min-h-0 flex-col gap-3">
           <TargetList game={game} state={state} labelStyle={labelStyle} />
           <CurrentTarget game={game} state={state} current={current} showNames={settings.showNames} labelStyle={labelStyle} />
@@ -570,19 +630,8 @@ function HunterPlay({
         />
       </div>
 
-      {status === 'COMPLETED' && (
-        <Summary
-          game={game}
-          state={state}
-          labelStyle={labelStyle}
-          onRestart={restart}
-          onPractice={onPractice}
-          onSettings={() => {
-            game.reset();
-            onExit();
-          }}
-        />
-      )}
+      {status === 'COMPLETED' && !panelOpen && <Summary game={game} state={state} labelStyle={labelStyle} onRestart={restart} onPractice={onPractice} onSettings={onOpenSettings} />}
+      {children}
     </div>
   );
 }
@@ -848,7 +897,7 @@ function Summary({
                 Luyện nốt hay sai: {weak.map((m) => noteName(song, m, labelStyle)).join(', ')}
               </Button>
             )}
-            <Button variant="ghost" onClick={onSettings} data-testid="hunter-settings">
+            <Button variant="ghost" onClick={onSettings} data-testid="hunter-summary-settings">
               Đổi bài / nốt
             </Button>
           </div>
