@@ -76,7 +76,9 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   flappyNote/              "Flappy Note" (`screens/FlappyNoteScreen`, route `flappy-note`, `?screen=flappy-note`): chim rơi theo trọng lực,
                              mỗi nốt ĐÚNG = một lần vỗ cánh + sang nốt kế (tối đa 1 nốt/sự kiện; `minIntervalMs` chỉ tính sau lần chuyển nốt),
                              sai → không nâng. `FlappyNoteGame` máy trạng thái + vật lý bước cố định (ready/playing/paused/won/over,
-                             va chạm → mất mạng + bất tử), `levels.ts` màn = thế tay 5 ngón (ngón gợi ý) + giai điệu cho chế độ Chuỗi nốt,
+                             va chạm → mất mạng + bất tử). Vật phẩm giữa hai ống (`itemChance` theo độ khó, từ ống 4, cách ≥ 3 ống):
+                             ⚡ tự lái + bất tử ×3 tốc độ qua 5 ống (nốt đúng chỉ ×2 điểm, không nâng), ❤️ +1 mạng (đủ → +50 điểm),
+                             👻 xoá ống tới chỗ chim trong 5 s (`vanishAt`, vẫn đếm đã qua → vẫn về đích). `levels.ts` màn = thế tay 5 ngón (ngón gợi ý) + giai điệu cho chế độ Chuỗi nốt,
                              độ khó Siêu dễ/Dễ/Vừa/Khó chỉ đổi vật lý. Siêu dễ (`durations` khác rỗng): nốt mục tiêu có trường độ
                              (giai điệu: theo bài; ngẫu nhiên: bốc), nốt dài nâng cao hơn (`liftScale`, KHÔNG đo giữ phím), dải nốt
                              sắp đánh `NoteStrip` ở đầu khu trò chơi (thẻ khuông vẽ sẵn theo nốt × trường độ: `useStaffCards`). Canvas `components/flappyNote/FlappyCanvas` đọc `getWorld()` mỗi khung

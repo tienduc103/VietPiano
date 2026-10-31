@@ -30,6 +30,8 @@ test('mục Trò chơi → Flappy Note: chuỗi nốt Ode to Joy, sai không c�
   await expect(staff.locator('.score-note')).toHaveCount(4);
   await expect(staff.locator('.score-note.is-current')).toHaveCount(1);
   await expect(page.getByTestId('flappy-ready')).toBeVisible();
+  await expect(page.getByTestId('flappy-powerup-hint')).toContainText('⚡');
+  await expect(page.getByTestId('flappy-screen')).toHaveAttribute('data-powerups', '0');
 
   // Sai: vẫn chờ ở mặt đất.
   await key(page, 62).click();

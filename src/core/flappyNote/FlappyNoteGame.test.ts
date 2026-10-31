@@ -1,7 +1,30 @@
 import { describe, expect, it } from 'vitest';
 import { seeded } from '../games/random';
 import { DURATION_BEATS } from '../lessons/types';
-import { BIRD_X, DIFFICULTY_CONFIG, FlappyNoteGame, flappyStars, GROUND_Y, liftScale, LIFE_BONUS, PIPE_POINTS, PIPE_WIDTH, summarize, UPCOMING, WORLD_HEIGHT, type FlappyConfig } from './FlappyNoteGame';
+import {
+  BIRD_X,
+  BOOST_PIPES,
+  BOOST_SPEED,
+  COMBO_POINTS,
+  DIFFICULTY_CONFIG,
+  FlappyNoteGame,
+  flappyStars,
+  GHOST_MS,
+  GROUND_Y,
+  HEART_BONUS,
+  liftScale,
+  LIFE_BONUS,
+  NOTE_POINTS,
+  PIPE_POINTS,
+  PIPE_WIDTH,
+  summarize,
+  UPCOMING,
+  WORLD_HEIGHT,
+  type FlappyConfig,
+  type Pipe,
+  type PowerUp,
+  type PowerUpKind,
+} from './FlappyNoteGame';
 import { FLAPPY_LEVELS, findLevel, melodyNotes } from './levels';
 
 const level = findLevel('rh-c-position')!;
@@ -244,6 +267,118 @@ describe('Siêu dễ: trường độ', () => {
     expect(se.flapVelocity ** 2 / se.gravity).toBeLessThan(easy.flapVelocity ** 2 / easy.gravity);
     expect(se.gap).toBeGreaterThan(easy.gap);
     expect(se.lives).toBeGreaterThan(easy.lives);
+  });
+});
+
+describe('Vật phẩm', () => {
+  type MutableWorld = { birdY: number; birdVy: number; items: PowerUp[]; pipes: Pipe[] };
+  const world = (g: FlappyNoteGame) => g.getWorld() as unknown as MutableWorld;
+  /** Đặt vật phẩm ngay chỗ chim → khung kế tiếp nhặt được. */
+  const give = (g: FlappyNoteGame, kind: PowerUpKind) => world(g).items.push({ id: 999, kind, x: BIRD_X, y: g.getWorld().birdY });
+
+  it('sinh giữa hai ống, độ cao trung bình hai khe; không ở 3 ống đầu, không liền nhau', () => {
+    const g = new FlappyNoteGame(NOTES, { difficulty: 'normal', config: { pipes: 25, itemChance: 1 } }, seeded(21));
+    const { pipes, items } = g.getWorld();
+    expect(items.length).toBeGreaterThan(0);
+    let prevIndex = -Infinity;
+    for (const it of items) {
+      const i = pipes.findIndex((p) => p.x > it.x);
+      expect(i).toBeGreaterThanOrEqual(3);
+      expect(it.x).toBeGreaterThan(pipes[i - 1].x + PIPE_WIDTH);
+      expect(it.y).toBeCloseTo((pipes[i - 1].gapY + pipes[i].gapY) / 2);
+      expect(i - prevIndex).toBeGreaterThanOrEqual(3);
+      prevIndex = i;
+    }
+    expect(new FlappyNoteGame(NOTES, { config: { pipes: 25, itemChance: 0 } }, seeded(21)).getWorld().items).toHaveLength(0);
+  });
+
+  it('trái tim: +1 mạng sau va chạm; đủ mạng thì đổi thành điểm', () => {
+    const g = new FlappyNoteGame(NOTES, { config: { ...NO_PIPES, itemChance: 0 } }, seeded(22));
+    g.answer(g.getState().target.midi, 0);
+    give(g, 'heart');
+    g.tick(16);
+    expect(g.getState().lives).toBe(g.config.lives);
+    expect(g.getState().score).toBe(NOTE_POINTS + HEART_BONUS);
+    expect(g.getState().lastPowerUp).toMatchObject({ kind: 'heart', bonus: true });
+    expect(g.getWorld().items).toHaveLength(0);
+    let t = 16;
+    while (g.getState().crashes === 0 && t < 20_000) g.tick((t += 16));
+    expect(g.getState().lives).toBe(g.config.lives - 1);
+    give(g, 'heart');
+    g.tick((t += 16));
+    expect(g.getState().lives).toBe(g.config.lives);
+    expect(g.getState().lastPowerUp).toMatchObject({ kind: 'heart', bonus: false });
+    expect(g.getState().powerUps).toBe(2);
+  });
+
+  it('tia sét: tự bay qua 5 ống không va chạm, nhanh gấp 3, nốt đúng không nâng mà gấp đôi điểm; hết thì về thường', () => {
+    const g = new FlappyNoteGame(NOTES, { difficulty: 'normal', config: { pipes: 10, itemChance: 0 } }, seeded(23));
+    g.answer(g.getState().target.midi, 0);
+    give(g, 'bolt');
+    g.tick(16);
+    expect(g.boosting).toBe(true);
+    expect(g.getWorld().boostLeft).toBe(BOOST_PIPES);
+    let t = 16;
+    run(g, 32, 1000);
+    t = 1000;
+    expect(g.getWorld().speedFactor).toBe(BOOST_SPEED);
+    // Nốt đúng lúc tăng tốc: sang nốt kế, gấp đôi điểm, không đổi đường bay.
+    const vy = g.getWorld().birdVy;
+    const score = g.getState().score;
+    const combo = g.getState().combo;
+    expect(g.answer(g.getState().target.midi, (t += 16))).toBe('hit');
+    expect(g.getWorld().birdVy).toBe(vy);
+    expect(g.getState().score - score).toBe(2 * (NOTE_POINTS + COMBO_POINTS * combo));
+    while (g.boosting && t < 30_000) g.tick((t += 16));
+    expect(g.getState().pipesPassed).toBe(BOOST_PIPES);
+    expect(g.getState().crashes).toBe(0);
+    expect(g.getState().status).toBe('playing');
+    // Chậm dần về tốc độ thường, bất tử thêm một lúc.
+    expect(g.getWorld().invincibleUntil).toBeGreaterThan(g.getWorld().clock);
+    run(g, t + 16, t + 1000);
+    expect(g.getWorld().speedFactor).toBe(1);
+  });
+
+  it('tia sét gần đích: chỉ tự bay tới hết số ống còn lại rồi về đích', () => {
+    const g = new FlappyNoteGame(NOTES, { difficulty: 'normal', config: { pipes: 2, itemChance: 0 } }, seeded(24));
+    g.answer(g.getState().target.midi, 0);
+    give(g, 'bolt');
+    g.tick(16);
+    expect(g.getWorld().boostLeft).toBe(2);
+    let t = 16;
+    while (g.getState().status === 'playing' && t < 30_000) g.tick((t += 16));
+    expect(g.getState().status).toBe('won');
+    expect(g.getState().crashes).toBe(0);
+  });
+
+  it('con ma: ống trong 5 giây tới biến mất (vẫn tính đã qua), sau đó ống lại cản', () => {
+    const g = new FlappyNoteGame(NOTES, { difficulty: 'normal', config: { pipes: 6, itemChance: 0, firstPipeOffset: 300 } }, seeded(25));
+    g.answer(g.getState().target.midi, 0);
+    give(g, 'ghost');
+    g.tick(16);
+    expect(g.ghostLeftMs).toBeGreaterThan(GHOST_MS - 20);
+    const speed = g.config.speed;
+    const vanished = g.getWorld().pipes.filter((p) => p.vanishAt !== undefined);
+    expect(vanished.length).toBeGreaterThan(0);
+    for (const p of g.getWorld().pipes) expect(p.vanishAt !== undefined).toBe(p.x <= BIRD_X + 20 + speed * (GHOST_MS / 1000));
+    // Giữ chim ngay trên đất, đâm thẳng vào thân ống dưới: trong 5 s không va chạm.
+    let t = 16;
+    const hold = () => {
+      world(g).birdY = GROUND_Y - 40;
+      world(g).birdVy = 0;
+    };
+    while (t < GHOST_MS) {
+      hold();
+      g.tick((t += 16));
+    }
+    expect(g.getState().crashes).toBe(0);
+    expect(g.getState().pipesPassed).toBeGreaterThanOrEqual(vanished.length - 1);
+    while (g.getState().crashes === 0 && t < 30_000) {
+      hold();
+      g.tick((t += 16));
+    }
+    expect(g.getState().crashes).toBe(1);
+    expect(g.getState().pipesPassed).toBe(vanished.length);
   });
 });
 

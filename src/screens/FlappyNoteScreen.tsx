@@ -343,6 +343,7 @@ function FlappyPlay({
       data-target={state.target.midi}
       data-lives={state.lives}
       data-pipes={state.pipesPassed}
+      data-powerups={state.powerUps}
     >
       <header className="flex flex-wrap items-center gap-2 pl-10">
         <Button variant="ghost" className="px-2" aria-label="Về mục Trò chơi" onClick={() => navigate({ name: 'games' })}>
@@ -405,6 +406,9 @@ function FlappyPlay({
           <Overlay testId="flappy-ready">
             <p className="text-2xl font-extrabold">Đánh nốt {settings.showName ? targetLabel : 'trên khuông'} để cất cánh! 🐤</p>
             <p className="text-sm opacity-80">Mỗi nốt đúng = một lần vỗ cánh. Đánh sai thì chim không bay lên.</p>
+            <p className="text-sm opacity-80" data-testid="flappy-powerup-hint">
+              Bay chạm vật phẩm: ⚡ tự bay nhanh qua 5 ống · ❤️ thêm mạng · 👻 xoá ống trong 5 giây
+            </p>
             <Button className="min-h-12" onClick={openSettings} data-testid="flappy-ready-settings">
               ⚙ Đổi màn / độ khó
             </Button>

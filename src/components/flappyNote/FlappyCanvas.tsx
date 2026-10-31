@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { BIRD_RADIUS, BIRD_X, GROUND_Y, PIPE_WIDTH, WORLD_HEIGHT, type FlappyNoteGame, type FlappyState } from '../../core/flappyNote/FlappyNoteGame';
+import { BIRD_RADIUS, BIRD_X, GROUND_Y, ITEM_RADIUS, PIPE_WIDTH, WORLD_HEIGHT, type FlappyNoteGame, type FlappyState, type PowerUpKind } from '../../core/flappyNote/FlappyNoteGame';
 
 interface Particle {
   x: number;
@@ -16,6 +16,12 @@ interface Particle {
 const PIPE_COLORS = ['#a78bfa', '#f472b6', '#34d399', '#60a5fa', '#fb923c'];
 const NOTE_GLYPHS = ['♪', '♫', '♬'];
 const SHAKE_MS = 350;
+/** Ống bị con ma xoá mờ dần trong chừng này (ms đồng hồ trò chơi). */
+const VANISH_MS = 600;
+const ITEM_ICON: Record<PowerUpKind, string> = { bolt: '⚡', heart: '❤️', ghost: '👻' };
+const ITEM_GLOW: Record<PowerUpKind, string> = { bolt: '#facc15', heart: '#f43f5e', ghost: '#a5b4fc' };
+const PICK_COLOR: Record<PowerUpKind, string> = { bolt: '#ca8a04', heart: '#e11d48', ghost: '#6366f1' };
+const PICK_TEXT: Record<PowerUpKind, string> = { bolt: '⚡ Tăng tốc!', heart: '❤️ +1 mạng', ghost: '👻 Xoá ống!' };
 
 /** Số giả ngẫu nhiên ổn định theo chỉ số (vị trí mây…), 0–1. */
 const hash = (k: number) => {
@@ -26,7 +32,8 @@ const hash = (k: number) => {
 /**
  * Khu B của Flappy Note: canvas vẽ trời, mây, đồi, ống, mặt đất cuộn ngang và chú chim nốt nhạc.
  * Vòng requestAnimationFrame gọi `game.tick` rồi vẽ thẳng từ `game.getWorld()` — không re-render React mỗi khung.
- * Hiệu ứng (nốt nhạc bay lên khi đúng, dấu ✕ khi sai, rung khi va chạm, "+100" khi qua ống) suy từ thay đổi trạng thái.
+ * Hiệu ứng (nốt nhạc bay lên khi đúng, dấu ✕ khi sai, rung khi va chạm, "+100" khi qua ống, chữ khi nhặt vật phẩm) suy từ thay đổi trạng thái.
+ * Vật phẩm nhấp nhô có quầng sáng; tia sét: vệt gió + quầng vàng quanh chim; con ma: ống mờ dần, ma nhỏ bay cạnh chim; thanh còn lại ở góc dưới.
  */
 export function FlappyCanvas({ game }: { game: FlappyNoteGame }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -63,6 +70,10 @@ export function FlappyCanvas({ game }: { game: FlappyNoteGame }) {
           shakeAt = t;
           for (let i = 0; i < 5; i++) particles.push({ x: BIRD_X, y, vx: Math.cos(i * 1.26) * 120, vy: Math.sin(i * 1.26) * 120, born: t, life: 700, text: '★', color: '#facc15', size: 22 });
         }
+      }
+      if (s.lastPowerUp && s.lastPowerUp !== prev.lastPowerUp) {
+        const k = s.lastPowerUp.kind;
+        particles.push({ x: BIRD_X + 40, y: y - 40, vx: 20, vy: -45, born: t, life: 1300, text: k === 'heart' && s.lastPowerUp.bonus ? '❤️ +50' : PICK_TEXT[k], color: PICK_COLOR[k], size: 30 });
       }
       if (s.pipesPassed > prev.pipesPassed) particles.push({ x: BIRD_X, y: y - 50, vx: 0, vy: -50, born: t, life: 800, text: '+100', color: '#16a34a', size: 26 });
       prev = s;
@@ -160,11 +171,44 @@ function draw(ctx: CanvasRenderingContext2D, game: FlappyNoteGame, size: { w: nu
   // Ống
   for (const p of world.pipes) {
     if (p.x > viewW + 20 || p.x + PIPE_WIDTH < -20) continue;
+    const fade = p.vanishAt === undefined ? 0 : (world.clock - p.vanishAt) / VANISH_MS;
+    if (fade >= 1) continue;
     const color = PIPE_COLORS[p.id % PIPE_COLORS.length];
     const top = p.gapY - p.gap / 2;
     const bottom = p.gapY + p.gap / 2;
+    ctx.globalAlpha = 1 - fade;
     pipe(ctx, p.x, -20, top + 20, color, 'down');
     pipe(ctx, p.x, bottom, GROUND_Y - bottom, color, 'up');
+    if (fade > 0) {
+      ctx.font = '40px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('👻', p.x + PIPE_WIDTH / 2, p.gapY - fade * 80);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Vật phẩm
+  for (const it of world.items) {
+    if (it.x > viewW + 40 || it.x < -40) continue;
+    const y = it.y + Math.sin(now / 260 + it.id) * 8;
+    const glow = ctx.createRadialGradient(it.x, y, 4, it.x, y, ITEM_RADIUS * 1.6);
+    glow.addColorStop(0, ITEM_GLOW[it.kind]);
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = glow;
+    ctx.globalAlpha = 0.55 + 0.25 * Math.sin(now / 180 + it.id);
+    ctx.beginPath();
+    ctx.arc(it.x, y, ITEM_RADIUS * 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath();
+    ctx.arc(it.x, y, ITEM_RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = '30px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(ITEM_ICON[it.kind], it.x, y + 1);
+    ctx.textBaseline = 'alphabetic';
   }
 
   // Cờ đích
@@ -198,12 +242,58 @@ function draw(ctx: CanvasRenderingContext2D, game: FlappyNoteGame, size: { w: nu
   // Chim
   const ready = state.status === 'ready';
   const birdY = world.birdY + (ready ? Math.sin(now / 280) * 10 : 0);
+  if (world.speedFactor > 1.05) {
+    // Tia sét: vệt gió phía sau + quầng vàng.
+    const k = Math.min(1, (world.speedFactor - 1) / 2);
+    ctx.strokeStyle = dark ? 'rgba(254,240,138,0.7)' : 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      const off = (world.distance * 0.9 + i * 53) % 160;
+      const ly = birdY - 30 + hash(i) * 60;
+      ctx.globalAlpha = k * (1 - off / 160);
+      ctx.beginPath();
+      ctx.moveTo(BIRD_X - 40 - off, ly);
+      ctx.lineTo(BIRD_X - 40 - off - 50 - hash(i + 9) * 40, ly);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = k * 0.5;
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.arc(BIRD_X, birdY, BIRD_RADIUS + 14 + Math.sin(now / 70) * 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
   const invincible = world.clock < world.invincibleUntil && state.status !== 'over';
   if (!invincible || Math.floor(now / 110) % 2 === 0) {
     const sinceFlap = (world.clock - world.flapAt) / 1000;
     const wing = ready ? Math.sin(now / 90) * 0.6 : sinceFlap < 0.28 ? -1.1 + (sinceFlap / 0.28) * 1.5 : 0.4 + Math.sin(now / 140) * 0.15;
     const tilt = ready ? 0 : Math.max(-0.45, Math.min(0.9, world.birdVy / 650));
     bird(ctx, BIRD_X, birdY, tilt, wing, state.status === 'over');
+  }
+
+  // Con ma bay cạnh chim + thanh còn lại của vật phẩm đang có hiệu lực (trên mặt đất, góc trái)
+  const ghostLeft = game.ghostLeftMs;
+  if (ghostLeft > 0) {
+    ctx.globalAlpha = Math.min(1, ghostLeft / 400) * 0.85;
+    ctx.font = '34px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('👻', BIRD_X - 48, birdY - 26 + Math.sin(now / 200) * 6);
+    ctx.globalAlpha = 1;
+  }
+  const badges: string[] = [];
+  if (world.boostLeft > 0) badges.push(`⚡ còn ${world.boostLeft} ống`);
+  if (ghostLeft > 0) badges.push(`👻 còn ${(ghostLeft / 1000).toFixed(1).replace('.', ',')} s`);
+  let bx = 16;
+  ctx.font = 'bold 22px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  for (const b of badges) {
+    const bw = ctx.measureText(b).width + 24;
+    ctx.fillStyle = 'rgba(15,23,42,0.7)';
+    roundRect(ctx, bx, GROUND_Y + 12, bw, 36, 18);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(b, bx + 12, GROUND_Y + 38);
+    bx += bw + 10;
   }
 
   // Hiệu ứng
