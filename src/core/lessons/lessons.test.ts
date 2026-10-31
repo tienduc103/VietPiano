@@ -188,6 +188,13 @@ describe('thư viện bài học', () => {
     expect(accompanimentByNote(LESSONS[0])).toBeUndefined();
   });
 
+  it('Romance hai tay: pedal thay mỗi ô nhịp, đủ 32 ô', () => {
+    const lesson = LESSONS.find((l) => l.id === 'song-romance-2-hands')!;
+    const count = splitMeasures(lesson.notes, measureLength(lesson.timeSignature)).length;
+    expect(count).toBe(32);
+    expect(lesson.pedal).toEqual(Array.from({ length: count }, (_, i) => ({ from: i, to: i })));
+  });
+
   it('đệm bắt đầu lúc giai điệu nghỉ → gộp vào nốt giai điệu kế tiếp', () => {
     const lesson = { notes: parseNotes('C4 R D4/h'), accompaniment: parseAccompaniment('C3 G2 E2/h') };
     const left = accompanimentByNote(lesson)!;

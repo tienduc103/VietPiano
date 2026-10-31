@@ -10,6 +10,7 @@
  * Giai điệu tự soạn, trừ các bài ghi rõ nguồn phạm vi công cộng (`pd`).
  */
 import type { DynamicMark } from '../../music/dynamics';
+import { ROMANCE_ACCOMPANIMENT, ROMANCE_MELODY } from '../../lessons/library';
 import type { LessonSection } from '../../lessons/types';
 import type { ChoiceQuestion, CurriculumLesson, Piece, Week } from '../types';
 import { buildLessons, in34, inKey, lh, NO_FINGER_CHECK, ONLY_MELODY_SCORED, play, practice, rh, staffPage, withLh, type LessonDef } from './helpers';
@@ -246,6 +247,22 @@ const pedalEachMeasure = (measures: number): [number, number][] => Array.from({ 
 const SUNSET_PEDAL: Piece = { ...SUNSET, pedal: pedalEachMeasure(16) };
 /** Bài làm quen pedal: tay phải nốt tròn / trắng, thay pedal mỗi ô (tự soạn). */
 const PEDAL_INTRO: Piece = { ...dyn(rh('C4/w:1 | E4/w:3 | G4/h:5 F4/h:4 | E4/w:3', 60, 'Làm quen pedal'), { 1: 'mf', 3: 'p' }), pedal: pedalEachMeasure(4) };
+/** Romance d'Amour hai tay (bản piano dễ Rê thứ, 32 ô, như bài Thư viện `song-romance-2-hands`) có pedal thay mỗi ô. */
+const ROMANCE_PEDAL: Piece = pd(
+  {
+    ...dyn(inKey(in34(withLh(`${ROMANCE_MELODY} | ${ROMANCE_MELODY}`, ROMANCE_ACCOMPANIMENT, 100, "Romance d'Amour")), 'Dm'), { 1: 'p', 17: 'mf' }, AB(17)),
+    pedal: pedalEachMeasure(32),
+  },
+  'Khuyết danh, nhạc guitar Tây Ban Nha thế kỷ 19 — phạm vi công cộng; bản piano dễ Rê thứ',
+);
+/** Ô 9–10 của Romance: Đô thăng (C#5 tay phải, C#3 trong hợp âm La trưởng tay trái). */
+const ROMANCE_C_SHARP: Piece = pd(
+  {
+    ...inKey(in34(withLh('A4:2 Bb4:(3) A4 | C#5:4 Bb4:(3) A4:2', 'A2+C#3+E3/hd:5+(3)+1 | A2+C#3+E3/hd', 100, 'Đô thăng trong Romance')), 'Dm'),
+    pedal: pedalEachMeasure(2),
+  },
+  'Khuyết danh, nhạc guitar Tây Ban Nha thế kỷ 19 — phạm vi công cộng; bản piano dễ Rê thứ',
+);
 /** "Khúc tốt nghiệp" — tự soạn, hai tay, hình thức A – B, đủ bốn mức sắc thái (16 ô nhịp). */
 const GRADUATION_6 = dyn(
   withLh(
@@ -661,6 +678,12 @@ const defs: LessonDef[] = [
             illustration: { type: 'staff', piece: PEDAL_INTRO, listen: true },
           },
           staffPage('Nghe mẫu', 'Đoạn A mặt trời lặn dần, đoạn B rực lên rồi tắt. Thay pedal ở đầu mỗi ô nhịp.', SUNSET_PEDAL),
+          staffPage(
+            "Thử sức: Romance d'Amour",
+            'Giọng Rê thứ (hoá biểu một dấu giáng: Si♭). Đô thăng (C#) là dấu bất thường: phím đen ngay bên phải Đô, ở cả tay phải (Đô5) lẫn hợp âm tay trái (Đô3). Đoạn A (p) tay trái giữ hợp âm cả ô, đoạn B (mf) rải hợp âm — vẫn thay pedal mỗi ô nhịp.',
+            ROMANCE_C_SHARP,
+            'Bài khó, không bắt buộc: thử khi đã chơi tốt "Hoàng hôn" nhé!',
+          ),
         ],
       },
     ],
@@ -668,6 +691,7 @@ const defs: LessonDef[] = [
       { kind: 'choice-quiz', id: 'quiz', title: 'Câu hỏi: pedal', questions: [Q.pedal, Q.pedalChange], pass: { minAccuracy: 0.5 } },
       play('pedal', 'Làm quen pedal (tay phải)', 'performance', PEDAL_INTRO),
       ...rehearse(SUNSET_PEDAL, 'Biểu diễn hai tay có sắc thái và pedal'),
+      practice(play('perform-romance', "Thử sức: Romance d'Amour hai tay có pedal", 'performance', ROMANCE_PEDAL)),
     ],
     assessment: { passScore: 80, checkpoint: false },
   },

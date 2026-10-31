@@ -27,6 +27,10 @@ async function openPedalExercise(page: Page) {
   await expect(page.locator('.score-pedal-text')).toHaveCount(1);
   await page.getByTestId('intro-next').click();
   await page.getByTestId('intro-next').click();
+  // Trang "Thử sức: Romance d'Amour": ô 9–10 có Đô thăng, thay pedal mỗi ô.
+  await expect(page.getByText("Thử sức: Romance d'Amour", { exact: true })).toBeVisible();
+  await expect(page.locator('.score-pedal')).toHaveCount(2);
+  await page.getByTestId('intro-next').click();
   for (let i = 0; i < 2; i++) {
     await page.getByTestId('choice-0').click();
     await page.waitForTimeout(1000);
