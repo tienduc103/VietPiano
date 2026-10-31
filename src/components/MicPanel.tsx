@@ -22,7 +22,7 @@ export function LevelMeter({ className = '' }: { className?: string }) {
 }
 
 /** Nút bật/tắt micro kèm trạng thái. */
-export function MicButton({ compact = false }: { compact?: boolean }) {
+export function MicButton({ compact = false, small = false }: { compact?: boolean; small?: boolean }) {
   const status = useMic((s) => s.status);
   const paused = useMic((s) => s.pausedByBackground);
   const on = status === 'running';
@@ -40,7 +40,7 @@ export function MicButton({ compact = false }: { compact?: boolean }) {
       onClick={() => void toggleMicrophone()}
       data-testid="mic-button"
       aria-pressed={on}
-      className={`inline-flex min-h-12 items-center gap-2 rounded-xl px-4 font-semibold transition-colors ${
+      className={`inline-flex items-center gap-2 font-semibold transition-colors ${small ? 'min-h-9 rounded-lg px-2.5 text-sm' : 'min-h-12 rounded-xl px-4'} ${
         on
           ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30 hover:brightness-110'
           : status === 'suspended' || paused
@@ -48,7 +48,7 @@ export function MicButton({ compact = false }: { compact?: boolean }) {
             : 'bg-white text-violet-900 ring-1 ring-violet-200 hover:bg-violet-50 dark:bg-slate-700 dark:text-slate-100 dark:ring-violet-800'
       }`}
     >
-      <Icon name={on ? 'mic' : 'micOff'} />
+      <Icon name={on ? 'mic' : 'micOff'} className={small ? 'h-4 w-4' : undefined} />
       {!compact && <span>{label}</span>}
     </button>
   );

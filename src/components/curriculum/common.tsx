@@ -439,8 +439,8 @@ export function InputSourceBar() {
           : 'Chưa thấy đàn MIDI — kiểm tra dây cắm.'
       : null;
   return (
-    <div className="flex flex-wrap items-center gap-3" data-testid="input-source">
-      <div className="inline-flex rounded-xl bg-violet-100 p-1 dark:bg-slate-700" role="radiogroup" aria-label="Nguồn nốt">
+    <div className="flex flex-wrap items-center gap-2" data-testid="input-source">
+      <div className="inline-flex rounded-lg bg-violet-100 p-0.5 dark:bg-slate-700" role="radiogroup" aria-label="Nguồn nốt">
         {SOURCE_OPTIONS.map((o) => (
           <button
             key={o.value}
@@ -448,16 +448,16 @@ export function InputSourceBar() {
             role="radio"
             aria-checked={source === o.value}
             onClick={() => update({ inputSource: o.value })}
-            className={`min-h-10 rounded-lg px-3 text-sm font-semibold ${source === o.value ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'}`}
+            className={`min-h-8 rounded-md px-2.5 text-xs font-semibold ${source === o.value ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'}`}
           >
             {o.label}
           </button>
         ))}
       </div>
-      {source !== 'midi' && <MicButton compact />}
-      <MidiBadge />
+      {source !== 'midi' && <MicButton compact small />}
+      <MidiBadge small />
       {midiProblem && (
-        <span className="text-sm text-amber-700 dark:text-amber-300" role="alert">
+        <span className="text-xs text-amber-700 dark:text-amber-300" role="alert">
           {midiProblem}
         </span>
       )}

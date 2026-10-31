@@ -70,14 +70,14 @@ export function MidiSettings({ labelStyle }: { labelStyle: NoteLabelStyle }) {
 }
 
 /** Nhãn nhỏ ở màn luyện tập: đang nhận nốt từ đàn nào. Ẩn khi không bật MIDI. */
-export function MidiBadge() {
+export function MidiBadge({ small = false }: { small?: boolean }) {
   const enabled = useSettings((s) => s.settings.midiEnabled);
   const { status, devices } = useMidi();
   if (!enabled || status === 'unsupported' || status === 'idle') return null;
   const connected = status === 'ready' && devices.length > 0;
   return (
     <div
-      className={`inline-flex min-h-12 items-center gap-2 rounded-xl px-3 text-sm font-semibold ${
+      className={`inline-flex items-center font-semibold ${small ? 'min-h-9 gap-1.5 rounded-lg px-2.5 text-xs' : 'min-h-12 gap-2 rounded-xl px-3 text-sm'} ${
         connected
           ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
           : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
@@ -85,7 +85,7 @@ export function MidiBadge() {
       data-testid="midi-badge"
       title={connected ? 'Đang nhận nốt từ đàn MIDI; nốt nghe qua micro bị bỏ qua' : 'Bật MIDI nhưng chưa thấy đàn'}
     >
-      <Icon name="keyboard" className="h-5 w-5" />
+      <Icon name="keyboard" className={small ? 'h-4 w-4' : 'h-5 w-5'} />
       <span className="max-w-48 truncate">{connected ? `MIDI: ${devices[0].name}` : status === 'ready' ? 'Chưa thấy đàn MIDI' : 'MIDI…'}</span>
     </div>
   );
