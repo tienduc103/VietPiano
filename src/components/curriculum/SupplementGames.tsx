@@ -67,7 +67,8 @@ export function SupplementGames({
     if (g.type === 'balloon-hunt') {
       navigate({
         name: 'balloon-pop',
-        preset: { game: 'hunt', huntLetters: g.letters, mode: 'one-hand', hand: 'right', difficulty: 'easy', display: 'solfege', labelStyle: 'solfege' },
+        // Bóng hiện hình nốt trên khuông (khoá Sol): bé đọc vị trí nốt, không có tên nốt.
+        preset: { game: 'hunt', huntLetters: g.letters, mode: 'one-hand', hand: 'right', difficulty: 'easy', display: 'staff', staffClef: 'treble', labelStyle: 'solfege' },
         returnTo: { name: 'lesson', lessonId: lesson.lessonId, stage: 'game' },
       });
       return;

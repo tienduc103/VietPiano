@@ -93,6 +93,7 @@ test('giáo trình bổ sung — nốt Đô: giới thiệu → câu đố chọ
   await page.getByTestId('supplement-game-balloon-hunt').click();
   await expect(page.getByTestId('balloon-screen')).toBeVisible();
   await expect(page.getByTestId('balloon-screen').locator('h1')).toContainText('Tìm nốt');
+  await expect(page.getByTestId('balloon-display').first()).toHaveAttribute('data-display', 'staff');
   await page.getByTestId('balloon-exit').click();
   await expect(page.getByTestId('supplement-games')).toBeVisible();
 
