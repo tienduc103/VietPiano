@@ -41,6 +41,8 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   input/MIDIInputProvider.ts        đàn nối dây qua Web MIDI (Chrome/Edge máy tính; iPad không có) — Note On → sự kiện nốt (+ velocity), Note Off → `onNoteOff`
   practice/PracticeEngine.ts  Wait Mode (máy trạng thái thuần); `advanceOnWrong` = chế độ Đếm nốt (sai vẫn đi tiếp, ghi 'wrong')
   practice/TempoFollower.ts   chế độ chạy theo nhịp: đồng hồ nhịp tự chạy, khớp pha + nhịp độ theo onset, KHÔNG xét cao độ
+  practice/listenSample.ts    nút "Nghe mẫu" màn Luyện tập: phát từ đầu ô nhịp đang tập (hai tay + ngân theo pedal), con trỏ theo tiếng đàn,
+                             lúc phát bỏ mọi nốt vào (hook `useListenSample`)
   practice/NoteStats.ts       thống kê từng nốt trong phiên (suy từ PracticeState): tốc độ đọc nốt, đúng/sai + nốt nhầm
   lessons/                 kiểu dữ liệu, ký hiệu gọn "C4 D4/h", thư viện bài, LessonManager
   practice/PerformanceTracker.ts  Biểu diễn / Tiết tấu của giáo trình: đồng hồ nhịp CỐ ĐỊNH, chấm cao độ + thời điểm + trường độ (Note Off), dấu lặng

@@ -559,6 +559,26 @@ test('Für Elise hai tay: có pedal, tay trái nghỉ ở ô chỉ có tay phả
   await expect(page.getByTestId('progress-text')).toHaveText('9/70');
 });
 
+test('Nghe mẫu ở màn Luyện tập: con trỏ chạy theo tiếng đàn, không chấm nốt lúc đang phát, bấm lại để dừng', async ({ page }) => {
+  await openLesson(page, 'song-fur-elise-2-hands');
+  const listen = page.getByTestId('listen-sample');
+  await expect(listen).toHaveText('Nghe mẫu');
+  await listen.click();
+  await expect(listen).toHaveText('Dừng');
+  await expect(page.getByTestId('status-title')).toHaveText('Đang nghe mẫu');
+  // Nhịp 60: sau ~1 giây con trỏ đã qua ô lấy đà (E5 D#5) sang các nốt ô 1.
+  await expect(page.getByTestId('expected-note')).not.toHaveText('E5', { timeout: 3000 });
+  await page.waitForTimeout(400);
+  // Đánh trong lúc phát mẫu → không chấm.
+  await page.locator('[data-midi="76"]').click();
+  await expect(page.getByTestId('progress-text')).toHaveText('0/70');
+  await listen.click();
+  await expect(listen).toHaveText('Nghe mẫu');
+  await expect(page.getByTestId('expected-note')).toHaveText('E5');
+  await page.locator('[data-midi="76"]').click();
+  await expect(page.getByTestId('progress-text')).toHaveText('1/70');
+});
+
 test('đàn MIDI: trình duyệt không có Web MIDI (như iPad) thì báo rõ', async ({ page }) => {
   await page.addInitScript(() => {
     delete (Navigator.prototype as unknown as Record<string, unknown>).requestMIDIAccess;

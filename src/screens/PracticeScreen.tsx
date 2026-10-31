@@ -30,6 +30,7 @@ import { practiceReport, tempoReport } from '../core/feedback/coachPrompt';
 import type { AiNote, AiNoteMode } from '../core/feedback/aiNotes';
 import { AiNoteHistory } from '../components/AiNoteHistory';
 import { useLibraryAiNotes } from '../hooks/useLibraryAiNotes';
+import { useListenSample } from '../hooks/useListenSample';
 
 const FEEDBACK_MS = 900;
 /**
@@ -115,7 +116,23 @@ function Practice({ lesson }: { lesson: Lesson }) {
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [follower, tempoMode]);
 
-  const restart = () => (tempoMode ? follower.restart() : restartWait());
+  // Nghe mẫu: phát từ đầu ô nhịp đang tập; lúc đang phát bỏ mọi nốt vào (không chấm) và con trỏ chạy theo tiếng đàn.
+  const listen = useListenSample(lesson);
+  const listeningRef = useRef(false);
+  listeningRef.current = listen.playing;
+  const toggleListen = () => {
+    if (listen.playing) return listen.stop();
+    follower.pause(performance.now());
+    listen.start(tempoMode ? tempo.index : state.index, baseBpm);
+  };
+  const stopListen = listen.stop;
+  useEffect(() => stopListen(), [mode, stopListen]);
+
+  const restart = () => {
+    listen.stop();
+    if (tempoMode) follower.restart();
+    else restartWait();
+  };
   const toggleTempoRun = () => {
     const now = performance.now();
     if (tempo.status === 'running' || tempo.status === 'countIn') follower.pause(now);
@@ -147,6 +164,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
     const handle = (e: NoteInputEvent) => {
       // Đàn MIDI đã nối thì micro cũng nghe chính tiếng đàn đó → bỏ để một phím không thành hai sự kiện.
       if (e.source === 'microphone' && midiInput.hasDevice()) return;
+      if (listeningRef.current) return;
       // Bài có phần đệm, chỉ chấm tay phải: nốt tay trái đánh kèm không bị tính là sai.
       if (!twoHandsRef.current && isAccompanimentMidi(lesson, e.midi)) return;
       if (tempoModeRef.current) follower.handleOnset(e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time);
@@ -202,14 +220,16 @@ function Practice({ lesson }: { lesson: Lesson }) {
     return { from: Math.min(r.from, baseC), to: Math.max(r.to, baseC + 23) };
   }, [midis, baseC, leftHand]);
 
-  const expected = tempoMode
+  const expected = listen.playIndex !== null
+    ? midis[listen.playIndex]
+    : tempoMode
     ? tempo.status === 'finished'
       ? null
       : midis[tempo.index]
     : state.status === 'finished'
       ? null
       : state.expected[state.index];
-  const currentIndex = tempoMode ? tempo.index : state.index;
+  const currentIndex = listen.playIndex ?? (tempoMode ? tempo.index : state.index);
   const currentNote = expected === null ? undefined : lesson.notes[currentIndex];
   const expectedFinger = currentNote?.finger;
   // Bài hai tay luôn nhắc tay nào; bài một tay chỉ nhắc khi có số ngón.
@@ -217,8 +237,8 @@ function Practice({ lesson }: { lesson: Lesson }) {
   // Bài có phần đệm: tay trái ở nốt hiện tại; phím tô vàng = nốt tay trái cần đánh (đang chấm: chỉ nốt còn thiếu).
   const leftStep = currentNote && leftHand?.[currentIndex];
   const leftKeys = useMemo(
-    () => new Set(twoHands ? state.pendingLeft : (leftStep?.midis ?? [])),
-    [twoHands, state.pendingLeft, leftStep],
+    () => new Set(twoHands && !listen.playing ? state.pendingLeft : (leftStep?.midis ?? [])),
+    [twoHands, listen.playing, state.pendingLeft, leftStep],
   );
   const flash =
     !tempoMode && showFeedback && state.lastPlayedMidi !== null && (state.status === 'correct' || state.status === 'wrong')
@@ -299,7 +319,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
           lesson={lesson}
           index={currentIndex}
           results={tempoMode ? tempo.results : state.results}
-          status={tempoMode ? (tempo.status === 'finished' ? 'finished' : 'waiting') : state.status}
+          status={listen.playing ? 'waiting' : tempoMode ? (tempo.status === 'finished' ? 'finished' : 'waiting') : state.status}
           wrongPulse={tempoMode ? 0 : state.wrong}
           showNames={settings.showNoteNames}
           labelStyle={settings.labelStyle}
@@ -331,21 +351,28 @@ function Practice({ lesson }: { lesson: Lesson }) {
             finger={expectedFinger}
             hand={expectedHand}
             leftStep={leftStep}
-            twoHands={twoHands}
-            showFeedback={showFeedback}
+            twoHands={twoHands && !listen.playing}
+            showFeedback={showFeedback && !listen.playing}
+            listening={listen.playing}
             labelStyle={settings.labelStyle}
           />
         )}
         <div className="ml-auto flex gap-2">
+          {listen.supported && (
+            <Button onClick={toggleListen} aria-pressed={listen.playing} title="Nghe mẫu từ đầu ô nhịp đang tập (cả hai tay, có pedal)" data-testid="listen-sample">
+              <Icon name={listen.playing ? 'pause' : 'play'} />
+              {listen.playing ? 'Dừng' : 'Nghe mẫu'}
+            </Button>
+          )}
           <Button onClick={restart} aria-label="Chơi lại từ đầu" title="Chơi lại từ đầu">
             <Icon name="restart" />
           </Button>
           {!tempoMode && (
             <>
-              <Button onClick={() => engine.back(performance.now())} aria-label="Nốt trước" title="Nốt trước (←)">
+              <Button onClick={() => (listen.stop(), engine.back(performance.now()))} aria-label="Nốt trước" title="Nốt trước (←)">
                 <Icon name="prev" />
               </Button>
-              <Button onClick={() => engine.skip(performance.now())} aria-label="Bỏ qua nốt" title="Bỏ qua (→)" disabled={state.status === 'finished'}>
+              <Button onClick={() => (listen.stop(), engine.skip(performance.now()))} aria-label="Bỏ qua nốt" title="Bỏ qua (→)" disabled={state.status === 'finished'}>
                 <Icon name="next" />
               </Button>
             </>
@@ -361,7 +388,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
           <PianoKeyboard
             from={range.from}
             to={range.to}
-            expected={state.melodyDone ? null : expected}
+            expected={state.melodyDone && !listen.playing ? null : expected}
             expectedFinger={expectedFinger}
             highlighted={tempoMode ? undefined : leftKeys}
             detected={micLive?.midi ?? null}
@@ -418,6 +445,7 @@ function StatusPanel({
   leftStep,
   twoHands,
   showFeedback,
+  listening,
   labelStyle,
 }: {
   state: PracticeState;
@@ -431,10 +459,12 @@ function StatusPanel({
   /** Đang chấm cả hai tay: đánh dấu nốt đã đánh / còn thiếu. */
   twoHands?: boolean;
   showFeedback: boolean;
+  /** Đang nghe mẫu: con trỏ chạy theo tiếng đàn, chưa chấm. */
+  listening?: boolean;
   labelStyle: 'letter' | 'solfege';
 }) {
   let tone = 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200';
-  let title = 'Đang chờ';
+  let title = listening ? 'Đang nghe mẫu' : 'Đang chờ';
   let detail = '';
   if (state.status === 'finished') {
     tone = 'bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white';
