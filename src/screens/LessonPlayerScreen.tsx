@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CURRICULUM } from '../core/curriculum/content/curriculum';
+import { isSupplementLesson, SUPPLEMENT } from '../core/curriculum/content/supplement';
 import { lessonFeedback } from '../core/curriculum/feedback';
 import { formatMistake, scoreLesson, starsFor, type ExerciseScore } from '../core/curriculum/scoring';
 import { text, type Activity, type CurriculumLesson, type Exercise, type UiMode } from '../core/curriculum/types';
 import { findLesson, missingPrerequisites, nextLessonAfter } from '../core/curriculum/unlock';
-import { useApp, type LessonStage } from '../store/appStore';
+import { useApp, type LessonStage, type Route } from '../store/appStore';
 import { useCurriculum } from '../store/curriculumStore';
 import { useSettings } from '../store/settingsStore';
 import { useUiMode } from '../hooks/useUiMode';
@@ -15,6 +16,7 @@ import { InputSourceBar, IllustrationView } from '../components/curriculum/commo
 import { ExerciseView } from '../components/curriculum/ExerciseView';
 import { ReviewSession } from '../components/curriculum/ReviewSession';
 import { GameStage } from '../components/games/GameStage';
+import { SupplementGames } from '../components/curriculum/SupplementGames';
 import { AiCoachCard } from '../components/AiCoachCard';
 import { lessonReport } from '../core/feedback/coachPrompt';
 import { AiNoteHistory } from '../components/AiNoteHistory';
@@ -31,7 +33,7 @@ type Step = { type: 'overview' } | { type: 'activity'; activity: Activity } | { 
 type Phase = 'steps' | 'result' | LessonStage;
 
 export function LessonPlayerScreen({ lessonId, stage }: { lessonId: string; stage?: LessonStage }) {
-  const lesson = findLesson(CURRICULUM, lessonId);
+  const lesson = findLesson(CURRICULUM, lessonId) ?? findLesson(SUPPLEMENT, lessonId);
   const navigate = useApp((s) => s.navigate);
   if (!lesson) {
     return (
@@ -55,6 +57,10 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
   const saveError = useCurriculum((s) => s.saveError);
   const { recordExercise, recordRun, markIntroDone, addTime, recordReview, recordGame } = useCurriculum.getState();
   useWakeLock(true);
+  /** Buổi của giáo trình bổ sung: không có Luyện tập sau buổi, trò chơi do bé tự chọn (`SupplementGames`). */
+  const supplement = isSupplementLesson(lesson.lessonId);
+  const home: Route = supplement ? { name: 'supplement' } : { name: 'curriculum' };
+  const homeLabel = supplement ? 'Về giáo trình bổ sung' : 'Về giáo trình';
   // Đổi buổi học (Player dựng lại theo key) → huỷ lời cô giáo của buổi cũ.
   useVoiceScope();
 
@@ -134,17 +140,17 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
   }, [phase]);
 
   const record = records[lesson.lessonId];
-  const next = nextLessonAfter(CURRICULUM, lesson.lessonId);
+  const next = nextLessonAfter(supplement ? SUPPLEMENT : CURRICULUM, lesson.lessonId);
   const tempoPercent = lesson.ageVariants[mode]?.tempoPercent ?? 100;
 
   return (
     <div className={`flex h-full flex-col ${mode === 'kids' ? 'kids-mode' : ''}`} data-ui-mode={mode} data-testid="lesson-player">
       <header className="flex flex-wrap items-center gap-3 px-4 pt-[calc(1rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-2 pl-16">
-        <Button variant="ghost" onClick={() => navigate({ name: 'curriculum' })} aria-label="Về giáo trình" className="px-2">
+        <Button variant="ghost" onClick={() => navigate(home)} aria-label={homeLabel} className="px-2" data-testid="lesson-home">
           <Icon name="back" />
         </Button>
         <div className="min-w-0 flex-1">
-          <div className="text-sm text-slate-500 dark:text-slate-400">Buổi {lesson.number}</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">{supplement ? 'Giáo trình bổ sung' : `Buổi ${lesson.number}`}</div>
           <h1 className="truncate text-xl font-bold" data-testid="lesson-title">
             {text(lesson.title)}
           </h1>
@@ -183,7 +189,9 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
               { p: 'review', icon: '🎯', label: 'Luyện tập sau buổi', done: (record?.reviewCount ?? 0) > 0 },
               { p: 'game', icon: '🎮', label: 'Trò chơi', done: (record?.gamePlays ?? 0) > 0 },
             ] as const
-          ).map((x) => (
+          )
+            .filter((x) => !supplement || x.p === 'game')
+            .map((x) => (
             <button
               key={x.p}
               type="button"
@@ -222,6 +230,14 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
           )}
           {phase === 'review' ? (
             <ReviewSession lesson={lesson} mode={mode} tempoPercent={tempoPercent} onComplete={() => void recordReview(lesson, takeElapsed())} onGame={() => enterStage('game')} />
+          ) : phase === 'game' && supplement ? (
+            <SupplementGames
+              lesson={lesson}
+              mode={mode}
+              onResult={(r) => void recordGame(lesson, r, takeElapsed())}
+              onNext={next ? () => navigate({ name: 'lesson', lessonId: next.lessonId }) : undefined}
+              onBack={() => navigate(home)}
+            />
           ) : phase === 'game' ? (
             <GameStage
               lesson={lesson}
@@ -237,9 +253,11 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
               scores={runScores}
               passedEver={record?.passed ?? false}
               onRetry={retryLesson}
-              onReview={() => enterStage('review')}
+              onReview={() => enterStage(supplement ? 'game' : 'review')}
+              reviewLabel={supplement ? '🎮 Tiếp: Chọn trò chơi' : undefined}
               onNext={next ? () => navigate({ name: 'lesson', lessonId: next.lessonId }) : undefined}
-              onBack={() => navigate({ name: 'curriculum' })}
+              onBack={() => navigate(home)}
+              backLabel={homeLabel}
             />
           ) : step.type === 'overview' ? (
             <Overview lesson={lesson} mode={mode} onStart={() => goTo(1)} />
@@ -457,8 +475,10 @@ function LessonResult({
   passedEver,
   onRetry,
   onReview,
+  reviewLabel = '🎯 Tiếp: Luyện tập → Trò chơi',
   onNext,
   onBack,
+  backLabel = 'Về giáo trình',
 }: {
   lesson: CurriculumLesson;
   mode: UiMode;
@@ -467,8 +487,10 @@ function LessonResult({
   onRetry: () => void;
   /** Sang phần Luyện tập (rồi Trò chơi) trước khi học buổi tiếp theo. */
   onReview: () => void;
+  reviewLabel?: string;
   onNext?: () => void;
   onBack: () => void;
+  backLabel?: string;
 }) {
   const labelStyle = useSettings((s) => s.settings.labelStyle);
   const recordAiNote = useCurriculum((s) => s.recordAiNote);
@@ -561,7 +583,7 @@ function LessonResult({
           <Icon name="restart" /> Luyện lại
         </Button>
         <Button variant="primary" className="text-lg" onClick={onReview} data-testid="go-review">
-          🎯 Tiếp: Luyện tập → Trò chơi
+          {reviewLabel}
         </Button>
         {onNext && (
           <Button variant="ghost" onClick={onNext} data-testid="lesson-next">
@@ -569,7 +591,7 @@ function LessonResult({
           </Button>
         )}
         <Button variant="ghost" onClick={onBack}>
-          Về giáo trình
+          {backLabel}
         </Button>
       </div>
     </section>

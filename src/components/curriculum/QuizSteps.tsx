@@ -10,7 +10,7 @@ import { useSettings } from '../../store/settingsStore';
 import { useMic } from '../../store/micStore';
 import { PianoKeyboard } from '../PianoKeyboard';
 import { Button } from '../ui';
-import { Feedback, IllustrationView, RoundDots, StaticScore, StepTitle } from './common';
+import { Feedback, IllustrationView, OptionImage, RoundDots, StaticScore, StepTitle } from './common';
 import { useVoiceActive, useVoiceScope } from '../../hooks/useVoiceTeacher';
 import { phrases } from '../../core/voice/phrases';
 import { voiceTeacher } from '../../core/voice/teacher';
@@ -124,7 +124,8 @@ function useKeyQuizVoice(exercise: KeyQuizExercise, state: QuizState<number>, mo
 // ── Câu hỏi trắc nghiệm ──────────────────────────────────────────────
 
 export function ChoiceQuizStep({ exercise, mode, onDone }: StepProps<ChoiceQuizExercise>) {
-  const engine = useMemo(() => new QuizEngine<number>(exercise.questions.map((q) => (i: number) => i === q.answer), { retry: false, minIntervalMs: 0 }), [exercise]);
+  const retry = exercise.retry ?? false;
+  const engine = useMemo(() => new QuizEngine<number>(exercise.questions.map((q) => (i: number) => i === q.answer), { retry, minIntervalMs: 0 }), [exercise, retry]);
   const state = useEngine(engine);
   // Sau mỗi câu: giữ câu vừa trả lời trên màn hình một lúc để thấy đáp án đúng.
   const [reveal, setReveal] = useState<{ q: number; chosen: number } | null>(null);
@@ -159,9 +160,32 @@ export function ChoiceQuizStep({ exercise, mode, onDone }: StepProps<ChoiceQuizE
         {text(q.prompt)}
       </p>
       {q.illustration && <IllustrationView ill={q.illustration} id={`${exercise.id}-${shown}`} />}
+      {q.optionImages ? (
+        <div className={`grid gap-4 ${q.options.length === 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-3'}`} role="group" aria-label="Chọn hình">
+          {q.optionImages.map((img, i) => {
+            // Chọn lại khi sai: không để lộ hình đúng.
+            const isAnswer = reveal && i === q.answer && (!retry || reveal.chosen === q.answer);
+            const isWrongPick = reveal && i === reveal.chosen && i !== q.answer;
+            return (
+              <button
+                key={`${shown}-${i}`}
+                type="button"
+                onClick={() => choose(i)}
+                aria-label={text(q.options[i])}
+                data-testid={`choice-${i}`}
+                className={`grid min-h-32 content-center gap-2 rounded-2xl bg-white p-3 ring-4 transition-transform active:scale-95 dark:bg-slate-800 ${
+                  isAnswer ? 'animate-pop ring-emerald-500' : isWrongPick ? 'animate-shake ring-rose-500' : 'ring-violet-100 hover:ring-fuchsia-300 dark:ring-violet-900'
+                }`}
+              >
+                <OptionImage ill={img} id={`${exercise.id}-${shown}-${i}`} />
+              </button>
+            );
+          })}
+        </div>
+      ) : (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {q.options.map((o, i) => {
-          const isAnswer = reveal && i === q.answer;
+          const isAnswer = reveal && i === q.answer && (!retry || reveal.chosen === q.answer);
           const isWrongPick = reveal && i === reveal.chosen && i !== q.answer;
           return (
             <Button
@@ -175,6 +199,7 @@ export function ChoiceQuizStep({ exercise, mode, onDone }: StepProps<ChoiceQuizE
           );
         })}
       </div>
+      )}
       <Feedback kind={reveal ? (reveal.chosen === q.answer ? 'correct' : 'wrong') : null} mode={mode} eventKey={state.lastEventTime} />
     </div>
   );

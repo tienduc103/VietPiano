@@ -62,8 +62,20 @@ export interface Piece {
 export type KeyHighlight = 'black' | 'white' | 'black-group-2' | 'black-group-3' | 'all-c' | number[];
 
 export type Illustration =
-  | { type: 'keyboard'; from: number; to: number; highlight?: KeyHighlight; /** Hiện tên mọi phím trắng. */ labels?: boolean; fingers?: Record<number, number> }
-  | { type: 'hand'; hand: 'right' | 'left' }
+  | {
+      type: 'keyboard';
+      from: number;
+      to: number;
+      highlight?: KeyHighlight;
+      /** Hiện tên mọi phím trắng. */
+      labels?: boolean;
+      /** Ẩn mọi tên phím (đáp án dạng hình: không lộ tên nốt). */
+      noLabels?: boolean;
+      fingers?: Record<number, number>;
+      /** Nút 🔊 phát lần lượt các nốt này (MIDI). */
+      listen?: number[];
+    }
+  | { type: 'hand'; hand: 'right' | 'left'; /** Ngón được tô nổi. */ highlight?: number }
   | { type: 'staff'; piece: Piece; /** Cho nghe mẫu. */ listen?: boolean }
   | { type: 'counting'; piece: Piece; /** Chữ đếm dưới từng nốt, vd ["1", "2-3-4"]. */ counts: string[] };
 
@@ -144,6 +156,12 @@ export interface ChoiceQuestion {
   prompt: Text;
   illustration?: Illustration;
   options: Text[];
+  /**
+   * Đáp án dạng hình (câu đố chọn hình): `optionImages[i]` là hình của `options[i]`, cùng số phần tử.
+   * Khi có, app hiện các thẻ hình thay nút chữ; `options` chỉ dùng làm nhãn đọc màn hình (đặt nhãn trung tính
+   * như "Hình 1" để không lộ đáp án).
+   */
+  optionImages?: Illustration[];
   /** Chỉ số đáp án đúng trong `options`. */
   answer: number;
 }
@@ -152,6 +170,8 @@ export interface ChoiceQuestion {
 export interface ChoiceQuizExercise extends ExerciseBase {
   kind: 'choice-quiz';
   questions: ChoiceQuestion[];
+  /** Sai thì chọn lại tới khi đúng (chấm theo lần đầu) — mặc định false: mỗi câu một lần. */
+  retry?: boolean;
 }
 
 /**

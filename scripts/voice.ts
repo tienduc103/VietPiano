@@ -42,7 +42,11 @@ const config = { configFile: false as const, logLevel: 'error' as const };
 const { module: catalog } = await runnerImport<Catalog>(join(root, 'src/core/voice/catalog.ts'), config);
 const { module: content } = await runnerImport<Content>(join(root, 'src/core/curriculum/content/curriculum.ts'), config);
 
-const lines = catalog.voiceLines(content.CURRICULUM);
+type Supplement = typeof import('../src/core/curriculum/content/supplement');
+const { module: supplement } = await runnerImport<Supplement>(join(root, 'src/core/curriculum/content/supplement.ts'), config);
+
+// Giáo trình chính + giáo trình bổ sung "Làm quen từng nốt".
+const lines = [...new Set([...catalog.voiceLines(content.CURRICULUM), ...catalog.voiceLines(supplement.SUPPLEMENT)])];
 const fileOf = (line: string) => `${createHash('sha1').update(`${VOICE}|${RATE}|${line}`).digest('hex').slice(0, 12)}.mp3`;
 const exists = (f: string) => existsSync(join(audioDir, f)) && statSync(join(audioDir, f)).size >= MIN_BYTES;
 const missing = lines.filter((l) => !exists(fileOf(l)));

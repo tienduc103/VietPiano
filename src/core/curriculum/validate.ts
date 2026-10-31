@@ -94,7 +94,11 @@ function validateIllustration(ill: Illustration | undefined, where: string): str
     }
     return errors;
   }
-  if (ill.type === 'keyboard' && ill.from >= ill.to) return [`${where}: bàn phím from ≥ to`];
+  if (ill.type === 'keyboard') {
+    if (ill.from >= ill.to) return [`${where}: bàn phím from ≥ to`];
+    if (ill.listen?.some((m) => m < MIC_MIN_MIDI || m > MIC_MAX_MIDI)) return [`${where}: nốt nghe mẫu ngoài tầm micro`];
+  }
+  if (ill.type === 'hand' && ill.highlight !== undefined && (ill.highlight < 1 || ill.highlight > 5)) return [`${where}: ngón tô nổi phải 1–5`];
   return [];
 }
 
@@ -181,6 +185,10 @@ export function validateCurriculum(curriculum: Curriculum): string[] {
             ex.questions.forEach((q, i) => {
               if (q.answer < 0 || q.answer >= q.options.length) errors.push(`${where}: câu ${i + 1} đáp án ngoài lựa chọn`);
               errors.push(...validateIllustration(q.illustration, `${where}#${i + 1}`));
+              if (q.optionImages) {
+                if (q.optionImages.length !== q.options.length) errors.push(`${where}: câu ${i + 1} có ${q.optionImages.length} hình cho ${q.options.length} lựa chọn`);
+                q.optionImages.forEach((ill, j) => errors.push(...validateIllustration(ill, `${where}#${i + 1}/hình ${j + 1}`)));
+              }
             });
             break;
           case 'note-reading':

@@ -36,6 +36,7 @@ import {
   nextDisplay,
   saveBalloonResult,
   saveBalloonSettings,
+  sanitizeBalloonSettings,
   totalBalloonStars,
   type BalloonSettings,
 } from '../core/balloonPop/storage';
@@ -52,7 +53,7 @@ import { MicButton } from '../components/MicPanel';
 import { PianoKeyboard } from '../components/PianoKeyboard';
 import { Button, FullscreenButton, Icon, Segmented } from '../components/ui';
 import { useNoteInput } from '../hooks/useNoteInput';
-import { useApp } from '../store/appStore';
+import { useApp, type Route } from '../store/appStore';
 import { useCurriculum } from '../store/curriculumStore';
 import { useMic } from '../store/micStore';
 import { useSettings } from '../store/settingsStore';
@@ -73,8 +74,9 @@ type Update = (p: Partial<BalloonSettings>) => void;
  * nguồn nốt, gợi ý) mở ngay trên màn chơi + kết quả. Nốt trên bóng: tên Đô Rê Mi / CDEFGAB, hình nốt, hoặc "?" nghe đoán.
  * Nhận nốt từ đàn MIDI, bàn phím máy tính, piano ảo và micro qua `useNoteInput`; kỷ lục theo hồ sơ ở localStorage.
  */
-export function BalloonPopScreen() {
-  const [settings, setSettingsState] = useState<BalloonSettings>(loadBalloonSettings);
+export function BalloonPopScreen({ preset, returnTo }: { preset?: Partial<BalloonSettings>; returnTo?: Route }) {
+  // Mở từ bài học: áp cấu hình sẵn lên cài đặt đã lưu (chưa ghi lại tới khi người chơi đổi gì đó).
+  const [settings, setSettingsState] = useState<BalloonSettings>(() => (preset ? sanitizeBalloonSettings({ ...loadBalloonSettings(), ...preset }) : loadBalloonSettings()));
   const profileKey = useCurriculum((s) => s.profileKey);
   const [records, setRecords] = useState<ArcadeRecords>(() => loadBalloonRecords(profileKey));
   useEffect(() => setRecords(loadBalloonRecords(profileKey)), [profileKey]);
@@ -85,7 +87,15 @@ export function BalloonPopScreen() {
       return next;
     });
 
-  return <BalloonPlay settings={settings} update={update} records={records} onResult={(key, r) => setRecords((prev) => saveBalloonResult(profileKey, prev, key, r))} />;
+  return (
+    <BalloonPlay
+      settings={settings}
+      update={update}
+      records={records}
+      exit={returnTo ? { route: returnTo, label: 'Về bài học' } : { route: { name: 'games' }, label: 'Về Trò chơi' }}
+      onResult={(key, r) => setRecords((prev) => saveBalloonResult(profileKey, prev, key, r))}
+    />
+  );
 }
 
 /** Bảng cài đặt mở trên màn chơi: chế độ, tay, độ khó, tốc độ, nguồn nốt, gợi ý. Đổi chế độ / độ khó / tốc độ → ván mới. */
@@ -337,11 +347,14 @@ function BalloonPlay({
   update,
   records,
   onResult,
+  exit,
 }: {
   settings: BalloonSettings;
   update: Update;
   records: ArcadeRecords;
   onResult: (key: string, r: { score: number; stars: number }) => void;
+  /** Nút quay lại (mục Trò chơi, hoặc bài học đã mở trò này). */
+  exit: { route: Route; label: string };
 }) {
   const navigate = useApp((s) => s.navigate);
   const inputSource = useSettings((s) => s.settings.inputSource);
@@ -483,7 +496,7 @@ function BalloonPlay({
       data-speed={state.speed}
     >
       <header className="flex flex-wrap items-center gap-2 pl-10">
-        <Button variant="ghost" className="px-2" aria-label="Về mục Trò chơi" onClick={() => navigate({ name: 'games' })}>
+        <Button variant="ghost" className="px-2" aria-label={exit.label} onClick={() => navigate(exit.route)} data-testid="balloon-exit">
           <Icon name="back" />
         </Button>
         <div className="min-w-0 flex-1 basis-48">
@@ -615,7 +628,8 @@ function BalloonPlay({
             stats={state.stats}
             onAgain={restart}
             onSetup={openSettings}
-            onGames={() => navigate({ name: 'games' })}
+            onGames={() => navigate(exit.route)}
+            gamesLabel={exit.label}
           />
         )}
       </div>
@@ -659,6 +673,7 @@ function ResultPanel({
   onAgain,
   onSetup,
   onGames,
+  gamesLabel,
 }: {
   result: { summary: BalloonSummary; previousBest: number };
   name: (midi: number) => string;
@@ -667,6 +682,7 @@ function ResultPanel({
   onAgain: () => void;
   onSetup: () => void;
   onGames: () => void;
+  gamesLabel: string;
 }) {
   const s = result.summary;
   // Tìm nốt: không giới hạn số bóng.
@@ -716,7 +732,7 @@ function ResultPanel({
             ⚙ Đổi chế độ
           </Button>
           <Button variant="ghost" onClick={onGames}>
-            Về Trò chơi
+            {gamesLabel}
           </Button>
         </div>
       </section>

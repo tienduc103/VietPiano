@@ -4,6 +4,7 @@ import { accompanimentTimeline, lessonTimeline, pedalRanges, pieceToLesson } fro
 import { sustainUnderPedal } from '../../core/music/pedal';
 import { text, type Illustration, type Piece, type UiMode } from '../../core/curriculum/types';
 import { scheduleNotes, soundOutput } from '../../core/audio/SoundOutput';
+import { isBlackKey } from '../../core/music/notes';
 import { voiceTeacher } from '../../core/voice/teacher';
 import type { InputSourceSetting } from '../../core/settings/DeviceSettings';
 import { useSettings } from '../../store/settingsStore';
@@ -54,6 +55,98 @@ export function ListenButton({ piece, bpm, label = 'Nghe mẫu' }: { piece: Piec
       {playing ? 'Dừng' : label}
     </Button>
   );
+}
+
+const NO_LABEL = () => '';
+
+/** Khoảng cách giữa các nốt khi nghe mẫu từng nốt (giây). */
+const LISTEN_GAP_SEC = 0.9;
+
+/** Nút 🔊 phát lần lượt vài nốt (hình bàn phím ở trang giới thiệu). Micro bỏ nốt trong lúc phát. */
+export function ListenNotesButton({ notes, label = 'Nghe' }: { notes: readonly number[]; label?: string }) {
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => () => soundOutput.stop(), []);
+  useEffect(() => {
+    if (!playing) return;
+    const ms = soundOutput.playSequence(notes.map((midi, i) => ({ midi, start: i * LISTEN_GAP_SEC, duration: LISTEN_GAP_SEC * 0.9, velocity: 90 })));
+    const id = window.setTimeout(() => setPlaying(false), ms);
+    return () => window.clearTimeout(id);
+  }, [playing, notes]);
+  if (!soundOutput.isSupported()) return null;
+  return (
+    <Button
+      onClick={() => {
+        if (playing) soundOutput.stop();
+        else voiceTeacher.interrupt();
+        setPlaying(!playing);
+      }}
+      aria-pressed={playing}
+      data-testid="listen-notes"
+    >
+      <span aria-hidden>{playing ? '⏸' : '🔊'}</span>
+      {playing ? 'Dừng' : label}
+    </Button>
+  );
+}
+
+/** Bàn phím nhỏ vẽ SVG (không bấm được) — thẻ hình đáp án; không hiện tên phím. */
+export function MiniKeyboard({ from, to, highlighted }: { from: number; to: number; highlighted: ReadonlySet<number> }) {
+  const whites: number[] = [];
+  const blacks: { midi: number; at: number }[] = [];
+  for (let m = from; m <= to; m++) {
+    if (isBlackKey(m)) blacks.push({ midi: m, at: whites.length });
+    else whites.push(m);
+  }
+  const W = 20;
+  const H = 70;
+  return (
+    <svg viewBox={`0 0 ${whites.length * W} ${H}`} className="h-28 w-full" role="img" aria-label="Bàn phím" data-testid="mini-keyboard">
+      {whites.map((m, i) => (
+        <rect
+          key={m}
+          x={i * W + 0.5}
+          y={0.5}
+          width={W - 1}
+          height={H - 1}
+          rx={2}
+          data-midi={m}
+          data-highlighted={highlighted.has(m) || undefined}
+          className={highlighted.has(m) ? 'fill-amber-300 stroke-amber-600' : 'fill-white stroke-slate-400'}
+          strokeWidth={highlighted.has(m) ? 2 : 1}
+        />
+      ))}
+      {blacks.map((b) => (
+        <rect
+          key={b.midi}
+          x={b.at * W - W * 0.3}
+          y={0}
+          width={W * 0.6}
+          height={H * 0.6}
+          rx={1.5}
+          data-midi={b.midi}
+          data-highlighted={highlighted.has(b.midi) || undefined}
+          className={highlighted.has(b.midi) ? 'fill-amber-500' : 'fill-slate-800 dark:fill-slate-950'}
+        />
+      ))}
+    </svg>
+  );
+}
+
+/** Hình trong thẻ đáp án (câu đố chọn hình): gọn, không tương tác, không lộ tên nốt. */
+export function OptionImage({ ill, id }: { ill: Illustration; id: string }) {
+  switch (ill.type) {
+    case 'keyboard':
+      return <MiniKeyboard from={ill.from} to={ill.to} highlighted={new Set(highlightedKeys(ill.highlight, ill.from, ill.to))} />;
+    case 'hand':
+      return <HandFigure hand={ill.hand} highlight={ill.highlight} className="mx-auto h-40" />;
+    case 'staff':
+    case 'counting':
+      return (
+        <div className="pointer-events-none">
+          <StaticScore piece={ill.piece} id={id} showNames={false} />
+        </div>
+      );
+  }
 }
 
 /** Bàn tay với số ngón 1–5 (ngón cái = 1 ở cả hai tay). */
@@ -107,24 +200,32 @@ export function IllustrationView({ ill, id }: { ill: Illustration; id: string })
     case 'keyboard': {
       const highlighted = new Set(highlightedKeys(ill.highlight, ill.from, ill.to));
       return (
-        <div className="h-40 w-full" data-testid="illustration-keyboard">
-          <PianoKeyboard
-            from={ill.from}
-            to={ill.to}
-            expected={null}
-            detected={null}
-            flash={null}
-            labelStyle={labelStyle}
-            highlighted={highlighted}
-            fingers={ill.fingers}
-            allLabels={ill.labels}
-            onPress={(m) => soundOutput.playNote(m)}
-          />
+        <div className="grid gap-3">
+          <div className="h-40 w-full" data-testid="illustration-keyboard">
+            <PianoKeyboard
+              from={ill.from}
+              to={ill.to}
+              expected={null}
+              detected={null}
+              flash={null}
+              labelStyle={labelStyle}
+              highlighted={highlighted}
+              fingers={ill.fingers}
+              allLabels={ill.labels}
+              labelFor={ill.noLabels ? NO_LABEL : undefined}
+              onPress={(m) => soundOutput.playNote(m)}
+            />
+          </div>
+          {ill.listen && ill.listen.length > 0 && (
+            <div>
+              <ListenNotesButton notes={ill.listen} />
+            </div>
+          )}
         </div>
       );
     }
     case 'hand':
-      return <HandFigure hand={ill.hand} />;
+      return <HandFigure hand={ill.hand} highlight={ill.highlight} />;
     case 'staff':
       return (
         <div className="grid gap-3">

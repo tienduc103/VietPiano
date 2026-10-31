@@ -6,12 +6,15 @@ import {
   type LessonProgress,
   type PracticeSession,
 } from '../core/storage/ProgressStorage';
+import type { BalloonSettings } from '../core/balloonPop/storage';
 
 export type LessonStage = 'review' | 'game';
 
 export type Route =
   | { name: 'dashboard' }
   | { name: 'curriculum'; levelId?: string }
+  /** Giáo trình bổ sung "Làm quen từng nốt" (danh sách nốt). Buổi học mở bằng route `lesson` như giáo trình chính. */
+  | { name: 'supplement' }
   /** `stage`: mở thẳng phần Luyện tập / Trò chơi sau buổi (nút trên thẻ buổi học). */
   | { name: 'lesson'; lessonId: string; stage?: LessonStage }
   | { name: 'library' }
@@ -22,7 +25,13 @@ export type Route =
   /** Flappy Note: chim bay qua ống, mỗi nốt đánh đúng là một lần vỗ cánh. */
   | { name: 'flappy-note' }
   /** Bóng bay nốt nhạc: bóng bay lên trên phím đàn, đánh đúng nốt để nổ bóng. */
-  | { name: 'balloon-pop' }
+  | {
+      name: 'balloon-pop';
+      /** Cấu hình sẵn khi mở từ bài học (vd Tìm nốt Đô) — chỉ áp cho lần mở này, chưa lưu tới khi người chơi đổi cài đặt. */
+      preset?: Partial<BalloonSettings>;
+      /** Nút "Quay lại" về màn này thay vì mục Trò chơi. */
+      returnTo?: Route;
+    }
   | { name: 'practice'; lessonId: string }
   | { name: 'settings' };
 
@@ -31,6 +40,7 @@ export function initialRoute(search = typeof location === 'undefined' ? '' : loc
   const screen = new URLSearchParams(search).get('screen');
   if (screen === 'library') return { name: 'library' };
   if (screen === 'curriculum') return { name: 'curriculum' };
+  if (screen === 'supplement') return { name: 'supplement' };
   if (screen === 'games') return { name: 'games' };
   if (screen === 'note-hunter') return { name: 'note-hunter' };
   if (screen === 'flappy-note') return { name: 'flappy-note' };

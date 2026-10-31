@@ -50,6 +50,15 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   curriculum/              giáo trình (xem docs/curriculum.md): Curriculum → Level → Week → Lesson → Activity/Exercise
     content/                 CHỈ dữ liệu (cấp 1–6: mỗi cấp 20 buổi; `helpers.ts` hàm dựng chung);
                              `extraPractice` = bài thư viện luyện thêm (gộp từ khoá học cũ)
+                             `supplement.ts` giáo trình bổ sung "Làm quen từng nốt" (`SUPPLEMENT`, route `supplement`,
+                             `?screen=supplement`): mỗi buổi MỘT nốt = giới thiệu (hình bàn phím có nút 🔊 `listen`) → câu đố
+                             chọn hình (`ChoiceQuestion.optionImages`: thẻ bàn phím mini không tên phím `noLabels` / khuông /
+                             bàn tay tô ngón `highlight`; `retry` = sai chọn lại) → luyện phím (key-quiz) → bé tự chọn trò
+                             (`SUPPLEMENT_GAMES`, `components/curriculum/SupplementGames`: Bóng bay kiểu Tìm nốt mở bằng route
+                             `balloon-pop` + `preset` / `returnTo`, hoặc trò trong app qua `GamePlayer`; không tính điểm buổi).
+                             Chạy bằng LessonPlayer (lessonId "sup-…", không có Luyện tập sau buổi); tiến độ chung kho
+                             `curriculumStore` nhưng không ảnh hưởng gợi ý mở khoá cấp 1–6. Hiện chỉ có nốt Đô (`sup-c`),
+                             nốt khác ở `SUPPLEMENT_UPCOMING` ("Sắp có"); `npm run voice` đọc cả giáo trình này
     validate.ts              kiểm tra dữ liệu (đủ phách, tầm micro, tiên quyết, đáp án) — test chạy cho toàn giáo trình
     piece.ts / QuizEngine.ts / scoring.ts / unlock.ts / progress.ts  bản nhạc→dòng thời gian/MIDI, bài nhiều lượt, rubric, gợi ý mở khoá, tiến độ
     review.ts                Luyện tập sau buổi: tự sinh từ bài tập của buổi (bài yếu nhất, trộn lượt, hỏi thêm nốt hay nhầm);
@@ -149,7 +158,7 @@ src/store/           Zustand: settingsStore, micStore, appStore (route + tiến 
 src/hooks/           vòng đời app (ẩn nền → tắt micro), theme, wake lock, ghi phiên luyện tập
 src/components/      ScoreView, PianoKeyboard, MicPanel, ui
 src/screens/         Dashboard (trang chủ = giáo trình phía trên + Thư viện bài `components/LessonLibrary` phía dưới),
-                     Curriculum, LessonPlayer, Practice, Games, Settings. Route `library` = trang chủ cuộn tới thư viện;
+                     Curriculum, Supplement (giáo trình bổ sung), LessonPlayer, Practice, Games, Settings. Route `library` = trang chủ cuộn tới thư viện;
                      `?screen=library` / `?screen=curriculum` / `?screen=games` mở thẳng (e2e dùng)
 e2e/                 Playwright; global-setup sinh WAV gam Đô trưởng làm micro giả
 ```
