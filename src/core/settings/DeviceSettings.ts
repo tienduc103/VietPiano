@@ -3,6 +3,7 @@
  * (dữ liệu nhỏ, đọc đồng bộ khi khởi động).
  */
 import type { NoteLabelStyle } from '../music/notes';
+import type { PracticeHand } from '../practice/handPractice';
 import { DEFAULT_RECOGNIZER_CONFIG } from '../audio/NoteRecognizer';
 import { sanitizePosition, type FloatingPosition } from './floatingPosition';
 import { DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_URL, LOCAL_OLLAMA_URL, normalizeOllamaUrl } from '../feedback/OllamaClient';
@@ -39,6 +40,8 @@ export interface DeviceSettings {
   /** Vị trí nút nổi "Tải lại bản mới nhất" do người dùng kéo tới; null = góc trên bên trái. */
   reloadButtonPos: FloatingPosition | null;
   practiceMode: PracticeMode;
+  /** Màn Luyện tập, bài khuông đôi có phần đệm: tập hai tay / chỉ tay phải / chỉ tay trái. */
+  practiceHand: PracticeHand;
   /** Tốc độ chế độ chạy theo nhịp, % so với nhịp độ gợi ý của bài. */
   tempoPercent: number;
   /** Nhận nốt từ đàn nối dây MIDI (Web MIDI, Chrome/Edge máy tính); tự kết nối khi mở app. */
@@ -82,6 +85,7 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
   showFloatingNote: true,
   reloadButtonPos: null,
   practiceMode: 'wait',
+  practiceHand: 'both',
   tempoPercent: 100,
   midiEnabled: false,
   uiMode: 'auto',
@@ -170,6 +174,7 @@ function sanitize(s: DeviceSettings): DeviceSettings {
     showFloatingNote: Boolean(s.showFloatingNote),
     reloadButtonPos: sanitizePosition(s.reloadButtonPos),
     practiceMode: sanitizeMode(s),
+    practiceHand: s.practiceHand === 'right' || s.practiceHand === 'left' ? s.practiceHand : 'both',
     tempoPercent: Math.round(num(s.tempoPercent, 100, TEMPO_PERCENT_MIN, TEMPO_PERCENT_MAX)),
     midiEnabled: s.midiEnabled === true,
     uiMode: s.uiMode === 'kids' || s.uiMode === 'adult' ? s.uiMode : 'auto',

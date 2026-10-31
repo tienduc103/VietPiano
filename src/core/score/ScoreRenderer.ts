@@ -44,6 +44,9 @@ export interface RenderedScore {
   labelElements: (SVGTextElement | null)[];
   /** Số ngón tay phía trên khuông (null nếu nốt không ghi ngón). */
   fingerElements: (SVGTextElement | null)[];
+  /** Tâm x + nhóm SVG của từng nốt / hợp âm / dấu lặng phần đệm (cùng thứ tự `lesson.accompaniment`; rỗng nếu không có). */
+  accompanimentCenters: number[];
+  accompanimentElements: (SVGElement | null)[];
   /** Hình chữ nhật tô nền nốt hiện tại. */
   cursor: SVGRectElement;
 }
@@ -362,6 +365,16 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     return el;
   });
 
+  // Phần đệm: class riêng để làm mờ khi tập một tay và tô trạng thái khi tập tay trái.
+  const accStaveNotes = built.flatMap((b) => b.accompaniment);
+  const accompanimentCenters = accStaveNotes.map(noteCenterX);
+  const accompanimentElements = accStaveNotes.map((n, i) => {
+    const el = n.getSVGElement() ?? null;
+    el?.classList.add('score-acc');
+    el?.setAttribute('data-acc-index', String(i));
+    return el;
+  });
+
   // Nền tô sáng nốt hiện tại (chèn đầu tiên để nằm dưới các nét vẽ).
   const staffTops = built[0].staves.map((st) => st.getYForLine(0));
   const staveTop = staffTops[0];
@@ -478,7 +491,6 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
 
   // Số ngón tay phần đệm: chồng dưới khuông Fa, không tô sáng vì app không chấm phần đệm.
   if (accMeasures) {
-    const accStaveNotes = built.flatMap((b) => b.accompaniment);
     accMeasures.flatMap((m) => m.items).forEach((n, i) => {
       for (const row of accompanimentFingerRows(n, accStaveNotes[i], staveBottom)) {
         const t = document.createElementNS(SVG_NS, 'text');
@@ -492,5 +504,5 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     });
   }
 
-  return { width, height, noteCenters, noteElements, labelElements, fingerElements, cursor };
+  return { width, height, noteCenters, noteElements, labelElements, fingerElements, accompanimentCenters, accompanimentElements, cursor };
 }

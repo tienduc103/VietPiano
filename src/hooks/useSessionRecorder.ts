@@ -13,7 +13,7 @@ const TICK_MS = 1000;
  * Đo thời gian luyện tập thực và lưu phiên vào ProgressStorage khi:
  * hoàn thành bài, chơi lại từ đầu, hoặc rời màn hình (nếu đã có thao tác).
  */
-export function useSessionRecorder(engine: PracticeEngine, lesson: Lesson) {
+export function useSessionRecorder(engine: PracticeEngine, lesson: Lesson, hand?: 'right' | 'left') {
   const recordSession = useApp((s) => s.recordSession);
   const ref = useRef({ activeMs: 0, lastTick: null as number | null, wallStart: Date.now(), saved: false });
   const noteStats = useRef(new NoteStatsCollector());
@@ -51,8 +51,9 @@ export function useSessionRecorder(engine: PracticeEngine, lesson: Lesson) {
       totalNotes: s.expected.length,
       reading,
       noteTallies: notes,
+      ...(hand ? { hand } : {}),
     });
-  }, [engine, lesson.id, recordSession]);
+  }, [engine, lesson.id, hand, recordSession]);
 
   useEffect(() => {
     const id = window.setInterval(accumulate, TICK_MS);

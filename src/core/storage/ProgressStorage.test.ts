@@ -44,6 +44,11 @@ describe('applySession', () => {
     const p = applySession(emptyProgress('x'), session({ completed: false, correct: 10, wrong: 0 }));
     expect(p.bestAccuracy).toBe(0);
   });
+
+  it('tập riêng một tay: cộng thời gian + số nốt, không tính là đã hoàn thành cả bài', () => {
+    const p = applySession(emptyProgress('x'), session({ hand: 'left', correct: 10, wrong: 0 }));
+    expect(p).toMatchObject({ sessions: 1, completions: 0, bestAccuracy: 0, totalCorrect: 10, totalPracticeMs: 60_000 });
+  });
 });
 
 describe.each([

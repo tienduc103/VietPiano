@@ -87,23 +87,39 @@ body::before {
 .score-svg .vf-stem {
   stroke: currentColor;
 }
-.score-note {
-  transition: color 150ms ease;
+.score-note,
+.score-acc {
+  transition:
+    color 150ms ease,
+    opacity 150ms ease;
 }
-.score-note.is-correct {
+.score-note.is-correct,
+.score-acc.is-correct {
   color: var(--score-correct);
 }
-.score-note.is-corrected {
+.score-note.is-corrected,
+.score-acc.is-corrected {
   color: var(--score-corrected);
 }
-.score-note.is-skipped {
+.score-note.is-skipped,
+.score-acc.is-skipped {
   color: var(--score-skipped);
 }
-.score-note.is-wrong {
+.score-note.is-wrong,
+.score-acc.is-wrong {
   color: var(--score-wrong);
 }
-.score-note.is-current {
+.score-note.is-current,
+.score-acc.is-current {
   color: var(--score-current);
+}
+/* Tập một tay (màn Luyện tập): làm mờ tay không tập — vẫn thấy cả hai khuông để không lạc ô nhịp. */
+.score-dim-melody .score-note,
+.score-dim-melody .score-label,
+.score-dim-melody .score-finger:not(.score-finger-lh),
+.score-dim-accompaniment .score-acc,
+.score-dim-accompaniment .score-finger-lh {
+  opacity: 0.3;
 }
 .score-cursor {
   fill: var(--score-cursor);

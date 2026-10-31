@@ -25,6 +25,8 @@ export interface PracticeSession {
   reading?: { totalMs: number; count: number };
   /** Đúng / sai theo từng nốt cần đánh. */
   noteTallies?: NoteTally[];
+  /** Bài khuông đôi tập riêng một tay (màn Luyện tập); không có = cả bài như soạn. */
+  hand?: 'right' | 'left';
 }
 
 export interface LessonProgress {
@@ -73,11 +75,13 @@ export function emptyProgress(lessonId: string): LessonProgress {
 export function applySession(prev: LessonProgress, s: PracticeSession): LessonProgress {
   const attempts = s.correct + s.wrong;
   const accuracy = attempts ? s.correct / attempts : 0;
+  // Tập riêng một tay: vẫn cộng thời gian + số nốt, nhưng chưa phải là đã chơi xong cả bài.
+  const completed = s.completed && !s.hand;
   return {
     lessonId: prev.lessonId,
     sessions: prev.sessions + 1,
-    completions: prev.completions + (s.completed ? 1 : 0),
-    bestAccuracy: s.completed ? Math.max(prev.bestAccuracy, accuracy) : prev.bestAccuracy,
+    completions: prev.completions + (completed ? 1 : 0),
+    bestAccuracy: completed ? Math.max(prev.bestAccuracy, accuracy) : prev.bestAccuracy,
     totalCorrect: prev.totalCorrect + s.correct,
     totalWrong: prev.totalWrong + s.wrong,
     totalPracticeMs: prev.totalPracticeMs + s.durationMs,

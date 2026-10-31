@@ -545,6 +545,45 @@ test('Romance hai tay: hướng dẫn cả hai tay; bàn phím ảo / đàn MIDI
   await expect(page.getByTestId('progress-text')).toHaveText('2/92');
 });
 
+test('Romance hai tay: chọn tay — tập riêng tay trái (hợp âm đủ nốt, micro bỏ hợp âm) và tay phải', async ({ page }) => {
+  await openLesson(page, 'song-romance-2-hands');
+  await expect(page.getByTestId('hand-both')).toHaveAttribute('aria-checked', 'true');
+
+  // Tay trái: 16 hợp âm đoạn A + 46 nốt rải đoạn B (ô cuối một nốt) = 62 bước; khuông Sol làm mờ.
+  await page.getByTestId('hand-left').click();
+  await expect(page.getByTestId('hands-notice')).toContainText('Bàn phím ảo: tập tay trái');
+  await expect(page.getByTestId('score')).toHaveClass(/score-dim-melody/);
+  await expect(page.getByTestId('progress-text')).toHaveText('0/62');
+  await expect(page.getByTestId('expected-note')).toHaveText('D3F3A3');
+  await expect(page.getByTestId('expected-finger')).toHaveText('ngón 5·3·1');
+  await expect(page.locator('.score-acc.is-current')).toHaveCount(1);
+  // Nốt tay phải đánh kèm bị bỏ qua, không tính sai; hợp âm phải đủ ba nốt.
+  await page.locator('[data-midi="69"]').click();
+  await expect(page.getByTitle('Số lần sai')).toHaveText('✗ 0');
+  for (const m of [57, 50]) await page.locator(`[data-midi="${m}"]`).click();
+  await expect(page.getByTestId('progress-text')).toHaveText('0/62');
+  await page.locator('[data-midi="53"]').click();
+  await expect(page.getByTestId('progress-text')).toHaveText('1/62');
+
+  // Bật micro → micro chỉ nhận một nốt mỗi lúc: bỏ 16 hợp âm, còn 46 nốt rải.
+  await page.getByTestId('mic-button').click();
+  await expect(page.getByTestId('hands-notice')).toContainText('bỏ qua 16 hợp âm');
+  await expect(page.getByTestId('progress-text')).toHaveText(/\/46$/);
+  await page.getByTestId('mic-button').click();
+
+  // Tay phải: 92 nốt giai điệu, nốt tay trái không tính sai; lựa chọn được nhớ khi mở lại bài.
+  await page.getByTestId('hand-right').click();
+  await expect(page.getByTestId('hands-notice')).toContainText('Tập tay phải');
+  await expect(page.getByTestId('score')).toHaveClass(/score-dim-accompaniment/);
+  await expect(page.getByTestId('progress-text')).toHaveText('0/92');
+  await page.locator('[data-midi="50"]').click();
+  await expect(page.getByTitle('Số lần sai')).toHaveText('✗ 0');
+  await page.locator('[data-midi="69"]').click();
+  await expect(page.getByTestId('progress-text')).toHaveText('1/92');
+  await openLesson(page, 'song-romance-2-hands');
+  await expect(page.getByTestId('hand-right')).toHaveAttribute('aria-checked', 'true');
+});
+
 test('Für Elise hai tay: có pedal, tay trái nghỉ ở ô chỉ có tay phải, rải hợp âm chấm cả hai tay', async ({ page }) => {
   await openLesson(page, 'song-fur-elise-2-hands');
   await expect(page.locator('.score-pedal').first()).toBeAttached();

@@ -14,6 +14,10 @@ interface Props {
   wrongPulse: number;
   showNames: boolean;
   labelStyle: NoteLabelStyle;
+  /** `index` / `results` trỏ vào nốt giai điệu (mặc định) hay nốt đệm tay trái (tập tay trái). */
+  staff?: 'melody' | 'accompaniment';
+  /** Làm mờ tay không tập (tập một tay). */
+  dim?: 'melody' | 'accompaniment';
 }
 
 /** Vị trí nốt hiện tại trên màn hình (tỉ lệ chiều rộng). */
@@ -23,7 +27,7 @@ const FOCUS_RATIO = 0.3;
 // Tối thiểu 0.8: khuông đôi có phần đệm + chữ đánh dấu đoạn thu nhỏ một chút thay vì bị cắt mất hàng tên nốt.
 const FIT = { minScale: 0.8, maxScale: 2.4, fallbackScale: 1.6 };
 
-export function ScoreView({ lesson, index, results, status, wrongPulse, showNames, labelStyle }: Props) {
+export function ScoreView({ lesson, index, results, status, wrongPulse, showNames, labelStyle, staff = 'melody', dim }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const svgHostRef = useRef<HTMLDivElement>(null);
   const renderedRef = useRef<RenderedScore | null>(null);
@@ -64,22 +68,26 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
   useLayoutEffect(() => {
     const r = renderedRef.current;
     if (!r) return;
-    r.noteElements.forEach((el, i) => {
-      if (!el) return;
-      const res = results[i];
-      el.classList.toggle('is-current', i === index && status !== 'finished');
-      el.classList.toggle('is-correct', res === 'correct');
-      el.classList.toggle('is-corrected', res === 'corrected');
-      el.classList.toggle('is-skipped', res === 'skipped');
-      el.classList.toggle('is-wrong', res === 'wrong');
-    });
-    r.labelElements.forEach((el, i) => el?.classList.toggle('is-current', i === index && status !== 'finished'));
-    r.fingerElements.forEach((el, i) => el?.classList.toggle('is-current', i === index && status !== 'finished'));
-    const cx = r.noteCenters[index] ?? 0;
+    const onAcc = staff === 'accompaniment';
+    const mark = (els: readonly (SVGElement | null)[], active: boolean) =>
+      els.forEach((el, i) => {
+        if (!el) return;
+        const res = active ? results[i] : undefined;
+        el.classList.toggle('is-current', active && i === index && status !== 'finished');
+        el.classList.toggle('is-correct', res === 'correct');
+        el.classList.toggle('is-corrected', res === 'corrected');
+        el.classList.toggle('is-skipped', res === 'skipped');
+        el.classList.toggle('is-wrong', res === 'wrong');
+      });
+    mark(r.noteElements, !onAcc);
+    mark(r.accompanimentElements, onAcc);
+    r.labelElements.forEach((el, i) => el?.classList.toggle('is-current', !onAcc && i === index && status !== 'finished'));
+    r.fingerElements.forEach((el, i) => el?.classList.toggle('is-current', !onAcc && i === index && status !== 'finished'));
+    const cx = (onAcc ? r.accompanimentCenters : r.noteCenters)[index] ?? 0;
     r.cursor.setAttribute('x', String(cx - 17));
     r.cursor.style.display = status === 'finished' ? 'none' : '';
     r.cursor.classList.toggle('is-wrong', status === 'wrong');
-  }, [index, results, status, layoutVersion]);
+  }, [index, results, status, staff, layoutVersion]);
 
   // Rung nhẹ khuông nhạc khi đánh sai (khởi động lại animation CSS).
   useEffect(() => {
@@ -96,14 +104,14 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
   const fit = (fitRef.current = fitScore(fitRef.current, size.h, height, FIT));
   const scale = fit.scale;
   const contentWidth = (r?.width ?? 0) * scale;
-  const focusX = (r?.noteCenters[index] ?? 0) * scale;
+  const focusX = ((staff === 'accompaniment' ? r?.accompanimentCenters : r?.noteCenters)?.[index] ?? 0) * scale;
   const maxOffset = Math.max(0, contentWidth - size.w);
   const offset = Math.min(maxOffset, Math.max(0, focusX - size.w * FOCUS_RATIO));
 
   return (
     <div
       ref={viewportRef}
-      className="relative h-full w-full overflow-hidden"
+      className={`relative h-full w-full overflow-hidden ${dim ? `score-dim-${dim}` : ''}`}
       aria-label={`Khuông nhạc bài ${lesson.title}`}
       data-testid="score"
     >

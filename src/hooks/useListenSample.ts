@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { scheduleNotes, soundOutput } from '../core/audio/SoundOutput';
-import { listenIndexAt, listenPlan } from '../core/practice/listenSample';
+import { listenPlanAtBeat } from '../core/practice/listenSample';
+import { stepIndexAtBeat } from '../core/practice/handPractice';
 import type { Lesson } from '../core/lessons/types';
 
 /** Độ trễ `playSequence` trước nốt đầu (giây). */
 const START_DELAY_SEC = 0.08;
 
 /**
- * Nghe mẫu ở màn Luyện tập: bật → phát từ đầu ô nhịp chứa nốt `index` ở nhịp độ `bpm`, `playIndex` = nốt giai điệu
- * đang vang (con trỏ khuông nhạc chạy theo); bấm lại / hết bài / rời màn → tắt. Micro tự bỏ nốt lúc đang phát.
+ * Nghe mẫu ở màn Luyện tập: bật → phát từ đầu ô nhịp chứa bước `index` của dòng tập (`steps`: phách bắt đầu từng bước —
+ * nốt giai điệu, hoặc nốt đệm khi tập tay trái) ở nhịp độ `bpm`; `playIndex` = bước đang vang (con trỏ khuông nhạc
+ * chạy theo); bấm lại / hết bài / rời màn → tắt. Micro tự bỏ nốt lúc đang phát.
  */
-export function useListenSample(lesson: Lesson) {
+export function useListenSample(lesson: Lesson, steps: readonly { startBeat: number }[]) {
   const [playIndex, setPlayIndex] = useState<number | null>(null);
   const stopRef = useRef<() => void>(() => {});
 
@@ -19,14 +21,14 @@ export function useListenSample(lesson: Lesson) {
 
   const start = (index: number, bpm: number) => {
     stop();
-    const plan = listenPlan(lesson, index);
+    const plan = listenPlanAtBeat(lesson, steps[index]?.startBeat ?? 0);
     const ms = soundOutput.playSequence(scheduleNotes(plan.notes, bpm));
     if (ms === 0) return;
     const t0 = performance.now() + START_DELAY_SEC * 1000;
     let raf = 0;
     const loop = () => {
       const beat = (Math.max(0, performance.now() - t0) / 60000) * bpm;
-      setPlayIndex(listenIndexAt(plan, beat));
+      setPlayIndex(stepIndexAtBeat(steps, plan.fromBeat + beat));
       raf = requestAnimationFrame(loop);
     };
     const timer = window.setTimeout(() => stopRef.current(), ms);
