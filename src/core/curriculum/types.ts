@@ -74,6 +74,8 @@ export type Illustration =
       fingers?: Record<number, number>;
       /** Nút 🔊 phát lần lượt các nốt này (MIDI). */
       listen?: number[];
+      /** Có tiêu đề → hiện trong thẻ trắng (tiêu đề + nút nghe ở góc phải). */
+      caption?: Text;
     }
   | { type: 'hand'; hand: 'right' | 'left'; /** Ngón được tô nổi. */ highlight?: number }
   | {
@@ -83,6 +85,8 @@ export type Illustration =
       listen?: boolean;
       /** Chữ dưới từng nốt thay tên nốt (vd tên trường độ "Tròn", "Móc đơn"); chữ có dấu cách xuống hai dòng. */
       noteLabels?: string[];
+      /** Có tiêu đề → hiện trong thẻ trắng (tiêu đề + nút nghe ở góc phải), khuông nhạc căn giữa. */
+      caption?: Text;
     }
   | { type: 'counting'; piece: Piece; /** Chữ đếm dưới từng nốt, vd ["1", "2-3-4"]. */ counts: string[] };
 

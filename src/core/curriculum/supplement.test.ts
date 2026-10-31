@@ -37,9 +37,11 @@ describe('giáo trình bổ sung "Làm quen từng nốt"', () => {
     const NAME: Record<number, string> = { 4: 'Tròn', 2: 'Trắng', 1: 'Đen', 0.5: 'Móc đơn' };
     const durationStaves = pages.flatMap((p) => [p.illustration, ...(p.moreIllustrations ?? [])]).filter((ill) => ill?.type === 'staff' && ill.noteLabels);
     expect(durationStaves.length).toBeGreaterThanOrEqual(2);
-    // Trang mở đầu có cả bàn phím lẫn khuông nhạc trường độ.
-    expect(pages[0].illustration?.type).toBe('keyboard');
-    expect(pages[0].moreIllustrations?.some((ill) => ill.type === 'staff' && ill.noteLabels)).toBe(true);
+    // Trang mở đầu: khuông nhạc trường độ ở trên, bàn phím ở dưới — mỗi hình một thẻ có tiêu đề.
+    const first = pages[0].illustration;
+    expect(first?.type === 'staff' && first.noteLabels && first.caption).toBeTruthy();
+    expect(pages[0].moreIllustrations?.map((ill) => ill.type)).toEqual(['keyboard']);
+    expect(pages[0].moreIllustrations?.[0]).toHaveProperty('caption');
     for (const ill of durationStaves) {
       if (ill?.type !== 'staff') continue;
       const notes = lessonTimeline(pieceToLesson(ill.piece, 'sup-c'));

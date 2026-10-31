@@ -21,16 +21,86 @@ const NO_RESULTS: never[] = [];
  * Khuông nhạc tĩnh (không con trỏ) cho hình minh hoạ / câu hỏi.
  * `noteLabels`: chữ dưới từng nốt thay tên nốt (theo thứ tự nốt, bỏ dấu lặng); chữ có dấu cách xuống hai dòng.
  */
-export function StaticScore({ piece, id, showNames, noteLabels }: { piece: Piece; id: string; showNames?: boolean; noteLabels?: readonly string[] }) {
+export function StaticScore({
+  piece,
+  id,
+  showNames,
+  noteLabels,
+  bare,
+}: {
+  piece: Piece;
+  id: string;
+  showNames?: boolean;
+  noteLabels?: readonly string[];
+  /** Trong thẻ có sẵn nền: bỏ nền + viền riêng, căn khuông nhạc vào giữa. */
+  bare?: boolean;
+}) {
   const labelStyle = useSettings((s) => s.settings.labelStyle);
   const lesson = useMemo(() => pieceToLesson(piece, id), [piece, id]);
   const hostRef = useRef<HTMLDivElement>(null);
   useNoteLabels(hostRef, noteLabels);
+  const contentWidth = useScoreContentWidth(hostRef, !!bare);
+  // Khuông đôi (bài hai tay / có phần đệm) cần cao hơn: số ngón dưới hợp âm trầm không bị cắt.
+  const height = piece.clef === 'grand' ? 'h-72' : 'h-48';
+  const score = <ScoreView lesson={lesson} index={0} results={NO_RESULTS} status="finished" wrongPulse={0} showNames={(showNames ?? true) || !!noteLabels} labelStyle={labelStyle} />;
+  if (bare) {
+    // Tỉ lệ khuông nhạc chỉ theo chiều cao → thu khung về đúng bề rộng khuông rồi căn giữa (không đổi cỡ khuông).
+    return (
+      // Khuông một dòng chừa chỗ dòng kẻ phụ phía trên → kéo sát tiêu đề thẻ cho cân.
+      <div ref={hostRef} className={`${height} -mt-4 -mb-2 flex justify-center`}>
+        <div className="h-full max-w-full" style={{ width: contentWidth ? `${Math.ceil(contentWidth)}px` : '100%' }}>
+          {score}
+        </div>
+      </div>
+    );
+  }
   return (
-    // Khuông đôi (bài hai tay / có phần đệm) cần cao hơn: số ngón dưới hợp âm trầm không bị cắt.
-    <div ref={hostRef} className={`${piece.clef === 'grand' ? 'h-72' : 'h-48'} rounded-2xl bg-white ring-1 ring-violet-100 dark:bg-slate-900 dark:ring-violet-900`}>
-      <ScoreView lesson={lesson} index={0} results={NO_RESULTS} status="finished" wrongPulse={0} showNames={(showNames ?? true) || !!noteLabels} labelStyle={labelStyle} />
+    <div ref={hostRef} className={`${height} rounded-2xl bg-white ring-1 ring-violet-100 dark:bg-slate-900 dark:ring-violet-900`}>
+      {score}
     </div>
+  );
+}
+
+/** Bề rộng khuông nhạc đã vẽ (px trên màn hình) — đo khung chứa SVG mà ScoreView đặt bề rộng theo tỉ lệ. */
+function useScoreContentWidth(hostRef: React.RefObject<HTMLDivElement | null>, enabled: boolean): number {
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host || !enabled) return;
+    let observed: Element | null = null;
+    const ro = new ResizeObserver(() => {
+      const w = observed?.getBoundingClientRect().width ?? 0;
+      if (w > 0) setWidth((prev) => (Math.abs(prev - w) > 1 ? w : prev));
+    });
+    const attach = () => {
+      const box = host.querySelector('svg')?.parentElement?.parentElement ?? null;
+      if (box && box !== observed) {
+        if (observed) ro.unobserve(observed);
+        observed = box;
+        ro.observe(box);
+      }
+    };
+    attach();
+    const mo = new MutationObserver(attach);
+    mo.observe(host, { childList: true, subtree: true });
+    return () => {
+      mo.disconnect();
+      ro.disconnect();
+    };
+  }, [hostRef, enabled]);
+  return width;
+}
+
+/** Thẻ hình có tiêu đề: nền trắng, tiêu đề nhỏ bên trái, nút (nghe) bên phải. */
+function FigureCard({ caption, action, children, testId }: { caption: string; action?: ReactNode; children: ReactNode; testId?: string }) {
+  return (
+    <figure className="grid gap-2 rounded-3xl bg-white px-5 py-4 shadow-sm ring-1 ring-violet-100 dark:bg-slate-900 dark:ring-violet-900" data-testid={testId}>
+      <figcaption className="flex min-h-12 flex-wrap items-center justify-between gap-3">
+        <span className="text-sm font-bold tracking-wide text-violet-700 uppercase dark:text-violet-300">{caption}</span>
+        {action}
+      </figcaption>
+      {children}
+    </figure>
   );
 }
 
@@ -238,6 +308,27 @@ export function IllustrationView({ ill, id }: { ill: Illustration; id: string })
   switch (ill.type) {
     case 'keyboard': {
       const highlighted = new Set(highlightedKeys(ill.highlight, ill.from, ill.to));
+      if (ill.caption) {
+        return (
+          <FigureCard caption={text(ill.caption)} action={ill.listen && ill.listen.length > 0 ? <ListenNotesButton notes={ill.listen} /> : undefined} testId="figure-keyboard">
+            <div className="h-36 w-full" data-testid="illustration-keyboard">
+              <PianoKeyboard
+                from={ill.from}
+                to={ill.to}
+                expected={null}
+                detected={null}
+                flash={null}
+                labelStyle={labelStyle}
+                highlighted={highlighted}
+                fingers={ill.fingers}
+                allLabels={ill.labels}
+                labelFor={ill.noLabels ? NO_LABEL : undefined}
+                onPress={(m) => soundOutput.playNote(m)}
+              />
+            </div>
+          </FigureCard>
+        );
+      }
       return (
         <div className="grid gap-3">
           <div className="h-40 w-full" data-testid="illustration-keyboard">
@@ -266,6 +357,13 @@ export function IllustrationView({ ill, id }: { ill: Illustration; id: string })
     case 'hand':
       return <HandFigure hand={ill.hand} highlight={ill.highlight} />;
     case 'staff':
+      if (ill.caption) {
+        return (
+          <FigureCard caption={text(ill.caption)} action={ill.listen ? <ListenButton piece={ill.piece} /> : undefined} testId="figure-staff">
+            <StaticScore piece={ill.piece} id={id} noteLabels={ill.noteLabels} bare />
+          </FigureCard>
+        );
+      }
       return (
         <div className="grid gap-3">
           <StaticScore piece={ill.piece} id={id} noteLabels={ill.noteLabels} />

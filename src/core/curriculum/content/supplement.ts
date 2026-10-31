@@ -52,10 +52,10 @@ const C_LESSON = {
       pages: [
         {
           title: 'Đây là nốt Đô',
-          body: 'Các phím đang sáng đều là nốt Đô (C). Bấm 🔊 để nghe tiếng Đô giữa, hoặc chạm vào một phím Đô. Bên dưới là nốt Đô trên khuông nhạc với các trường độ khác nhau.',
-          kids: 'Đây là bạn Đô! Bấm cái loa để nghe bạn ấy hát nhé. Dưới khuông nhạc là bạn Đô dài, ngắn khác nhau.',
-          illustration: { type: 'keyboard', ...KEYS, highlight: 'all-c', listen: [60] },
-          moreIllustrations: [C_DURATIONS],
+          body: 'Phía trên là nốt Đô trên khuông nhạc với các trường độ khác nhau; phía dưới là các phím Đô trên đàn. Bấm Nghe để nghe tiếng Đô.',
+          kids: 'Đây là bạn Đô! Trên khuông nhạc bạn ấy dài, ngắn khác nhau. Dưới là phím Đô trên đàn.',
+          illustration: { ...C_DURATIONS, caption: 'Nốt Đô trên khuông nhạc' },
+          moreIllustrations: [{ type: 'keyboard', ...KEYS, highlight: 'all-c', listen: [60], caption: 'Phím Đô trên đàn' }],
         },
         {
           title: 'Đô nằm bên trái 2 phím đen',
