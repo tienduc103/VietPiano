@@ -282,6 +282,25 @@ export function OptionImage({ ill, id }: { ill: Illustration; id: string }) {
   }
 }
 
+/**
+ * Ngón tay phải (ngón cái bên trái; tay trái lật gương): (x, y) = đỉnh đầu ngón, `rot` = góc nghiêng (độ),
+ * `len` = dài từ đầu ngón tới gốc, `wt` / `wb` = nửa bề rộng ở đầu / gốc ngón (ngón thon dần).
+ */
+const HAND_FINGERS = [
+  { n: 1, x: 34, y: 108, rot: -50, len: 74, wt: 12.5, wb: 17 },
+  { n: 2, x: 68, y: 40, rot: -10, len: 98, wt: 11.5, wb: 15 },
+  { n: 3, x: 102, y: 28, rot: 0, len: 106, wt: 12, wb: 15.5 },
+  { n: 4, x: 135, y: 38, rot: 9, len: 98, wt: 11.5, wb: 15 },
+  { n: 5, x: 164, y: 66, rot: 20, len: 76, wt: 10, wb: 13.5 },
+];
+
+const PALM_PATH = 'M 66 126 Q 104 116 154 128 Q 166 160 150 194 L 146 214 L 82 214 L 78 198 Q 60 182 58 158 Q 58 138 66 126 Z';
+
+/** Ngón tay dựng đứng: đầu ngón ở gốc toạ độ, gốc ngón ở (0, len); đầu tròn, thân thon dần. */
+function fingerPath({ len, wt, wb }: { len: number; wt: number; wb: number }): string {
+  return `M ${-wb} ${len} C ${-wb} ${len * 0.55} ${-wt} ${len * 0.35} ${-wt} ${wt} A ${wt} ${wt} 0 0 1 ${wt} ${wt} C ${wt} ${len * 0.35} ${wb} ${len * 0.55} ${wb} ${len} Z`;
+}
+
 /** Bàn tay với số ngón 1–5 (ngón cái = 1 ở cả hai tay). */
 export function HandFigure({
   hand,
@@ -293,28 +312,48 @@ export function HandFigure({
   highlight?: number;
   className?: string;
 }) {
-  // Toạ độ đầu ngón tay phải (ngón cái bên trái); tay trái lật gương.
-  const fingers = [
-    { n: 1, x: 32, y: 118, h: 46, rot: -38 },
-    { n: 2, x: 70, y: 44, h: 70, rot: -8 },
-    { n: 3, x: 102, y: 32, h: 80, rot: 0 },
-    { n: 4, x: 134, y: 42, h: 72, rot: 8 },
-    { n: 5, x: 162, y: 70, h: 54, rot: 18 },
-  ];
+  const mirror = hand === 'left' ? 'translate(200,0) scale(-1,1)' : undefined;
+  // Vẽ hai lớp: lớp viền (nét dày) rồi lớp da đè lên → một đường viền liền cho cả bàn tay.
+  const shapes = (
+    <>
+      <path d={PALM_PATH} />
+      {HAND_FINGERS.map((f) => (
+        <path key={f.n} d={fingerPath(f)} transform={`translate(${f.x} ${f.y}) rotate(${f.rot})`} />
+      ))}
+    </>
+  );
   return (
     <svg viewBox="0 0 200 230" className={className} role="img" aria-label={`Số ngón tay ${hand === 'right' ? 'phải' : 'trái'}`} data-testid="hand-figure">
-      <g transform={hand === 'left' ? 'translate(200,0) scale(-1,1)' : undefined} className="text-amber-200 dark:text-amber-300/80">
-        <rect x="52" y="110" width="116" height="100" rx="40" fill="currentColor" />
-        {fingers.map((f) => (
-          <rect key={f.n} x={f.x - 14} y={f.y} width="28" height={f.h + 40} rx="14" fill="currentColor" transform={`rotate(${f.rot} ${f.x} ${f.y + f.h + 40})`} />
+      <g transform={mirror}>
+        <g className="fill-[#d99a6c] stroke-[#d99a6c] dark:fill-[#a86e48] dark:stroke-[#a86e48]" strokeWidth="5" strokeLinejoin="round">
+          {shapes}
+        </g>
+        <g className="fill-[#fbd8b6] dark:fill-[#e2ae86]">{shapes}</g>
+        {/* Móng tay + nếp khớp ngón + chỉ tay */}
+        {HAND_FINGERS.map((f) => (
+          <g key={f.n} transform={`translate(${f.x} ${f.y}) rotate(${f.rot})`}>
+            <ellipse cx="0" cy={f.wt * 0.85} rx={f.wt * 0.55} ry={f.wt * 0.65} className="fill-[#fff0e2] dark:fill-[#f2cfb2]" />
+            {[0.62, 0.84].map((t) => {
+              const y = f.len * t;
+              const w = f.wt + (f.wb - f.wt) * t - 4;
+              return <path key={t} d={`M ${-w} ${y} Q 0 ${y + 3} ${w} ${y}`} fill="none" strokeWidth="1.5" strokeLinecap="round" className="stroke-[#d99a6c]/60 dark:stroke-[#a86e48]/70" />;
+            })}
+          </g>
         ))}
+        <path d="M 74 168 Q 100 160 132 150 M 82 186 Q 108 176 140 176" fill="none" strokeWidth="1.5" strokeLinecap="round" className="stroke-[#d99a6c]/50 dark:stroke-[#a86e48]/60" />
       </g>
-      {fingers.map((f) => {
-        const x = hand === 'left' ? 200 - f.x : f.x;
+      {HAND_FINGERS.map((f) => {
+        // Vòng số nằm trên ngón, dưới móng tay (dọc theo trục ngón).
+        const d = f.wt * 2 + 14;
+        const rad = (f.rot * Math.PI) / 180;
+        const rx = f.x - d * Math.sin(rad);
+        const x = hand === 'left' ? 200 - rx : rx;
+        const y = f.y + d * Math.cos(rad);
+        const on = highlight === f.n;
         return (
-          <g key={f.n} data-finger={f.n} data-highlighted={highlight === f.n || undefined}>
-            <circle cx={x} cy={f.y + 16} r={highlight === f.n ? 17 : 13} className={highlight === f.n ? 'fill-fuchsia-600' : highlight ? 'fill-orange-300' : 'fill-orange-500'} />
-            <text x={x} y={f.y + 21} textAnchor="middle" className="fill-white text-[15px] font-bold">
+          <g key={f.n} data-finger={f.n} data-highlighted={on || undefined}>
+            <circle cx={x} cy={y} r={on ? 17 : 13} className={on ? 'fill-fuchsia-600 stroke-white' : highlight ? 'fill-orange-300' : 'fill-orange-500'} strokeWidth={on ? 2.5 : 0} />
+            <text x={x} y={y + 5} textAnchor="middle" className="fill-white text-[15px] font-bold">
               {f.n}
             </text>
           </g>
