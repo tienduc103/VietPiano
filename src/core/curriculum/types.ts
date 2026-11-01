@@ -89,6 +89,8 @@ export type Illustration =
       caption?: Text;
       /** Không ghi tên nốt dưới khuông (câu đố đọc hình nốt). */
       hideNames?: boolean;
+      /** Phóng to khuông trong thẻ (có `caption`) tối đa bấy nhiêu lần — câu đố nhìn hình nốt. */
+      zoom?: number;
     }
   | { type: 'counting'; piece: Piece; /** Chữ đếm dưới từng nốt, vd ["1", "2-3-4"]. */ counts: string[] };
 

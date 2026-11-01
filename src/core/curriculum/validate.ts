@@ -92,6 +92,7 @@ function validateIllustration(ill: Illustration | undefined, where: string): str
       const notes = pieceToLesson(ill.piece, where).notes.filter((n) => !n.rest).length;
       if (ill.noteLabels.length !== notes) errors.push(`${where}: ${ill.noteLabels.length} chữ dưới nốt cho ${notes} nốt`);
     }
+    if (ill.type === 'staff' && ill.zoom !== undefined && !(ill.zoom >= 1 && ill.zoom <= 3)) errors.push(`${where}: zoom ${ill.zoom} ngoài 1–3`);
     if (ill.type === 'counting' && errors.length === 0) {
       const notes = pieceToLesson(ill.piece, where).notes.length;
       if (ill.counts.length !== notes) errors.push(`${where}: ${ill.counts.length} chữ đếm cho ${notes} nốt`);

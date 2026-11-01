@@ -55,7 +55,7 @@ const DURATION_BARS = ['C4/w', 'C4/h C4/h', 'C4 C4 C4 C4', Array(8).fill('C4/8')
 const durationQuestions: ChoiceQuestion[] = [0, 1].flatMap(() =>
   DURATION_BARS.map((bar, answer) => ({
     prompt: 'Các nốt Đô này là nốt gì?',
-    illustration: { type: 'staff' as const, piece: { ...rh(bar), timeSignature: [4, 4] as [number, 4] }, caption: 'Nhìn hình nốt', hideNames: true },
+    illustration: { type: 'staff' as const, piece: { ...rh(bar), timeSignature: [4, 4] as [number, 4] }, caption: 'Nhìn hình nốt', hideNames: true, zoom: 2 },
     options: DURATION_NAMES,
     answer,
   })),

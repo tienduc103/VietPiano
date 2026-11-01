@@ -27,6 +27,7 @@ export function StaticScore({
   showNames,
   noteLabels,
   bare,
+  zoom = 1,
 }: {
   piece: Piece;
   id: string;
@@ -34,6 +35,8 @@ export function StaticScore({
   noteLabels?: readonly string[];
   /** Trong thẻ có sẵn nền: bỏ nền + viền riêng, căn khuông nhạc vào giữa; khuông dài hơn thẻ → thu nhỏ cho vừa bề ngang. */
   bare?: boolean;
+  /** Chỉ khi `bare`: phóng to khuông tối đa `zoom` lần (vẫn thu lại cho vừa bề ngang thẻ). */
+  zoom?: number;
 }) {
   const labelStyle = useSettings((s) => s.settings.labelStyle);
   const lesson = useMemo(() => pieceToLesson(piece, id), [piece, id]);
@@ -47,7 +50,29 @@ export function StaticScore({
   const score = <ScoreView lesson={lesson} index={0} results={NO_RESULTS} status="finished" wrongPulse={0} showNames={(showNames ?? true) || !!noteLabels} labelStyle={labelStyle} />;
   if (bare) {
     // Khuông dài hơn thẻ → thu nhỏ phần hiển thị (transform, không đổi khung ScoreView đo) cho vừa; luôn căn giữa.
-    const fit = contentWidth > 0 && hostWidth > 0 ? Math.min(1, (hostWidth - 4) / contentWidth) : 1;
+    const fit = contentWidth > 0 && hostWidth > 0 ? Math.min(zoom, (hostWidth - 4) / contentWidth) : 1;
+    if (zoom > 1) {
+      // Phóng to: khung cao cố định (câu nào cũng như nhau → nút trả lời không nhảy), cắt bớt khoảng trống trên/dưới
+      // khuông (ScoreView chừa chỗ dòng kẻ phụ + tên nốt), khuông nằm giữa khung.
+      const frame = Math.round(baseHeight * zoom * 0.6);
+      return (
+        <div ref={hostRef} className="relative w-full min-w-0 overflow-hidden" style={{ height: frame }} data-fit={fit.toFixed(2)}>
+          <div
+            className="absolute"
+            style={{
+              top: frame / 2 - baseHeight * fit * 0.47,
+              height: baseHeight,
+              width: contentWidth > 0 ? Math.ceil(contentWidth) : '100%',
+              left: contentWidth > 0 ? '50%' : 0,
+              transform: contentWidth > 0 ? `translateX(-50%) scale(${fit})` : undefined,
+              transformOrigin: 'top center',
+            }}
+          >
+            {score}
+          </div>
+        </div>
+      );
+    }
     return (
       // Khuông một dòng chừa chỗ dòng kẻ phụ phía trên → kéo sát tiêu đề thẻ cho cân.
       <div ref={hostRef} className="relative -mt-4 -mb-2 w-full min-w-0" style={{ height: baseHeight * fit }} data-fit={fit.toFixed(2)}>
@@ -423,7 +448,7 @@ export function IllustrationView({ ill, id }: { ill: Illustration; id: string })
       if (ill.caption) {
         return (
           <FigureCard caption={text(ill.caption)} action={ill.listen ? <ListenButton piece={ill.piece} /> : undefined} testId="figure-staff">
-            <StaticScore piece={ill.piece} id={id} noteLabels={ill.noteLabels} showNames={ill.hideNames ? false : undefined} bare />
+            <StaticScore piece={ill.piece} id={id} noteLabels={ill.noteLabels} showNames={ill.hideNames ? false : undefined} zoom={ill.zoom} bare />
           </FigureCard>
         );
       }
