@@ -150,18 +150,20 @@ export class TomatoHarvestGame {
 
   tick(now: number): void {
     if (this.state.gameStatus !== 'playing' && this.state.gameStatus !== 'waitingForRegrowth') return;
-    const indexes: number[] = [];
-    const plants = this.state.plants.map((p, i) => {
-      if (p.regrowAt === null || p.regrowAt > now) return p;
-      indexes.push(i);
-      return { tomatoes: this.redTomatoes(), regrowAt: null };
-    });
-    if (indexes.length === 0) return;
+    const due = this.state.plants.findIndex((p) => p.regrowAt !== null && p.regrowAt <= now);
+    if (due < 0) return;
+    let plants = this.state.plants.map((p, i) =>
+      i === due
+        ? { tomatoes: p.tomatoes.length < MAX_TOMATOES ? [...p.tomatoes, this.redTomato()] : p.tomatoes, regrowAt: null }
+        : p,
+    );
+    // Mỗi nhịp chỉ mọc đúng một quả, rồi chọn lại ngẫu nhiên một cây còn thiếu quả.
+    plants = this.scheduleNextRegrowth(now, plants);
     let activePlantIndex = this.state.activePlantIndex;
-    if (plants[activePlantIndex].tomatoes.length === 0) activePlantIndex = this.findNextPlant(activePlantIndex, plants) ?? indexes[0];
+    if (plants[activePlantIndex].tomatoes.length === 0) activePlantIndex = this.findNextPlant(activePlantIndex, plants) ?? due;
     this.state = { ...this.state, plants, activePlantIndex, gameStatus: 'playing' };
-    this.decorateActivePlant();
-    this.emit({ type: 'regrown', plantIndexes: indexes }, now);
+    // Quả tự mọc luôn là quả đỏ; không gọi decorateActivePlant tại đây.
+    this.emit({ type: 'regrown', plantIndexes: [due] }, now);
   }
 
   answer(midi: number, now: number): 'correct' | 'wrong' | 'ignored' {
@@ -200,9 +202,8 @@ export class TomatoHarvestGame {
     const tomato = plant.tomatoes[0];
     if (!tomato) return;
     const points = tomato.kind === 'golden' ? 5 : tomato.kind === 'giant' ? 10 : 1;
-    const plants = this.state.plants.map((p, i) =>
-      i === plantIndex ? { ...p, tomatoes: p.tomatoes.slice(1), regrowAt: p.tomatoes.length === 1 ? now + this.regrowDelay() : p.regrowAt } : p,
-    );
+    let plants = this.state.plants.map((p, i) => (i === plantIndex ? { ...p, tomatoes: p.tomatoes.slice(1) } : p));
+    plants = this.scheduleNextRegrowth(now, plants);
     const harvestedCount = Math.min(WIN_COUNT, this.state.harvestedCount + 1);
     const streak = this.state.correctStreak + 1;
     this.state = {
@@ -255,11 +256,12 @@ export class TomatoHarvestGame {
       if (!this.hasMilestone(key)) {
         this.addMilestone(key);
         const restored: number[] = [];
-        const plants = this.state.plants.map((p, i) => {
+        let plants = this.state.plants.map((p, i) => {
           if (p.tomatoes.length !== 0) return p;
           restored.push(i);
           return { tomatoes: this.redTomatoes(), regrowAt: null };
         });
+        plants = this.scheduleNextRegrowth(now, plants);
         this.state = { ...this.state, plants };
         if (restored.length > 0 && this.state.gameStatus === 'waitingForRegrowth') {
           this.state = { ...this.state, activePlantIndex: this.findNextPlant(this.state.activePlantIndex, plants) ?? restored[0], gameStatus: 'playing' };
@@ -294,7 +296,8 @@ export class TomatoHarvestGame {
     }
     const eaten = target.p.tomatoes.length;
     const goldenLost = target.p.tomatoes.filter((t) => t.kind === 'golden').length;
-    const plants = this.state.plants.map((p, i) => (i === target.i ? { tomatoes: [], regrowAt: now + this.regrowDelay() } : p));
+    let plants = this.state.plants.map((p, i) => (i === target.i ? { tomatoes: [], regrowAt: p.regrowAt } : p));
+    plants = this.scheduleNextRegrowth(now, plants);
     this.state = { ...this.state, plants, goldenTomatoesLost: this.state.goldenTomatoesLost + goldenLost };
     if (target.i === this.state.activePlantIndex) this.advanceActivePlant();
     this.emit({ type: 'worms', plantIndex: target.i, blocked: false, eaten }, now);
@@ -366,11 +369,24 @@ export class TomatoHarvestGame {
   }
 
   private redTomatoes(): Tomato[] {
-    return Array.from({ length: MAX_TOMATOES }, () => ({ id: this.nextTomatoId++, kind: 'red' as const }));
+    return Array.from({ length: MAX_TOMATOES }, () => this.redTomato());
+  }
+
+  private redTomato(): Tomato {
+    return { id: this.nextTomatoId++, kind: 'red' };
   }
 
   private regrowDelay(): number {
-    return 2000 + Math.floor(clampRandom(this.random) * 1001);
+    return 4000 + Math.floor(clampRandom(this.random) * 2001);
+  }
+
+  /** Chỉ có một quả đang chờ mọc trong toàn nông trại; cây được chọn lại sau mỗi quả. */
+  private scheduleNextRegrowth(now: number, plants: TomatoPlant[]): TomatoPlant[] {
+    if (plants.some((p) => p.regrowAt !== null)) return plants;
+    const eligible = plants.map((p, i) => ({ p, i })).filter(({ p }) => p.tomatoes.length < MAX_TOMATOES);
+    if (eligible.length === 0) return plants;
+    const target = eligible[this.pick(eligible.length)].i;
+    return plants.map((p, i) => (i === target ? { ...p, regrowAt: now + this.regrowDelay() } : p));
   }
 
   private pick(length: number): number {

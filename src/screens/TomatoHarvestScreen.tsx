@@ -52,7 +52,8 @@ export function TomatoHarvestScreen() {
     const important = [...fresh].reverse().find((e) => ['rain', 'butterfly', 'worms', 'correct', 'wrong'].includes(e.event.type));
     if (!important) return;
     setEffect(important.event);
-    const id = window.setTimeout(() => setEffect(null), important.event.type === 'rain' ? 2600 : 1500);
+    const duration = important.event.type === 'rain' ? 2600 : important.event.type === 'worms' ? 2400 : 1500;
+    const id = window.setTimeout(() => setEffect(null), duration);
     return () => window.clearTimeout(id);
   }, [state.eventSequence, state.eventLog]);
 
@@ -69,7 +70,8 @@ export function TomatoHarvestScreen() {
       },
     },
     inputSource,
-    { baseMidi: 60 },
+    // Chỉ lúc đang chơi mới nghe nốt; lớp phủ Sẵn sàng / tạm dừng / chiến thắng → đàn MIDI bấm nút.
+    { baseMidi: 60, listening: active },
   );
 
   useEffect(() => {
@@ -137,8 +139,8 @@ export function TomatoHarvestScreen() {
 
       <main className="grid min-h-0 flex-1 grid-rows-[minmax(220px,1fr)_auto_auto] gap-2 overflow-y-auto px-2 py-2 sm:px-4" aria-label="Nông trại cà chua">
         <Farm state={state} effect={effect} />
-        <section className={`grid min-h-32 grid-cols-[minmax(180px,1fr)_auto] items-center gap-3 rounded-3xl bg-white/90 px-3 py-2 shadow-md ring-2 ${effect?.type === 'wrong' ? 'animate-shake ring-rose-400' : 'ring-amber-200'} dark:bg-slate-800/90`} data-testid="tomato-note-card">
-          <div className="mx-auto h-28 w-full max-w-md overflow-hidden [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: staffSvgs?.get(state.targetNote) ?? '' }} />
+        <section className={`grid min-h-44 grid-cols-[minmax(220px,1fr)_auto] items-center gap-4 rounded-3xl bg-white/90 px-4 py-2 shadow-md ring-2 ${effect?.type === 'wrong' ? 'animate-shake ring-rose-400' : 'ring-amber-200'} dark:bg-slate-800/90`} data-testid="tomato-note-card">
+          <div className="mx-auto h-40 w-full max-w-2xl overflow-hidden [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: staffSvgs?.get(state.targetNote) ?? '' }} />
           <div className="grid min-w-24 justify-items-center gap-1 text-center">
             <span className="text-xs font-bold text-slate-500">NỐT CẦN ĐÁNH</span>
             {difficulty !== 'hard' ? <strong className="text-3xl text-violet-700 dark:text-violet-300" data-testid="tomato-note-name">{noteText(state.targetNote)}</strong> : <strong className="text-3xl text-violet-700" aria-label="Ẩn tên nốt">?</strong>}
@@ -152,9 +154,9 @@ export function TomatoHarvestScreen() {
         </section>
       </main>
 
-      {state.gameStatus === 'ready' && <ReadyOverlay difficulty={difficulty} onDifficulty={chooseDifficulty} canStart={!!profile} onStart={start} onTrophies={() => setModal('trophies')} onLeaderboard={() => setModal('leaderboard')} />}
-      {state.gameStatus === 'paused' && !modal && <CenterOverlay><h2 className="text-3xl font-black">⏸ Đang tạm dừng</h2><p>Cây cũng tạm ngừng mọc lại.</p><Button variant="primary" onClick={() => game.resume(performance.now())}>▶ Chơi tiếp</Button></CenterOverlay>}
-      {state.gameStatus === 'won' && <Victory state={state} difficulty={difficulty} onAgain={restart} onTrophies={() => setModal('trophies')} onLeaderboard={() => setModal('leaderboard')} onExit={() => navigate({ name: 'games' })} />}
+      {state.gameStatus === 'ready' && <ReadyOverlay difficulty={difficulty} onDifficulty={chooseDifficulty} canStart={!!profile} midiNav={!modal} onStart={start} onTrophies={() => setModal('trophies')} onLeaderboard={() => setModal('leaderboard')} />}
+      {state.gameStatus === 'paused' && !modal && <CenterOverlay><h2 className="text-3xl font-black">⏸ Đang tạm dừng</h2><p>Cây cũng tạm ngừng mọc lại.</p><Button variant="primary" onClick={() => game.resume(performance.now())} midiNav="forward">▶ Chơi tiếp</Button></CenterOverlay>}
+      {state.gameStatus === 'won' && <Victory state={state} difficulty={difficulty} midiNav={!modal} onAgain={restart} onTrophies={() => setModal('trophies')} onLeaderboard={() => setModal('leaderboard')} onExit={() => navigate({ name: 'games' })} />}
       {modal === 'settings' && <SettingsModal audio={audio} updateAudio={updateAudio} onClose={() => { setModal(null); if (state.gameStatus === 'paused') game.resume(performance.now()); }} />}
       {modal === 'trophies' && <TrophyModal progress={progress} profileId={profile?.id ?? null} onClose={() => setModal(null)} />}
       {modal === 'leaderboard' && <LeaderboardModal progress={progress} profiles={profiles} onClose={() => setModal(null)} />}
@@ -178,7 +180,7 @@ function Farm({ state, effect }: { state: TomatoHarvestState; effect: TomatoEven
       {state.plants.map((plant, i) => <Plant key={i} plant={plant} index={i} active={i === state.activePlantIndex && state.gameStatus !== 'waitingForRegrowth'} attacked={effect?.type === 'worms' && effect.plantIndex === i} />)}
     </div>
     <div className={`absolute bottom-2 left-[4%] z-10 text-5xl drop-shadow-lg transition-all sm:text-6xl ${effect?.type === 'correct' ? 'tomato-bunny-hop' : effect?.type === 'worms' && effect.blocked ? 'tomato-shield' : ''}`} aria-label="Thỏ nông dân">🐰<span className="text-3xl">🧺</span></div>
-    {effect?.type === 'worms' && <div className={`absolute right-[12%] bottom-[32%] z-20 text-4xl ${effect.blocked ? 'tomato-worm-flee' : 'tomato-worm-attack'}`} aria-label="Đàn sâu">🐛🐛🐛</div>}
+    {effect?.type === 'worms' && <div className={`absolute bottom-[8%] z-20 whitespace-nowrap text-4xl ${effect.blocked ? 'tomato-worm-flee' : 'tomato-worm-attack'}`} style={{ left: `${effect.plantIndex * 20 + 10}%` }} aria-label={`Đàn sâu bò lên cây ${effect.plantIndex + 1}`}><span>🐛🐛🐛</span>{!effect.blocked && <span className="tomato-worm-snack absolute -top-12 left-1/2 text-3xl">🍅💥</span>}</div>}
     {effect?.type === 'rain' && <div className="tomato-rain pointer-events-none absolute inset-0 z-20 grid place-items-center bg-sky-400/15 text-6xl" aria-label="Mưa thần kỳ"><span className="absolute top-2">☁️✨</span><span className="tracking-[.4em]">💧💧💧💧💧</span></div>}
     {effect?.type === 'butterfly' && <div className="tomato-butterfly absolute z-30 text-5xl" aria-label="Bướm cầu vồng">🦋<span className="ml-2 rounded-full bg-white/90 px-3 py-1 align-middle text-base font-black text-fuchsia-600">Bướm cầu vồng! +3 điểm</span></div>}
     {state.gameStatus === 'waitingForRegrowth' && <div className="absolute inset-0 z-20 grid place-items-center bg-emerald-950/25"><span className="rounded-full bg-white/90 px-5 py-3 text-lg font-black">🌱 Đang chờ cây mọc lại…</span></div>}
@@ -192,17 +194,17 @@ function Plant({ plant, index, active, attacked }: { plant: TomatoPlant; index: 
     <div className="absolute bottom-3 left-1/2 h-[82%] w-3 -translate-x-1/2 rounded-full bg-green-800" />
     <div className="absolute inset-x-[8%] top-[10%] h-[68%] rounded-[50%] bg-green-600 shadow-lg ring-4 ring-green-700/30"><span className="absolute -top-2 left-[15%] text-3xl">🌿</span><span className="absolute top-[25%] right-[4%] text-3xl">🌿</span></div>
     {plant.tomatoes.map((tomato, i) => <span key={tomato.id} className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 drop-shadow-md ${positions[i]} ${tomato.kind === 'golden' ? 'tomato-golden text-3xl' : tomato.kind === 'giant' ? 'tomato-giant text-5xl' : 'text-3xl'}`} aria-label={tomato.kind === 'golden' ? 'Cà chua vàng' : tomato.kind === 'giant' ? 'Cà chua khổng lồ' : 'Cà chua đỏ'}>{tomato.kind === 'golden' ? '🟡' : '🍅'}</span>)}
-    {plant.tomatoes.length === 0 && <span className="absolute inset-0 z-10 grid place-items-center text-3xl tomato-regrow" aria-label="Đang mọc lại">🌱</span>}
+    {plant.regrowAt !== null && <span className={`absolute z-10 grid place-items-center tomato-regrow ${plant.tomatoes.length === 0 ? 'inset-0 text-3xl' : 'right-1 bottom-5 text-xl'}`} aria-label="Đang mọc từng quả">🌱</span>}
   </div>;
 }
 
-function ReadyOverlay({ difficulty, onDifficulty, canStart, onStart, onTrophies, onLeaderboard }: { difficulty: TomatoDifficulty; onDifficulty: (d: TomatoDifficulty) => void; canStart: boolean; onStart: () => void; onTrophies: () => void; onLeaderboard: () => void }) {
-  return <CenterOverlay className="mb-24"><div className="text-6xl">🐰🍅</div><h2 className="text-3xl font-black">Thu hoạch đủ 50 quả!</h2><p className="max-w-xl text-sm">Đọc nốt trên khuông rồi đánh đàn. Không có đồng hồ, không phạt khi bạn suy nghĩ lâu.</p><Segmented value={difficulty} onChange={onDifficulty} options={[{ value: 'easy', label: '🌱 Dễ' }, { value: 'medium', label: '🌻 Vừa' }, { value: 'hard', label: '🏆 Khó' }]} /><p className="text-sm font-semibold">{difficulty === 'easy' ? 'Đô–Rê–Mi · có tên nốt · sai không trừ điểm' : difficulty === 'medium' ? 'Đô–Sol · có tên nốt · sai −2 điểm' : 'Đô–Si · ẩn tên nốt · có đàn sâu và khiên'}</p><div className="flex flex-wrap justify-center gap-2"><Button variant="primary" onClick={onStart} disabled={!canStart} data-testid="tomato-start" className="min-h-14 text-lg">▶ Bắt đầu</Button><Button onClick={onTrophies}>🏆 Bộ sưu tập cúp</Button><Button onClick={onLeaderboard}>👨‍👩‍👧‍👦 Bảng xếp hạng</Button></div>{!canStart && <p className="font-bold text-amber-700">Hãy tạo hoặc chọn hồ sơ ở phía dưới để lưu thành tích.</p>}</CenterOverlay>;
+function ReadyOverlay({ difficulty, onDifficulty, canStart, midiNav, onStart, onTrophies, onLeaderboard }: { difficulty: TomatoDifficulty; onDifficulty: (d: TomatoDifficulty) => void; canStart: boolean; /** Không có hộp thoại che → đàn MIDI bấm "Bắt đầu". */ midiNav: boolean; onStart: () => void; onTrophies: () => void; onLeaderboard: () => void }) {
+  return <CenterOverlay className="mb-24"><div className="text-6xl">🐰🍅</div><h2 className="text-3xl font-black">Thu hoạch đủ 50 quả!</h2><p className="max-w-xl text-sm">Đọc nốt trên khuông rồi đánh đàn. Không có đồng hồ, không phạt khi bạn suy nghĩ lâu.</p><Segmented value={difficulty} onChange={onDifficulty} options={[{ value: 'easy', label: '🌱 Dễ' }, { value: 'medium', label: '🌻 Vừa' }, { value: 'hard', label: '🏆 Khó' }]} /><p className="text-sm font-semibold">{difficulty === 'easy' ? 'Đô–Rê–Mi · có tên nốt · sai không trừ điểm' : difficulty === 'medium' ? 'Đô–Sol · có tên nốt · sai −2 điểm' : 'Đô–Si · ẩn tên nốt · có đàn sâu và khiên'}</p><div className="flex flex-wrap justify-center gap-2"><Button variant="primary" onClick={onStart} disabled={!canStart} data-testid="tomato-start" midiNav={midiNav ? 'forward' : undefined} className="min-h-14 text-lg">▶ Bắt đầu</Button><Button onClick={onTrophies}>🏆 Bộ sưu tập cúp</Button><Button onClick={onLeaderboard}>👨‍👩‍👧‍👦 Bảng xếp hạng</Button></div>{!canStart && <p className="font-bold text-amber-700">Hãy tạo hoặc chọn hồ sơ ở phía dưới để lưu thành tích.</p>}</CenterOverlay>;
 }
 
-function Victory({ state, difficulty, onAgain, onTrophies, onLeaderboard, onExit }: { state: TomatoHarvestState; difficulty: TomatoDifficulty; onAgain: () => void; onTrophies: () => void; onLeaderboard: () => void; onExit: () => void }) {
+function Victory({ state, difficulty, midiNav, onAgain, onTrophies, onLeaderboard, onExit }: { state: TomatoHarvestState; difficulty: TomatoDifficulty; /** Không có hộp thoại che → đàn MIDI bấm "Chơi lại" / "Về VietPiano". */ midiNav: boolean; onAgain: () => void; onTrophies: () => void; onLeaderboard: () => void; onExit: () => void }) {
   const accuracy = tomatoAccuracy(state); const stars = tomatoStars(accuracy); const trophy = TOMATO_TROPHY[difficulty];
-  return <div className="absolute inset-0 z-40 grid place-items-center overflow-y-auto bg-emerald-950/55 p-3"><section className="tomato-victory relative grid w-full max-w-2xl justify-items-center gap-3 overflow-hidden rounded-[2rem] bg-white p-6 text-center shadow-2xl dark:bg-slate-800"><div className="pointer-events-none absolute inset-0 text-4xl opacity-70">🎊　　🎉　　　🎊</div><div className="tomato-bunny-hop text-7xl">🐰🏆</div><h2 className="text-3xl font-black text-emerald-700 dark:text-emerald-300">Thu hoạch thành công!</h2><div className="text-6xl" aria-label={trophy.label}>{trophy.icon}</div><strong className="text-xl">{trophy.label}</strong><Stars stars={stars} className="text-5xl" /><dl className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4"><Stat label="Tổng điểm" value={state.score} /><Stat label="Cà chua vàng" value={state.goldenTomatoesHarvested} /><Stat label="Đúng / Sai" value={`${state.totalCorrectNotes}/${state.totalWrongNotes}`} /><Stat label="Chính xác" value={`${Math.round(accuracy * 100)}%`} /></dl><div className="flex flex-wrap justify-center gap-2"><Button variant="primary" onClick={onAgain}>↻ Chơi lại</Button><Button onClick={onTrophies}>🏆 Bộ sưu tập cúp</Button><Button onClick={onLeaderboard}>👨‍👩‍👧‍👦 Bảng xếp hạng</Button><Button variant="ghost" onClick={onExit}>Về VietPiano</Button></div></section></div>;
+  return <div className="absolute inset-0 z-40 grid place-items-center overflow-y-auto bg-emerald-950/55 p-3"><section className="tomato-victory relative grid w-full max-w-2xl justify-items-center gap-3 overflow-hidden rounded-[2rem] bg-white p-6 text-center shadow-2xl dark:bg-slate-800"><div className="pointer-events-none absolute inset-0 text-4xl opacity-70">🎊　　🎉　　　🎊</div><div className="tomato-bunny-hop text-7xl">🐰🏆</div><h2 className="text-3xl font-black text-emerald-700 dark:text-emerald-300">Thu hoạch thành công!</h2><div className="text-6xl" aria-label={trophy.label}>{trophy.icon}</div><strong className="text-xl">{trophy.label}</strong><Stars stars={stars} className="text-5xl" /><dl className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4"><Stat label="Tổng điểm" value={state.score} /><Stat label="Cà chua vàng" value={state.goldenTomatoesHarvested} /><Stat label="Đúng / Sai" value={`${state.totalCorrectNotes}/${state.totalWrongNotes}`} /><Stat label="Chính xác" value={`${Math.round(accuracy * 100)}%`} /></dl><div className="flex flex-wrap justify-center gap-2"><Button variant="primary" onClick={onAgain} midiNav={midiNav ? 'forward' : undefined}>↻ Chơi lại</Button><Button onClick={onTrophies}>🏆 Bộ sưu tập cúp</Button><Button onClick={onLeaderboard}>👨‍👩‍👧‍👦 Bảng xếp hạng</Button><Button variant="ghost" onClick={onExit} midiNav={midiNav ? 'back' : undefined}>Về VietPiano</Button></div></section></div>;
 }
 
 function SettingsModal({ audio, updateAudio, onClose }: { audio: TomatoAudioSettings; updateAudio: (p: Partial<TomatoAudioSettings>) => void; onClose: () => void }) {

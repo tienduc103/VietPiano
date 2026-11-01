@@ -10,7 +10,7 @@ function playTo(game: TomatoHarvestGame, count: number, start = 1): number {
   while (game.getState().harvestedCount < count && game.getState().gameStatus !== 'won') {
     game.tick(now);
     if (game.getState().gameStatus === 'waitingForRegrowth') {
-      now += 3001;
+      now += 6001;
       game.tick(now);
     }
     correct(game, now++);
@@ -46,15 +46,17 @@ describe('TomatoHarvestGame', () => {
     expect(game.getState().plants[0].tomatoes).toHaveLength(5);
   });
 
-  it('hái hết cây mới chuyển đúng sang cây kế tiếp và mọc lại sau 2–3 giây', () => {
+  it('hái hết cây mới chuyển đúng cây; mỗi 4–6 giây chỉ mọc lại một quả', () => {
     const game = make();
-    const now = playTo(game, 5);
+    playTo(game, 5);
     expect(game.getState().activePlantIndex).toBe(1);
     expect(game.getState().plants[0].tomatoes).toHaveLength(0);
-    game.tick(now + 1998);
+    const due = game.getState().plants[0].regrowAt!;
+    game.tick(due - 1);
     expect(game.getState().plants[0].tomatoes).toHaveLength(0);
-    game.tick(now + 3001);
-    expect(game.getState().plants[0].tomatoes).toHaveLength(5);
+    game.tick(due);
+    expect(game.getState().plants[0].tomatoes).toHaveLength(1);
+    expect(game.getState().plants.flatMap((p) => p.tomatoes)).toHaveLength(21);
   });
 
   it('nếu cả 5 cây trống thì chờ, rồi tiếp tục khi cây mọc lại', () => {
@@ -69,9 +71,9 @@ describe('TomatoHarvestGame', () => {
       if (game.getState().gameStatus === 'playing') correct(game, now++);
     }
     expect(game.getState().gameStatus).toBe('waitingForRegrowth');
-    game.tick(now + 3001);
+    game.tick(now + 6001);
     expect(game.getState().gameStatus).toBe('playing');
-    expect(game.getState().plants.some((p) => p.tomatoes.length === 5)).toBe(true);
+    expect(game.getState().plants.reduce((sum, p) => sum + p.tomatoes.length, 0)).toBe(1);
   });
 
   it('cấp Dễ không trừ điểm, cấp Vừa trừ 2 nhưng không âm', () => {
@@ -164,7 +166,7 @@ describe('TomatoHarvestGame', () => {
     const game = make();
     const now = playTo(game, 10);
     const spawned = game.getState().goldenTomatoesSpawned;
-    game.tick(now + 3001);
+    game.tick(now + 6001);
     expect(game.getState().goldenTomatoesSpawned).toBe(spawned);
     expect(game.getState().plants.flatMap((p) => p.tomatoes).filter((t) => t.kind === 'golden')).toHaveLength(0);
   });

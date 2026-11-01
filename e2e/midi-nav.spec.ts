@@ -119,3 +119,29 @@ test('đàn MIDI: hai phím đen bất kỳ cùng lúc → về Trang chủ; đa
   await midiSend(page, [0x90, 82, 90]);
   await expect(page.getByTestId('dashboard')).toBeVisible();
 });
+
+test('đàn MIDI: Thu hoạch cà chua — phím trắng bấm "Bắt đầu"; đang chơi thì phím đàn là câu trả lời', async ({ page }) => {
+  await fakeMidi(page);
+  await page.addInitScript(() => {
+    localStorage.setItem('vietpiano.profiles.v1', JSON.stringify({
+      profiles: [{ id: 'tomato-player', name: 'Bé Cà Chua', age: 8, avatar: '🐰', experience: 'new', goals: ['fun'], dailyMinutes: 10, createdAt: 1 }],
+      activeId: 'tomato-player',
+    }));
+  });
+  await page.goto('/?screen=tomato-harvest');
+  const game = page.getByTestId('tomato-harvest');
+  await expect(game).toHaveAttribute('data-status', 'ready');
+  await settle(page);
+  await press(page, 60);
+  await expect(game).toHaveAttribute('data-status', 'playing');
+  // Đang chơi: phím đàn hái cà chua, không điều hướng; hai phím đen không về Trang chủ.
+  await settle(page);
+  const target = Number(await game.getAttribute('data-target'));
+  await press(page, target);
+  await expect(game).toHaveAttribute('data-harvested', '1');
+  await midiSend(page, [0x90, 61, 90]);
+  await midiSend(page, [0x90, 63, 90]);
+  await page.waitForTimeout(500);
+  await expect(game).toHaveAttribute('data-status', 'playing');
+  await expect(page.getByTestId('dashboard')).toHaveCount(0);
+});
