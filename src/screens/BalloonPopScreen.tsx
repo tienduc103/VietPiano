@@ -408,7 +408,8 @@ function BalloonPlay({
       },
     },
     inputSource,
-    { baseMidi: keyboard.from },
+    // Chỉ lúc đang chơi mới nghe nốt; lớp phủ Sẵn sàng / tạm dừng / kết quả → đàn MIDI bấm nút.
+    { baseMidi: keyboard.from, listening: state.status === 'playing' },
   );
 
   // Hiệu ứng âm thanh: nổ bóng, bóng bay mất. Chế độ "?": mỗi quả bay lên kèm tiếng nốt của nó (micro tự bỏ nốt lúc app phát).
@@ -603,7 +604,7 @@ function BalloonPlay({
                 : `Bóng bay lên phía trên phím của nó. Đánh đúng ${withOctave ? 'phím (đúng quãng tám)' : 'tên nốt'} để làm nổ bóng!`}
             </p>
             <div className="flex flex-wrap justify-center gap-2">
-              <Button variant="primary" className="min-h-14 text-lg" onClick={start} data-testid="balloon-go">
+              <Button variant="primary" className="min-h-14 text-lg" onClick={start} data-testid="balloon-go" midiNav="forward">
                 <Icon name="play" /> Bắt đầu
               </Button>
               <Button className="min-h-14" onClick={openSettings} data-testid="balloon-ready-settings">
@@ -615,7 +616,7 @@ function BalloonPlay({
         {paused && !panelOpen && (
           <Overlay testId="balloon-paused">
             <p className="text-2xl font-extrabold">⏸ Đang tạm dừng</p>
-            <Button variant="primary" onClick={() => game.resume(performance.now())}>
+            <Button variant="primary" onClick={() => game.resume(performance.now())} midiNav="forward">
               <Icon name="play" /> Chơi tiếp
             </Button>
           </Overlay>
@@ -725,7 +726,7 @@ function ResultPanel({
           </p>
         )}
         <div className="flex flex-wrap justify-center gap-2">
-          <Button variant="primary" onClick={onAgain} data-testid="balloon-again">
+          <Button variant="primary" onClick={onAgain} data-testid="balloon-again" midiNav="forward">
             <Icon name="restart" /> Chơi lại
           </Button>
           <Button onClick={onSetup} data-testid="balloon-change">

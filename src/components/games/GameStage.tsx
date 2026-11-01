@@ -256,7 +256,7 @@ export function GamePlayer({
           </>
         )}
         <div className="flex flex-wrap justify-center gap-3">
-          <Button variant={phase === 'result' && onNext ? 'secondary' : 'primary'} className="text-lg" onClick={start} data-testid={phase === 'result' ? 'game-again' : 'game-start'}>
+          <Button variant={phase === 'result' && onNext ? 'secondary' : 'primary'} className="text-lg" onClick={start} data-testid={phase === 'result' ? 'game-again' : 'game-start'} midiNav={phase === 'intro' || !onNext ? 'forward' : undefined}>
             {phase === 'result' ? (
               <>
                 <Icon name="restart" /> Chơi lại
@@ -271,11 +271,11 @@ export function GamePlayer({
             </Button>
           )}
           {onNext && (
-            <Button variant={phase === 'result' ? 'primary' : 'secondary'} className="text-lg" onClick={onNext} data-testid="game-next">
+            <Button variant={phase === 'result' ? 'primary' : 'secondary'} className="text-lg" onClick={onNext} data-testid="game-next" midiNav={phase === 'result' ? 'forward' : undefined}>
               Bài tiếp theo →
             </Button>
           )}
-          <Button variant="ghost" onClick={onBack} data-testid="game-back">
+          <Button variant="ghost" onClick={onBack} data-testid="game-back" midiNav="back">
             {backLabel}
           </Button>
         </div>

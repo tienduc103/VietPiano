@@ -1,5 +1,7 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import type { MidiNavAction } from '../core/input/midiNav';
 import { useFullscreen } from '../hooks/useFullscreen';
+import { useMidiNavTarget } from '../hooks/useMidiNav';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
@@ -15,10 +17,18 @@ export function Button({
   variant = 'secondary',
   className = '',
   children,
+  midiNav,
   ...rest
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant;
+  /** Đàn MIDI bấm hộ khi màn không nghe nốt: 'forward' = phím trắng / pedal, 'back' = phím đen. */
+  midiNav?: MidiNavAction;
+}) {
+  const ref = useRef<HTMLButtonElement>(null);
+  useMidiNavTarget(ref, midiNav);
   return (
     <button
+      ref={ref}
       type="button"
       className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-base font-semibold transition-colors disabled:opacity-40 ${VARIANTS[variant]} ${className}`}
       {...rest}

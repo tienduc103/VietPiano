@@ -333,7 +333,7 @@ function Overview({ lesson, mode, onStart }: { lesson: CurriculumLesson; mode: U
             Nên học trước: {missing.map((l) => `Buổi ${l.number} – ${text(l.title)}`).join(', ')}. Bạn vẫn có thể học buổi này.
           </p>
         )}
-        <Button variant="primary" className="mt-6 min-w-48 text-lg" onClick={onStart} data-testid="start-lesson">
+        <Button variant="primary" className="mt-6 min-w-48 text-lg" onClick={onStart} data-testid="start-lesson" midiNav="forward">
           {rec?.passed ? 'Học lại' : rec ? 'Học tiếp' : 'Bắt đầu'}
         </Button>
       </section>
@@ -378,10 +378,10 @@ function IntroStep({ activity, mode, onDone }: { activity: Activity; mode: UiMod
       {p.illustration && <IllustrationView ill={p.illustration} id={`${activity.id}-${page}`} />}
       {p.moreIllustrations?.map((ill, i) => <IllustrationView key={`${page}-${i}`} ill={ill} id={`${activity.id}-${page}-more${i}`} />)}
       <div className="flex gap-3">
-        <Button onClick={() => setPage((x) => x - 1)} disabled={page === 0}>
+        <Button onClick={() => setPage((x) => x - 1)} disabled={page === 0} midiNav="back">
           <Icon name="back" /> Trước
         </Button>
-        <Button variant="primary" onClick={() => (last ? onDone() : setPage((x) => x + 1))} data-testid="intro-next">
+        <Button variant="primary" onClick={() => (last ? onDone() : setPage((x) => x + 1))} data-testid="intro-next" midiNav="forward">
           {last ? 'Bắt đầu luyện tập' : 'Tiếp'}
         </Button>
       </div>
@@ -461,7 +461,7 @@ function ExerciseDone({
         <Button onClick={onRetry}>
           <Icon name="restart" /> Làm lại
         </Button>
-        <Button variant="primary" onClick={onNext} data-testid="exercise-next">
+        <Button variant="primary" onClick={onNext} data-testid="exercise-next" midiNav="forward">
           {last ? 'Xem kết quả' : 'Tiếp tục'}
         </Button>
       </div>
@@ -583,7 +583,7 @@ function LessonResult({
         <Button onClick={onRetry} data-testid="lesson-retry">
           <Icon name="restart" /> Luyện lại
         </Button>
-        <Button variant="primary" className="text-lg" onClick={onReview} data-testid="go-review">
+        <Button variant="primary" className="text-lg" onClick={onReview} data-testid="go-review" midiNav="forward">
           {reviewLabel}
         </Button>
         {onNext && (
@@ -591,7 +591,7 @@ function LessonResult({
             Bỏ qua, sang bài tiếp
           </Button>
         )}
-        <Button variant="ghost" onClick={onBack}>
+        <Button variant="ghost" onClick={onBack} midiNav="back">
           {backLabel}
         </Button>
       </div>

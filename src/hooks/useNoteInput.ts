@@ -8,6 +8,7 @@ import { soundOutput } from '../core/audio/SoundOutput';
 import type { InputSourceSetting } from '../core/settings/DeviceSettings';
 import { acceptSource } from '../core/input/sourceFilter';
 import { voiceTeacher } from '../core/voice/teacher';
+import { useMidiNavListening } from './useMidiNav';
 
 /** Bỏ nốt micro thêm chừng này sau khi tiếng đàn mẫu tắt (âm ngân của loa). */
 const PLAYBACK_GUARD_MS = 300;
@@ -24,8 +25,15 @@ export interface NoteInputHandlers {
 export function useNoteInput(
   handlers: NoteInputHandlers,
   setting: InputSourceSetting,
-  opts: { computerKeys?: boolean; baseMidi?: number; playbackGuard?: boolean } = {},
+  opts: {
+    computerKeys?: boolean;
+    baseMidi?: number;
+    playbackGuard?: boolean;
+    /** false: màn đang chờ bấm nút (lớp phủ Sẵn sàng / tổng kết) → phím đàn MIDI được bấm nút Tiếp / Trước. */
+    listening?: boolean;
+  } = {},
 ): void {
+  useMidiNavListening(opts.listening ?? true);
   const ref = useRef(handlers);
   ref.current = handlers;
   const settingRef = useRef(setting);

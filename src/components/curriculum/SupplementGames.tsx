@@ -109,11 +109,11 @@ export function SupplementGames({
       <p className="text-center text-sm text-slate-500 dark:text-slate-400">Trò chơi không tính vào điểm buổi — chơi bao nhiêu lần cũng được.</p>
       <div className="flex flex-wrap justify-center gap-3">
         {onNext && (
-          <Button variant="primary" onClick={onNext} data-testid="supplement-next">
+          <Button variant="primary" onClick={onNext} data-testid="supplement-next" midiNav="forward">
             Nốt tiếp theo →
           </Button>
         )}
-        <Button variant="ghost" onClick={onBack} data-testid="supplement-games-back">
+        <Button variant="ghost" onClick={onBack} data-testid="supplement-games-back" midiNav="back">
           Về giáo trình bổ sung
         </Button>
       </div>

@@ -76,7 +76,7 @@ export function ReviewSession({
           <Button onClick={again} data-testid="review-again">
             <Icon name="restart" /> Luyện thêm lượt nữa
           </Button>
-          <Button variant="primary" className="text-lg" onClick={onGame} data-testid="go-game">
+          <Button variant="primary" className="text-lg" onClick={onGame} data-testid="go-game" midiNav="forward">
             🎮 Tiếp: Trò chơi
           </Button>
         </div>
@@ -116,7 +116,7 @@ export function ReviewSession({
             >
               <Icon name="restart" /> Làm lại
             </Button>
-            <Button variant="primary" onClick={next} data-testid="review-next">
+            <Button variant="primary" onClick={next} data-testid="review-next" midiNav="forward">
               Tiếp tục
             </Button>
           </div>

@@ -264,7 +264,8 @@ function FlappyPlay({
       },
     },
     inputSource,
-    { baseMidi: keyboard.from },
+    // Màn "Sẵn sàng": đánh nốt là cất cánh → vẫn nghe nốt. Tạm dừng / kết quả → đàn MIDI bấm nút.
+    { baseMidi: keyboard.from, listening: (state.status === 'ready' || state.status === 'playing') && !panelOpen },
   );
 
   // Hiệu ứng âm thanh: qua ống, va chạm.
@@ -417,7 +418,7 @@ function FlappyPlay({
         {paused && !panelOpen && (
           <Overlay testId="flappy-paused">
             <p className="text-2xl font-extrabold">⏸ Đang tạm dừng</p>
-            <Button variant="primary" onClick={() => game.resume(performance.now())}>
+            <Button variant="primary" onClick={() => game.resume(performance.now())} midiNav="forward">
               <Icon name="play" /> Chơi tiếp
             </Button>
           </Overlay>
@@ -518,7 +519,7 @@ function ResultPanel({
           </p>
         )}
         <div className="flex flex-wrap justify-center gap-2">
-          <Button variant="primary" onClick={onAgain} data-testid="flappy-again">
+          <Button variant="primary" onClick={onAgain} data-testid="flappy-again" midiNav="forward">
             <Icon name="restart" /> Chơi lại
           </Button>
           <Button onClick={onSetup} data-testid="flappy-change">

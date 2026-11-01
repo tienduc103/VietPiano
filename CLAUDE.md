@@ -39,6 +39,12 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   input/MicrophoneInputProvider.ts  AudioInput → PitchDetector + AttackAnalyzer → NoteRecognizer
   input/VirtualInputProvider.ts     bàn phím ảo / bàn phím máy tính (demo mode)
   input/MIDIInputProvider.ts        đàn nối dây qua Web MIDI (Chrome/Edge máy tính; iPad không có) — Note On → sự kiện nốt (+ velocity), Note Off → `onNoteOff`
+  input/midiNav.ts                  đàn MIDI bấm nút khi màn KHÔNG nghe nốt: phím trắng bất kỳ / đạp pedal → nút `midiNav="forward"`
+                                    (Tiếp, Bắt đầu, Chơi lại…), phím đen → `midiNav="back"` (Trước, Về…; chờ 200 ms: hai phím đen bất kỳ
+                                    cùng lúc → Trang chủ, chỉ ở màn có nút điều hướng đang hiện); bỏ phím 1,2 s sau khi nút hiện,
+                                    sau mỗi lần điều hướng, sau mỗi lần chạm màn hình. `useNoteInput` mặc định = đang nghe nốt (chặn điều hướng);
+                                    lớp phủ Sẵn sàng / tạm dừng / tổng kết của game truyền `listening: false`. Glue: `hooks/useMidiNav.ts`,
+                                    prop `midiNav` của `Button` (mỗi màn tối đa một nút mỗi loại; nút sau cùng hiện + không bị hộp thoại che được ưu tiên)
   practice/PracticeEngine.ts  Wait Mode (máy trạng thái thuần); `advanceOnWrong` = chế độ Đếm nốt (sai vẫn đi tiếp, ghi 'wrong')
   practice/TempoFollower.ts   chế độ chạy theo nhịp: đồng hồ nhịp tự chạy, khớp pha + nhịp độ theo onset, KHÔNG xét cao độ
   practice/listenSample.ts    nút "Nghe mẫu" màn Luyện tập: phát từ đầu ô nhịp đang tập (hai tay + ngân theo pedal), con trỏ theo tiếng đàn,

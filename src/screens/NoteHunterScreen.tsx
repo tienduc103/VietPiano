@@ -482,7 +482,12 @@ function HunterPlay({
   const hookSetting = settings.input === 'virtual' ? 'auto' : settings.input;
   const allMidis = useMemo(() => [...new Set([...songMidis(song), ...game.targetSet])], [song, game]);
   const keyboard = useMemo(() => keyboardFor(allMidis), [allMidis]);
-  useNoteInput({ onNote, onNoteOff: (e) => game.noteOff(e.midi) }, hookSetting, { playbackGuard: false, baseMidi: keyboard.from });
+  useNoteInput({ onNote, onNoteOff: (e) => game.noteOff(e.midi) }, hookSetting, {
+    playbackGuard: false,
+    baseMidi: keyboard.from,
+    // Màn Sẵn sàng / tạm dừng / tổng kết: đàn MIDI bấm nút (nốt lúc này game cũng bỏ qua).
+    listening: state.status === 'PLAYING' || state.status === 'WAITING_FOR_NOTE',
+  });
 
   const now = () => performance.now();
   const { status } = state;
@@ -549,7 +554,7 @@ function HunterPlay({
         <Button onClick={onOpenSettings} data-testid="hunter-open-settings" aria-label="Cài đặt">
           ⚙ Cài đặt
         </Button>
-        <Button variant="primary" onClick={togglePlay} disabled={!canStart} data-testid="hunter-play-toggle" aria-label={playing ? 'Tạm dừng' : 'Phát'} className="min-w-28">
+        <Button variant="primary" onClick={togglePlay} disabled={!canStart} data-testid="hunter-play-toggle" aria-label={playing ? 'Tạm dừng' : 'Phát'} className="min-w-28" midiNav={status === 'PAUSED' && !panelOpen ? 'forward' : undefined}>
           <Icon name={playing ? 'pause' : 'play'} />
           {playing ? 'Dừng' : status === 'PAUSED' ? 'Tiếp tục' : 'Phát'}
         </Button>
@@ -583,7 +588,7 @@ function HunterPlay({
               </p>
               <TargetCount song={song} targets={[...game.targetSet]} labelStyle={labelStyle} testPrefix="hunter-ready" />
               <div className="flex flex-wrap justify-center gap-2">
-                <Button variant="primary" className="min-h-14 min-w-40 text-lg" disabled={!canStart} onClick={start} data-testid="hunter-start">
+                <Button variant="primary" className="min-h-14 min-w-40 text-lg" disabled={!canStart} onClick={start} data-testid="hunter-start" midiNav="forward">
                   <Icon name="play" /> Bắt đầu
                 </Button>
                 <Button className="min-h-14" onClick={onOpenSettings} data-testid="hunter-ready-settings">
@@ -889,7 +894,7 @@ function Summary({
           </table>
           <p className="mt-2 text-xs text-slate-500">Kết quả đã lưu cho người học đang chọn.</p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="primary" onClick={onRestart} data-testid="hunter-again">
+            <Button variant="primary" onClick={onRestart} data-testid="hunter-again" midiNav="forward">
               <Icon name="restart" /> Chơi lại
             </Button>
             {weak.length > 0 && (
