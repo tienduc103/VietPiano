@@ -134,6 +134,19 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              bay lên kèm tiếng nốt, nút Nghe lại; micro tự bỏ nốt lúc app phát). Gợi ý: phím cần đánh, ngón tay, tên phím
                              (theo kiểu chữ gần nhất `labelStyle`), ẩn tên từng nốt cả trên bóng lẫn phím (`hiddenLetters`,
                              `PianoKeyboard.labelFor`). Kỷ lục localStorage theo hồ sơ (`storage.ts`)
+  f1Racing/                "VietPiano F1 Racing" (`screens/F1RacingScreen`, route `f1-racing`, `?screen=f1-racing`): đua top-down 3 làn, tay trái lái
+                             bằng 2 phím điều hướng (mặc định C3 / D3, `resolveNavKeys` tự tách khỏi tầm nốt luyện tập và không cho trùng nhau),
+                             tay phải đọc nốt trên khuông. `F1RacingGame` máy trạng thái + vật lý bước cố định 120 Hz (ready/countdown/racing/paused/finished):
+                             tốc độ 0–100, xuất phát 100%, đúng +10 / sai −10 / va chạm −10, KHÔNG tự giảm; `speedPercent` là số chấm, `world.speed` tiến dần theo.
+                             Giữ phím / Note On lặp không tính (`held`; micro không có Note Off → chỉ chặn âm ngân). 10 nốt đúng liên tiếp → tự né 3 giây
+                             theo đồng hồ trò chơi (không cộng dồn, nốt đúng lúc đang hỗ trợ không tính cho lần sau). Mỗi chướng ngại chỉ trừ tốc độ một lần
+                             (`hitIds`, kể cả lúc miễn va chạm), miễn 1,5 s sau va chạm. `track.ts`: chướng ngại sinh sẵn cả chặng; xe đối thủ chạy bằng
+                             `RIVAL_SPEED_RATIO` × tốc độ người chơi nên đoạn bị chặn chỉ phụ thuộc quãng đường, `isTrackFeasible` chứng minh được luôn có đường vượt.
+                             Độ khó 500 / 1.000 / 1.500 m (`config.ts`), mọi xe cùng hiệu năng. `audio.ts` WebAudio tổng hợp, AudioContext riêng; đang nghe bằng micro thì tắt hết
+                             (micro nghe nhầm thành nốt). `storage.ts`: cúp theo hồ sơ × độ khó, bảng xếp hạng (thời gian làm tròn 0,1 s → độ chính xác → va chạm),
+                             cài đặt (localStorage). Vẽ: `components/f1Racing` (`F1Canvas` đọc `getWorld()` mỗi khung, `carArt` vẽ xe bằng canvas, cùng hàm cho xem trước).
+                             Một màn duy nhất: "gara" chọn xe / độ khó / hồ sơ là lớp phủ Sẵn sàng. Tự tạm dừng khi ẩn app / mất focus / rút đàn MIDI.
+                             Nốt sai tô đỏ, đúng tô xanh qua CSS `.f1-note-*` (chỉ tô nốt, không tô khuông)
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt
   score/scoreFit.ts        tỉ lệ + vị trí dọc của khuông một dòng (ScoreView, Săn nốt): vùng nhìn co giãn ít (≤ 8%) theo từng nốt
                              → giữ nguyên, khuông không nhảy lên xuống; ô hướng dẫn dưới khuông cũng phải cao cố định

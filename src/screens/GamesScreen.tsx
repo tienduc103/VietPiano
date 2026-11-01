@@ -267,6 +267,18 @@ export function GamesScreen() {
                         <span className="block text-sm opacity-90">Đọc nốt giúp thỏ hái 50 quả · 3 cấp độ · cà chua vàng, mưa, bướm, sâu và cúp gia đình · không giới hạn thời gian.</span>
                       </span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate({ name: 'f1-racing' })}
+                      data-testid="open-f1-racing"
+                      className="flex min-h-16 items-center gap-4 rounded-2xl bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 px-5 py-4 text-left text-white shadow-md shadow-red-500/30 hover:brightness-110"
+                    >
+                      <span className="text-4xl" aria-hidden>🏎️</span>
+                      <span className="flex-1">
+                        <span className="block text-xl font-bold">VietPiano F1 Racing</span>
+                        <span className="block text-sm opacity-90">Đọc nốt để giữ tốc độ, hai phím đàn để đổi làn né chướng ngại · 5 xe · 3 chặng đua · cúp và bảng xếp hạng gia đình · MIDI, micro, piano ảo.</span>
+                      </span>
+                    </button>
                   </div>
                 )}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

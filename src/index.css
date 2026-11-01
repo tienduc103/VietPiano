@@ -242,6 +242,15 @@ input[type='range'] {
   --hunter-neutral: #64748b;
   --hunter-playhead: #f0abfc;
 }
+/* F1 Racing: chỉ tô nốt (không tô khuông), đổi màu ngay để kịp thấy trước khi sang nốt mới. */
+.f1-note-hit .score-note {
+  color: var(--score-correct);
+  transition: none;
+}
+.f1-note-wrong .score-note {
+  color: var(--score-wrong);
+  transition: none;
+}
 .hunter-score .score-note {
   color: var(--hunter-neutral);
 }

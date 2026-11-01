@@ -34,6 +34,8 @@ export type Route =
     }
   /** Thu hoạch cà chua: đọc nốt để giúp thỏ thu hoạch nông trại. */
   | { name: 'tomato-harvest' }
+  /** VietPiano F1 Racing: đọc nốt để giữ tốc độ, hai phím đàn để đổi làn. */
+  | { name: 'f1-racing' }
   | { name: 'practice'; lessonId: string }
   | { name: 'settings' };
 
@@ -48,6 +50,7 @@ export function initialRoute(search = typeof location === 'undefined' ? '' : loc
   if (screen === 'flappy-note') return { name: 'flappy-note' };
   if (screen === 'balloon-pop') return { name: 'balloon-pop' };
   if (screen === 'tomato-harvest') return { name: 'tomato-harvest' };
+  if (screen === 'f1-racing') return { name: 'f1-racing' };
   return { name: 'dashboard' };
 }
 
