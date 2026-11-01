@@ -71,6 +71,12 @@ export function useNoteCards(cards: readonly { key: string; midi: number; durati
           svg.removeAttribute('width');
           svg.removeAttribute('height');
           svg.removeAttribute('style');
+          // Đuôi nốt / dòng kẻ phụ VexFlow tô cứng "black" → theo màu chữ của nơi hiển thị.
+          for (const el of [svg, ...svg.querySelectorAll('[stroke="black"], [stroke="#444"], [fill="black"]')]) {
+            const stroke = el.getAttribute('stroke');
+            if (stroke === 'black' || stroke === '#444') el.setAttribute('stroke', 'currentColor');
+            if (el.getAttribute('fill') === 'black') el.setAttribute('fill', 'currentColor');
+          }
           out.set(c.key, svg.outerHTML);
         }
       } catch (err) {

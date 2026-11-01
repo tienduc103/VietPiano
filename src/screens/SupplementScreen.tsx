@@ -15,7 +15,7 @@ const LETTER_MIDI: Record<Letter, number> = { C: 60, D: 62, E: 64, F: 65, G: 67,
 
 /** Hình nốt kiểu thẻ bóng bay: khuông ngắn + nốt đen, không khoá. */
 function NoteFigure({ svg }: { svg: string | undefined }) {
-  return <span className="h-20 w-14 [&>svg]:h-full [&>svg]:w-full" aria-hidden data-testid="supplement-note-figure" dangerouslySetInnerHTML={{ __html: svg ?? '' }} />;
+  return <span className="h-32 w-[5.5rem] [&>svg]:h-full [&>svg]:w-full" aria-hidden data-testid="supplement-note-figure" dangerouslySetInnerHTML={{ __html: svg ?? '' }} />;
 }
 
 const STATUS_LABEL = { available: 'Chưa học', 'suggest-later': 'Chưa học', 'in-progress': 'Đang học', completed: 'Đã đạt' } as const;
@@ -69,8 +69,10 @@ export function SupplementScreen() {
                   className="grid min-h-48 w-full content-start justify-items-center gap-2 rounded-3xl bg-gradient-to-br from-violet-600 to-fuchsia-500 p-5 text-white shadow-lg shadow-fuchsia-500/30 transition-transform active:scale-95"
                 >
                   {note && <NoteFigure svg={figures?.get(note.letter)} />}
-                  <span className="text-5xl font-extrabold">{note?.name ?? text(l.title)}</span>
-                  <span className="text-lg font-semibold opacity-90">{note?.letter}</span>
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-3xl font-extrabold">{note?.name ?? text(l.title)}</span>
+                    <span className="text-lg font-semibold opacity-90">{note?.letter}</span>
+                  </span>
                   <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-semibold">
                     {STATUS_LABEL[status]}
                     {rec && rec.attempts > 0 ? ` · ${rec.bestScore} điểm` : ''}
@@ -87,8 +89,10 @@ export function SupplementScreen() {
                 aria-label={`${n.name} — sắp có`}
               >
                 <NoteFigure svg={figures?.get(n.letter)} />
-                <span className="text-5xl font-extrabold">{n.name}</span>
-                <span className="text-lg font-semibold">{n.letter}</span>
+                <span className="flex items-baseline gap-2">
+                  <span className="text-3xl font-extrabold">{n.name}</span>
+                  <span className="text-lg font-semibold">{n.letter}</span>
+                </span>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold dark:bg-slate-700">Sắp có</span>
               </div>
             </li>
