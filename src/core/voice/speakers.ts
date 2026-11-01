@@ -85,6 +85,8 @@ export class HybridSpeaker implements Speaker {
   private preferredName = '';
   private allowOnline = false;
   private audio: HTMLAudioElement | null = null;
+  /** Lần phát file hiện tại — nhận ra lời từ chối `play()` đến muộn của lần phát cũ. */
+  private playback: object | null = null;
   /** Giọng cô giáo thu sẵn: câu đơn → URL. Rỗng tới khi nạp xong / không có file. */
   private index: ReadonlyMap<string, string> = new Map();
   /** File không phát được (404, định dạng) → lần sau đọc bằng giọng máy. */
@@ -239,7 +241,15 @@ export class HybridSpeaker implements Speaker {
     };
     audio.src = url;
     audio.playbackRate = Math.min(2, Math.max(0.5, rate / RECORDED_RATE));
-    void audio.play().catch(() => audio.onerror?.(new Event('error')));
+    const token = (this.playback = {});
+    void audio.play().catch((e: unknown) => {
+      // Từ chối đến muộn của lần phát cũ (bị câu mới ngắt): không được đụng tới lần phát hiện tại.
+      if (this.playback !== token) return;
+      // Bị ngắt / trình duyệt chặn vì chưa có thao tác người dùng: file không hỏng, lần sau vẫn phát được.
+      const name = e instanceof Error ? e.name : '';
+      if (name === 'AbortError' || name === 'NotAllowedError') finish();
+      else audio.onerror?.(new Event('error'));
+    });
     return {
       done,
       cancel: () => {

@@ -218,3 +218,75 @@ test('giọng thu sẵn: phát file mp3 theo từng câu đơn, không cần gi�
   expect(await spoken(page)).toEqual([]);
   for (const url of played.slice(0, 3)) expect((await page.request.get(url)).headers()['content-type']).toContain('audio');
 });
+
+/**
+ * Như trình duyệt thật: `play()` chỉ xong sau khi bắt đầu phát; bị ngắt trước đó → từ chối AbortError (bất đồng bộ).
+ * `__denyPlay` = từ chối NotAllowedError (chưa có thao tác người dùng).
+ */
+async function mockInterruptibleAudio(page: Page) {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __speech: { played: string[] }; __denyPlay: boolean };
+    w.__denyPlay = false;
+    const pending = new WeakMap<HTMLMediaElement, () => void>();
+    const interrupt = (el: HTMLMediaElement) => {
+      pending.get(el)?.();
+      pending.delete(el);
+    };
+    HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
+      interrupt(this);
+      if (w.__denyPlay) return Promise.reject(new DOMException('denied', 'NotAllowedError'));
+      if (!this.src.startsWith('data:')) w.__speech.played.push(this.src);
+      const el = this;
+      return new Promise<void>((resolve, reject) => {
+        const started = window.setTimeout(() => {
+          pending.delete(el);
+          resolve();
+          window.setTimeout(() => el.dispatchEvent(new Event('ended')), 100);
+        }, 300);
+        pending.set(el, () => {
+          window.clearTimeout(started);
+          reject(new DOMException('interrupted', 'AbortError'));
+        });
+      });
+    };
+    HTMLMediaElement.prototype.pause = function (this: HTMLMediaElement) {
+      interrupt(this);
+    };
+  });
+}
+
+const played = (page: Page) => page.evaluate(() => (window as unknown as { __speech: { played: string[] } }).__speech.played);
+
+async function openQuizRecorded(page: Page) {
+  await mockSpeech(page, { vietnamese: false, uiMode: 'kids', recorded: true });
+  await mockInterruptibleAudio(page);
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('cur-lesson-l1-03-fingers').click();
+  await page.getByTestId('start-lesson').click();
+  for (let i = 0; i < 3; i++) await page.getByTestId('intro-next').click();
+  await expect(page.getByTestId('quiz-prompt')).toBeVisible();
+  await expect.poll(async () => (await played(page)).length).toBeGreaterThan(0);
+}
+
+test('giọng thu sẵn: câu bị ngắt không làm file sau bị coi là hỏng (không báo nhầm "máy chưa có giọng")', async ({ page }) => {
+  await openQuizRecorded(page);
+  await page.getByTestId('voice-replay').click();
+  await page.getByTestId('voice-replay').click();
+  await page.waitForTimeout(50);
+  const n = (await played(page)).length;
+  await page.getByTestId('voice-replay').click();
+  await expect.poll(async () => (await played(page)).length).toBe(n + 1);
+  await expect(page.getByTestId('voice-no-tts')).toHaveCount(0);
+});
+
+test('giọng thu sẵn: trình duyệt chặn phát (chưa có thao tác) không làm file bị coi là hỏng', async ({ page }) => {
+  await openQuizRecorded(page);
+  await page.evaluate(() => ((window as unknown as { __denyPlay: boolean }).__denyPlay = true));
+  await page.getByTestId('voice-replay').click();
+  await page.waitForTimeout(50);
+  await page.evaluate(() => ((window as unknown as { __denyPlay: boolean }).__denyPlay = false));
+  const n = (await played(page)).length;
+  await page.getByTestId('voice-replay').click();
+  await expect.poll(async () => (await played(page)).length).toBe(n + 1);
+  await expect(page.getByTestId('voice-no-tts')).toHaveCount(0);
+});
