@@ -37,7 +37,7 @@ describe('giáo trình bổ sung "Làm quen từng nốt"', () => {
   it('bài Đô: phần giới thiệu có khuông nhạc với nốt Đô ở nhiều trường độ (tròn, trắng, đen, móc đơn)', () => {
     const pages = SUPPLEMENT_LESSONS[0].activities[0].pages;
     const NAME: Record<number, string> = { 4: 'Tròn', 2: 'Trắng', 1: 'Đen', 0.5: 'Móc đơn', 0.25: 'Móc đôi' };
-    const durationStaves = pages.flatMap((p) => [p.illustration, ...(p.moreIllustrations ?? [])]).filter((ill) => ill?.type === 'staff' && ill.noteLabels);
+    const durationStaves = pages.flatMap((p) => [p.illustration, ...(p.moreIllustrations ?? [])]).filter((ill) => ill?.type === 'staff' && ill.noteLabels?.includes('Tròn'));
     expect(durationStaves.length).toBeGreaterThanOrEqual(2);
     // Trang mở đầu: khuông nhạc trường độ ở trên, bàn phím ở dưới — mỗi hình một thẻ có tiêu đề.
     const first = pages[0].illustration;
@@ -52,6 +52,22 @@ describe('giáo trình bổ sung "Làm quen từng nốt"', () => {
       // Chữ dưới từng nốt đúng tên trường độ của nốt đó.
       expect(ill.noteLabels).toEqual(notes.map((n) => NAME[n.durationBeats]));
     }
+  });
+
+  it('bài Đô: sau trang đầu là 5 trang giới thiệu kỹ từng trường độ (một ô nhịp, phóng to)', () => {
+    const pages = SUPPLEMENT_LESSONS[0].activities[0].pages;
+    const expected: [string, number, number][] = [['tròn', 4, 1], ['trắng', 2, 2], ['đen', 1, 4], ['móc đơn', 0.5, 8], ['móc đôi', 0.25, 16]];
+    expected.forEach(([name, beats, count], i) => {
+      const page = pages[i + 1];
+      expect(page.title).toBe(`Đây là Đô ${name}`);
+      const ill = page.illustration;
+      if (ill?.type !== 'staff') throw new Error('trang trường độ phải có khuông nhạc');
+      expect(ill.listen).toBe(true);
+      const notes = lessonTimeline(pieceToLesson(ill.piece, 'sup-c'));
+      expect(notes).toHaveLength(count);
+      expect(notes.every((n) => n.midiNote === 60 && n.durationBeats === beats)).toBe(true);
+      expect(ill.zoom).toBeGreaterThan(1);
+    });
   });
 
   it('bài Đô: ngay sau trang trường độ là bài đố 10 câu ngẫu nhiên (tròn, trắng, đen, móc đơn, móc đôi)', () => {

@@ -46,6 +46,13 @@ test('giáo trình bổ sung — nốt Đô: giới thiệu → câu đố chọ
   await expect(labels).toHaveCount(18);
   await expect(labels.first()).toHaveText('Tròn');
   await expect(labels.nth(13)).toHaveText('Mócđôi'); // hai dòng (tspan)
+  // Năm trang giới thiệu kỹ từng trường độ: Đô tròn, trắng, đen, móc đơn, móc đôi (một ô nhịp, phóng to).
+  const durationPages: [string, number][] = [['tròn', 1], ['trắng', 2], ['đen', 4], ['móc đơn', 8], ['móc đôi', 16]];
+  for (const [name, count] of durationPages) {
+    await page.getByTestId('intro-next').click();
+    await expect(page.getByTestId('step-title')).toHaveText(`Đây là Đô ${name}`);
+    await expect(page.getByTestId('intro-step').locator('svg .vf-stavenote')).toHaveCount(count);
+  }
   for (let i = 0; i < 5; i++) await page.getByTestId('intro-next').click();
   // Trang cuối phần giới thiệu: nốt Đô ở các trường độ khác nhau, có nghe mẫu.
   await expect(page.getByTestId('step-title')).toHaveText('Nốt Đô dài, ngắn khác nhau');
@@ -124,4 +131,54 @@ test('giáo trình bổ sung — nốt Đô: giới thiệu → câu đố chọ
 
   await page.getByTestId('supplement-games-back').click();
   await expect(page.getByTestId('supplement-lesson-sup-c')).toHaveAttribute('data-status', 'completed');
+});
+
+test('buổi học: Quay lại / Tiếp đi qua mọi bước (giới thiệu ↔ bài tập ↔ kết quả)', async ({ page }) => {
+  await page.goto('/?screen=supplement');
+  await page.getByTestId('supplement-lesson-sup-c').click();
+  await page.getByTestId('start-lesson').click();
+  // Trang đầu phần giới thiệu: Quay lại → tổng quan buổi.
+  await page.getByTestId('intro-prev').click();
+  await expect(page.getByTestId('lesson-overview')).toBeVisible();
+  await page.getByTestId('start-lesson').click();
+  for (let i = 0; i < 11; i++) await page.getByTestId('intro-next').click();
+  await expect(page.getByTestId('step-title')).toHaveText('Câu đố: nốt Đô này là nốt gì?');
+  // Bài tập: Quay lại → trang cuối phần giới thiệu.
+  await page.getByTestId('step-prev').click();
+  await expect(page.getByTestId('step-title')).toHaveText('Nốt Đô dài, ngắn khác nhau');
+  await page.getByTestId('intro-prev').click();
+  await expect(page.getByTestId('step-title')).toHaveText('Nhiều nốt Đô');
+  await page.getByTestId('intro-next').click();
+  await page.getByTestId('intro-next').click();
+  // Tiếp bỏ qua bài tập (không chấm) tới bước sau, bài cuối → kết quả.
+  await page.getByTestId('step-next').click();
+  await expect(page.getByTestId('choice-quiz')).toBeVisible();
+  await expect(page.getByTestId('step-title')).not.toHaveText('Câu đố: nốt Đô này là nốt gì?');
+  await page.getByTestId('step-next').click();
+  await expect(page.getByTestId('step-next')).toHaveText(/Xem kết quả/);
+  await page.getByTestId('step-next').click();
+  await expect(page.getByTestId('step-next')).toHaveCount(0);
+  await page.getByTestId('step-prev').click();
+  await expect(page.getByTestId('step-next')).toHaveText(/Xem kết quả/);
+});
+
+test('trang giới thiệu: nút Quay lại / Tiếp giữ nguyên vị trí khi chuyển trang', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('open-supplement').click();
+  await page.getByTestId('supplement-lesson-sup-c').click();
+  await page.getByTestId('start-lesson').click();
+  await expect(page.getByTestId('step-title')).toHaveText('Đây là nốt Đô');
+  const next = page.getByTestId('intro-next');
+  const prev = page.getByTestId('intro-prev');
+  const first = await next.boundingBox();
+  const firstPrev = await prev.boundingBox();
+  expect(first).not.toBeNull();
+  // Các trang dài ngắn khác nhau (một ô nhịp ↔ khuông + bàn phím) → nút vẫn đứng yên.
+  for (let i = 0; i < 6; i++) {
+    await next.click();
+    await expect(page.getByTestId('step-title')).not.toHaveText('Đây là nốt Đô');
+    const box = await next.boundingBox();
+    expect(Math.abs(box!.y - first!.y)).toBeLessThan(1);
+    expect(Math.abs((await prev.boundingBox())!.y - firstPrev!.y)).toBeLessThan(1);
+  }
 });

@@ -7,7 +7,7 @@
  */
 import type { Letter } from '../../balloonPop/notes';
 import type { LessonGameSpec } from '../../games/gameForLesson';
-import type { ChoiceQuestion, Curriculum, CurriculumLesson, Illustration } from '../types';
+import type { ChoiceQuestion, Curriculum, CurriculumLesson, Illustration, IntroPage } from '../types';
 import { buildLessons, rh } from './helpers';
 
 /** Bàn phím của bài: C3–B5 (đủ ba nốt Đô C3, C4, C5 và Đô cao C5 ở giữa). */
@@ -51,6 +51,51 @@ const C_DURATIONS: Illustration = {
 const DURATION_NAMES = ['Tròn', 'Trắng', 'Đen', 'Móc đơn', 'Móc đôi'];
 const DURATION_BARS = ['C4/w', 'C4/h C4/h', 'C4 C4 C4 C4', Array(8).fill('C4/8').join(' '), Array(16).fill('C4/16').join(' ')];
 
+/** Trang giới thiệu kỹ từng trường độ (ngay sau trang đầu): một ô nhịp nốt Đô cùng trường độ, phóng to, số phách ở tiêu đề thẻ. */
+const DURATION_PAGES: { name: string; beats: string; body: string; kids: string }[] = [
+  {
+    name: 'Tròn',
+    beats: '4 phách',
+    body: 'Nốt tròn: đầu nốt rỗng, không có đuôi. Ngân dài 4 phách — đếm "1 – 2 – 3 – 4" rồi mới thả phím.',
+    kids: 'Đây là Đô tròn! Bạn ấy bụng trắng, không có đuôi, ngân thật dài bốn phách.',
+  },
+  {
+    name: 'Trắng',
+    beats: '2 phách',
+    body: 'Nốt trắng: đầu nốt rỗng, có đuôi. Ngân 2 phách — hai nốt trắng bằng một nốt tròn.',
+    kids: 'Đây là Đô trắng! Rỗng ruột nhưng có đuôi, ngân hai phách.',
+  },
+  {
+    name: 'Đen',
+    beats: '1 phách',
+    body: 'Nốt đen: đầu nốt tô đen, có đuôi. Ngân 1 phách — bốn nốt đen bằng một nốt tròn.',
+    kids: 'Đây là Đô đen! Bụng tô đen, có đuôi, mỗi bạn một phách.',
+  },
+  {
+    name: 'Móc đơn',
+    beats: 'nửa phách',
+    body: 'Nốt móc đơn: như nốt đen nhưng thêm một móc (đứng cạnh nhau thì nối bằng một gạch). Mỗi nốt nửa phách — hai móc đơn bằng một nốt đen.',
+    kids: 'Đây là Đô móc đơn! Có một cái móc, chạy nhanh: hai bạn mới bằng một Đô đen.',
+  },
+  {
+    name: 'Móc đôi',
+    beats: '¼ phách',
+    body: 'Nốt móc đôi: có hai móc (đứng cạnh nhau thì nối bằng hai gạch). Mỗi nốt một phần tư phách — bốn móc đôi bằng một nốt đen.',
+    kids: 'Đây là Đô móc đôi! Có hai cái móc, chạy nhanh nhất: bốn bạn mới bằng một Đô đen.',
+  },
+];
+
+function durationPage(i: number): IntroPage {
+  const { name, beats, body, kids } = DURATION_PAGES[i];
+  const piece = { ...rh(DURATION_BARS[i]), timeSignature: [4, 4] as [number, 4] };
+  return {
+    title: `Đây là Đô ${name.toLowerCase()}`,
+    body,
+    kids,
+    illustration: { type: 'staff', piece, listen: true, zoom: 2, hideNames: true, caption: `Nốt Đô ${name.toLowerCase()} — mỗi nốt ${beats}` },
+  };
+}
+
 /** Bài đố trường độ: mỗi trường độ hỏi 2 lần (10 câu), thứ tự câu xáo mỗi lần làm. */
 const durationQuestions: ChoiceQuestion[] = [0, 1].flatMap(() =>
   DURATION_BARS.map((bar, answer) => ({
@@ -90,6 +135,7 @@ const C_LESSON = {
           illustration: { ...C_DURATIONS, caption: 'Nốt Đô trên khuông nhạc' },
           moreIllustrations: [{ type: 'keyboard', ...KEYS, highlight: 'all-c', listen: [60], caption: 'Phím Đô trên đàn' }],
         },
+        ...DURATION_PAGES.map((_, i) => durationPage(i)),
         {
           title: 'Đô nằm bên trái 2 phím đen',
           body: 'Tìm một nhóm 2 phím đen: phím trắng ngay bên trái nhóm đó chính là nốt Đô.',

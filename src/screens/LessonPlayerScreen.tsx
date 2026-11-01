@@ -70,6 +70,8 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
   );
   const firstExercise = steps.findIndex((s) => s.type === 'exercise');
   const [stepIndex, setStepIndex] = useState(0);
+  /** Quay lại từ bước sau vào phần giới thiệu → mở trang cuối của phần đó. */
+  const [introAtEnd, setIntroAtEnd] = useState(false);
   const [phase, setPhase] = useState<Phase>(stage ?? 'steps');
   const [attempt, setAttempt] = useState(0);
   /** Điểm các bài tập trong lần học này (màn kết quả chấm theo lần này). */
@@ -92,7 +94,8 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
   );
 
   const step = steps[stepIndex];
-  const goTo = (i: number) => {
+  const goTo = (i: number, atEnd = false) => {
+    setIntroAtEnd(atEnd);
     if (step.type !== 'exercise' || phase !== 'steps') void addTime(lesson, takeElapsed());
     // Đã xem hết phần giới thiệu khi đi tới bài tập đầu tiên (hoặc hết buổi).
     if (lesson.activities.length && (i >= firstExercise || firstExercise < 0)) void markIntroDone(lesson);
@@ -221,8 +224,9 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
         </p>
       )}
 
-      <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-        <div className="mx-auto max-w-6xl">
+      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4">
+        {/* Lấp đầy chiều cao vùng cuộn: thanh nút của trang giới thiệu ghim ở đáy, không nhảy theo độ dài nội dung. */}
+        <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col">
           {phase !== 'game' && (
             <div className="mb-2">
               <VoiceBar mode={mode} />
@@ -247,25 +251,49 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
               onBack={() => navigate({ name: 'curriculum' })}
             />
           ) : phase === 'result' ? (
-            <LessonResult
-              lesson={lesson}
-              mode={mode}
-              scores={runScores}
-              passedEver={record?.passed ?? false}
-              onRetry={retryLesson}
-              onReview={() => enterStage(supplement ? 'game' : 'review')}
-              reviewLabel={supplement ? '🎮 Tiếp: Chọn trò chơi' : undefined}
-              onNext={next ? () => navigate({ name: 'lesson', lessonId: next.lessonId }) : undefined}
-              onBack={() => navigate(home)}
-              backLabel={homeLabel}
-            />
+            <div className="grid gap-4">
+              <LessonResult
+                lesson={lesson}
+                mode={mode}
+                scores={runScores}
+                passedEver={record?.passed ?? false}
+                onRetry={retryLesson}
+                onReview={() => enterStage(supplement ? 'game' : 'review')}
+                reviewLabel={supplement ? '🎮 Tiếp: Chọn trò chơi' : undefined}
+                onNext={next ? () => navigate({ name: 'lesson', lessonId: next.lessonId }) : undefined}
+                onBack={() => navigate(home)}
+                backLabel={homeLabel}
+              />
+              <StepNav
+                onBack={() => {
+                  setPhase('steps');
+                  goTo(steps.length - 1, true);
+                }}
+              />
+            </div>
           ) : step.type === 'overview' ? (
             <Overview lesson={lesson} mode={mode} onStart={() => goTo(1)} />
           ) : step.type === 'activity' ? (
-            <IntroStep key={step.activity.id} activity={step.activity} mode={mode} onDone={() => goTo(stepIndex + 1)} />
+            <IntroStep
+              key={step.activity.id}
+              activity={step.activity}
+              mode={mode}
+              startAtEnd={introAtEnd}
+              onBack={() => goTo(stepIndex - 1, true)}
+              onDone={() => goTo(stepIndex + 1)}
+            />
           ) : (
             <div className="grid gap-4">
-              <InputSourceBar />
+              {/* Đi lại tự do giữa các bước của buổi (ở trên cùng → luôn thấy): bỏ qua bài đang làm (không chấm) hoặc xem lại bước trước. */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <InputSourceBar />
+                <StepNav
+                  onBack={() => goTo(stepIndex - 1, true)}
+                  onNext={() => goTo(stepIndex + 1)}
+                  nextLabel={stepIndex === steps.length - 1 ? 'Xem kết quả' : 'Tiếp'}
+                  inline
+                />
+              </div>
               {justDone ? (
                 <ExerciseDone
                   score={justDone}
@@ -357,15 +385,48 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function IntroStep({ activity, mode, onDone }: { activity: Activity; mode: UiMode; onDone: () => void }) {
-  const [page, setPage] = useState(0);
+/**
+ * Quay lại / Tiếp giữa các bước (trên bài tập, dưới màn kết quả). Không gắn `midiNav`: phím đàn ở bài tập là câu trả lời,
+ * nút điều hướng bằng đàn thuộc về màn kết quả bài tập.
+ */
+function StepNav({ onBack, onNext, nextLabel = 'Tiếp', inline }: { onBack: () => void; onNext?: () => void; nextLabel?: string; inline?: boolean }) {
+  return (
+    <div className={inline ? 'ml-auto flex gap-2' : 'flex justify-between gap-3 border-t border-violet-100 pt-3 dark:border-violet-900'} data-testid="step-nav">
+      <Button variant="ghost" onClick={onBack} data-testid="step-prev">
+        <Icon name="back" /> Quay lại
+      </Button>
+      {onNext && (
+        <Button variant="ghost" onClick={onNext} data-testid="step-next">
+          {nextLabel} →
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function IntroStep({
+  activity,
+  mode,
+  startAtEnd,
+  onBack,
+  onDone,
+}: {
+  activity: Activity;
+  mode: UiMode;
+  /** Quay lại từ bước sau → mở trang cuối. */
+  startAtEnd?: boolean;
+  /** Quay lại ở trang đầu → bước trước của buổi. */
+  onBack: () => void;
+  onDone: () => void;
+}) {
+  const [page, setPage] = useState(startAtEnd ? activity.pages.length - 1 : 0);
   const p = activity.pages[page];
   const last = page === activity.pages.length - 1;
   const shown = text(mode === 'kids' && p.kids ? p.kids : p.body);
   useVoiceScope();
   useVoiceCue(p.voice ?? phrases.say(shown, 'step_start', 'intro_page'), `${activity.id}-${page}`, mode);
   return (
-    <div className="grid gap-5" data-testid="intro-step">
+    <div className="flex flex-1 flex-col gap-5" data-testid="intro-step">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-2xl font-bold" data-testid="step-title">
           {text(p.title ?? activity.title)}
@@ -377,9 +438,14 @@ function IntroStep({ activity, mode, onDone }: { activity: Activity; mode: UiMod
       <p className={mode === 'kids' ? 'text-2xl leading-relaxed' : 'text-lg'}>{shown}</p>
       {p.illustration && <IllustrationView ill={p.illustration} id={`${activity.id}-${page}`} />}
       {p.moreIllustrations?.map((ill, i) => <IllustrationView key={`${page}-${i}`} ill={ill} id={`${activity.id}-${page}-more${i}`} />)}
-      <div className="flex gap-3">
-        <Button onClick={() => setPage((x) => x - 1)} disabled={page === 0} midiNav="back">
-          <Icon name="back" /> Trước
+      {/* Ghim đáy vùng cuộn (mt-auto khi nội dung ngắn, sticky khi dài; -mb-4 pb-4 phủ phần đệm đáy của <main>)
+          → Quay lại / Tiếp luôn ở cùng một chỗ khi chuyển trang. */}
+      <div
+        className="sticky bottom-0 z-10 -mb-4 mt-auto flex gap-3 border-t border-violet-100 bg-white/70 pt-3 pb-4 backdrop-blur-sm dark:border-violet-900 dark:bg-slate-900/70"
+        data-testid="intro-nav"
+      >
+        <Button onClick={() => (page === 0 ? onBack() : setPage((x) => x - 1))} data-testid="intro-prev" midiNav="back">
+          <Icon name="back" /> Quay lại
         </Button>
         <Button variant="primary" onClick={() => (last ? onDone() : setPage((x) => x + 1))} data-testid="intro-next" midiNav="forward">
           {last ? 'Bắt đầu luyện tập' : 'Tiếp'}
