@@ -31,6 +31,7 @@ import type { AiNote, AiNoteMode } from '../core/feedback/aiNotes';
 import { AiNoteHistory } from '../components/AiNoteHistory';
 import { useLibraryAiNotes } from '../hooks/useLibraryAiNotes';
 import { useListenSample } from '../hooks/useListenSample';
+import { usePlayingNow } from '../store/playingStore';
 import { hasHandChoice, isMelodyMidi, practiceTrack, PRACTICE_HAND_LABEL, resultsOnScore, type PracticeHand, type PracticeTrack, type TrackStep } from '../core/practice/handPractice';
 
 const FEEDBACK_MS = 900;
@@ -119,6 +120,8 @@ function Practice({ lesson }: { lesson: Lesson }) {
 
   // Đồng hồ nhịp chạy theo khung hình khi đang đếm vào / đang chạy.
   const ticking = tempoMode && (tempo.status === 'running' || tempo.status === 'countIn');
+  // Đang chơi (đã đánh nốt đầu / đồng hồ nhịp chạy) → ẩn nút nổi; hết bài hoặc chơi lại từ đầu → hiện lại.
+  usePlayingNow(tempoMode ? ticking : state.startedAt !== null && state.status !== 'finished');
   useEffect(() => {
     if (!ticking) return;
     let id = 0;

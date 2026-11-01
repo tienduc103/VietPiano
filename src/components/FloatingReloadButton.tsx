@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { hardReload } from '../hardReload';
 import { isDrag, pixelsToPosition, positionToPixels, type Viewport } from '../core/settings/floatingPosition';
+import { selectPlaying, usePlaying } from '../store/playingStore';
 import { useSettings } from '../store/settingsStore';
 import { Icon } from './ui';
 
@@ -20,6 +21,7 @@ function useViewport(): Viewport {
 /**
  * Nút nổi tải lại cứng (như Ctrl+F5) để lấy bản mới nhất. Mặc định ở góc trên bên trái (header các màn hình
  * chừa lề trái cho nút); kéo để di chuyển, vị trí lưu trong cài đặt. Kéo xong không tính là bấm.
+ * Ẩn khi đang chơi trong bài (`usePlayingNow`).
  */
 export function FloatingReloadButton() {
   const pos = useSettings((s) => s.settings.reloadButtonPos);
@@ -30,10 +32,13 @@ export function FloatingReloadButton() {
   const drag = useRef<{ startX: number; startY: number; left: number; top: number; moved: boolean } | null>(null);
   // Sau khi kéo trình duyệt vẫn phát click → bỏ qua đúng một click đó.
   const suppressClick = useRef(false);
+  const playing = usePlaying(selectPlaying);
 
   const place = dragging
     ? positionToPixels(pixelsToPosition(dragging.left, dragging.top, SIZE, viewport), SIZE, viewport)
     : pos && positionToPixels(pos, SIZE, viewport);
+
+  if (playing) return null;
 
   return (
     <button

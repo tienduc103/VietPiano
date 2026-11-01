@@ -1,6 +1,7 @@
 import { midiToLabel, type NoteLabelStyle } from '../core/music/notes';
 import { useMic, toggleMicrophone } from '../store/micStore';
 import { useMidi } from '../store/midiStore';
+import { selectPlaying, usePlaying } from '../store/playingStore';
 import { useSettings } from '../store/settingsStore';
 import { Icon } from './ui';
 
@@ -40,7 +41,7 @@ export function MicButton({ compact = false, small = false }: { compact?: boolea
       onClick={() => void toggleMicrophone()}
       data-testid="mic-button"
       aria-pressed={on}
-      className={`inline-flex items-center gap-2 font-semibold transition-colors ${small ? 'min-h-9 rounded-lg px-2.5 text-sm' : 'min-h-12 rounded-xl px-4'} ${
+      className={`inline-flex items-center gap-2 font-semibold transition-colors ${small ? 'min-h-7 rounded-md px-2 text-xs' : 'min-h-12 rounded-xl px-4'} ${
         on
           ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30 hover:brightness-110'
           : status === 'suspended' || paused
@@ -48,7 +49,7 @@ export function MicButton({ compact = false, small = false }: { compact?: boolea
             : 'bg-white text-violet-900 ring-1 ring-violet-200 hover:bg-violet-50 dark:bg-slate-700 dark:text-slate-100 dark:ring-violet-800'
       }`}
     >
-      <Icon name={on ? 'mic' : 'micOff'} className={small ? 'h-4 w-4' : undefined} />
+      <Icon name={on ? 'mic' : 'micOff'} className={small ? 'h-3.5 w-3.5' : undefined} />
       {!compact && <span>{label}</span>}
     </button>
   );
@@ -115,14 +116,15 @@ export function DetectedNote({ labelStyle }: { labelStyle: NoteLabelStyle }) {
  * Nút micro nổi, luôn hiển thị (trừ khi tắt trong Cài đặt): bấm để bật/tắt micro;
  * khi micro chạy thì hiện nốt đang nghe + cents. Khi đàn MIDI đã nối thì hiện "Đã kết nối MIDI" + phím vừa bấm
  * trên đàn (màn luyện tập lúc đó bỏ nốt micro); góc nút có chấm trạng thái micro, bấm vẫn bật/tắt micro.
- * Vị trí do nơi dùng truyền vào qua `className`.
+ * Vị trí do nơi dùng truyền vào qua `className`. Ẩn khi đang chơi trong bài (`usePlayingNow`).
  */
 export function FloatingMicNote({ className }: { className: string }) {
   const enabled = useSettings((s) => s.settings.showFloatingNote);
   const status = useMic((s) => s.status);
   const paused = useMic((s) => s.pausedByBackground);
   const midiDevice = useMidi((s) => (s.status === 'ready' ? (s.devices[0]?.name ?? null) : null));
-  if (!enabled) return null;
+  const playing = usePlaying(selectPlaying);
+  if (!enabled || playing) return null;
   const on = status === 'running';
   const resumable = status === 'suspended' || paused;
   const failed = status === 'error';

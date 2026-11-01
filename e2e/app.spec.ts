@@ -168,13 +168,24 @@ test('nút micro nổi: luôn hiển thị, bấm để bật/tắt micro, hiệ
   await expect(floating).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('floating-mic-note')).toContainText(/[A-G]\d/, { timeout: 10_000 });
 
+  await floating.click();
+  await expect(floating).toHaveAttribute('aria-pressed', 'false');
+
   // Luyện tập: nút nằm trong khung khuông nhạc, cùng trạng thái với nút micro chính.
   await page.getByTestId('lesson-scale-c-major').click();
-  await expect(page.getByTestId('mic-button')).toHaveText(/Micro đang bật/);
   await expect(page.locator('main [data-testid="floating-mic"]')).toBeVisible();
+  await expect(page.getByTestId('floating-reload')).toBeVisible();
   await page.getByTestId('floating-mic').click();
+  await expect(page.getByTestId('mic-button')).toHaveText(/Micro đang bật/);
+  // Micro giả phát gam Đô → bài bắt đầu (đang chơi) → ẩn mọi nút nổi; chơi lại từ đầu → hiện lại.
+  await expect(page.getByTestId('progress-text')).not.toHaveText(/^0\//, { timeout: 10_000 });
+  await expect(page.getByTestId('floating-mic')).toHaveCount(0);
+  await expect(page.getByTestId('floating-reload')).toHaveCount(0);
+  await page.getByTestId('mic-button').click();
   await expect(page.getByTestId('mic-button')).toHaveText(/Bật micro/);
+  await page.getByRole('button', { name: 'Chơi lại từ đầu' }).click();
   await expect(page.getByTestId('floating-mic')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByTestId('floating-reload')).toBeVisible();
 
   await page.getByRole('button', { name: 'Về thư viện' }).first().click();
   await page.getByRole('button', { name: 'Cài đặt' }).click();
@@ -490,7 +501,8 @@ test('đàn MIDI: bật trong Cài đặt, thấy tên đàn, nốt từ đàn c
   await expect(page.getByTestId('midi-badge')).toHaveText('MIDI: Test Piano');
   await midiNote(page, 60);
   await expect(page.getByTestId('expected-note')).toHaveText('D4');
-  await expect(page.getByTestId('floating-midi-note')).toContainText('C4');
+  // Đang chơi trong bài → nút nổi ẩn.
+  await expect(page.getByTestId('floating-midi-note')).toHaveCount(0);
   await page.waitForTimeout(150);
   await midiNote(page, 65);
   await expect(page.getByTestId('status-title')).toHaveText('Sai');

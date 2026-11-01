@@ -25,6 +25,7 @@ import { HandsGuide } from '../HandsGuide';
 import { ScoreView } from '../ScoreView';
 import { Button, Icon, Segmented, Toggle } from '../ui';
 import { Feedback, ListenButton, StepTitle } from './common';
+import { usePlayingNow } from '../../store/playingStore';
 
 /** Độ trễ ước lượng micro (như màn Luyện tập; chưa đo trên iPad thật). */
 const MIC_LATENCY_MS = 60;
@@ -278,6 +279,7 @@ function WaitRunner({ exercise, lesson, timeline, hand, mode, scored, loop, onSc
   );
 
   const finished = state.status === 'finished';
+  usePlayingNow(state.startedAt !== null && !finished);
   const sentRef = useRef(false);
   useEffect(() => {
     if (!finished || sentRef.current) return;
@@ -430,6 +432,7 @@ function TimedRunner({ exercise, lesson, timeline, hand, kind, bpm, mode, scored
     () => tracker.getState(),
   );
   const running = state.status === 'running' || state.status === 'countIn';
+  usePlayingNow(running);
 
   // Tiếng metronome: mặc định tắt khi đang dùng micro (micro có thể nghe nhầm tiếng click).
   const usingMic = micRunning && !midiInput.hasDevice() && settings.inputSource !== 'midi';

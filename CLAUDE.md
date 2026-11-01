@@ -169,6 +169,8 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   profile/assessment.ts      đánh giá từ lịch sử phiên: thời gian học, điểm khả năng 0–100, các tiêu chí (đều đặn, tốc độ đọc nốt, nốt hay sai…)
   profile/recommend.ts       gợi ý bài theo nhóm tuổi + mục tiêu + độ khó vừa sức + tiến độ (tối đa 2 bài/nhóm)
 src/store/           Zustand: settingsStore, micStore, appStore (route + tiến độ + lịch sử phiên), profileStore, curriculumStore
+                     playingStore (`usePlayingNow`: đang chơi trong bài — Luyện tập đã đánh nốt đầu / đồng hồ nhịp chạy, bài tập
+                     giáo trình đang làm → ẩn nút nổi micro + tải lại; hết bài / chơi lại từ đầu → hiện lại)
 src/hooks/           vòng đời app (ẩn nền → tắt micro), theme, wake lock, ghi phiên luyện tập
 src/components/      ScoreView, PianoKeyboard, MicPanel, ui
 src/screens/         Dashboard (trang chủ = giáo trình phía trên + Thư viện bài `components/LessonLibrary` phía dưới),

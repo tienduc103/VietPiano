@@ -18,7 +18,9 @@ test('Thu hoạch cà chua tích hợp menu, khuông nhạc và piano ảo khôn
   await expect(game.getByText(/đếm ngược|hết giờ/i)).toHaveCount(0);
   await page.getByTestId('tomato-start').click();
   await expect(game).toHaveAttribute('data-status', 'playing');
-  await expect(page.getByTestId('tomato-note-card').locator('svg')).toBeVisible();
+  const staff = page.getByTestId('tomato-note-card').locator('svg');
+  await expect(staff).toBeVisible();
+  expect((await staff.boundingBox())?.height).toBeGreaterThan(130);
   await expect(page.locator('[data-testid^="tomato-plant-"]')).toHaveCount(5);
   for (let harvested = 1; harvested <= 5; harvested++) {
     const target = await game.getAttribute('data-target');
@@ -40,4 +42,26 @@ test('cấp Vừa giữ nốt khi sai và trừ điểm không âm', async ({ pa
   await expect(game).toHaveAttribute('data-target', String(target));
   await expect(game).toHaveAttribute('data-harvested', '0');
   await expect(page.getByTestId('tomato-score')).toHaveText('⭐ 0');
+});
+
+test('cấp Khó: sâu bò tới đúng cây bị tấn công', async ({ page }) => {
+  await page.goto('/?screen=tomato-harvest');
+  await page.getByRole('button', { name: '🏆 Khó' }).click();
+  await page.getByTestId('tomato-start').click();
+  const game = page.getByTestId('tomato-harvest');
+  const target = Number(await game.getAttribute('data-target'));
+  const wrong = target === 60 ? 62 : 60;
+  const key = page.locator(`[data-testid="tomato-keyboard"] button[data-midi="${wrong}"]`);
+  await key.click();
+  await key.click();
+  await key.click();
+  const worms = page.getByLabel(/Đàn sâu bò lên cây \d/);
+  await expect(worms).toBeVisible();
+  const plantNumber = Number((await worms.getAttribute('aria-label'))?.match(/\d+/)?.[0]);
+  const [wormBox, plantBox] = await Promise.all([worms.boundingBox(), page.getByTestId(`tomato-plant-${plantNumber}`).boundingBox()]);
+  expect(wormBox).not.toBeNull();
+  expect(plantBox).not.toBeNull();
+  const wormCenter = wormBox!.x + wormBox!.width / 2;
+  expect(wormCenter).toBeGreaterThan(plantBox!.x);
+  expect(wormCenter).toBeLessThan(plantBox!.x + plantBox!.width);
 });

@@ -77,7 +77,7 @@ export function MidiBadge({ small = false }: { small?: boolean }) {
   const connected = status === 'ready' && devices.length > 0;
   return (
     <div
-      className={`inline-flex items-center font-semibold ${small ? 'min-h-9 gap-1.5 rounded-lg px-2.5 text-xs' : 'min-h-12 gap-2 rounded-xl px-3 text-sm'} ${
+      className={`inline-flex items-center font-semibold ${small ? 'min-h-7 gap-1 rounded-md px-2 text-[11px]' : 'min-h-12 gap-2 rounded-xl px-3 text-sm'} ${
         connected
           ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
           : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
@@ -85,7 +85,7 @@ export function MidiBadge({ small = false }: { small?: boolean }) {
       data-testid="midi-badge"
       title={connected ? 'Đang nhận nốt từ đàn MIDI; nốt nghe qua micro bị bỏ qua' : 'Bật MIDI nhưng chưa thấy đàn'}
     >
-      <Icon name="keyboard" className={small ? 'h-4 w-4' : 'h-5 w-5'} />
+      <Icon name="keyboard" className={small ? 'h-3.5 w-3.5' : 'h-5 w-5'} />
       <span className="max-w-48 truncate">{connected ? `MIDI: ${devices[0].name}` : status === 'ready' ? 'Chưa thấy đàn MIDI' : 'MIDI…'}</span>
     </div>
   );

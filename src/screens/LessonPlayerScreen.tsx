@@ -441,7 +441,7 @@ function IntroStep({
       {/* Ghim đáy vùng cuộn (mt-auto khi nội dung ngắn, sticky khi dài; -mb-4 pb-4 phủ phần đệm đáy của <main>)
           → Quay lại / Tiếp luôn ở cùng một chỗ khi chuyển trang. */}
       <div
-        className="sticky bottom-0 z-10 -mb-4 mt-auto flex gap-3 border-t border-violet-100 bg-white/70 pt-3 pb-4 backdrop-blur-sm dark:border-violet-900 dark:bg-slate-900/70"
+        className="sticky bottom-0 z-10 -mb-4 mt-auto flex justify-center gap-3 pt-3 pb-4"
         data-testid="intro-nav"
       >
         <Button onClick={() => (page === 0 ? onBack() : setPage((x) => x - 1))} data-testid="intro-prev" midiNav="back">

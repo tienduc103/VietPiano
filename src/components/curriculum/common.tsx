@@ -308,23 +308,26 @@ export function OptionImage({ ill, id }: { ill: Illustration; id: string }) {
 }
 
 /**
- * Ngón tay phải (ngón cái bên trái; tay trái lật gương): (x, y) = đỉnh đầu ngón, `rot` = góc nghiêng (độ),
- * `len` = dài từ đầu ngón tới gốc, `wt` / `wb` = nửa bề rộng ở đầu / gốc ngón (ngón thon dần).
+ * Bàn tay nét viền một màu (currentColor), vẽ theo toạ độ gốc 750×750 rồi thu nhỏ vào khung 200×230.
+ * Tay phải nhìn lòng bàn tay, ngón cái bên trái; tay trái lật gương.
  */
-const HAND_FINGERS = [
-  { n: 1, x: 34, y: 108, rot: -50, len: 74, wt: 12.5, wb: 17 },
-  { n: 2, x: 68, y: 40, rot: -10, len: 98, wt: 11.5, wb: 15 },
-  { n: 3, x: 102, y: 28, rot: 0, len: 106, wt: 12, wb: 15.5 },
-  { n: 4, x: 135, y: 38, rot: 9, len: 98, wt: 11.5, wb: 15 },
-  { n: 5, x: 164, y: 66, rot: 20, len: 76, wt: 10, wb: 13.5 },
+const HAND_OUTLINE =
+  'M 232 465 C 245 410 238 350 215 300 L 168 150 A 30 30 0 0 1 222 122 L 318 312 Q 333 338 348 312 L 362 80 A 33 33 0 0 1 428 80 ' +
+  'L 438 300 Q 450 338 466 305 L 523 110 A 30 30 0 0 1 581 126 L 548 330 Q 546 362 570 346 L 666 213 A 28 28 0 0 1 714 243 ' +
+  'L 615 390 C 600 440 605 520 595 580 C 585 650 540 690 480 690 C 430 690 395 670 378 640';
+const HAND_THUMB = 'M 258 478 C 240 497 212 492 192 476 L 81 390 A 28 28 0 0 0 55 440 L 170 590 C 230 660 300 700 400 695';
+const HAND_CREASE = 'M 310 428 Q 415 370 520 428';
+const HAND_SCALE = 0.265;
+const HAND_DX = -0.6;
+const HAND_DY = 9.4;
+/** Vị trí số ngón (toạ độ gốc), nằm trong lòng ngón gần đầu ngón. */
+const HAND_FINGER_LABELS: ReadonlyArray<readonly [n: number, x: number, y: number]> = [
+  [1, 108, 436],
+  [2, 221, 189],
+  [3, 395, 138],
+  [4, 533, 176],
+  [5, 658, 278],
 ];
-
-const PALM_PATH = 'M 66 126 Q 104 116 154 128 Q 166 160 150 194 L 146 214 L 82 214 L 78 198 Q 60 182 58 158 Q 58 138 66 126 Z';
-
-/** Ngón tay dựng đứng: đầu ngón ở gốc toạ độ, gốc ngón ở (0, len); đầu tròn, thân thon dần. */
-function fingerPath({ len, wt, wb }: { len: number; wt: number; wb: number }): string {
-  return `M ${-wb} ${len} C ${-wb} ${len * 0.55} ${-wt} ${len * 0.35} ${-wt} ${wt} A ${wt} ${wt} 0 0 1 ${wt} ${wt} C ${wt} ${len * 0.35} ${wb} ${len * 0.55} ${wb} ${len} Z`;
-}
 
 /** Bàn tay với số ngón 1–5 (ngón cái = 1 ở cả hai tay). */
 export function HandFigure({
@@ -337,49 +340,42 @@ export function HandFigure({
   highlight?: number;
   className?: string;
 }) {
-  const mirror = hand === 'left' ? 'translate(200,0) scale(-1,1)' : undefined;
-  // Vẽ hai lớp: lớp viền (nét dày) rồi lớp da đè lên → một đường viền liền cho cả bàn tay.
-  const shapes = (
-    <>
-      <path d={PALM_PATH} />
-      {HAND_FINGERS.map((f) => (
-        <path key={f.n} d={fingerPath(f)} transform={`translate(${f.x} ${f.y}) rotate(${f.rot})`} />
-      ))}
-    </>
-  );
+  const mirror = hand === 'left' ? 'translate(200,0) scale(-1,1) ' : '';
   return (
-    <svg viewBox="0 0 200 230" className={className} role="img" aria-label={`Số ngón tay ${hand === 'right' ? 'phải' : 'trái'}`} data-testid="hand-figure">
-      <g transform={mirror}>
-        <g className="fill-[#d99a6c] stroke-[#d99a6c] dark:fill-[#a86e48] dark:stroke-[#a86e48]" strokeWidth="5" strokeLinejoin="round">
-          {shapes}
-        </g>
-        <g className="fill-[#fbd8b6] dark:fill-[#e2ae86]">{shapes}</g>
-        {/* Móng tay + nếp khớp ngón + chỉ tay */}
-        {HAND_FINGERS.map((f) => (
-          <g key={f.n} transform={`translate(${f.x} ${f.y}) rotate(${f.rot})`}>
-            <ellipse cx="0" cy={f.wt * 0.85} rx={f.wt * 0.55} ry={f.wt * 0.65} className="fill-[#fff0e2] dark:fill-[#f2cfb2]" />
-            {[0.62, 0.84].map((t) => {
-              const y = f.len * t;
-              const w = f.wt + (f.wb - f.wt) * t - 4;
-              return <path key={t} d={`M ${-w} ${y} Q 0 ${y + 3} ${w} ${y}`} fill="none" strokeWidth="1.5" strokeLinecap="round" className="stroke-[#d99a6c]/60 dark:stroke-[#a86e48]/70" />;
-            })}
-          </g>
-        ))}
-        <path d="M 74 168 Q 100 160 132 150 M 82 186 Q 108 176 140 176" fill="none" strokeWidth="1.5" strokeLinecap="round" className="stroke-[#d99a6c]/50 dark:stroke-[#a86e48]/60" />
+    <svg
+      viewBox="0 0 200 230"
+      className={`text-slate-800 dark:text-slate-100 ${className}`}
+      role="img"
+      aria-label={`Số ngón tay ${hand === 'right' ? 'phải' : 'trái'}`}
+      data-testid="hand-figure"
+    >
+      <g
+        transform={`${mirror}translate(${HAND_DX} ${HAND_DY}) scale(${HAND_SCALE})`}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="16"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d={HAND_OUTLINE} />
+        <path d={HAND_THUMB} />
+        <path d={HAND_CREASE} />
       </g>
-      {HAND_FINGERS.map((f) => {
-        // Vòng số nằm trên ngón, dưới móng tay (dọc theo trục ngón).
-        const d = f.wt * 2 + 14;
-        const rad = (f.rot * Math.PI) / 180;
-        const rx = f.x - d * Math.sin(rad);
-        const x = hand === 'left' ? 200 - rx : rx;
-        const y = f.y + d * Math.cos(rad);
-        const on = highlight === f.n;
+      {HAND_FINGER_LABELS.map(([n, ix, iy]) => {
+        const vx = ix * HAND_SCALE + HAND_DX;
+        const x = hand === 'left' ? 200 - vx : vx;
+        const y = iy * HAND_SCALE + HAND_DY;
+        const on = highlight === n;
         return (
-          <g key={f.n} data-finger={f.n} data-highlighted={on || undefined}>
-            <circle cx={x} cy={y} r={on ? 17 : 13} className={on ? 'fill-fuchsia-600 stroke-white' : highlight ? 'fill-orange-300' : 'fill-orange-500'} strokeWidth={on ? 2.5 : 0} />
-            <text x={x} y={y + 5} textAnchor="middle" className="fill-white text-[15px] font-bold">
-              {f.n}
+          <g key={n} data-finger={n} data-highlighted={on || undefined} opacity={highlight && !on ? 0.4 : 1}>
+            {on && <circle cx={x} cy={y} r="12" fill="currentColor" />}
+            <text
+              x={x}
+              y={y + 5}
+              textAnchor="middle"
+              className={`text-[15px] font-bold ${on ? 'fill-white dark:fill-slate-900' : 'fill-current'}`}
+            >
+              {n}
             </text>
           </g>
         );
@@ -503,8 +499,8 @@ export function InputSourceBar() {
           : 'Chưa thấy đàn MIDI — kiểm tra dây cắm.'
       : null;
   return (
-    <div className="flex flex-wrap items-center gap-2" data-testid="input-source">
-      <div className="inline-flex rounded-lg bg-violet-100 p-0.5 dark:bg-slate-700" role="radiogroup" aria-label="Nguồn nốt">
+    <div className="flex flex-wrap items-center gap-1.5" data-testid="input-source">
+      <div className="inline-flex rounded-md bg-violet-100 p-0.5 dark:bg-slate-700" role="radiogroup" aria-label="Nguồn nốt">
         {SOURCE_OPTIONS.map((o) => (
           <button
             key={o.value}
@@ -512,7 +508,7 @@ export function InputSourceBar() {
             role="radio"
             aria-checked={source === o.value}
             onClick={() => update({ inputSource: o.value })}
-            className={`min-h-8 rounded-md px-2.5 text-xs font-semibold ${source === o.value ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'}`}
+            className={`min-h-6 rounded px-2 text-[11px] font-semibold ${source === o.value ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'}`}
           >
             {o.label}
           </button>
@@ -521,7 +517,7 @@ export function InputSourceBar() {
       {source !== 'midi' && <MicButton compact small />}
       <MidiBadge small />
       {midiProblem && (
-        <span className="text-xs text-amber-700 dark:text-amber-300" role="alert">
+        <span className="text-[11px] text-amber-700 dark:text-amber-300" role="alert">
           {midiProblem}
         </span>
       )}
