@@ -13,6 +13,7 @@ import { PianoKeyboard } from '../PianoKeyboard';
 import { ScoreView } from '../ScoreView';
 import { MicButton, MicError } from '../MicPanel';
 import { MidiBadge } from '../MidiPanel';
+import { NoteEquations } from './NoteValues';
 import { Button, Icon } from '../ui';
 
 const NO_RESULTS: never[] = [];
@@ -54,7 +55,7 @@ export function StaticScore({
     if (zoom > 1) {
       // Phóng to: khung cao cố định (câu nào cũng như nhau → nút trả lời không nhảy), cắt bớt khoảng trống trên/dưới
       // khuông (ScoreView chừa chỗ dòng kẻ phụ + tên nốt), khuông nằm giữa khung.
-      const frame = Math.round(baseHeight * zoom * 0.6);
+      const frame = Math.round(baseHeight * zoom * 0.5);
       return (
         <div ref={hostRef} className="relative w-full min-w-0 overflow-hidden" style={{ height: frame }} data-fit={fit.toFixed(2)}>
           <div
@@ -304,6 +305,8 @@ export function OptionImage({ ill, id }: { ill: Illustration; id: string }) {
           <StaticScore piece={ill.piece} id={id} showNames={false} />
         </div>
       );
+    case 'note-values':
+      return <NoteEquations equations={ill.equations} />;
   }
 }
 
@@ -474,6 +477,12 @@ export function IllustrationView({ ill, id }: { ill: Illustration; id: string })
             <ListenButton piece={ill.piece} />
           </div>
         </div>
+      );
+    case 'note-values':
+      return (
+        <FigureCard caption={text(ill.caption)} testId="figure-note-values">
+          <NoteEquations equations={ill.equations} />
+        </FigureCard>
       );
   }
 }

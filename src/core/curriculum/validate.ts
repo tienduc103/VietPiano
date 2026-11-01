@@ -8,6 +8,7 @@ import { splitMeasures } from '../lessons/notation';
 import { measureLength, type Lesson } from '../lessons/types';
 import { nameToMidi } from '../music/notes';
 import { keysMatching } from './keys';
+import { equationHolds, equationLabel } from './noteValues';
 import { lessonTimeline, pieceToLesson } from './piece';
 import { text, type Curriculum, type Illustration, type Piece } from './types';
 import { countWords } from '../voice/phrases';
@@ -102,6 +103,10 @@ function validateIllustration(ill: Illustration | undefined, where: string): str
   if (ill.type === 'keyboard') {
     if (ill.from >= ill.to) return [`${where}: bàn phím from ≥ to`];
     if (ill.listen?.some((m) => m < MIC_MIN_MIDI || m > MIC_MAX_MIDI)) return [`${where}: nốt nghe mẫu ngoài tầm micro`];
+  }
+  if (ill.type === 'note-values') {
+    if (ill.equations.length === 0) return [`${where}: thẻ so sánh trường độ không có phép nào`];
+    return ill.equations.filter((e) => !equationHolds(e)).map((e) => `${where}: phép so sánh sai "${equationLabel(e)}"`);
   }
   if (ill.type === 'hand' && ill.highlight !== undefined && (ill.highlight < 1 || ill.highlight > 5)) return [`${where}: ngón tô nổi phải 1–5`];
   return [];

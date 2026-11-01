@@ -194,7 +194,12 @@ test('giáo trình bổ sung — nốt Sol: cùng khuôn với nốt Đô (giớ
   await expect(page.getByTestId('intro-step').locator('text.score-label')).toHaveCount(18);
   await page.getByTestId('intro-next').click();
   await expect(page.getByTestId('step-title')).toHaveText('Đây là Sol tròn');
-  for (let i = 0; i < 5; i++) await page.getByTestId('intro-next').click();
+  // Phép so sánh trường độ dưới khuông nhạc.
+  await expect(page.getByRole('img', { name: '1 nốt tròn = 4 phách' })).toBeVisible();
+  await page.getByTestId('intro-next').click();
+  await expect(page.getByRole('img', { name: '2 nốt trắng = 1 nốt tròn' })).toBeVisible();
+  await expect(page.getByRole('img', { name: '1 nốt trắng = 2 nốt đen' })).toBeVisible();
+  for (let i = 0; i < 4; i++) await page.getByTestId('intro-next').click();
   await expect(page.getByTestId('step-title')).toHaveText('Sol nằm giữa phím đen thứ nhất và thứ hai');
   for (let i = 0; i < 5; i++) await page.getByTestId('intro-next').click();
   await expect(page.getByTestId('step-title')).toHaveText('Câu đố: nốt Sol này là nốt gì?');

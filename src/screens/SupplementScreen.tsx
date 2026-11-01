@@ -70,7 +70,7 @@ export function SupplementScreen() {
                 >
                   {note && <NoteFigure svg={figures?.get(note.letter)} />}
                   <span className="flex items-baseline gap-2">
-                    <span className="text-3xl font-extrabold">{note?.name ?? text(l.title)}</span>
+                    <span className="text-lg font-extrabold">{note?.name ?? text(l.title)}</span>
                     <span className="text-lg font-semibold opacity-90">{note?.letter}</span>
                   </span>
                   <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-semibold">
@@ -90,7 +90,7 @@ export function SupplementScreen() {
               >
                 <NoteFigure svg={figures?.get(n.letter)} />
                 <span className="flex items-baseline gap-2">
-                  <span className="text-3xl font-extrabold">{n.name}</span>
+                  <span className="text-lg font-extrabold">{n.name}</span>
                   <span className="text-lg font-semibold">{n.letter}</span>
                 </span>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold dark:bg-slate-700">Sắp có</span>

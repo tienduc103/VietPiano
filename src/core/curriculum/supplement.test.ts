@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CURRICULUM } from './content/curriculum';
 import { isSupplementLesson, SUPPLEMENT, SUPPLEMENT_GAMES, SUPPLEMENT_LESSONS, SUPPLEMENT_NOTE, SUPPLEMENT_NOTES, SUPPLEMENT_UPCOMING } from './content/supplement';
 import { keysMatching, matchesKeyTarget } from './keys';
+import { equationLabel } from './noteValues';
 import { lessonTimeline, pieceToLesson } from './piece';
 import { validateCurriculum } from './validate';
 import type { ChoiceQuizExercise, Curriculum, Illustration } from './types';
@@ -81,6 +82,21 @@ describe('giáo trình bổ sung "Làm quen từng nốt"', () => {
         expect(notes.every((n) => n.midiNote === note.midi && n.durationBeats === beats)).toBe(true);
       });
       expect(pages[pages.length - 1].title).toBe(`Nốt ${name} dài, ngắn khác nhau`);
+    });
+
+    it('mỗi trang trường độ có phép so sánh với trường độ liền kề', () => {
+      const expected = [
+        ['1 nốt tròn = 4 phách', '1 nốt tròn = 2 nốt trắng'],
+        ['2 nốt trắng = 1 nốt tròn', '1 nốt trắng = 2 nốt đen'],
+        ['2 nốt đen = 1 nốt trắng', '1 nốt đen = 2 nốt móc đơn'],
+        ['2 nốt móc đơn = 1 nốt đen', '1 nốt móc đơn = 2 nốt móc đôi'],
+        ['2 nốt móc đôi = 1 nốt móc đơn', '4 nốt móc đôi = 1 nốt đen'],
+      ];
+      expected.forEach((labels, i) => {
+        const ill = pages[i + 1].moreIllustrations?.[0];
+        if (ill?.type !== 'note-values') throw new Error('trang trường độ phải có thẻ so sánh');
+        expect(ill.equations.map(equationLabel)).toEqual(labels);
+      });
     });
 
     it('trang bàn phím: nốt của bài ở mọi quãng tám nằm cạnh đúng nhóm phím đen', () => {

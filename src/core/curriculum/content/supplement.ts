@@ -10,6 +10,7 @@
  */
 import type { Letter } from '../../balloonPop/notes';
 import type { LessonGameSpec } from '../../games/gameForLesson';
+import type { NoteValue, NoteValueEquation } from '../noteValues';
 import type { ChoiceQuestion, Curriculum, CurriculumLesson, Illustration, IntroPage } from '../types';
 import { buildLessons, rh } from './helpers';
 
@@ -167,13 +168,17 @@ const staffNote = (pitch: string): Illustration => ({ type: 'staff', piece: { ..
 const finger = (n: number): Illustration => ({ type: 'hand', hand: 'right', highlight: n });
 const bar44 = (notation: string) => ({ ...rh(notation), timeSignature: [4, 4] as [number, 4] });
 
-/** Tên trường độ (đáp án bài đố) + số nốt / ký hiệu trong một ô 4/4 (ô nhịp phải đủ phách). */
-const DURATIONS: { name: string; code: string; count: number; beats: string; body: string; kids: (n: string) => string }[] = [
+/** Phép so sánh "`a` nốt `x` = `b` nốt `y`". */
+const equals = (a: number, x: NoteValue, b: number, y: NoteValue): NoteValueEquation => ({ left: { count: a, value: x }, right: { count: b, value: y } });
+
+/** Tên trường độ (đáp án bài đố) + số nốt / ký hiệu trong một ô 4/4 (ô nhịp phải đủ phách) + phép so sánh với trường độ liền kề. */
+const DURATIONS: { name: string; code: string; count: number; beats: string; equations: NoteValueEquation[]; body: string; kids: (n: string) => string }[] = [
   {
     name: 'Tròn',
     code: 'w',
     count: 1,
     beats: '4 phách',
+    equations: [{ left: { count: 1, value: 'w' }, right: { beats: 4 } }, equals(1, 'w', 2, 'h')],
     body: 'Nốt tròn: đầu nốt rỗng, không có đuôi. Ngân dài 4 phách — đếm "1 – 2 – 3 – 4" rồi mới thả phím.',
     kids: (n) => `Đây là ${n} tròn! Bạn ấy bụng trắng, không có đuôi, ngân thật dài bốn phách.`,
   },
@@ -182,6 +187,7 @@ const DURATIONS: { name: string; code: string; count: number; beats: string; bod
     code: 'h',
     count: 2,
     beats: '2 phách',
+    equations: [equals(2, 'h', 1, 'w'), equals(1, 'h', 2, 'q')],
     body: 'Nốt trắng: đầu nốt rỗng, có đuôi. Ngân 2 phách — hai nốt trắng bằng một nốt tròn.',
     kids: (n) => `Đây là ${n} trắng! Rỗng ruột nhưng có đuôi, ngân hai phách.`,
   },
@@ -190,6 +196,7 @@ const DURATIONS: { name: string; code: string; count: number; beats: string; bod
     code: 'q',
     count: 4,
     beats: '1 phách',
+    equations: [equals(2, 'q', 1, 'h'), equals(1, 'q', 2, '8')],
     body: 'Nốt đen: đầu nốt tô đen, có đuôi. Ngân 1 phách — bốn nốt đen bằng một nốt tròn.',
     kids: (n) => `Đây là ${n} đen! Bụng tô đen, có đuôi, mỗi bạn một phách.`,
   },
@@ -198,6 +205,7 @@ const DURATIONS: { name: string; code: string; count: number; beats: string; bod
     code: '8',
     count: 8,
     beats: 'nửa phách',
+    equations: [equals(2, '8', 1, 'q'), equals(1, '8', 2, '16')],
     body: 'Nốt móc đơn: như nốt đen nhưng thêm một móc (đứng cạnh nhau thì nối bằng một gạch). Mỗi nốt nửa phách — hai móc đơn bằng một nốt đen.',
     kids: (n) => `Đây là ${n} móc đơn! Có một cái móc, chạy nhanh: hai bạn mới bằng một ${n} đen.`,
   },
@@ -206,6 +214,7 @@ const DURATIONS: { name: string; code: string; count: number; beats: string; bod
     code: '16',
     count: 16,
     beats: '¼ phách',
+    equations: [equals(2, '16', 1, '8'), equals(4, '16', 1, 'q')],
     body: 'Nốt móc đôi: có hai móc (đứng cạnh nhau thì nối bằng hai gạch). Mỗi nốt một phần tư phách — bốn móc đôi bằng một nốt đen.',
     kids: (n) => `Đây là ${n} móc đôi! Có hai cái móc, chạy nhanh nhất: bốn bạn mới bằng một ${n} đen.`,
   },
@@ -296,6 +305,7 @@ function noteLesson(note: SupplementNote, index: number) {
           hideNames: true,
           caption: `Nốt ${name} ${lowerName(d.name)} — mỗi nốt ${d.beats}`,
         },
+        moreIllustrations: [{ type: 'note-values', caption: `Nốt ${lowerName(d.name)} dài bằng bao nhiêu?`, equations: d.equations }],
       }),
     ),
     {

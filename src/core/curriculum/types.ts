@@ -7,6 +7,7 @@ import type { Clef, LessonClef, LessonHand, LessonSection } from '../lessons/typ
 import type { DynamicMark } from '../music/dynamics';
 import type { KeySignature } from '../music/keySignature';
 import type { VoiceCue } from '../voice/types';
+import type { NoteValueEquation } from './noteValues';
 
 /**
  * Chữ hiển thị. Hiện chỉ có tiếng Việt; sau này có thể là `{ vi, en }` mà không phải đổi nội dung cũ
@@ -92,7 +93,9 @@ export type Illustration =
       /** Phóng to khuông trong thẻ (có `caption`) tối đa bấy nhiêu lần — câu đố nhìn hình nốt. */
       zoom?: number;
     }
-  | { type: 'counting'; piece: Piece; /** Chữ đếm dưới từng nốt, vd ["1", "2-3-4"]. */ counts: string[] };
+  | { type: 'counting'; piece: Piece; /** Chữ đếm dưới từng nốt, vd ["1", "2-3-4"]. */ counts: string[] }
+  /** Phép so sánh trường độ vẽ bằng hình nốt ("2 nốt trắng = 1 nốt tròn"), trong thẻ trắng có tiêu đề. */
+  | { type: 'note-values'; caption: Text; equations: NoteValueEquation[] };
 
 export interface IntroPage {
   title?: Text;

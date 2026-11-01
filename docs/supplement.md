@@ -23,7 +23,7 @@ Mỗi buổi giới thiệu MỘT nốt. Cả 7 nốt trắng (Đô, Rê, Mi, Ph
 | Bước | Nội dung |
 | --- | --- |
 | Giới thiệu 1 | Khuông nốt ở 5 trường độ (tên trường độ dưới từng nốt, Nghe mẫu) + bàn phím 3 quãng tám tô nốt (Nghe) |
-| Giới thiệu 2–6 | Từng trường độ: tròn, trắng, đen, móc đơn, móc đôi — một ô 4/4, phóng to ×2, số phách ở tiêu đề thẻ |
+| Giới thiệu 2–6 | Từng trường độ: tròn, trắng, đen, móc đơn, móc đôi — một ô 4/4, phóng to ×2, số phách ở tiêu đề thẻ; thẻ phép so sánh dưới khuông (`DURATIONS.equations`) |
 | Giới thiệu 7 | Vị trí trên bàn phím theo nhóm 2 / 3 phím đen (`landmark`) |
 | Giới thiệu 8 | Nốt giữa trên khuông khoá Sol (`staff`) |
 | Giới thiệu 9 | Ngón tay phải trên thế Đô (Đô–Sol) hoặc thế Sol (La, Si) (`finger`) |
@@ -46,3 +46,4 @@ Mỗi buổi giới thiệu MỘT nốt. Cả 7 nốt trắng (Đô, Rê, Mi, Ph
 | 2026-11-01 | Quay lại / Tiếp ở mọi bước của buổi học (giao diện chung) | mọi buổi |
 | 2026-11-01 | 5 trang giới thiệu riêng từng trường độ; thanh nút trang giới thiệu ghim đáy | Đô |
 | 2026-11-01 | **Chuyển sang khuôn chung `noteLesson`**, thêm Rê, Mi, Pha, Sol, La, Si. Câu đố chọn hình sinh tự động (phím trắng gần nhất, nốt cách quãng 2 / 3, ngón khác); câu 6 đổi thành "Ngón … — hình nào?"; trang ngón tay hiện cả thế tay 5 ngón | cả 7 nốt |
+| 2026-11-01 | 5 trang trường độ thêm thẻ phép so sánh bằng hình nốt: 1 tròn = 4 phách, 1 tròn = 2 trắng; 2 trắng = 1 tròn, 1 trắng = 2 đen; 2 đen = 1 trắng, 1 đen = 2 móc đơn; 2 móc đơn = 1 đen, 1 móc đơn = 2 móc đôi; 2 móc đôi = 1 móc đơn, 4 móc đôi = 1 đen | cả 7 nốt |
