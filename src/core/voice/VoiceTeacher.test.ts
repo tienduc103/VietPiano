@@ -167,6 +167,30 @@ describe('VoiceTeacher', () => {
     expect(t.blocksMic(2000 + MIC_GUARD_MS + 1)).toBe(false);
   });
 
+  it('câu thoáng qua: đọc nhưng không đổi bong bóng, "Nghe lại" vẫn đọc câu trước', () => {
+    const { f, t } = make();
+    t.say(cue('note_expected', 'Đề bài'));
+    t.interrupt();
+    t.say(cue('note_expected', 'Đáp án', { transient: true, priority: 0 }));
+    expect(f.spoken).toEqual(['Đề bài', 'Đáp án']);
+    expect(t.getState().caption).toBe('Đề bài');
+    t.replay();
+    expect(f.spoken).toEqual(['Đề bài', 'Đáp án', 'Đề bài']);
+  });
+
+  it('đọc đáp án (ưu tiên 0) không cắt đề bài, đáp án sau thay đáp án trước', async () => {
+    const { f, t } = make();
+    t.say(cue('note_expected', 'Đề bài'));
+    t.say(cue('note_expected', 'Đáp án 1', { transient: true, priority: 0 }));
+    t.say(cue('note_expected', 'Đáp án 2', { transient: true, priority: 0 }));
+    expect(f.cancelled).toEqual([]);
+    await f.finish();
+    expect(f.spoken).toEqual(['Đề bài', 'Đáp án 2']);
+    // Lời nhắc lỗi cắt được đáp án đang đọc.
+    t.say(cue('note_wrong', 'Chưa đúng', { priority: 3 }));
+    expect(f.cancelled).toEqual(['Đáp án 2']);
+  });
+
   it('unlock một lần', () => {
     const { f, t } = make();
     t.unlock();

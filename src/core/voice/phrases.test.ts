@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countWords, keyPositionHint, midiToSpeech, phrases, pitchToSpeech } from './phrases';
+import { countWords, keyPositionHint, midiToSpeech, phrases, pitchToSpeech, speakable } from './phrases';
 import { pickVietnameseVoice, speechParts } from './speakers';
 
 describe('tên nốt đọc cho bé', () => {
@@ -14,6 +14,56 @@ describe('tên nốt đọc cho bé', () => {
     expect(keyPositionHint('C4')).toBe('Đô nằm ngay bên trái hai phím đen.');
     expect(keyPositionHint('B3')).toBe('Si nằm ngay bên phải ba phím đen.');
     expect(keyPositionHint('F#4')).toBe('Fa thăng là một phím đen.');
+  });
+});
+
+describe('chữ trên màn hình → chữ đọc', () => {
+  it('bỏ tên nốt chữ cái trong ngoặc, giữ tên đọc', () => {
+    expect(speakable('Bấm Đô giữa (C4)')).toBe('Bấm Đô giữa');
+    expect(speakable('C3 (Đô thấp)')).toBe('Đô thấp');
+    expect(speakable('Fa thăng (F♯) là phím nào?')).toBe('Fa thăng là phím nào?');
+    expect(speakable('Dấu thăng (♯) làm nốt thay đổi thế nào?')).toBe('Dấu thăng làm nốt thay đổi thế nào?');
+  });
+
+  it('tên nốt chữ cái đứng riêng, số chỉ nhịp, gạch nối', () => {
+    expect(speakable('Tay phải tới C5 nhé')).toBe('Tay phải tới Đô nhé');
+    expect(speakable('Nốt B♭ ở đâu?')).toBe('Nốt Si giáng ở đâu?');
+    expect(speakable('Nhịp 4/4: mấy phách?')).toBe('Nhịp 4 4: mấy phách?');
+    expect(speakable('Đô – Mi – Sol')).toBe('Đô, Mi, Sol');
+  });
+
+  it('không đụng chữ thường', () => {
+    expect(speakable('Nốt đen dài mấy phách?')).toBe('Nốt đen dài mấy phách?');
+    expect(speakable('Có hai đoạn A và B')).toBe('Có hai đoạn A và B');
+  });
+});
+
+describe('đọc lỗi và đáp án', () => {
+  it('trắc nghiệm được chọn lại: nhắc nhẹ, không lộ đáp án', () => {
+    const c = phrases.choiceWrong(true, 0, 'Nửa phách');
+    expect(c.instructionText).not.toContain('Nửa phách');
+    expect(c.voiceText ?? c.instructionText).not.toContain('Nửa phách');
+  });
+
+  it('trắc nghiệm không chọn lại: đọc đáp án đúng; đáp án hình thì không', () => {
+    expect(phrases.choiceWrong(false, 0, 'C4 (Đô giữa)').voiceText).toBe('Chưa đúng. Đáp án đúng đây nhé! Đô giữa');
+    expect(phrases.choiceWrong(false, 0).instructionText).toBe('Chưa đúng. Đáp án đúng đây nhé!');
+  });
+
+  it('bài tìm phím: nói bé vừa bấm nốt gì; đề đọc không có tên chữ cái', () => {
+    const c = phrases.quizRound('Bấm Đô giữa (C4)', 'wrong', true, 0, 'Rê');
+    expect(c.instructionText).toBe('Bé vừa bấm nốt Rê. Chưa đúng, mình thử lại nhé. Bấm Đô giữa (C4)');
+    expect(c.voiceText).toBe('Bé vừa bấm nốt Rê. Chưa đúng, mình thử lại nhé. Bấm Đô giữa');
+    expect(phrases.quizRound('Bấm Đô giữa (C4)', 'wrong', false, 0, 'Rê').voiceText).toBe('Bé vừa bấm nốt Rê. Chưa đúng. Bấm Đô giữa');
+  });
+
+  it('bài đọc nốt: nói nốt vừa rồi là nốt gì', () => {
+    expect(phrases.noteReadingWrong('Bb4').instructionText).toBe('Chưa đúng. Nốt vừa rồi là Si giáng.');
+  });
+
+  it('đọc đáp án khi di chuột: ưu tiên thấp nhất, không đổi bong bóng', () => {
+    const c = phrases.optionHover('C3 (Đô thấp)');
+    expect(c).toMatchObject({ voiceText: 'Đô thấp', priority: 0, transient: true });
   });
 });
 

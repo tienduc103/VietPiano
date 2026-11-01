@@ -12,9 +12,14 @@ import { useMic } from '../../store/micStore';
 import { PianoKeyboard } from '../PianoKeyboard';
 import { Button } from '../ui';
 import { Feedback, IllustrationView, OptionImage, RoundDots, StaticScore, StepTitle } from './common';
-import { useVoiceActive, useVoiceScope } from '../../hooks/useVoiceTeacher';
-import { phrases } from '../../core/voice/phrases';
+import { useHoverRead, useVoiceActive, useVoiceScope, useVoiceState } from '../../hooks/useVoiceTeacher';
+import { midiToSpeech, phrases, pitchToSpeech } from '../../core/voice/phrases';
 import { voiceTeacher } from '../../core/voice/teacher';
+
+/** Thời gian tối thiểu giữ câu vừa trả lời trên màn hình (thấy đáp án đúng). */
+const REVEAL_MS = 900;
+/** Giữ tối đa khi cô còn đang đọc (giọng lỗi / không báo xong thì bài vẫn đi tiếp). */
+const REVEAL_MAX_MS = 6000;
 
 export interface StepProps<E> {
   exercise: E;
@@ -117,7 +122,10 @@ function useKeyQuizVoice(exercise: KeyQuizExercise, state: QuizState<number>, mo
     const prompt = finished ? null : text(exercise.rounds[state.index].prompt);
     const outcome = state.lastEventTime === 0 ? null : state.lastOutcome;
     if (finished ? !encourage : !autoRead && outcome !== 'wrong') return;
-    voiceTeacher.say(phrases.quizRound(prompt, encourage ? outcome : null, exercise.retry, state.correct + state.wrong));
+    // Lỗi luôn được đọc; cài đặt "Khen khi đúng" chỉ tắt lời khen.
+    const spokenOutcome = outcome === 'correct' && !encourage ? null : outcome;
+    const pressed = outcome === 'wrong' && state.lastAnswer !== null ? midiToSpeech(state.lastAnswer) : undefined;
+    voiceTeacher.say(phrases.quizRound(prompt, spokenOutcome, exercise.retry, state.correct + state.wrong, pressed));
     // Chỉ đọc khi có lượt mới / lần trả lời mới.
   }, [active, state.lastEventTime, state.index]);
 }
@@ -131,12 +139,32 @@ export function ChoiceQuizStep({ exercise, mode, onDone }: StepProps<ChoiceQuizE
   const engine = useMemo(() => new QuizEngine<number>(questions.map((q) => (i: number) => i === q.answer), { retry, minIntervalMs: 0 }), [questions, retry]);
   const state = useEngine(engine);
   // Sau mỗi câu: giữ câu vừa trả lời trên màn hình một lúc để thấy đáp án đúng.
+  // Cô đang đọc lỗi / đáp án đúng thì giữ thêm cho đọc xong (tối đa REVEAL_MAX_MS).
   const [reveal, setReveal] = useState<{ q: number; chosen: number } | null>(null);
+  const [revealShownFor, setRevealShownFor] = useState<typeof reveal>(null);
+  const voiceActive = useVoiceActive(mode);
+  const autoRead = useSettings((s) => s.settings.voiceAutoRead);
+  const encourage = useSettings((s) => s.settings.voiceEncourage);
+  const speaking = useVoiceState().speaking;
+  const hoverRead = useHoverRead(mode);
+  useVoiceScope();
   useEffect(() => {
     if (!reveal) return;
-    const id = window.setTimeout(() => setReveal(null), 900);
-    return () => window.clearTimeout(id);
+    const shownId = window.setTimeout(() => setRevealShownFor(reveal), REVEAL_MS);
+    const maxId = window.setTimeout(() => setReveal(null), REVEAL_MAX_MS);
+    return () => {
+      window.clearTimeout(shownId);
+      window.clearTimeout(maxId);
+    };
   }, [reveal]);
+  useEffect(() => {
+    if (reveal && revealShownFor === reveal && !(voiceActive && speaking)) setReveal(null);
+  }, [reveal, revealShownFor, voiceActive, speaking]);
+  // Đọc đề khi câu hiện ra, và đọc lại sau lời nhắc khi bé được chọn lại.
+  useEffect(() => {
+    if (!voiceActive || !autoRead || reveal || state.status === 'finished') return;
+    voiceTeacher.say(phrases.quizPrompt(text(questions[state.index].prompt)));
+  }, [voiceActive, autoRead, reveal === null, state.index, state.status]);
   useFinish(state.status === 'finished' && reveal === null, () =>
     onDone(
       scoreQuiz(exercise, 'theory', {
@@ -152,6 +180,12 @@ export function ChoiceQuizStep({ exercise, mode, onDone }: StepProps<ChoiceQuizE
   const choose = (i: number) => {
     if (reveal || state.status === 'finished') return;
     setReveal({ q: state.index, chosen: i });
+    const n = state.correct + state.wrong;
+    if (voiceActive) {
+      if (i !== q.answer) voiceTeacher.say(phrases.choiceWrong(retry, n, q.optionImages ? undefined : text(q.options[q.answer])));
+      else if (encourage) voiceTeacher.say(phrases.choiceCorrect(n));
+      else voiceTeacher.interrupt();
+    }
     engine.answer(i, performance.now());
   };
   return (
@@ -194,6 +228,7 @@ export function ChoiceQuizStep({ exercise, mode, onDone }: StepProps<ChoiceQuizE
             <Button
               key={i}
               onClick={() => choose(i)}
+              {...hoverRead(`${shown}-${i}`, text(o), !reveal)}
               data-testid={`choice-${i}`}
               className={`min-h-16 text-lg ${isAnswer ? 'bg-emerald-500! text-white!' : isWrongPick ? 'bg-rose-500! text-white!' : ''}`}
             >
@@ -226,7 +261,18 @@ export function NoteReadingStep({ exercise, mode, onDone }: StepProps<NoteReadin
   const flash = useFlash(state.lastEventTime);
   const [hinted, setHinted] = useState(-1);
   useNoteInput({ onNote: (e) => play && engine.answer(midiToName(e.midi), e.time) }, settings.inputSource, { computerKeys: play });
-  useFinish(state.status === 'finished', () =>
+  const voiceActive = useVoiceActive(mode);
+  const speaking = useVoiceState().speaking;
+  const hoverRead = useHoverRead(mode);
+  useVoiceScope();
+  // Không đọc đề (đọc tên nốt là lộ đáp án): chỉ nói lúc trả lời. Nốt cuối: đợi cô nói xong rồi mới sang màn kết quả.
+  useEffect(() => {
+    if (!voiceActive || state.lastEventTime === 0) return;
+    const mistake = state.mistakes[state.mistakes.length - 1];
+    if (state.lastOutcome === 'wrong' && mistake) voiceTeacher.say(phrases.noteReadingWrong(exercise.sequence[mistake.round]));
+    else if (state.lastOutcome === 'correct' && settings.voiceEncourage) voiceTeacher.say(phrases.noteCorrect(state.correct + state.wrong));
+  }, [voiceActive, state.lastEventTime]);
+  useFinish(state.status === 'finished' && !(voiceActive && speaking), () =>
     onDone(
       scoreQuiz(exercise, 'recognition', {
         correct: state.correct,
@@ -276,7 +322,7 @@ export function NoteReadingStep({ exercise, mode, onDone }: StepProps<NoteReadin
       ) : (
         <div className="flex flex-wrap justify-center gap-3">
           {(exercise.choices ?? []).map((c) => (
-            <Button key={c} className="min-h-16 min-w-24 text-2xl" data-testid={`name-${c}`} onClick={() => engine.answer(c, performance.now())}>
+            <Button key={c} className="min-h-16 min-w-24 text-2xl" data-testid={`name-${c}`} onClick={() => engine.answer(c, performance.now())} {...hoverRead(c, pitchToSpeech(c))}>
               {pitchToLabel(c, settings.labelStyle)}
             </Button>
           ))}

@@ -28,6 +28,17 @@ describe('danh mục câu cô giáo', () => {
     for (const c of cues) for (const s of splitSentences(c.voiceText ?? c.instructionText)) expect(lines, s).toContain(s);
   });
 
+  it('phủ câu hỏi trắc nghiệm, đáp án (đọc khi di chuột) và lời nhắc lỗi', () => {
+    expect(lines).toContain('Nốt đen dài mấy phách?');
+    expect(lines).toContain('1 phách');
+    expect(lines).toContain('Đô thấp');
+    expect(lines).not.toContain('C3 (Đô thấp)');
+    expect(lines).not.toContain('Hình 1');
+    for (const c of [phrases.choiceWrong(false, 0), phrases.choiceWrong(true, 2), phrases.noteReadingWrong('F#4'), phrases.quizRound('', 'wrong', true, 1, 'Fa thăng')]) {
+      for (const s of splitSentences(c.voiceText ?? c.instructionText)) expect(lines, s).toContain(s);
+    }
+  });
+
   it('có lời giới thiệu và đề bài của giáo trình, không trùng', () => {
     expect(lines).toContain('Nốt Đô trốn ngay bên trái hai anh em phím đen!');
     expect(lines).toContain('Chào bé!');

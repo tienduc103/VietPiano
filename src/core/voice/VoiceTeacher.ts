@@ -162,9 +162,9 @@ export class VoiceTeacher {
     this.stopCurrent();
     this.clearQuietTimer();
     const { cue } = entry;
-    const caption = cue.instructionText;
+    const shown = cue.transient ? {} : { caption: cue.instructionText, lastCue: cue };
     if (!this.state.enabled) {
-      this.setState({ caption, lastCue: cue, silent: false });
+      this.setState({ ...shown, silent: false });
       return;
     }
     const now = this.now();
@@ -182,7 +182,7 @@ export class VoiceTeacher {
     const handle = this.deps.speaker.speak({ text: cue.voiceText ?? cue.instructionText, audioAsset: cue.audioAsset }, this.state.rate);
     const current = { entry, handle };
     this.current = handle ? current : null;
-    this.setState({ caption, lastCue: cue, speaking: !!handle, silent: !handle });
+    this.setState({ ...shown, speaking: !!handle, silent: !handle });
     if (!handle) {
       this.flush();
       return;

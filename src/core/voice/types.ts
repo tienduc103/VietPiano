@@ -26,6 +26,8 @@ export interface VoiceCue {
   priority?: number;
   /** Không đọc lại cùng id trong khoảng này (ms). Mặc định theo trigger (`DEFAULT_COOLDOWN_MS`). */
   cooldownMs?: number;
+  /** Câu đọc thoáng qua (đáp án khi di chuột): không đổi bong bóng chữ, "Nghe lại" vẫn đọc câu trước đó (đề bài). */
+  transient?: boolean;
 }
 
 export const DEFAULT_PRIORITY: Record<VoiceTrigger, number> = {

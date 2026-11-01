@@ -169,6 +169,10 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   profile/assessment.ts      đánh giá từ lịch sử phiên: thời gian học, điểm khả năng 0–100, các tiêu chí (đều đặn, tốc độ đọc nốt, nốt hay sai…)
   profile/recommend.ts       gợi ý bài theo nhóm tuổi + mục tiêu + độ khó vừa sức + tiến độ (tối đa 2 bài/nhóm)
 src/store/           Zustand: settingsStore, micStore, appStore (route + tiến độ + lịch sử phiên), profileStore, curriculumStore
+                             Câu đố (`QuizSteps`): cô đọc đề (trắc nghiệm, tìm phím; KHÔNG đọc đề bài đọc nốt — lộ đáp án), đọc lỗi (luôn đọc, "Khen khi đúng"
+                             chỉ tắt lời khen), di chuột vào đáp án chữ thì đọc đáp án (`useHoverRead`: `optionHover` ưu tiên 0, `transient` → không đổi
+                             bong bóng / Nghe lại; chạm iPad không có, đáp án hình "Hình 1…" không đọc). Trắc nghiệm giữ màn đáp án tới khi cô đọc xong (tối đa 6 s).
+                             `speakable`: bỏ tên chữ cái khi đọc ("Bấm Đô giữa (C4)" → "Bấm Đô giữa")
                      playingStore (`usePlayingNow`: đang chơi trong bài — Luyện tập đã đánh nốt đầu / đồng hồ nhịp chạy, bài tập
                      giáo trình đang làm → ẩn nút nổi micro + tải lại; hết bài / chơi lại từ đầu → hiện lại)
 src/hooks/           vòng đời app (ẩn nền → tắt micro), theme, wake lock, ghi phiên luyện tập

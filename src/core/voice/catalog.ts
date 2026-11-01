@@ -7,7 +7,7 @@
  */
 import type { Curriculum } from '../curriculum/types';
 import { text } from '../curriculum/types';
-import { phrases, type NoteTarget } from './phrases';
+import { phrases, pitchToSpeech, type NoteTarget } from './phrases';
 import type { VoiceCue } from './types';
 
 /** Khoá tra cứu của một câu: chuẩn hoá Unicode + khoảng trắng (chữ tiếng Việt gõ có thể ở dạng tổ hợp). */
@@ -51,6 +51,12 @@ export function voiceLines(curriculum: Curriculum): string[] {
     phrases.voiceTest(),
   ];
   for (let n = 0; n < 6; n++) cues.push(phrases.noteCorrect(n));
+  for (let n = 0; n < 3; n++) cues.push(phrases.choiceWrong(true, n));
+  cues.push(phrases.choiceWrong(false, 0));
+  for (const pitch of SPOKEN_PITCHES) {
+    // Bài đọc nốt: nhắc lỗi + đọc đáp án tên nốt khi di chuột; bài tìm phím: "Bé vừa bấm nốt …".
+    cues.push(phrases.noteReadingWrong(pitch), phrases.optionHover(pitchToSpeech(pitch)), phrases.quizRound('', 'wrong', true, 0, pitchToSpeech(pitch)));
+  }
   for (const t of noteTargets()) {
     cues.push(phrases.noteExpected(t), phrases.timeout(t, 1), phrases.timeout(t, 2));
     for (let level = 1; level <= 3; level++) for (let n = 0; n < 3; n++) cues.push(phrases.noteWrong(t, level, n));
@@ -73,6 +79,14 @@ export function voiceLines(curriculum: Curriculum): string[] {
           // Câu khen / nhắc nhẹ + đề bài: tách câu nên chỉ cần mỗi phần một lần.
           for (const r of ex.rounds) {
             for (let n = 0; n < 5; n++) cues.push(phrases.quizRound(text(r.prompt), 'correct', true, n), phrases.quizRound(text(r.prompt), 'wrong', true, n));
+            cues.push(phrases.quizRound(text(r.prompt), 'wrong', false, 0));
+          }
+        }
+        if (ex.kind === 'choice-quiz') {
+          for (const q of ex.questions) {
+            cues.push(phrases.quizPrompt(text(q.prompt)));
+            // Đáp án dạng hình: nhãn "Hình 1…" không giúp gì cho bé → không đọc.
+            if (!q.optionImages) for (const o of q.options) cues.push(phrases.optionHover(text(o)));
           }
         }
       }

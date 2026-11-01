@@ -18,6 +18,22 @@ export function midiToSpeech(midi: number): string {
   return pitchToSpeech(`${PC_TO_PITCH[((midi % 12) + 12) % 12]}4`);
 }
 
+/**
+ * Chữ trên màn hình → chữ đọc được: "Bấm Đô giữa (C4)" → "Bấm Đô giữa", "C3 (Đô thấp)" → "Đô thấp",
+ * "Nhịp 4/4:" → "Nhịp 4 4:", "Đô – Mi – Sol" → "Đô, Mi, Sol". Tên nốt chữ cái còn lại đọc thành Đô / Rê…
+ */
+export function speakable(s: string): string {
+  const ascii = (acc: string) => (acc === '♯' ? '#' : acc === '♭' ? 'b' : acc);
+  return s
+    .replace(/\s*\([A-G]?[#♯b♭♮]?\d?\)/g, '')
+    .replace(/\b[A-G][#♯b♭]?\d\s*\(([^)]*)\)/g, '$1')
+    .replace(/\b([A-G])([#♯b♭]?)(\d)\b/g, (_, l: string, acc: string, o: string) => pitchToSpeech(`${l}${ascii(acc)}${o}`))
+    .replace(/\b([A-G])([♯♭])/g, (_, l: string, acc: string) => pitchToSpeech(`${l}${ascii(acc)}4`))
+    .replace(/(\d)\/(\d)/g, '$1 $2')
+    .replace(/\s+[–—]\s+/g, ', ')
+    .trim();
+}
+
 /** Vị trí phím trắng so với nhóm phím đen — mốc bé đã học ở tuần 1. */
 const WHITE_KEY_HINT: Record<string, string> = {
   C: 'ngay bên trái hai phím đen',
@@ -116,13 +132,54 @@ export const phrases = {
 
   /**
    * Bài tìm phím nhiều lượt, sau mỗi lần trả lời: đọc đề (`prompt` = đề đang hỏi, null = hết bài).
-   * Đúng → khen + đề mới; sai được thử lại → nhắc nhẹ + đề cũ; sai ở bài kiểm tra → sang đề mới, không chê.
+   * Đúng → khen + đề mới; sai → nói bé vừa bấm nốt gì (`pressed`, tên đọc), rồi nhắc nhẹ + đề cũ (được thử lại)
+   * hoặc sang đề mới (bài kiểm tra).
    */
-  quizRound(prompt: string | null, outcome: 'correct' | 'wrong' | null, retry: boolean, n: number): VoiceCue {
+  quizRound(prompt: string | null, outcome: 'correct' | 'wrong' | null, retry: boolean, n: number, pressed?: string): VoiceCue {
     if (prompt === null) return phrases.exerciseComplete();
-    if (outcome === 'correct') return { id: 'quiz_prompt', trigger: 'note_correct', instructionText: `${pick(PRAISE, n)} ${prompt}` };
-    if (outcome === 'wrong' && retry) return { id: 'quiz_retry', trigger: 'note_wrong', instructionText: `${pick(SOFT_WRONG, n)} ${prompt}`, cooldownMs: 0 };
-    return { id: 'quiz_prompt', trigger: 'note_expected', instructionText: prompt };
+    const say = speakable(prompt);
+    if (outcome === 'correct') {
+      const praise = pick(PRAISE, n);
+      return { id: 'quiz_prompt', trigger: 'note_correct', instructionText: `${praise} ${prompt}`, voiceText: `${praise} ${say}` };
+    }
+    if (outcome === 'wrong') {
+      const lead = `${pressed ? `Bé vừa bấm nốt ${pressed}. ` : ''}${retry ? pick(SOFT_WRONG, n) : 'Chưa đúng.'}`;
+      return { id: 'quiz_retry', trigger: 'note_wrong', instructionText: `${lead} ${prompt}`, voiceText: `${lead} ${say}`, cooldownMs: 0 };
+    }
+    return phrases.quizPrompt(prompt);
+  },
+
+  /** Đề bài một lượt (câu hỏi trắc nghiệm, bài tìm phím). */
+  quizPrompt(prompt: string): VoiceCue {
+    return { id: 'quiz_prompt', trigger: 'note_expected', instructionText: prompt, voiceText: speakable(prompt) };
+  },
+
+  /** Trắc nghiệm, bé chọn đúng. Ưu tiên cao: ngắt câu đang đọc ngay khi bé bấm. */
+  choiceCorrect(n: number): VoiceCue {
+    return { id: 'quiz_correct', trigger: 'note_correct', instructionText: pick(PRAISE, n), priority: 3 };
+  },
+
+  /**
+   * Trắc nghiệm, bé chọn sai. Được chọn lại → nhắc nhẹ, không lộ đáp án.
+   * Không được chọn lại → đọc đáp án đúng đang tô màu (`answer`; đáp án dạng hình thì không có chữ để đọc).
+   */
+  choiceWrong(retry: boolean, n: number, answer?: string): VoiceCue {
+    if (retry) return { id: 'quiz_retry', trigger: 'note_wrong', instructionText: pick(SOFT_WRONG, n), cooldownMs: 0, priority: 3 };
+    const shown = `Chưa đúng. Đáp án đúng đây nhé!${answer ? ` ${answer}` : ''}`;
+    return { id: 'quiz_retry', trigger: 'note_wrong', instructionText: shown, voiceText: answer ? `Chưa đúng. Đáp án đúng đây nhé! ${speakable(answer)}` : shown, cooldownMs: 0, priority: 3 };
+  },
+
+  /** Bài đọc nốt, bé trả lời sai: nói nốt vừa rồi là nốt gì (như dòng chữ trên màn hình). */
+  noteReadingWrong(pitch: string): VoiceCue {
+    return { id: 'quiz_retry', trigger: 'note_wrong', instructionText: `Chưa đúng. Nốt vừa rồi là ${pitchToSpeech(pitch)}.`, cooldownMs: 0 };
+  },
+
+  /**
+   * Di chuột vào đáp án: đọc để bé chưa biết chữ biết nút đó ghi gì. Ưu tiên thấp nhất: không cắt đề bài hay
+   * lời nhắc lỗi (chuột run nhẹ sau khi bấm cũng là "di chuột"), đọc nối sau đó; đáp án sau thay đáp án trước.
+   */
+  optionHover(option: string): VoiceCue {
+    return { id: 'option_hover', trigger: 'note_expected', instructionText: option, voiceText: speakable(option), priority: 0, transient: true };
   },
 
   /** Nút "Nghe thử" ở Cài đặt. */

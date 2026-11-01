@@ -136,6 +136,64 @@ test('bài tìm phím: cô đọc đề từng lượt', async ({ page }) => {
   await expect.poll(() => spoken(page)).toContain(prompt!);
 });
 
+test('trắc nghiệm: cô đọc đề, di chuột vào đáp án thì đọc đáp án, chọn sai thì đọc lỗi + đáp án đúng', async ({ page }) => {
+  await mockSpeech(page, { vietnamese: true, uiMode: 'kids' });
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('cur-lesson-l1-03-fingers').click();
+  await page.getByTestId('start-lesson').click();
+  for (let i = 0; i < 3; i++) await page.getByTestId('intro-next').click();
+
+  await expect(page.getByTestId('quiz-prompt')).toHaveText('Ngón cái là ngón số mấy?');
+  await expect.poll(() => spoken(page)).toContain('Ngón cái là ngón số mấy?');
+
+  // Di chuột: đọc đáp án, bong bóng + "Nghe lại" vẫn là đề bài.
+  const right = (await page.getByTestId('choice-0').textContent())!;
+  const wrong = (await page.getByTestId('choice-1').textContent())!;
+  await page.getByTestId('choice-1').hover();
+  await expect.poll(() => spoken(page)).toContain(wrong);
+  await expect(page.getByTestId('voice-caption')).toHaveText('Ngón cái là ngón số mấy?');
+
+  // Chọn sai (bài không chọn lại): đọc lỗi + đáp án đúng rồi mới sang câu sau và đọc đề mới.
+  await page.getByTestId('choice-1').click();
+  await expect.poll(() => spoken(page)).toContain(`Chưa đúng. Đáp án đúng đây nhé! ${right}`);
+  await expect(page.getByTestId('quiz-prompt')).toHaveText('Ngón trỏ là ngón số mấy?');
+  await expect.poll(() => spoken(page)).toContain('Ngón trỏ là ngón số mấy?');
+});
+
+test('bài đọc nốt: di chuột đọc tên nốt (Si giáng), chọn sai thì nói nốt vừa rồi là nốt gì', async ({ page }) => {
+  await mockSpeech(page, { vietnamese: true, uiMode: 'kids' });
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('level-4').click();
+  await page.getByTestId('cur-lesson-l4-07-natural').click();
+  await page.getByTestId('start-lesson').click();
+  await page.getByTestId('intro-next').click();
+  for (let i = 0; i < 2; i++) {
+    await expect(page.getByTestId('round-dots').locator('span').nth(i)).toHaveClass(/fuchsia/);
+    await page.getByTestId('choice-0').click();
+  }
+  await page.getByTestId('exercise-next').click();
+
+  await page.getByTestId('name-Bb4').hover();
+  await expect.poll(() => spoken(page)).toContain('Si giáng');
+  // Bấm cả hai tên nốt trong lượt đầu: chắc chắn một lần sai.
+  await page.getByTestId('name-Bb4').click();
+  await page.getByTestId('name-B4').click();
+  await expect.poll(async () => (await spoken(page)).join('|')).toMatch(/Chưa đúng\. Nốt vừa rồi là (Si|Si giáng)\./);
+});
+
+test('giao diện người lớn: di chuột vào đáp án không đọc', async ({ page }) => {
+  await mockSpeech(page, { vietnamese: true, uiMode: 'adult' });
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('cur-lesson-l1-03-fingers').click();
+  await page.getByTestId('start-lesson').click();
+  for (let i = 0; i < 3; i++) await page.getByTestId('intro-next').click();
+  await page.getByTestId('choice-1').hover();
+  await page.waitForTimeout(300);
+  await page.getByTestId('choice-1').click();
+  await page.waitForTimeout(300);
+  expect(await spoken(page)).toEqual([]);
+});
+
 test('giao diện người lớn: mặc định cô không đọc', async ({ page }) => {
   await mockSpeech(page, { vietnamese: true, uiMode: 'adult' });
   await page.goto('/?screen=curriculum');
