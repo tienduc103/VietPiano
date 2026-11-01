@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LESSONS } from '../lessons/library';
 import { DURATION_BEATS, isAccompanimentMidi } from '../lessons/types';
-import { hasHandChoice, isMelodyMidi, leftHandSteps, practiceTrack, resultsOnScore, stepIndexAtBeat } from './handPractice';
+import { hasHandChoice, isOtherHandMidi, leftHandSteps, practiceTrack, resultsOnScore, stepIndexAtBeat } from './handPractice';
 import { PracticeEngine, DEFAULT_PRACTICE_CONFIG } from './PracticeEngine';
 import { listenPlanAtBeat } from './listenSample';
 
@@ -61,10 +61,12 @@ describe('chọn tay — dòng tập', () => {
   });
 
   it('lọc nốt tay kia: tay trái bỏ nốt giai điệu, tay phải bỏ nốt đệm', () => {
-    expect(isMelodyMidi(elise, 76)).toBe(true); // E5
-    expect(isMelodyMidi(elise, 45)).toBe(false); // A2
+    expect(isOtherHandMidi(elise, 'left', 76)).toBe(true); // E5
+    expect(isOtherHandMidi(elise, 'left', 45)).toBe(false); // A2
+    expect(isOtherHandMidi(elise, 'right', 45)).toBe(true);
+    expect(isOtherHandMidi(elise, 'right', 76)).toBe(false);
     expect(isAccompanimentMidi(elise, 45)).toBe(true);
-    expect(isMelodyMidi(twinkle, 60)).toBe(false);
+    expect(isOtherHandMidi(twinkle, 'left', 60)).toBe(false);
   });
 
   it('kết quả theo bước → theo nốt trên khuông', () => {
@@ -84,6 +86,48 @@ describe('chọn tay — dòng tập', () => {
     expect(stepIndexAtBeat(t.steps, t.steps[k].startBeat)).toBe(k);
     expect(stepIndexAtBeat(t.steps, t.steps[k].startBeat + 1e-3)).toBe(k);
     expect(stepIndexAtBeat(t.steps, 0)).toBe(0);
+  });
+});
+
+describe('chọn tay — bài hai tay thay phiên', () => {
+  const echo = lesson('bh-echo');
+
+  it.each(['bh-echo', 'bh-parallel', 'bh-hot-cross-buns', 'bh-relay', 'bh-ode-to-joy'])('%s: chọn được tay, hai tay giữ nguyên mọi nốt', (id) => {
+    const l = lesson(id);
+    expect(hasHandChoice(l)).toBe(true);
+    expect(practiceTrack(l, 'both', true)!.steps).toHaveLength(l.notes.length);
+    const right = practiceTrack(l, 'right', true)!;
+    const left = practiceTrack(l, 'left', true)!;
+    expect(right.steps.length + left.steps.length).toBe(l.notes.length);
+    expect(left.skippedChords).toBe(0);
+    // Hai tay không chồng tầm: nốt tay kia luôn bị bỏ qua, không tính sai.
+    expect(left.steps.every((s) => isOtherHandMidi(l, 'right', s.midis[0]))).toBe(true);
+    expect(right.steps.every((s) => isOtherHandMidi(l, 'left', s.midis[0]))).toBe(true);
+  });
+
+  it('chỉ các nốt của tay đó, trỏ đúng nốt trên khuông, phách giữ nguyên; trường độ tới bước kế', () => {
+    const right = practiceTrack(echo, 'right', false)!;
+    const left = practiceTrack(echo, 'left', false)!;
+    expect(right.staff).toBe('melody');
+    expect(left.staff).toBe('melody');
+    expect(right.steps.every((s) => echo.notes[s.scoreIndex].hand === 'right')).toBe(true);
+    expect(left.steps.every((s) => echo.notes[s.scoreIndex].hand === 'left')).toBe(true);
+    // Ô 1 tay phải, ô 2 tay trái: nốt tay trái đầu tiên ở phách 4, nốt tay phải cuối ô 1 (trắng, phách 2) kéo tới ô 3 (phách 8).
+    expect(left.steps[0]).toMatchObject({ midis: [48], startBeat: 4, scoreIndex: 3, fingers: [5] });
+    expect(right.steps[2]).toMatchObject({ midis: [64], startBeat: 2, beats: 6 });
+    const last = left.steps[left.steps.length - 1];
+    expect(last.startBeat + last.beats).toBe(32);
+  });
+
+  it('mỗi nốt đúng sang một bước; hết nốt của tay đó là xong bài', () => {
+    const left = practiceTrack(echo, 'left', true)!;
+    const engine = new PracticeEngine(
+      left.steps.map((s) => s.midis[0]),
+      { ...DEFAULT_PRACTICE_CONFIG, twoHands: true },
+      left.steps.map((s) => s.midis.slice(1)),
+    );
+    left.steps.forEach((s, i) => engine.handleNote(s.midis[0], 1000 + i * 500));
+    expect(engine.getState()).toMatchObject({ status: 'finished', correct: left.steps.length, wrong: 0 });
   });
 });
 

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { renderScore, scoreFontsReady, SCORE_HEIGHT, type RenderedScore } from '../core/score/ScoreRenderer';
-import type { Lesson } from '../core/lessons/types';
+import type { Hand, Lesson } from '../core/lessons/types';
 import type { NoteResult, PracticeStatus } from '../core/practice/PracticeEngine';
 import type { NoteLabelStyle } from '../core/music/notes';
 import { fitScore, type ScoreFit } from '../core/score/scoreFit';
@@ -17,7 +17,7 @@ interface Props {
   /** `index` / `results` trỏ vào nốt giai điệu (mặc định) hay nốt đệm tay trái (tập tay trái). */
   staff?: 'melody' | 'accompaniment';
   /** Làm mờ tay không tập (tập một tay). */
-  dim?: 'melody' | 'accompaniment';
+  dim?: Hand;
 }
 
 /** Vị trí nốt hiện tại trên màn hình (tỉ lệ chiều rộng). */

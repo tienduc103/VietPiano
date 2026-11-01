@@ -558,6 +558,41 @@ test('Romance hai tay: hướng dẫn cả hai tay; bàn phím ảo / đàn MIDI
   await expect(page.getByTestId('progress-text')).toHaveText('2/92');
 });
 
+test('bài hai tay thay phiên: có pedal, chọn tay — mỗi tay chỉ chấm nốt của tay đó, micro vẫn chấm được', async ({ page }) => {
+  await openLesson(page, 'bh-echo');
+  await expect(page.locator('.score-pedal').first()).toBeAttached();
+  await expect(page.getByTestId('hands-notice')).toContainText('Hai tay thay phiên');
+  await expect(page.getByTestId('progress-text')).toHaveText('0/24');
+
+  // Tay trái: 12 nốt, bắt đầu từ ô 2 (C3 ngón 5); tay phải đánh kèm không tính sai.
+  await page.getByTestId('hand-left').click();
+  await expect(page.getByTestId('score')).toHaveClass(/score-dim-right/);
+  await expect(page.getByTestId('progress-text')).toHaveText('0/12');
+  await expect(page.getByTestId('expected-note')).toHaveText('C3');
+  await expect(page.getByTestId('expected-finger')).toHaveText('ngón 5');
+  await expect(page.locator('.score-note.score-lh.is-current')).toHaveCount(1);
+  await page.locator('[data-midi="60"]').click();
+  await expect(page.getByTitle('Số lần sai')).toHaveText('✗ 0');
+  await page.locator('[data-midi="48"]').click();
+  await expect(page.getByTestId('progress-text')).toHaveText('1/12');
+
+  // Bật micro: không có hợp âm nên vẫn đủ 12 nốt.
+  await page.getByTestId('mic-button').click();
+  await expect(page.getByTestId('hands-notice')).toContainText('Tập tay trái bằng micro');
+  await expect(page.getByTestId('hands-notice')).not.toContainText('bỏ qua');
+  await expect(page.getByTestId('progress-text')).toHaveText(/\/12$/);
+  await page.getByTestId('mic-button').click();
+
+  // Tay phải: 12 nốt, nốt tay trái không tính sai.
+  await page.getByTestId('hand-right').click();
+  await expect(page.getByTestId('score')).toHaveClass(/score-dim-left/);
+  await expect(page.getByTestId('progress-text')).toHaveText('0/12');
+  await page.locator('[data-midi="48"]').click();
+  await expect(page.getByTitle('Số lần sai')).toHaveText('✗ 0');
+  await page.locator('[data-midi="60"]').click();
+  await expect(page.getByTestId('progress-text')).toHaveText('1/12');
+});
+
 test('Romance hai tay: chọn tay — tập riêng tay trái (hợp âm đủ nốt, micro bỏ hợp âm) và tay phải', async ({ page }) => {
   await openLesson(page, 'song-romance-2-hands');
   await expect(page.getByTestId('hand-both')).toHaveAttribute('aria-checked', 'true');
@@ -565,7 +600,7 @@ test('Romance hai tay: chọn tay — tập riêng tay trái (hợp âm đủ n�
   // Tay trái: 16 hợp âm đoạn A + 46 nốt rải đoạn B (ô cuối một nốt) = 62 bước; khuông Sol làm mờ.
   await page.getByTestId('hand-left').click();
   await expect(page.getByTestId('hands-notice')).toContainText('Bàn phím ảo: tập tay trái');
-  await expect(page.getByTestId('score')).toHaveClass(/score-dim-melody/);
+  await expect(page.getByTestId('score')).toHaveClass(/score-dim-right/);
   await expect(page.getByTestId('progress-text')).toHaveText('0/62');
   await expect(page.getByTestId('expected-note')).toHaveText('D3F3A3');
   await expect(page.getByTestId('expected-finger')).toHaveText('ngón 5·3·1');
@@ -587,7 +622,7 @@ test('Romance hai tay: chọn tay — tập riêng tay trái (hợp âm đủ n�
   // Tay phải: 92 nốt giai điệu, nốt tay trái không tính sai; lựa chọn được nhớ khi mở lại bài.
   await page.getByTestId('hand-right').click();
   await expect(page.getByTestId('hands-notice')).toContainText('Tập tay phải');
-  await expect(page.getByTestId('score')).toHaveClass(/score-dim-accompaniment/);
+  await expect(page.getByTestId('score')).toHaveClass(/score-dim-left/);
   await expect(page.getByTestId('progress-text')).toHaveText('0/92');
   await page.locator('[data-midi="50"]').click();
   await expect(page.getByTitle('Số lần sai')).toHaveText('✗ 0');

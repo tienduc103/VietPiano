@@ -160,6 +160,11 @@ export function staffOf(lesson: Lesson, note: LessonNote): number {
   return lesson.clef === 'grand' && noteHand(lesson, note) === 'left' ? 1 : 0;
 }
 
+/** Class theo tay của nốt: tập một tay thì làm mờ các phần tử của tay kia. */
+function handClass(lesson: Lesson, note: LessonNote): string {
+  return noteHand(lesson, note) === 'left' ? 'score-lh' : 'score-rh';
+}
+
 const REST_KEY: Record<Clef, string> = { treble: 'b/4', bass: 'd/3' };
 
 function createRest(duration: Duration, clef: Clef): StaveNote {
@@ -360,7 +365,7 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
   const noteCenters = allNotes.map(noteCenterX);
   const noteElements = allNotes.map((n, i) => {
     const el = n.getSVGElement() ?? null;
-    el?.classList.add('score-note');
+    el?.classList.add('score-note', handClass(lesson, lesson.notes[i]));
     el?.setAttribute('data-index', String(i));
     return el;
   });
@@ -370,7 +375,7 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
   const accompanimentCenters = accStaveNotes.map(noteCenterX);
   const accompanimentElements = accStaveNotes.map((n, i) => {
     const el = n.getSVGElement() ?? null;
-    el?.classList.add('score-acc');
+    el?.classList.add('score-acc', 'score-lh');
     el?.setAttribute('data-acc-index', String(i));
     return el;
   });
@@ -395,7 +400,7 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     t.setAttribute('x', String(noteCenters[i]));
     t.setAttribute('y', String(labelY));
     t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('class', 'score-label');
+    t.setAttribute('class', `score-label ${handClass(lesson, n)}`);
     t.textContent = pitchToLabel(n.pitch, opts.labelStyle);
     svg.appendChild(t);
     return t;
@@ -408,7 +413,7 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     t.setAttribute('x', String(noteCenters[i]));
     t.setAttribute('y', String(staffTops[staffOf(lesson, n)] - FINGER_OFFSET));
     t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('class', 'score-finger');
+    t.setAttribute('class', `score-finger ${handClass(lesson, n)}`);
     t.textContent = fingerText(n.finger, n.fingerCircled);
     svg.appendChild(t);
     return t;
@@ -497,7 +502,7 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
         t.setAttribute('x', String(noteCenterX(accStaveNotes[i])));
         t.setAttribute('y', String(row.y));
         t.setAttribute('text-anchor', 'middle');
-        t.setAttribute('class', 'score-finger score-finger-lh');
+        t.setAttribute('class', 'score-finger score-finger-lh score-lh');
         t.textContent = row.text;
         svg.appendChild(t);
       }

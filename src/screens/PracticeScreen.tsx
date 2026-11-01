@@ -33,7 +33,7 @@ import { AiNoteHistory } from '../components/AiNoteHistory';
 import { useLibraryAiNotes } from '../hooks/useLibraryAiNotes';
 import { useListenSample } from '../hooks/useListenSample';
 import { usePlayingNow } from '../store/playingStore';
-import { hasHandChoice, isMelodyMidi, practiceTrack, PRACTICE_HAND_LABEL, resultsOnScore, type PracticeHand, type PracticeTrack, type TrackStep } from '../core/practice/handPractice';
+import { hasHandChoice, isOtherHandMidi, practiceTrack, PRACTICE_HAND_LABEL, resultsOnScore, type PracticeHand, type PracticeTrack, type TrackStep } from '../core/practice/handPractice';
 
 const FEEDBACK_MS = 900;
 /**
@@ -194,8 +194,8 @@ function Practice({ lesson }: { lesson: Lesson }) {
       if (e.source === 'microphone' && midiInput.hasDevice()) return;
       if (listeningRef.current) return;
       // Bài có phần đệm, chỉ chấm tay phải: nốt tay trái đánh kèm không bị tính là sai (tập tay trái: ngược lại).
-      if (handRef.current === 'left') {
-        if (isMelodyMidi(lesson, e.midi)) return;
+      if (handRef.current !== 'both') {
+        if (isOtherHandMidi(lesson, handRef.current, e.midi)) return;
       } else if (!twoHandsRef.current && isAccompanimentMidi(lesson, e.midi)) return;
       if (tempoModeRef.current) follower.handleOnset(e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time);
       else engine.handleNote(e.midi, e.time);
@@ -363,7 +363,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
       {handChoice && (
         <div className="mx-3 mb-2 flex items-center gap-3">
           <HandPicker value={wantedHand} onChange={(practiceHand) => (listen.stop(), updateSettings({ practiceHand }))} />
-          <HandsNotice track={track} leftUnavailable={leftUnavailable} twoHands={twoHands} midiConnected={midiConnected} micOnly={micOnly} tempoMode={tempoMode} />
+          <HandsNotice track={track} alternating={!lesson.accompaniment?.length} leftUnavailable={leftUnavailable} twoHands={twoHands} midiConnected={midiConnected} micOnly={micOnly} tempoMode={tempoMode} />
         </div>
       )}
 
@@ -374,7 +374,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
           index={scoreIndex}
           results={scoreResults}
           staff={track.staff}
-          dim={hand === 'right' ? 'accompaniment' : hand === 'left' ? 'melody' : undefined}
+          dim={hand === 'right' ? 'left' : hand === 'left' ? 'right' : undefined}
           status={listen.playing ? 'waiting' : tempoMode ? (tempo.status === 'finished' ? 'finished' : 'waiting') : state.status}
           wrongPulse={tempoMode ? 0 : state.wrong}
           showNames={settings.showNoteNames}
@@ -617,6 +617,7 @@ function handTitle(lesson: Lesson, hand: PracticeHand): string {
 /** Báo cho người chơi bài có phần đệm đang tập tay nào và app chấm những gì. */
 function HandsNotice({
   track,
+  alternating,
   leftUnavailable,
   twoHands,
   midiConnected,
@@ -624,6 +625,8 @@ function HandsNotice({
   tempoMode,
 }: {
   track: PracticeTrack;
+  /** Bài hai tay thay phiên: mỗi lúc một nốt nên micro cũng chấm được cả hai tay. */
+  alternating: boolean;
   leftUnavailable: boolean;
   twoHands: boolean;
   midiConnected: boolean;
@@ -633,7 +636,11 @@ function HandsNotice({
   const device = midiConnected ? '🎹 Đàn MIDI' : '⌨️ Bàn phím ảo';
   let ok = true;
   let text: string;
-  if (leftUnavailable) {
+  if (alternating && track.hand === 'both') {
+    text = tempoMode
+      ? '🥁 Hai tay thay phiên theo nhịp: khuông tự chạy theo từng nốt của cả hai tay, chỉ chấm thời điểm gõ.'
+      : '✋ Hai tay thay phiên: mỗi lúc một nốt nên app chấm lần lượt cả hai tay, kể cả qua micro.';
+  } else if (leftUnavailable) {
     ok = false;
     text =
       '🎤 Tay trái bài này toàn hợp âm mà micro chỉ nhận một nốt mỗi lúc, nên chưa tập riêng tay trái được — đang tập tay phải. Nối đàn MIDI hoặc tắt micro và dùng bàn phím ảo để tập tay trái.';
@@ -645,9 +652,10 @@ function HandsNotice({
         track.skippedChords > 0
           ? `🎤 Tập tay trái bằng micro: chỉ chấm nốt đơn, bỏ qua ${track.skippedChords} hợp âm vì micro chỉ nhận một nốt mỗi lúc (vẫn đánh theo khuông). Nối đàn MIDI hoặc dùng bàn phím ảo để chấm cả hợp âm.`
           : '🎤 Tập tay trái bằng micro: chấm từng nốt tay trái; nốt tay phải đánh kèm không bị tính sai.';
-    } else text = `${device}: tập tay trái — hợp âm phải đánh đủ các nốt (thứ tự nào cũng được) mới sang bước tiếp.`;
+    } else if (track.steps.some((s) => s.midis.length > 1)) text = `${device}: tập tay trái — hợp âm phải đánh đủ các nốt (thứ tự nào cũng được) mới sang bước tiếp.`;
+    else text = `${device}: tập tay trái — chấm từng nốt tay trái; nốt tay phải đánh kèm không bị tính sai.`;
   } else if (track.hand === 'right') {
-    text = '✋ Tập tay phải: chỉ chấm giai điệu, khuông Fa làm mờ; nốt tay trái đánh kèm không bị tính sai.';
+    text = '✋ Tập tay phải: chỉ chấm nốt tay phải, tay trái làm mờ; nốt tay trái đánh kèm không bị tính sai.';
   } else if (twoHands) {
     text = `${device}: chấm cả hai tay. Đánh đúng nốt tay phải và đủ nốt tay trái (phím tô vàng, thứ tự nào cũng được) thì mới sang nốt tiếp; nốt tay trái sai cũng tính lỗi.`;
   } else if (tempoMode) {

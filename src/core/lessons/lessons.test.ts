@@ -1,3 +1,4 @@
+import { hasHandChoice } from '../practice/handPractice';
 import { describe, expect, it } from 'vitest';
 import { LESSONS } from './library';
 import { parseAccompaniment, parseNotes, splitMeasures } from './notation';
@@ -226,6 +227,27 @@ describe('thư viện bài học', () => {
     const played = acc.map((m, i) => (m.items.some((n) => n.midis.length) ? i : -1)).filter((i) => i >= 0);
     expect(lesson.pedal).toEqual(played.map((i) => ({ from: i, to: i })));
     expect(played).toHaveLength(lesson.pickup ? acc.length - 1 : acc.length);
+  });
+
+  it('mọi bài khuông đôi trong thư viện đều có pedal và chọn được tay', () => {
+    const grand = LESSONS.filter((l) => l.clef === 'grand');
+    expect(grand.length).toBeGreaterThanOrEqual(12);
+    for (const l of grand) {
+      expect(l.pedal?.length, l.id).toBeGreaterThan(0);
+      expect(hasHandChoice(l), l.id).toBe(true);
+      // Pedal nằm trong bài: chỉ số ô hợp lệ, không chồng nhau.
+      const count = splitMeasures(l.notes, measureLength(l.timeSignature), l.pickup).length;
+      l.pedal!.forEach((p, i) => {
+        expect(p.to, l.id).toBeLessThan(count);
+        if (i > 0) expect(p.from, l.id).toBeGreaterThan(l.pedal![i - 1].to);
+      });
+    }
+  });
+
+  it.each(['bh-echo', 'bh-parallel', 'bh-hot-cross-buns', 'bh-relay', 'bh-ode-to-joy'])('%s: hai tay thay phiên, pedal thay mỗi ô từ đầu đến hết bài', (id) => {
+    const lesson = LESSONS.find((l) => l.id === id)!;
+    const count = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup).length;
+    expect(lesson.pedal).toEqual(Array.from({ length: count }, (_, i) => ({ from: i, to: i })));
   });
 
   it('dấu lặng tay trái "R" trong phần đệm', () => {

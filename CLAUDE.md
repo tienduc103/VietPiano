@@ -49,7 +49,8 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   practice/TempoFollower.ts   chế độ chạy theo nhịp: đồng hồ nhịp tự chạy, khớp pha + nhịp độ theo onset, KHÔNG xét cao độ
   practice/listenSample.ts    nút "Nghe mẫu" màn Luyện tập: phát từ đầu ô nhịp đang tập (hai tay + ngân theo pedal), con trỏ theo tiếng đàn,
                              lúc phát bỏ mọi nốt vào (hook `useListenSample`)
-  practice/handPractice.ts    chọn tay ở màn Luyện tập cho bài có phần đệm (Hai tay / Tay phải / Tay trái, `practiceHand`):
+  practice/handPractice.ts    chọn tay ở màn Luyện tập cho mọi bài khuông đôi (Hai tay / Tay phải / Tay trái, `practiceHand`;
+                             bài hai tay thay phiên `bh-*`: mỗi tay = các nốt của tay đó, micro chấm được cả hai tay):
                              "dòng tập" = bước cho PracticeEngine / TempoFollower + chỉ số nốt trên khuông (`staff` melody | accompaniment);
                              tay trái: mỗi nốt / hợp âm đệm một bước (nốt thấp nhất = nốt chính, còn lại chấm như phần tay trái),
                              micro → bỏ hợp âm (`skippedChords`), toàn hợp âm → không tập được, về tay phải; tay kia làm mờ
@@ -169,6 +170,10 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              Giọng trực tuyến (Edge Natural/Google) tắt mặc định (`voiceAllowOnline`); `teacher.ts` singleton.
                              Dữ liệu bài: `voice?: VoiceCue[]` ở CurriculumLesson / Exercise, `voice?` ở IntroPage (validate kiểm tra).
                              UI: `components/VoiceBar` (bong bóng chữ, Nghe lại, tắt tiếng `voiceMuted`, tốc độ), hook `useVoiceTeacher`
+                             Câu đố (`QuizSteps`): cô đọc đề (trắc nghiệm, tìm phím; KHÔNG đọc đề bài đọc nốt — lộ đáp án), đọc lỗi (luôn đọc, "Khen khi đúng"
+                             chỉ tắt lời khen), di chuột vào đáp án chữ thì đọc đáp án (`useHoverRead`: `optionHover` ưu tiên 0, `transient` → không đổi
+                             bong bóng / Nghe lại; chạm iPad không có, đáp án hình "Hình 1…" không đọc). Trắc nghiệm giữ màn đáp án tới khi cô đọc xong (tối đa 6 s).
+                             `speakable`: bỏ tên chữ cái khi đọc ("Bấm Đô giữa (C4)" → "Bấm Đô giữa")
   feedback/OllamaClient.ts   gọi Ollama cục bộ (`/api/tags`, `/api/chat` stream NDJSON, Content-Type text/plain → không preflight CORS)
   feedback/coachPrompt.ts    báo cáo bài (`lessonReport` giáo trình / `practiceReport` màn Luyện tập) → prompt tiếng Việt;
                              UI: `components/AiCoachCard` ở màn kết quả buổi học + hộp thoại hoàn thành bài.
@@ -182,10 +187,6 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   profile/assessment.ts      đánh giá từ lịch sử phiên: thời gian học, điểm khả năng 0–100, các tiêu chí (đều đặn, tốc độ đọc nốt, nốt hay sai…)
   profile/recommend.ts       gợi ý bài theo nhóm tuổi + mục tiêu + độ khó vừa sức + tiến độ (tối đa 2 bài/nhóm)
 src/store/           Zustand: settingsStore, micStore, appStore (route + tiến độ + lịch sử phiên), profileStore, curriculumStore
-                             Câu đố (`QuizSteps`): cô đọc đề (trắc nghiệm, tìm phím; KHÔNG đọc đề bài đọc nốt — lộ đáp án), đọc lỗi (luôn đọc, "Khen khi đúng"
-                             chỉ tắt lời khen), di chuột vào đáp án chữ thì đọc đáp án (`useHoverRead`: `optionHover` ưu tiên 0, `transient` → không đổi
-                             bong bóng / Nghe lại; chạm iPad không có, đáp án hình "Hình 1…" không đọc). Trắc nghiệm giữ màn đáp án tới khi cô đọc xong (tối đa 6 s).
-                             `speakable`: bỏ tên chữ cái khi đọc ("Bấm Đô giữa (C4)" → "Bấm Đô giữa")
                      playingStore (`usePlayingNow`: đang chơi trong bài — Luyện tập đã đánh nốt đầu / đồng hồ nhịp chạy, bài tập
                      giáo trình đang làm → ẩn nút nổi micro + tải lại; hết bài / chơi lại từ đầu → hiện lại)
 src/hooks/           vòng đời app (ẩn nền → tắt micro), theme, wake lock, ghi phiên luyện tập
@@ -226,7 +227,7 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
 - Pedal vang: `Piece.pedal` theo ô nhịp (`[1, 1], [2, 2]` = thay pedal mỗi ô) → vẽ "Ped." + đường kẻ, khấc "^" chỗ thay;
   Biểu diễn có thêm tiêu chí "Pedal" (15%). Chỉ đàn MIDI gửi pedal (Control Change 64); micro / bàn phím ảo → "không đo".
   Thả phím lúc pedal đang đạp không bị tính giữ thiếu trường độ. Giới thiệu ở cấp 6 buổi "Hoàng hôn" (l6-17); cùng buổi có bài thử sức không bắt buộc Romance d'Amour hai tay
-  có pedal (bài Thư viện `song-romance-2-hands`, `song-fur-elise-2-hands` và 5 bài `song-{ode-to-joy,amazing-grace,silent-night,greensleeves,auld-lang-syne}-2-hands` (thay pedal mỗi ô) cũng có ký hiệu pedal nhưng màn Luyện tập không chấm pedal).
+  có pedal (bài Thư viện `song-romance-2-hands`, `song-fur-elise-2-hands` , 5 bài `song-{ode-to-joy,amazing-grace,silent-night,greensleeves,auld-lang-syne}-2-hands` và 5 bài thay phiên `bh-*` (thay pedal mỗi ô) cũng có ký hiệu pedal nhưng màn Luyện tập không chấm pedal).
 - Không tạo MIDI giả. `MIDIInputProvider` dùng Web MIDI thật (bật ở Cài đặt → `midiEnabled`, tự kết nối khi mở app).
   Safari và mọi trình duyệt trên iPad (WebKit) không có Web MIDI → báo "không hỗ trợ", dùng micro. MIDI trên iPad
   chỉ có qua app native (Core MIDI). Khi đàn MIDI đã nối, màn Luyện tập bỏ nốt từ micro (micro nghe chính tiếng đàn đó).

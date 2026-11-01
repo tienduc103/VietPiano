@@ -1,15 +1,18 @@
 /**
- * Chọn tay ở màn Luyện tập cho bài khuông đôi có phần đệm (`lesson.accompaniment`):
- *  - 'both'  : như trước — giai điệu tay phải + tay trái (chấm hai tay khi có đàn MIDI / bàn phím ảo).
- *  - 'right' : chỉ giai điệu tay phải; khuông Fa làm mờ, nốt tay trái đánh kèm không tính sai.
- *  - 'left'  : chỉ phần đệm tay trái — mỗi nốt / hợp âm đệm là một bước; khuông Sol làm mờ.
- *              Micro chỉ nhận một nốt mỗi lúc → hợp âm (≥ 2 nốt) KHÔNG chấm được, bị bỏ khỏi bài (`skippedChords`);
- *              chế độ Theo nhịp không xét cao độ nên vẫn giữ hợp âm.
+ * Chọn tay ở màn Luyện tập cho mọi bài khuông đôi:
+ *  - Bài có phần đệm (`lesson.accompaniment`), hai tay cùng lúc:
+ *    - 'both'  : giai điệu tay phải + tay trái (chấm hai tay khi có đàn MIDI / bàn phím ảo).
+ *    - 'right' : chỉ giai điệu tay phải; tay trái làm mờ, nốt tay trái đánh kèm không tính sai.
+ *    - 'left'  : chỉ phần đệm tay trái — mỗi nốt / hợp âm đệm là một bước; tay phải làm mờ.
+ *                Micro chỉ nhận một nốt mỗi lúc → hợp âm (≥ 2 nốt) KHÔNG chấm được, bị bỏ khỏi bài (`skippedChords`);
+ *                chế độ Theo nhịp không xét cao độ nên vẫn giữ hợp âm.
+ *  - Bài hai tay thay phiên (mỗi nốt ghi tay riêng, `note.hand`): 'both' = mọi nốt theo thứ tự;
+ *    'right' / 'left' = chỉ các nốt của tay đó, nốt tay kia làm mờ.
  *
  * "Dòng tập" (`PracticeTrack`) là danh sách bước cho PracticeEngine / TempoFollower, kèm chỉ số nốt trên khuông
  * để tô màu và đặt con trỏ đúng nốt đang tập.
  */
-import { DURATION_BEATS, type Finger, type Lesson } from '../lessons/types';
+import { DURATION_BEATS, noteHand, type Finger, type Hand, type Lesson } from '../lessons/types';
 
 export type PracticeHand = 'both' | 'right' | 'left';
 
@@ -38,9 +41,15 @@ export interface PracticeTrack {
   skippedChords: number;
 }
 
-/** Bài có cho chọn tay không (khuông đôi có phần đệm). */
-export function hasHandChoice(lesson: Pick<Lesson, 'accompaniment'>): boolean {
-  return !!lesson.accompaniment?.some((c) => c.midis.length > 0);
+/** Bài hai tay thay phiên: không có phần đệm, các nốt ghi cả hai tay. */
+export function hasAlternatingHands(lesson: Pick<Lesson, 'accompaniment' | 'notes' | 'hand'>): boolean {
+  if (lesson.accompaniment?.length) return false;
+  return new Set(lesson.notes.map((n) => noteHand(lesson, n))).size === 2;
+}
+
+/** Bài có cho chọn tay không (khuông đôi có phần đệm hoặc hai tay thay phiên). */
+export function hasHandChoice(lesson: Pick<Lesson, 'accompaniment' | 'notes' | 'hand'>): boolean {
+  return !!lesson.accompaniment?.some((c) => c.midis.length > 0) || hasAlternatingHands(lesson);
 }
 
 function totalBeats(lesson: Lesson): number {
@@ -79,9 +88,21 @@ export function leftHandSteps(lesson: Lesson, singleNotesOnly: boolean): { steps
     }
     steps.push({ midis: [...c.midis], pitches: [...c.pitches], fingers: [...c.fingers], startBeat: start, beats: 0, scoreIndex: i });
   });
+  spanToNextStep(lesson, steps);
+  return { steps, skippedChords };
+}
+
+/** Trường độ của bước = tới bước kế trong dòng tập (bước cuối: tới hết bài). */
+function spanToNextStep(lesson: Lesson, steps: TrackStep[]): void {
   const end = totalBeats(lesson);
   steps.forEach((s, k) => (s.beats = (k + 1 < steps.length ? steps[k + 1].startBeat : end) - s.startBeat));
-  return { steps, skippedChords };
+}
+
+/** Bài thay phiên, tập một tay: chỉ các nốt của tay đó (giữ nguyên phách và chỉ số nốt trên khuông). */
+function alternatingSteps(lesson: Lesson, hand: Hand): TrackStep[] {
+  const steps = melodySteps(lesson).filter((s) => noteHand(lesson, lesson.notes[s.scoreIndex]) === hand);
+  spanToNextStep(lesson, steps);
+  return steps;
 }
 
 /**
@@ -89,20 +110,25 @@ export function leftHandSteps(lesson: Lesson, singleNotesOnly: boolean): { steps
  * Tay trái mà không còn bước nào (toàn hợp âm, micro) → `undefined`: không tập được, màn hình báo lý do.
  */
 export function practiceTrack(lesson: Lesson, hand: PracticeHand, singleNotesOnly: boolean): PracticeTrack | undefined {
-  if (!hasHandChoice(lesson) || hand !== 'left') {
-    return { hand: hasHandChoice(lesson) ? hand : 'both', staff: 'melody', steps: melodySteps(lesson), skippedChords: 0 };
-  }
+  if (!hasHandChoice(lesson)) return { hand: 'both', staff: 'melody', steps: melodySteps(lesson), skippedChords: 0 };
+  if (hand !== 'both' && hasAlternatingHands(lesson)) return { hand, staff: 'melody', steps: alternatingSteps(lesson, hand), skippedChords: 0 };
+  if (hand !== 'left') return { hand, staff: 'melody', steps: melodySteps(lesson), skippedChords: 0 };
   const { steps, skippedChords } = leftHandSteps(lesson, singleNotesOnly);
   return steps.length === 0 ? undefined : { hand: 'left', staff: 'accompaniment', steps, skippedChords };
 }
 
 /**
- * Tập tay trái: nốt cao hơn mọi nốt đệm là nốt giai điệu tay phải đánh kèm → bỏ qua, không tính sai
- * (đối xứng với `isAccompanimentMidi` khi tập tay phải).
+ * Tập một tay: nốt ngoài tầm của tay đó, về phía tay kia, là nốt tay kia đánh kèm → bỏ qua, không tính sai.
+ * Tay trái: cao hơn mọi nốt tay trái; tay phải: thấp hơn mọi nốt tay phải.
  */
-export function isMelodyMidi(lesson: Pick<Lesson, 'accompaniment'>, midi: number): boolean {
-  const all = (lesson.accompaniment ?? []).flatMap((c) => c.midis);
-  return all.length > 0 && midi > Math.max(...all);
+export function isOtherHandMidi(lesson: Pick<Lesson, 'accompaniment' | 'notes' | 'hand'>, hand: Hand, midi: number): boolean {
+  const played = lesson.notes.filter((n) => !n.rest);
+  if (hand === 'right') {
+    const right = played.filter((n) => noteHand(lesson, n) === 'right').map((n) => n.midi);
+    return right.length > 0 && midi < Math.min(...right);
+  }
+  const left = [...played.filter((n) => noteHand(lesson, n) === 'left').map((n) => n.midi), ...(lesson.accompaniment ?? []).flatMap((c) => c.midis)];
+  return left.length > 0 && midi > Math.max(...left);
 }
 
 /** Bước đang vang ở phách `beat` (tính từ đầu bài): bước cuối cùng bắt đầu không muộn hơn `beat`. */
