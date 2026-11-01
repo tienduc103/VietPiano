@@ -59,6 +59,22 @@ describe('TomatoHarvestGame', () => {
     expect(game.getState().plants.flatMap((p) => p.tomatoes)).toHaveLength(21);
   });
 
+  it('người chơi suy nghĩ lâu vẫn hái hết từng cây, đi đủ 5 cây và gặp đủ quota vàng', () => {
+    const game = make('hard');
+    const visited = new Set<number>();
+    let now = 0;
+    game.start(now);
+    while (game.getState().gameStatus !== 'won') {
+      now += 6500;
+      game.tick(now);
+      visited.add(game.getState().activePlantIndex);
+      correct(game, now + 1);
+    }
+    const state = game.getState();
+    expect(visited).toEqual(new Set([0, 1, 2, 3, 4]));
+    expect(state.goldenTomatoesSpawned).toBe(state.goldenTomatoQuota);
+  });
+
   it('nếu cả 5 cây trống thì chờ, rồi tiếp tục khi cây mọc lại', () => {
     const game = make('hard');
     game.start(0);
@@ -147,9 +163,17 @@ describe('TomatoHarvestGame', () => {
   });
 
   it('quả vàng bị sâu ăn chỉ tăng bộ đếm mất, không cộng điểm hay tiến độ', () => {
-    const game = make('hard', () => 0);
-    let now = playTo(game, 3);
-    expect(game.getState().plants[1].tomatoes[0].kind).toBe('golden');
+    const values = [0, 0.5, 0.5, 0.5]; // quota 3; quả vàng đầu ở đúng mốc 5
+    const game = make('hard', () => values.shift() ?? 0);
+    game.start(0);
+    let now = 1;
+    for (let i = 0; i < 4; i++) correct(game, now++);
+    // Phá chuỗi trước quả thứ 5 để thỏ chưa có khiên; đợt sâu sau khi sửa đúng
+    // ăn một cây khác, rồi quả vàng được gắn vào cây hiện hành kế tiếp.
+    const preFifthWrong = game.getState().targetNote === 60 ? 62 : 60;
+    game.answer(preFifthWrong, now++);
+    correct(game, now++);
+    expect(game.getState().plants[game.getState().activePlantIndex].tomatoes[0].kind).toBe('golden');
     const score = game.getState().score;
     const harvested = game.getState().harvestedCount;
     const wrong = game.getState().targetNote === 60 ? 62 : 60;

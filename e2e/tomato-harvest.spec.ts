@@ -64,4 +64,40 @@ test('cấp Khó: sâu bò tới đúng cây bị tấn công', async ({ page })
   const wormCenter = wormBox!.x + wormBox!.width / 2;
   expect(wormCenter).toBeGreaterThan(plantBox!.x);
   expect(wormCenter).toBeLessThan(plantBox!.x + plantBox!.width);
+  await expect(page.getByLabel(`Thỏ nông dân ở cây ${plantNumber}`)).toBeVisible();
+  // Engine đã xử lý mất quả, nhưng UI giữ quả tới lúc sâu leo lên ăn.
+  const attackedPlant = page.getByTestId(`tomato-plant-${plantNumber}`);
+  await expect(attackedPlant).toHaveAttribute('data-count', '0');
+  await expect(attackedPlant.locator('[aria-label^="Cà chua"]')).not.toHaveCount(0);
+  await expect(attackedPlant.locator('[aria-label^="Cà chua"]')).toHaveCount(0, { timeout: 3000 });
+});
+
+test('giữ trạng thái tạm dừng khi mở Cài đặt; ẩn tab cũng tự tạm dừng', async ({ page }) => {
+  await page.goto('/?screen=tomato-harvest');
+  await page.getByTestId('tomato-start').click();
+  const game = page.getByTestId('tomato-harvest');
+  await page.getByTestId('tomato-pause').click();
+  await expect(game).toHaveAttribute('data-status', 'paused');
+  await page.getByRole('button', { name: 'Cài đặt' }).click();
+  await page.getByRole('button', { name: 'Đóng' }).click();
+  await expect(game).toHaveAttribute('data-status', 'paused');
+  await page.getByTestId('tomato-pause').click();
+  await expect(game).toHaveAttribute('data-status', 'playing');
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(game).toHaveAttribute('data-status', 'paused');
+});
+
+test('hai Note On trùng trước Note Off chỉ được tính một lần', async ({ page }) => {
+  await page.goto('/?screen=tomato-harvest');
+  await page.getByTestId('tomato-start').click();
+  const game = page.getByTestId('tomato-harvest');
+  const target = await game.getAttribute('data-target');
+  const key = page.locator(`[data-testid="tomato-keyboard"] button[data-midi="${target}"]`);
+  await key.dispatchEvent('pointerdown');
+  await key.dispatchEvent('pointerdown');
+  await expect(game).toHaveAttribute('data-harvested', '1');
+  await key.dispatchEvent('pointerup');
 });

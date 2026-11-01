@@ -19,7 +19,7 @@ export type TomatoEvent =
   | { type: 'rain'; milestone: number }
   | { type: 'butterfly'; milestone: number; points: 3 }
   | { type: 'shield-earned'; milestone: number }
-  | { type: 'worms'; plantIndex: number; blocked: boolean; eaten: number }
+  | { type: 'worms'; plantIndex: number; blocked: boolean; eaten: number; eatenTomatoes: Tomato[] }
   | { type: 'won' };
 
 export interface TomatoHarvestState {
@@ -157,10 +157,11 @@ export class TomatoHarvestGame {
         ? { tomatoes: p.tomatoes.length < MAX_TOMATOES ? [...p.tomatoes, this.redTomato()] : p.tomatoes, regrowAt: null }
         : p,
     );
-    // Mỗi nhịp chỉ mọc đúng một quả, rồi chọn lại ngẫu nhiên một cây còn thiếu quả.
-    plants = this.scheduleNextRegrowth(now, plants);
     let activePlantIndex = this.state.activePlantIndex;
     if (plants[activePlantIndex].tomatoes.length === 0) activePlantIndex = this.findNextPlant(activePlantIndex, plants) ?? due;
+    // Chọn lịch tiếp theo sau khi đã biết cây hiện hành mới, để không tự bù quả
+    // vào chính cây người chơi đang phải hái hết.
+    plants = this.scheduleNextRegrowth(now, plants, activePlantIndex);
     this.state = { ...this.state, plants, activePlantIndex, gameStatus: 'playing' };
     // Quả tự mọc luôn là quả đỏ; không gọi decorateActivePlant tại đây.
     this.emit({ type: 'regrown', plantIndexes: [due] }, now);
@@ -202,8 +203,7 @@ export class TomatoHarvestGame {
     const tomato = plant.tomatoes[0];
     if (!tomato) return;
     const points = tomato.kind === 'golden' ? 5 : tomato.kind === 'giant' ? 10 : 1;
-    let plants = this.state.plants.map((p, i) => (i === plantIndex ? { ...p, tomatoes: p.tomatoes.slice(1) } : p));
-    plants = this.scheduleNextRegrowth(now, plants);
+    const plants = this.state.plants.map((p, i) => (i === plantIndex ? { ...p, tomatoes: p.tomatoes.slice(1) } : p));
     const harvestedCount = Math.min(WIN_COUNT, this.state.harvestedCount + 1);
     const streak = this.state.correctStreak + 1;
     this.state = {
@@ -219,6 +219,7 @@ export class TomatoHarvestGame {
       lastOutcome: 'hit',
     };
     if (plants[plantIndex].tomatoes.length === 0) this.advanceActivePlant();
+    this.state = { ...this.state, plants: this.scheduleNextRegrowth(now, this.state.plants, this.state.activePlantIndex) };
     this.emit({ type: 'correct', midi, kind: tomato.kind, plantIndex, points }, now);
 
     this.applyStreakRewards(now);
@@ -261,11 +262,11 @@ export class TomatoHarvestGame {
           restored.push(i);
           return { tomatoes: this.redTomatoes(), regrowAt: null };
         });
-        plants = this.scheduleNextRegrowth(now, plants);
         this.state = { ...this.state, plants };
         if (restored.length > 0 && this.state.gameStatus === 'waitingForRegrowth') {
           this.state = { ...this.state, activePlantIndex: this.findNextPlant(this.state.activePlantIndex, plants) ?? restored[0], gameStatus: 'playing' };
         }
+        this.state = { ...this.state, plants: this.scheduleNextRegrowth(now, this.state.plants, this.state.activePlantIndex) };
         this.emit({ type: 'rain', milestone: streak }, now);
       }
     }
@@ -291,16 +292,17 @@ export class TomatoHarvestGame {
     }
     if (this.state.shieldCount > 0) {
       this.state = { ...this.state, shieldCount: this.state.shieldCount - 1 };
-      this.emit({ type: 'worms', plantIndex: target.i, blocked: true, eaten: 0 }, now);
+      this.emit({ type: 'worms', plantIndex: target.i, blocked: true, eaten: 0, eatenTomatoes: [] }, now);
       return;
     }
     const eaten = target.p.tomatoes.length;
+    const eatenTomatoes = [...target.p.tomatoes];
     const goldenLost = target.p.tomatoes.filter((t) => t.kind === 'golden').length;
-    let plants = this.state.plants.map((p, i) => (i === target.i ? { tomatoes: [], regrowAt: p.regrowAt } : p));
-    plants = this.scheduleNextRegrowth(now, plants);
+    const plants = this.state.plants.map((p, i) => (i === target.i ? { tomatoes: [], regrowAt: p.regrowAt } : p));
     this.state = { ...this.state, plants, goldenTomatoesLost: this.state.goldenTomatoesLost + goldenLost };
     if (target.i === this.state.activePlantIndex) this.advanceActivePlant();
-    this.emit({ type: 'worms', plantIndex: target.i, blocked: false, eaten }, now);
+    this.state = { ...this.state, plants: this.scheduleNextRegrowth(now, this.state.plants, this.state.activePlantIndex) };
+    this.emit({ type: 'worms', plantIndex: target.i, blocked: false, eaten, eatenTomatoes }, now);
   }
 
   private advanceActivePlant(): void {
@@ -322,8 +324,8 @@ export class TomatoHarvestGame {
 
   private decorateActivePlant(): void {
     if (this.state.gameStatus !== 'playing') return;
-    let i = this.state.activePlantIndex;
-    let plant = this.state.plants[i];
+    const i = this.state.activePlantIndex;
+    const plant = this.state.plants[i];
     if (!plant?.tomatoes.length) return;
     const hasSpecial = this.state.plants.some((p) => p.tomatoes.some((t) => t.kind !== 'red'));
     if (hasSpecial) return;
@@ -336,16 +338,7 @@ export class TomatoHarvestGame {
       this.goldenScheduleIndex++;
     }
     if (!kind) return;
-    // Thường đặt trên cây đang thu hoạch. Riêng cấp Khó đôi lúc đặt trên một cây đầy
-    // để luật "quả vàng bị sâu ăn" có thể xảy ra, nhưng người chơi vẫn sẽ gặp cây đó theo vòng.
-    if (kind === 'golden' && this.state.difficulty === 'hard') {
-      const max = Math.max(...this.state.plants.map((p) => p.tomatoes.length));
-      const full = this.state.plants.map((p, n) => ({ p, n })).filter(({ p }) => p.tomatoes.length === max);
-      if (max > plant.tomatoes.length && clampRandom(this.random) < 0.25) {
-        i = full[this.pick(full.length)].n;
-        plant = this.state.plants[i];
-      }
-    }
+    // Luôn ưu tiên cây đang thu hoạch để người chơi chắc chắn gặp đủ quota trong ván.
     const tomatoes = plant.tomatoes.map((t, n) => (n === 0 ? { ...t, kind: kind! } : t));
     const plants = this.state.plants.map((p, n) => (n === i ? { ...p, tomatoes } : p));
     this.state = {
@@ -381,9 +374,16 @@ export class TomatoHarvestGame {
   }
 
   /** Chỉ có một quả đang chờ mọc trong toàn nông trại; cây được chọn lại sau mỗi quả. */
-  private scheduleNextRegrowth(now: number, plants: TomatoPlant[]): TomatoPlant[] {
+  private scheduleNextRegrowth(now: number, plants: TomatoPlant[], activePlantIndex = this.state.activePlantIndex): TomatoPlant[] {
+    // Nếu cây có lịch mọc trở thành cây hiện hành, chuyển lịch đó sang cây khác;
+    // nếu không người chơi chậm vẫn có thể bị bù quả ngay trước lúc hái hết.
+    plants = plants.map((p, i) => (i === activePlantIndex && p.tomatoes.length > 0 && p.regrowAt !== null ? { ...p, regrowAt: null } : p));
     if (plants.some((p) => p.regrowAt !== null)) return plants;
-    const eligible = plants.map((p, i) => ({ p, i })).filter(({ p }) => p.tomatoes.length < MAX_TOMATOES);
+    const eligible = plants
+      .map((p, i) => ({ p, i }))
+      // Cây hiện hành chỉ được lên lịch sau khi đã bị hái sạch. Nhờ vậy người chơi
+      // suy nghĩ lâu vẫn có thể hoàn tất cây và chuyển đúng vòng 1 → 2 → …
+      .filter(({ p, i }) => p.tomatoes.length < MAX_TOMATOES && (i !== activePlantIndex || p.tomatoes.length === 0));
     if (eligible.length === 0) return plants;
     const target = eligible[this.pick(eligible.length)].i;
     return plants.map((p, i) => (i === target ? { ...p, regrowAt: now + this.regrowDelay() } : p));

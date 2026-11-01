@@ -17,10 +17,12 @@ import { useApp } from '../store/appStore';
 import { useMic } from '../store/micStore';
 import { activeProfile, useProfiles } from '../store/profileStore';
 import { useSettings } from '../store/settingsStore';
+import { usePlayingNow } from '../store/playingStore';
 
 type Modal = 'settings' | 'trophies' | 'leaderboard' | null;
 const ALL_NOTES = TOMATO_NOTES.hard;
 const noteText = (midi: number) => midiToLabel(midi, 'solfege').replace(/-?\d+$/, '');
+type WormEvent = Extract<TomatoEvent, { type: 'worms' }>;
 
 export function TomatoHarvestScreen() {
   const navigate = useApp((s) => s.navigate);
@@ -38,6 +40,7 @@ export function TomatoHarvestScreen() {
   const game = useMemo(() => new TomatoHarvestGame({ difficulty, profileId: profile?.id ?? null }), [difficulty, profile?.id, run]);
   const state = useGameState(game);
   const active = state.gameStatus === 'playing' || state.gameStatus === 'waitingForRegrowth';
+  usePlayingNow(active);
   useFrameClock(active, (now) => game.tick(now));
   const flash = useKeyFlash(state.lastEventTime, state.lastMidi, state.lastOutcome);
 
@@ -57,9 +60,20 @@ export function TomatoHarvestScreen() {
     return () => window.clearTimeout(id);
   }, [state.eventSequence, state.eventLog]);
 
+  const heldNotes = useRef(new Set<number>());
+  useEffect(() => {
+    heldNotes.current.clear();
+  }, [game]);
+
   useNoteInput(
     {
       onNote: (event) => {
+        // MIDI/virtual phải có Note Off trước khi cùng phím được tính là lần nhấn mới.
+        // Chặn đàn gửi lặp Note On và pointerdown trùng, nhưng micro không có Note Off nên không áp dụng.
+        if (event.source !== 'microphone') {
+          if (heldNotes.current.has(event.midi)) return;
+          heldNotes.current.add(event.midi);
+        }
         const result = game.answer(event.midi, event.time);
         if (result === 'ignored') return;
         if (event.source === 'virtual') soundOutput.playNote(event.midi, 0.35);
@@ -68,6 +82,7 @@ export function TomatoHarvestScreen() {
           else soundOutput.scheduleNote(43, 0, 0.12, 35);
         }
       },
+      onNoteOff: (event) => heldNotes.current.delete(event.midi),
     },
     inputSource,
     // Chỉ lúc đang chơi mới nghe nốt; lớp phủ Sẵn sàng / tạm dừng / chiến thắng → đàn MIDI bấm nút.
@@ -79,6 +94,13 @@ export function TomatoHarvestScreen() {
     audioEngine.current.setEnabled(audio.music && active, audio.nature && active);
   }, [audio, active]);
   useEffect(() => () => audioEngine.current?.stop(), []);
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden) game.pause(performance.now());
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [game]);
 
   const recordedRun = useRef(-1);
   useEffect(() => {
@@ -120,6 +142,17 @@ export function TomatoHarvestScreen() {
     setDifficulty(value);
     setRun((v) => v + 1);
   };
+  const resumeAfterSettings = useRef(false);
+  const openSettings = () => {
+    resumeAfterSettings.current = active;
+    if (active) game.pause(performance.now());
+    setModal('settings');
+  };
+  const closeSettings = () => {
+    setModal(null);
+    if (resumeAfterSettings.current) game.resume(performance.now());
+    resumeAfterSettings.current = false;
+  };
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-100 text-slate-900 dark:from-sky-950 dark:via-slate-900 dark:to-emerald-950" data-testid="tomato-harvest" data-status={state.gameStatus} data-harvested={state.harvestedCount} data-score={state.score} data-target={state.targetNote}>
@@ -130,7 +163,7 @@ export function TomatoHarvestScreen() {
           <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Cấp {TOMATO_DIFFICULTY_LABEL[difficulty]} · không giới hạn thời gian</p>
         </div>
         <Hud state={state} />
-        <Button onClick={() => { game.pause(performance.now()); setModal('settings'); }} aria-label="Cài đặt" className="px-3">⚙</Button>
+        <Button onClick={openSettings} aria-label="Cài đặt" className="px-3">⚙</Button>
         <Button variant="primary" onClick={() => state.gameStatus === 'paused' ? game.resume(performance.now()) : game.pause(performance.now())} disabled={!active && state.gameStatus !== 'paused'} data-testid="tomato-pause" className="px-3">
           <Icon name={state.gameStatus === 'paused' ? 'play' : 'pause'} /> <span className="hidden sm:inline">{state.gameStatus === 'paused' ? 'Tiếp' : 'Dừng'}</span>
         </Button>
@@ -157,7 +190,7 @@ export function TomatoHarvestScreen() {
       {state.gameStatus === 'ready' && <ReadyOverlay difficulty={difficulty} onDifficulty={chooseDifficulty} canStart={!!profile} midiNav={!modal} onStart={start} onTrophies={() => setModal('trophies')} onLeaderboard={() => setModal('leaderboard')} />}
       {state.gameStatus === 'paused' && !modal && <CenterOverlay><h2 className="text-3xl font-black">⏸ Đang tạm dừng</h2><p>Cây cũng tạm ngừng mọc lại.</p><Button variant="primary" onClick={() => game.resume(performance.now())} midiNav="forward">▶ Chơi tiếp</Button></CenterOverlay>}
       {state.gameStatus === 'won' && <Victory state={state} difficulty={difficulty} midiNav={!modal} onAgain={restart} onTrophies={() => setModal('trophies')} onLeaderboard={() => setModal('leaderboard')} onExit={() => navigate({ name: 'games' })} />}
-      {modal === 'settings' && <SettingsModal audio={audio} updateAudio={updateAudio} onClose={() => { setModal(null); if (state.gameStatus === 'paused') game.resume(performance.now()); }} />}
+      {modal === 'settings' && <SettingsModal audio={audio} updateAudio={updateAudio} onClose={closeSettings} />}
       {modal === 'trophies' && <TrophyModal progress={progress} profileId={profile?.id ?? null} onClose={() => setModal(null)} />}
       {modal === 'leaderboard' && <LeaderboardModal progress={progress} profiles={profiles} onClose={() => setModal(null)} />}
       {state.gameStatus === 'ready' && <div className="absolute bottom-2 left-3 z-30 right-3"><ProfileSwitcher className="" hint="Tạo biệt danh và avatar để lưu cúp, sao và bảng xếp hạng riêng." /></div>}
@@ -172,14 +205,18 @@ function Hud({ state }: { state: TomatoHarvestState }) {
 }
 
 function Farm({ state, effect }: { state: TomatoHarvestState; effect: TomatoEvent | null }) {
+  const worm = effect?.type === 'worms' ? effect : null;
+  const bunnyPlant = effect?.type === 'correct' || effect?.type === 'worms' ? effect.plantIndex : state.activePlantIndex;
   return <section className="relative min-h-56 overflow-hidden rounded-[2rem] bg-gradient-to-b from-sky-300 via-sky-200 to-lime-200 shadow-inner ring-2 ring-white/60 dark:from-sky-900 dark:via-sky-950 dark:to-emerald-950" data-testid="tomato-farm">
     <div className="absolute top-3 left-6 text-4xl opacity-90">☀️</div><div className="absolute top-5 right-8 text-3xl">☁️</div>
     <div className="absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-b from-green-500 to-emerald-700" />
     <div className="absolute inset-x-0 bottom-[39%] h-5 bg-amber-700/70" />
     <div className="absolute inset-x-2 bottom-4 grid grid-cols-5 gap-1 sm:gap-3">
-      {state.plants.map((plant, i) => <Plant key={i} plant={plant} index={i} active={i === state.activePlantIndex && state.gameStatus !== 'waitingForRegrowth'} attacked={effect?.type === 'worms' && effect.plantIndex === i} />)}
+      {state.plants.map((plant, i) => <Plant key={i} plant={plant} index={i} active={i === state.activePlantIndex && state.gameStatus !== 'waitingForRegrowth'} attack={worm?.plantIndex === i ? worm : null} />)}
     </div>
-    <div className={`absolute bottom-2 left-[4%] z-10 text-5xl drop-shadow-lg transition-all sm:text-6xl ${effect?.type === 'correct' ? 'tomato-bunny-hop' : effect?.type === 'worms' && effect.blocked ? 'tomato-shield' : ''}`} aria-label="Thỏ nông dân">🐰<span className="text-3xl">🧺</span></div>
+    <div className="absolute bottom-2 z-10 transition-[left] duration-500 ease-out" style={{ left: `${bunnyPlant * 20 + 10}%`, transform: 'translateX(-50%)' }} aria-label={`Thỏ nông dân ở cây ${bunnyPlant + 1}`}>
+      <div className={`text-5xl drop-shadow-lg sm:text-6xl ${effect?.type === 'correct' ? 'tomato-bunny-hop' : effect?.type === 'worms' && effect.blocked ? 'tomato-shield' : ''}`}>🐰<span className="text-3xl">🧺</span></div>
+    </div>
     {effect?.type === 'worms' && <div className={`absolute bottom-[8%] z-20 whitespace-nowrap text-4xl ${effect.blocked ? 'tomato-worm-flee' : 'tomato-worm-attack'}`} style={{ left: `${effect.plantIndex * 20 + 10}%` }} aria-label={`Đàn sâu bò lên cây ${effect.plantIndex + 1}`}><span>🐛🐛🐛</span>{!effect.blocked && <span className="tomato-worm-snack absolute -top-12 left-1/2 text-3xl">🍅💥</span>}</div>}
     {effect?.type === 'rain' && <div className="tomato-rain pointer-events-none absolute inset-0 z-20 grid place-items-center bg-sky-400/15 text-6xl" aria-label="Mưa thần kỳ"><span className="absolute top-2">☁️✨</span><span className="tracking-[.4em]">💧💧💧💧💧</span></div>}
     {effect?.type === 'butterfly' && <div className="tomato-butterfly absolute z-30 text-5xl" aria-label="Bướm cầu vồng">🦋<span className="ml-2 rounded-full bg-white/90 px-3 py-1 align-middle text-base font-black text-fuchsia-600">Bướm cầu vồng! +3 điểm</span></div>}
@@ -187,13 +224,14 @@ function Farm({ state, effect }: { state: TomatoHarvestState; effect: TomatoEven
   </section>;
 }
 
-function Plant({ plant, index, active, attacked }: { plant: TomatoPlant; index: number; active: boolean; attacked: boolean }) {
+function Plant({ plant, index, active, attack }: { plant: TomatoPlant; index: number; active: boolean; attack: WormEvent | null }) {
   const positions = ['left-[18%] top-[22%]', 'right-[18%] top-[18%]', 'left-[8%] top-[48%]', 'right-[8%] top-[48%]', 'left-[38%] top-[5%]'];
-  return <div className={`relative mx-auto h-36 w-full max-w-36 rounded-3xl transition ${active ? 'scale-105 bg-yellow-200/35 ring-4 ring-yellow-300' : ''} ${attacked ? 'animate-shake' : ''}`} data-testid={`tomato-plant-${index + 1}`} data-count={plant.tomatoes.length}>
+  const tomatoes = attack && !attack.blocked && attack.eatenTomatoes.length > 0 ? attack.eatenTomatoes : plant.tomatoes;
+  return <div className={`relative mx-auto h-36 w-full max-w-36 rounded-3xl transition ${active ? 'scale-105 bg-yellow-200/35 ring-4 ring-yellow-300' : ''} ${attack ? 'animate-shake' : ''}`} data-testid={`tomato-plant-${index + 1}`} data-count={plant.tomatoes.length}>
     <div className="absolute right-0 bottom-0 left-0 text-center text-xs font-black text-white drop-shadow">Cây {index + 1}</div>
     <div className="absolute bottom-3 left-1/2 h-[82%] w-3 -translate-x-1/2 rounded-full bg-green-800" />
     <div className="absolute inset-x-[8%] top-[10%] h-[68%] rounded-[50%] bg-green-600 shadow-lg ring-4 ring-green-700/30"><span className="absolute -top-2 left-[15%] text-3xl">🌿</span><span className="absolute top-[25%] right-[4%] text-3xl">🌿</span></div>
-    {plant.tomatoes.map((tomato, i) => <span key={tomato.id} className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 drop-shadow-md ${positions[i]} ${tomato.kind === 'golden' ? 'tomato-golden text-3xl' : tomato.kind === 'giant' ? 'tomato-giant text-5xl' : 'text-3xl'}`} aria-label={tomato.kind === 'golden' ? 'Cà chua vàng' : tomato.kind === 'giant' ? 'Cà chua khổng lồ' : 'Cà chua đỏ'}>{tomato.kind === 'golden' ? '🟡' : '🍅'}</span>)}
+    {tomatoes.map((tomato, i) => <span key={tomato.id} className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 drop-shadow-md ${positions[i]} ${attack && !attack.blocked ? 'tomato-eaten-fruit' : ''} ${tomato.kind === 'golden' ? 'tomato-golden text-3xl' : tomato.kind === 'giant' ? 'tomato-giant text-5xl' : 'text-3xl'}`} aria-label={tomato.kind === 'golden' ? 'Cà chua vàng' : tomato.kind === 'giant' ? 'Cà chua khổng lồ' : 'Cà chua đỏ'}>{tomato.kind === 'golden' ? '🟡' : '🍅'}</span>)}
     {plant.regrowAt !== null && <span className={`absolute z-10 grid place-items-center tomato-regrow ${plant.tomatoes.length === 0 ? 'inset-0 text-3xl' : 'right-1 bottom-5 text-xl'}`} aria-label="Đang mọc từng quả">🌱</span>}
   </div>;
 }
