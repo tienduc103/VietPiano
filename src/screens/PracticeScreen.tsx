@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import { lessonManager } from '../core/lessons/LessonManager';
 import { accompanimentByNote, isAccompanimentMidi, lessonTempo, measureLength, HAND_LABEL, noteHand, type Finger, type Hand, type LeftHandStep, type Lesson } from '../core/lessons/types';
 import { midiToLabel, midiToName, pitchToLabel } from '../core/music/notes';
-import { computeAccuracy, PracticeEngine, DEFAULT_PRACTICE_CONFIG, type PracticeState } from '../core/practice/PracticeEngine';
+import { computeAccuracy, isPerfect, PracticeEngine, DEFAULT_PRACTICE_CONFIG, type PracticeState } from '../core/practice/PracticeEngine';
 import { DEFAULT_TEMPO_CONFIG, TempoFollower, type TempoState } from '../core/practice/TempoFollower';
 import { TEMPO_PERCENT_MAX, TEMPO_PERCENT_MIN, type PracticeMode } from '../core/settings/DeviceSettings';
 import type { NoteInputEvent } from '../core/input/NoteInputProvider';
@@ -26,6 +26,7 @@ import { useWakeLock } from '../hooks/useAppLifecycle';
 import { useSessionRecorder } from '../hooks/useSessionRecorder';
 import { useUiMode } from '../hooks/useUiMode';
 import { AiCoachCard } from '../components/AiCoachCard';
+import { Fireworks } from '../components/Fireworks';
 import { practiceReport, tempoReport } from '../core/feedback/coachPrompt';
 import type { AiNote, AiNoteMode } from '../core/feedback/aiNotes';
 import { AiNoteHistory } from '../components/AiNoteHistory';
@@ -885,6 +886,7 @@ function FinishDialog({
   const saveNote = useAiNoteSaver(report.score, mode, onAiNote);
   return (
     <div className="fixed inset-0 z-20 grid place-items-center bg-violet-950/50 p-4 backdrop-blur-sm" role="dialog" aria-modal aria-label="Kết quả">
+      {isPerfect(state) && <Fireworks />}
       <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-2xl dark:bg-slate-800">
         <div className="text-5xl text-amber-400 drop-shadow" aria-label={`${stars} sao`}>
           {'★'.repeat(stars)}

@@ -61,6 +61,14 @@ export function computeAccuracy(state: Pick<PracticeState, 'correct' | 'wrong'>)
   return attempts === 0 ? 0 : state.correct / attempts;
 }
 
+/**
+ * Đúng tuyệt đối: không sai, không bỏ qua nốt nào. Không suy từ độ chính xác hiển thị:
+ * số đó không tính nốt bỏ qua và được làm tròn (199/200 cũng hiện 100%).
+ */
+export function isPerfect(state: Pick<PracticeState, 'correct' | 'wrong' | 'skipped'>): boolean {
+  return state.correct > 0 && state.wrong === 0 && state.skipped === 0;
+}
+
 export class PracticeEngine {
   private state: PracticeState;
   private readonly listeners = new Set<(s: PracticeState) => void>();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PracticeEngine, computeAccuracy, DEFAULT_PRACTICE_CONFIG } from './PracticeEngine';
+import { PracticeEngine, computeAccuracy, isPerfect, DEFAULT_PRACTICE_CONFIG } from './PracticeEngine';
 import { NoteRecognizer, type TimedPitchFrame } from '../audio/NoteRecognizer';
 import { midiToFrequency } from '../music/notes';
 
@@ -115,6 +115,29 @@ describe('PracticeEngine — Wait Mode', () => {
   it('tính độ chính xác', () => {
     expect(computeAccuracy({ correct: 3, wrong: 1 })).toBe(0.75);
     expect(computeAccuracy({ correct: 0, wrong: 0 })).toBe(0);
+  });
+
+  it('isPerfect: chỉ đúng khi không sai và không bỏ qua nốt nào', () => {
+    const clean = new PracticeEngine([C4, D4]);
+    clean.handleNote(C4, 1000);
+    clean.handleNote(D4, 2000);
+    expect(isPerfect(clean.getState())).toBe(true);
+
+    const wrong = new PracticeEngine([C4, D4]);
+    wrong.handleNote(E4, 1000);
+    wrong.handleNote(C4, 2000);
+    wrong.handleNote(D4, 3000);
+    expect(wrong.getState().status).toBe('finished');
+    expect(isPerfect(wrong.getState())).toBe(false);
+
+    // Bỏ qua không tính vào độ chính xác (vẫn 100%) nhưng không phải đúng tuyệt đối.
+    const skipped = new PracticeEngine([C4, D4]);
+    skipped.handleNote(C4, 1000);
+    skipped.skip(2000);
+    expect(computeAccuracy(skipped.getState())).toBe(1);
+    expect(isPerfect(skipped.getState())).toBe(false);
+
+    expect(isPerfect(new PracticeEngine([C4]).getState())).toBe(false);
   });
 
   it('thông báo cho listener khi trạng thái đổi', () => {

@@ -103,6 +103,7 @@ test('hoàn thành bài, lưu tiến độ vào IndexedDB và hiện trên thư 
   }
   await expect(page.getByRole('dialog', { name: 'Kết quả' })).toBeVisible();
   await expect(page.getByRole('dialog')).toContainText('100%');
+  await expect(page.getByTestId('fireworks')).toBeAttached(); // đúng 100% → pháo hoa
   await page.getByRole('button', { name: 'Về thư viện' }).last().click();
   await expect(page.getByTestId('lesson-scale-c-major')).toContainText('100%');
 
