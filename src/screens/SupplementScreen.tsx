@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { SUPPLEMENT, SUPPLEMENT_NOTE, SUPPLEMENT_UPCOMING } from '../core/curriculum/content/supplement';
 import { text } from '../core/curriculum/types';
 import { lessonStatus, orderedLessons } from '../core/curriculum/unlock';
@@ -6,6 +7,16 @@ import { useCurriculum } from '../store/curriculumStore';
 import { useUiMode } from '../hooks/useUiMode';
 import { Button, FullscreenButton, Icon } from '../components/ui';
 import { AppVersion } from '../components/AppVersion';
+import { useNoteCards } from '../components/balloonPop/useNoteCards';
+import type { Letter } from '../core/balloonPop/notes';
+
+/** Nốt quãng 4 (khoá Sol) cho hình nốt trên thẻ. */
+const LETTER_MIDI: Record<Letter, number> = { C: 60, D: 62, E: 64, F: 65, G: 67, A: 69, B: 71 };
+
+/** Hình nốt kiểu thẻ bóng bay: khuông ngắn + nốt đen, không khoá. */
+function NoteFigure({ svg }: { svg: string | undefined }) {
+  return <span className="h-20 w-14 [&>svg]:h-full [&>svg]:w-full" aria-hidden data-testid="supplement-note-figure" dangerouslySetInnerHTML={{ __html: svg ?? '' }} />;
+}
 
 const STATUS_LABEL = { available: 'Chưa học', 'suggest-later': 'Chưa học', 'in-progress': 'Đang học', completed: 'Đã đạt' } as const;
 
@@ -20,6 +31,11 @@ export function SupplementScreen() {
   const kids = mode === 'kids';
   const level = SUPPLEMENT.levels[0];
   const lessons = orderedLessons(level);
+  const cards = useMemo(
+    () => (Object.keys(LETTER_MIDI) as Letter[]).map((letter) => ({ key: letter, midi: LETTER_MIDI[letter], duration: 'q' as const })),
+    [],
+  );
+  const figures = useNoteCards(cards, 'treble');
 
   return (
     <div className="h-full overflow-y-auto" data-testid="supplement" data-ui-mode={mode}>
@@ -52,6 +68,7 @@ export function SupplementScreen() {
                   data-status={status}
                   className="grid min-h-48 w-full content-start justify-items-center gap-2 rounded-3xl bg-gradient-to-br from-violet-600 to-fuchsia-500 p-5 text-white shadow-lg shadow-fuchsia-500/30 transition-transform active:scale-95"
                 >
+                  {note && <NoteFigure svg={figures?.get(note.letter)} />}
                   <span className="text-5xl font-extrabold">{note?.name ?? text(l.title)}</span>
                   <span className="text-lg font-semibold opacity-90">{note?.letter}</span>
                   <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-semibold">
@@ -69,6 +86,7 @@ export function SupplementScreen() {
                 className="grid min-h-48 content-start justify-items-center gap-2 rounded-3xl bg-white/70 p-5 text-slate-400 ring-2 ring-dashed ring-slate-200 dark:bg-slate-800/60 dark:text-slate-500 dark:ring-slate-700"
                 aria-label={`${n.name} — sắp có`}
               >
+                <NoteFigure svg={figures?.get(n.letter)} />
                 <span className="text-5xl font-extrabold">{n.name}</span>
                 <span className="text-lg font-semibold">{n.letter}</span>
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold dark:bg-slate-700">Sắp có</span>
