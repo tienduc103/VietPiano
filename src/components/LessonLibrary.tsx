@@ -76,7 +76,7 @@ export function LessonLibrary() {
             <span className={`h-5 w-1.5 rounded-full ${ACCENTS[gi % ACCENTS.length]}`} />
             {g.label}
           </h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {g.lessons.map((l) => (
               <LessonCard
                 key={l.id}
@@ -144,11 +144,11 @@ function LessonCard({
         type="button"
         onClick={onOpen}
         data-testid={`lesson-${lesson.id}`}
-        className="relative flex min-h-36 flex-1 flex-col overflow-hidden rounded-2xl bg-white p-5 pt-6 text-left shadow-sm shadow-violet-200/60 ring-1 ring-violet-100 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-fuchsia-300 active:scale-[0.99] dark:bg-slate-800 dark:shadow-none dark:ring-violet-900 dark:hover:ring-fuchsia-500"
+        className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-white px-4 pt-3.5 pb-2.5 text-left shadow-sm shadow-violet-200/60 ring-1 ring-violet-100 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-fuchsia-300 active:scale-[0.99] dark:bg-slate-800 dark:shadow-none dark:ring-violet-900 dark:hover:ring-fuchsia-500"
       >
-        <span className={`absolute inset-x-0 top-0 h-1.5 ${accent}`} aria-hidden />
-        <div className="flex items-start gap-2 pr-11">
-          <h3 className="flex-1 text-lg leading-snug font-semibold">{lesson.title}</h3>
+        <span className={`absolute inset-x-0 top-0 h-1 ${accent}`} aria-hidden />
+        <div className="flex items-start gap-2 pr-9">
+          <h3 className="flex-1 text-base leading-snug font-semibold">{lesson.title}</h3>
           {completed && (
             <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
               <Icon name="check" className="h-3.5 w-3.5" />
@@ -156,8 +156,10 @@ function LessonCard({
             </span>
           )}
         </div>
-        <p className="mt-1 flex-1 text-sm text-slate-500 dark:text-slate-400">{lesson.description}</p>
-        <div className="mt-3 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+        <p className="mt-0.5 flex-1 truncate pr-9 text-sm text-slate-500 dark:text-slate-400" title={lesson.description}>
+          {lesson.description}
+        </p>
+        <div className="mt-1.5 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
           <span className="rounded bg-violet-100 px-1.5 py-0.5 font-medium text-violet-700 dark:bg-violet-900 dark:text-violet-200">{CLEF_LABEL[lesson.clef]}</span>
           <span>{lesson.notes.length} nốt</span>
           <span>{HAND_LABEL[lesson.hand]}</span>
@@ -175,7 +177,7 @@ function LessonCard({
         aria-label={`Xuất ảnh khuông nhạc: ${lesson.title}`}
         title="Xuất ảnh khuông nhạc"
         data-testid={`export-${lesson.id}`}
-        className="absolute top-2.5 right-2 grid h-12 w-12 place-items-center rounded-xl text-violet-700 transition-colors hover:bg-violet-100 active:bg-violet-200 dark:text-violet-200 dark:hover:bg-violet-800/60"
+        className="absolute top-1.5 right-1 grid h-12 w-12 place-items-center rounded-xl text-violet-700 transition-colors hover:bg-violet-100 active:bg-violet-200 dark:text-violet-200 dark:hover:bg-violet-800/60"
       >
         <Icon name="image" />
       </button>
