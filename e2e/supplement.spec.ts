@@ -31,7 +31,9 @@ test('giáo trình bổ sung — nốt Đô: giới thiệu → câu đố chọ
   await page.goto('/');
   await page.getByTestId('open-supplement').click();
   await expect(page.getByTestId('supplement')).toBeVisible();
-  await expect(page.getByText('Sắp có').first()).toBeVisible();
+  // Đủ 7 nốt trắng, không còn thẻ "Sắp có".
+  for (const id of ['c', 'd', 'e', 'f', 'g', 'a', 'b']) await expect(page.getByTestId(`supplement-lesson-sup-${id}`)).toBeVisible();
+  await expect(page.getByText('Sắp có')).toHaveCount(0);
   await page.getByTestId('supplement-lesson-sup-c').click();
 
   await expect(page.getByTestId('lesson-title')).toHaveText('Nốt Đô');
@@ -89,7 +91,7 @@ test('giáo trình bổ sung — nốt Đô: giới thiệu → câu đố chọ
   await expect(page.getByTestId('quiz-prompt')).toHaveText('Phím nào là Đô?');
 
   const answers = [1, 2, 0, 2, 2, 0];
-  const prompts = ['Phím nào là Đô?', 'Phím đang sáng nào là nốt Đô?', 'Đâu là nốt Đô giữa trên khuông?', 'Khuông nào có nốt Đô giữa?', 'Ngón nào đánh nốt Đô giữa?', 'Ngón cái — ngón số mấy?'];
+  const prompts = ['Phím nào là Đô?', 'Phím đang sáng nào là nốt Đô?', 'Đâu là nốt Đô giữa trên khuông?', 'Khuông nào có nốt Đô giữa?', 'Ngón nào đánh nốt Đô giữa?', 'Ngón cái — hình nào?'];
   for (let i = 0; i < answers.length; i++) {
     await expect(page.getByTestId('quiz-prompt')).toHaveText(prompts[i]);
     if (i === 4) await expect(quiz.getByTestId('hand-figure')).toHaveCount(3);
@@ -181,4 +183,25 @@ test('trang giới thiệu: nút Quay lại / Tiếp giữ nguyên vị trí khi
     expect(Math.abs(box!.y - first!.y)).toBeLessThan(1);
     expect(Math.abs((await prev.boundingBox())!.y - firstPrev!.y)).toBeLessThan(1);
   }
+});
+
+test('giáo trình bổ sung — nốt Sol: cùng khuôn với nốt Đô (giới thiệu, đố trường độ, chọn hình, luyện phím Sol)', async ({ page }) => {
+  await page.goto('/?screen=supplement');
+  await page.getByTestId('supplement-lesson-sup-g').click();
+  await expect(page.getByTestId('lesson-title')).toHaveText('Nốt Sol');
+  await page.getByTestId('start-lesson').click();
+  await expect(page.getByTestId('step-title')).toHaveText('Đây là nốt Sol');
+  await expect(page.getByTestId('intro-step').locator('text.score-label')).toHaveCount(18);
+  await page.getByTestId('intro-next').click();
+  await expect(page.getByTestId('step-title')).toHaveText('Đây là Sol tròn');
+  for (let i = 0; i < 5; i++) await page.getByTestId('intro-next').click();
+  await expect(page.getByTestId('step-title')).toHaveText('Sol nằm giữa phím đen thứ nhất và thứ hai');
+  for (let i = 0; i < 5; i++) await page.getByTestId('intro-next').click();
+  await expect(page.getByTestId('step-title')).toHaveText('Câu đố: nốt Sol này là nốt gì?');
+  await page.getByTestId('step-next').click();
+  await page.getByTestId('step-next').click();
+  // Luyện phím: chạm Sol giữa (G4) trên bàn phím màn hình.
+  await expect(page.getByTestId('step-title')).toHaveText('Luyện phím: tìm nốt Sol');
+  await page.locator('[data-midi="67"]').first().click();
+  await expect(page.getByTestId('round-dots').locator('span').first()).toHaveClass(/emerald/);
 });

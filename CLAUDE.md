@@ -69,8 +69,10 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              (`SUPPLEMENT_GAMES`, `components/curriculum/SupplementGames`: Bóng bay kiểu Tìm nốt mở bằng route
                              `balloon-pop` + `preset` / `returnTo`, hoặc trò trong app qua `GamePlayer`; không tính điểm buổi).
                              Chạy bằng LessonPlayer (lessonId "sup-…", không có Luyện tập sau buổi); tiến độ chung kho
-                             `curriculumStore` nhưng không ảnh hưởng gợi ý mở khoá cấp 1–6. Hiện chỉ có nốt Đô (`sup-c`),
-                             nốt khác ở `SUPPLEMENT_UPCOMING` ("Sắp có"); `npm run voice` đọc cả giáo trình này
+                             `curriculumStore` nhưng không ảnh hưởng gợi ý mở khoá cấp 1–6. Đủ 7 nốt trắng (`sup-c` … `sup-b`) sinh từ
+                             MỘT khuôn `noteLesson` + bảng `SUPPLEMENT_NOTES` (chỉ phần riêng từng nốt). Sửa bài → sửa khuôn
+                             (mọi nốt cùng đổi), không sửa riêng một nốt, rồi ghi nhật ký `docs/supplement.md`;
+                             `npm run voice` đọc cả giáo trình này
     validate.ts              kiểm tra dữ liệu (đủ phách, tầm micro, tiên quyết, đáp án) — test chạy cho toàn giáo trình
     piece.ts / QuizEngine.ts / scoring.ts / unlock.ts / progress.ts  bản nhạc→dòng thời gian/MIDI, bài nhiều lượt, rubric, gợi ý mở khoá, tiến độ
     review.ts                Luyện tập sau buổi: tự sinh từ bài tập của buổi (bài yếu nhất, trộn lượt, hỏi thêm nốt hay nhầm);

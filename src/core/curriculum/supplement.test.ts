@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CURRICULUM } from './content/curriculum';
-import { isSupplementLesson, SUPPLEMENT, SUPPLEMENT_GAMES, SUPPLEMENT_LESSONS, SUPPLEMENT_NOTE } from './content/supplement';
+import { isSupplementLesson, SUPPLEMENT, SUPPLEMENT_GAMES, SUPPLEMENT_LESSONS, SUPPLEMENT_NOTE, SUPPLEMENT_NOTES, SUPPLEMENT_UPCOMING } from './content/supplement';
 import { keysMatching, matchesKeyTarget } from './keys';
 import { lessonTimeline, pieceToLesson } from './piece';
 import { validateCurriculum } from './validate';
@@ -34,97 +34,121 @@ describe('giáo trình bổ sung "Làm quen từng nốt"', () => {
     }
   });
 
-  it('bài Đô: phần giới thiệu có khuông nhạc với nốt Đô ở nhiều trường độ (tròn, trắng, đen, móc đơn)', () => {
-    const pages = SUPPLEMENT_LESSONS[0].activities[0].pages;
-    const NAME: Record<number, string> = { 4: 'Tròn', 2: 'Trắng', 1: 'Đen', 0.5: 'Móc đơn', 0.25: 'Móc đôi' };
-    const durationStaves = pages.flatMap((p) => [p.illustration, ...(p.moreIllustrations ?? [])]).filter((ill) => ill?.type === 'staff' && ill.noteLabels?.includes('Tròn'));
-    expect(durationStaves.length).toBeGreaterThanOrEqual(2);
-    // Trang mở đầu: khuông nhạc trường độ ở trên, bàn phím ở dưới — mỗi hình một thẻ có tiêu đề.
-    const first = pages[0].illustration;
-    expect(first?.type === 'staff' && first.noteLabels && first.caption).toBeTruthy();
-    expect(pages[0].moreIllustrations?.map((ill) => ill.type)).toEqual(['keyboard']);
-    expect(pages[0].moreIllustrations?.[0]).toHaveProperty('caption');
-    for (const ill of durationStaves) {
-      if (ill?.type !== 'staff') continue;
-      const notes = lessonTimeline(pieceToLesson(ill.piece, 'sup-c'));
-      expect(notes.every((n) => n.midiNote === 60)).toBe(true);
-      expect(new Set(notes.map((n) => n.durationBeats))).toEqual(new Set([0.25, 0.5, 1, 2, 4]));
-      // Chữ dưới từng nốt đúng tên trường độ của nốt đó.
-      expect(ill.noteLabels).toEqual(notes.map((n) => NAME[n.durationBeats]));
-    }
+  it('đủ 7 nốt trắng Đô → Si, theo thứ tự, không còn nốt "sắp có"', () => {
+    expect(SUPPLEMENT_LESSONS.map((l) => SUPPLEMENT_NOTE[l.lessonId].name)).toEqual(['Đô', 'Rê', 'Mi', 'Pha', 'Sol', 'La', 'Si']);
+    expect(SUPPLEMENT_LESSONS.map((l) => l.lessonId)).toEqual(['sup-c', 'sup-d', 'sup-e', 'sup-f', 'sup-g', 'sup-a', 'sup-b']);
+    expect(SUPPLEMENT_UPCOMING).toEqual([]);
   });
 
-  it('bài Đô: sau trang đầu là 5 trang giới thiệu kỹ từng trường độ (một ô nhịp, phóng to)', () => {
-    const pages = SUPPLEMENT_LESSONS[0].activities[0].pages;
-    const expected: [string, number, number][] = [['tròn', 4, 1], ['trắng', 2, 2], ['đen', 1, 4], ['móc đơn', 0.5, 8], ['móc đôi', 0.25, 16]];
-    expected.forEach(([name, beats, count], i) => {
-      const page = pages[i + 1];
-      expect(page.title).toBe(`Đây là Đô ${name}`);
-      const ill = page.illustration;
-      if (ill?.type !== 'staff') throw new Error('trang trường độ phải có khuông nhạc');
-      expect(ill.listen).toBe(true);
-      const notes = lessonTimeline(pieceToLesson(ill.piece, 'sup-c'));
-      expect(notes).toHaveLength(count);
-      expect(notes.every((n) => n.midiNote === 60 && n.durationBeats === beats)).toBe(true);
-      expect(ill.zoom).toBeGreaterThan(1);
+  it('mọi nốt cùng một khuôn: cùng số trang, cùng loại hình từng trang, cùng bài tập (chỉ khác nốt)', () => {
+    const shape = (l: (typeof SUPPLEMENT_LESSONS)[number]) => ({
+      pages: l.activities[0].pages.map((p) => [p.illustration?.type, ...(p.moreIllustrations ?? []).map((i) => i.type)]),
+      exercises: l.exercises.map((e) => [e.id, e.kind, 'questions' in e ? e.questions.length : 'rounds' in e ? e.rounds.length : 0]),
+      games: SUPPLEMENT_GAMES[l.lessonId].map((g) => (g.type === 'lesson' ? g.spec.kind : g.type)),
     });
+    const first = shape(SUPPLEMENT_LESSONS[0]);
+    for (const l of SUPPLEMENT_LESSONS) expect(shape(l), l.lessonId).toEqual(first);
   });
 
-  it('bài Đô: ngay sau trang trường độ là bài đố 10 câu ngẫu nhiên (tròn, trắng, đen, móc đơn, móc đôi)', () => {
-    const lesson = SUPPLEMENT_LESSONS[0];
+  describe.each(SUPPLEMENT_NOTES.map((n, i) => [n.name, n, SUPPLEMENT_LESSONS[i]] as const))('bài %s', (name, note, lesson) => {
     const pages = lesson.activities[0].pages;
-    expect(pages[pages.length - 1].title).toBe('Nốt Đô dài, ngắn khác nhau');
-    const quiz = lesson.exercises[0] as ChoiceQuizExercise;
-    expect(quiz.id).toBe('duration-quiz');
-    expect(quiz.shuffle).toBe(true);
-    expect(quiz.questions).toHaveLength(10);
+    const pc = note.midi % 12;
     const NAME: Record<number, string> = { 4: 'Tròn', 2: 'Trắng', 1: 'Đen', 0.5: 'Móc đơn', 0.25: 'Móc đôi' };
-    const asked = new Map<string, number>();
-    for (const q of quiz.questions) {
-      expect(q.options).toEqual(['Tròn', 'Trắng', 'Đen', 'Móc đơn', 'Móc đôi']);
-      if (q.illustration?.type !== 'staff') throw new Error('câu hỏi phải có khuông nhạc');
-      const notes = lessonTimeline(pieceToLesson(q.illustration.piece, 'q'));
-      // Một ô nhịp toàn nốt Đô cùng trường độ; đáp án đúng là tên trường độ đó.
-      expect(notes.every((n) => n.midiNote === 60 && n.durationBeats === notes[0].durationBeats)).toBe(true);
-      const name = NAME[notes[0].durationBeats];
-      expect(q.options[q.answer]).toBe(name);
-      asked.set(name, (asked.get(name) ?? 0) + 1);
-    }
-    expect([...asked.values()]).toEqual([2, 2, 2, 2, 2]);
-  });
+    const quiz = (id: string) => lesson.exercises.find((e) => e.id === id) as ChoiceQuizExercise;
 
-  it('bài Đô: câu đố có đủ 3 dạng hình (phím, khuông, ngón tay); thẻ phím không hiện tên nốt', () => {
-    const quiz = pictureQuiz();
-    const types = new Set(quiz.questions.flatMap((q) => q.optionImages!.map((i) => i.type)));
-    expect(types).toEqual(new Set(['keyboard', 'staff', 'hand']));
-    for (const q of quiz.questions) {
-      for (const img of q.optionImages!) if (img.type === 'keyboard') expect(img.noLabels).toBe(true);
-      // Nhãn trung tính: không lộ đáp án.
-      expect(q.options.every((o) => /^Hình \d$/.test(o as string))).toBe(true);
-    }
-  });
+    it('trang đầu: khuông trường độ (có tên trường độ dưới từng nốt) + bàn phím, toàn nốt của bài', () => {
+      const first = pages[0].illustration;
+      if (first?.type !== 'staff' || !first.noteLabels || !first.caption) throw new Error('trang đầu phải có khuông nhạc có tiêu đề');
+      const notes = lessonTimeline(pieceToLesson(first.piece, lesson.lessonId));
+      expect(notes.every((n) => n.midiNote === note.midi)).toBe(true);
+      expect(new Set(notes.map((n) => n.durationBeats))).toEqual(new Set([0.25, 0.5, 1, 2, 4]));
+      expect(first.noteLabels).toEqual(notes.map((n) => NAME[n.durationBeats]));
+      const kb = pages[0].moreIllustrations?.[0];
+      expect(kb?.type === 'keyboard' && kb.caption && kb.highlight).toEqual([note.midi - 12, note.midi, note.midi + 12]);
+    });
 
-  it('bài Đô: đáp án đúng là hình có nốt Đô / ngón 1', () => {
-    const quiz = pictureQuiz();
-    const isC = (img: Illustration) =>
-      img.type === 'keyboard' ? Array.isArray(img.highlight) && img.highlight.every((m) => m % 12 === 0) : img.type === 'staff' ? img.piece.notation.startsWith('C4') : img.type === 'hand' && img.highlight === 1;
-    for (const q of quiz.questions) {
-      q.optionImages!.forEach((img, i) => expect(isC(img), `${q.prompt as string} — hình ${i + 1}`).toBe(i === q.answer));
-    }
-  });
+    it('5 trang giới thiệu từng trường độ (một ô nhịp, phóng to), trang cuối = tổng hợp trường độ', () => {
+      const expected: [string, number, number][] = [['tròn', 4, 1], ['trắng', 2, 2], ['đen', 1, 4], ['móc đơn', 0.5, 8], ['móc đôi', 0.25, 16]];
+      expected.forEach(([dur, beats, count], i) => {
+        const page = pages[i + 1];
+        expect(page.title).toBe(`Đây là ${name} ${dur}`);
+        const ill = page.illustration;
+        if (ill?.type !== 'staff') throw new Error('trang trường độ phải có khuông nhạc');
+        expect(ill.listen).toBe(true);
+        expect(ill.zoom).toBeGreaterThan(1);
+        const notes = lessonTimeline(pieceToLesson(ill.piece, lesson.lessonId));
+        expect(notes).toHaveLength(count);
+        expect(notes.every((n) => n.midiNote === note.midi && n.durationBeats === beats)).toBe(true);
+      });
+      expect(pages[pages.length - 1].title).toBe(`Nốt ${name} dài, ngắn khác nhau`);
+    });
 
-  it('trò chơi bài Đô chỉ tìm nốt Đô', () => {
-    for (const g of SUPPLEMENT_GAMES['sup-c']) {
-      if (g.type === 'balloon-hunt') expect(g.letters).toEqual(['C']);
-      else if (g.spec.kind === 'key-hunt') {
-        for (const r of g.spec.rounds) {
-          const keys = keysMatching(r.target, g.spec.keyboard.from, g.spec.keyboard.to);
-          expect(keys.length).toBeGreaterThan(0);
-          expect(keys.every((m) => m % 12 === 0)).toBe(true);
-          expect(matchesKeyTarget(r.target, 62)).toBe(false);
-        }
-      } else if ('notes' in g.spec) expect(g.spec.notes.every((m) => m % 12 === 0)).toBe(true);
-    }
+    it('trang bàn phím: nốt của bài ở mọi quãng tám nằm cạnh đúng nhóm phím đen', () => {
+      const page = pages.find((p) => p.title === note.landmark.title)!;
+      const ill = page.illustration;
+      if (ill?.type !== 'keyboard' || !Array.isArray(ill.highlight)) throw new Error('trang vị trí phải có bàn phím tô phím');
+      const whites = ill.highlight.filter((m) => [0, 2, 4, 5, 7, 9, 11].includes(m % 12));
+      expect(whites).toEqual([48 + pc, 60 + pc, 72 + pc]);
+      expect(ill.highlight.length).toBe(pc <= 4 ? 9 : 12);
+    });
+
+    it('trang ngón tay: thế tay có ngón của bài trên đúng phím', () => {
+      const page = pages.find((p) => p.title === `Ngón ${note.finger.n} tay phải đánh ${name}`)!;
+      const ill = page.illustration;
+      if (ill?.type !== 'keyboard') throw new Error('trang ngón phải có bàn phím');
+      expect(ill.fingers?.[note.midi]).toBe(note.finger.n);
+    });
+
+    it('đố trường độ: 10 câu ngẫu nhiên, mỗi trường độ 2 lần, đáp án đúng', () => {
+      const q = lesson.exercises[0] as ChoiceQuizExercise;
+      expect(q.id).toBe('duration-quiz');
+      expect(q.shuffle).toBe(true);
+      expect(q.questions).toHaveLength(10);
+      const asked = new Map<string, number>();
+      for (const x of q.questions) {
+        expect(x.options).toEqual(['Tròn', 'Trắng', 'Đen', 'Móc đơn', 'Móc đôi']);
+        if (x.illustration?.type !== 'staff') throw new Error('câu hỏi phải có khuông nhạc');
+        const notes = lessonTimeline(pieceToLesson(x.illustration.piece, 'q'));
+        expect(notes.every((n) => n.midiNote === note.midi && n.durationBeats === notes[0].durationBeats)).toBe(true);
+        const dur = NAME[notes[0].durationBeats];
+        expect(x.options[x.answer]).toBe(dur);
+        asked.set(dur, (asked.get(dur) ?? 0) + 1);
+      }
+      expect([...asked.values()]).toEqual([2, 2, 2, 2, 2]);
+    });
+
+    it('câu đố chọn hình: đủ 3 dạng hình, nhãn trung tính, đúng MỘT hình là đáp án', () => {
+      const q = quiz('picture-quiz');
+      expect(new Set(q.questions.flatMap((x) => x.optionImages!.map((i) => i.type)))).toEqual(new Set(['keyboard', 'staff', 'hand']));
+      const isNote = (img: Illustration) =>
+        img.type === 'keyboard'
+          ? Array.isArray(img.highlight) && img.highlight.every((m) => m === note.midi)
+          : img.type === 'staff'
+            ? lessonTimeline(pieceToLesson(img.piece, 'q')).every((n) => n.midiNote === note.midi)
+            : img.type === 'hand' && img.highlight === note.finger.n;
+      for (const x of q.questions) {
+        expect(x.options.every((o) => /^Hình \d$/.test(o as string))).toBe(true);
+        for (const img of x.optionImages!) if (img.type === 'keyboard') expect(img.noLabels).toBe(true);
+        x.optionImages!.forEach((img, i) => expect(isNote(img), `${x.prompt as string} — hình ${i + 1}`).toBe(i === x.answer));
+      }
+    });
+
+    it('luyện phím + trò chơi chỉ tìm nốt của bài', () => {
+      const keys = lesson.exercises.find((e) => e.kind === 'key-quiz');
+      if (keys?.kind !== 'key-quiz') throw new Error('thiếu bài luyện phím');
+      for (const r of keys.rounds) expect(keysMatching(r.target, keys.keyboard.from, keys.keyboard.to).every((m) => m % 12 === pc)).toBe(true);
+      for (const g of SUPPLEMENT_GAMES[lesson.lessonId]) {
+        if (g.type === 'balloon-hunt') expect(g.letters).toEqual([note.letter]);
+        else if (g.spec.kind === 'key-hunt') {
+          for (const r of g.spec.rounds) {
+            const found = keysMatching(r.target, g.spec.keyboard.from, g.spec.keyboard.to);
+            expect(found.length).toBeGreaterThan(0);
+            expect(found.every((m) => m % 12 === pc)).toBe(true);
+            expect(matchesKeyTarget(r.target, note.midi + 1)).toBe(false);
+          }
+        } else if ('notes' in g.spec) expect(g.spec.notes).toEqual([note.midi]);
+      }
+    });
   });
 
   it('validate báo lỗi khi số hình khác số lựa chọn', () => {
