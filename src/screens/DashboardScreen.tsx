@@ -87,7 +87,7 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
           </Button>
           <Button onClick={() => scrollToLibrary('smooth')} data-testid="open-library">
             <Icon name="count" />
-            <span>Thư viện bài</span>
+            <span>Thư viện</span>
           </Button>
           <Button onClick={() => navigate({ name: 'settings' })} aria-label="Cài đặt">
             <Icon name="settings" />
