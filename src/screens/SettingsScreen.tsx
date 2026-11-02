@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { microphoneInput } from '../core/input/MicrophoneInputProvider';
 import { midiToLabel, type NoteLabelStyle } from '../core/music/notes';
 import {
@@ -538,19 +538,23 @@ function Calibration() {
         đúng, nghe sai hay nghe thừa ở nốt nào.
       </p>
       {/* Một hàng nút theo thứ tự dùng; khung kết quả của từng nút hiện bên dưới hàng. */}
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <Button variant="primary" onClick={() => void startAuto()} disabled={autoRun !== null} data-testid="auto-calibrate">
+      <ListenTest labelStyle={labelStyle}>
+        <Button
+          variant="primary"
+          onClick={() => void startAuto()}
+          disabled={autoRun !== null}
+          className={CALIBRATION_BUTTON}
+          data-testid="auto-calibrate"
+        >
           Tự căn chỉnh (khoảng 1 phút)
         </Button>
-        <Button onClick={() => setChecking(true)} disabled={checking} data-testid="calibration-check-open">
+        <Button onClick={() => setChecking(true)} disabled={checking} className={CALIBRATION_BUTTON} data-testid="calibration-check-open">
           Kiểm tra theo nhịp
         </Button>
-        <Button onClick={() => void measure()} disabled={phase === 'measuring'}>
+        <Button onClick={() => void measure()} disabled={phase === 'measuring'} className={CALIBRATION_BUTTON}>
           {phase === 'measuring' ? 'Đang đo… hãy giữ yên lặng' : 'Chỉ đo tiếng ồn nền'}
         </Button>
-        {/* Đặt cuối hàng: danh sách nốt nghe được (w-full) tự xuống dòng ngay dưới các nút. */}
-        <ListenTest labelStyle={labelStyle} />
-      </div>
+      </ListenTest>
       {result && (
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
           Nhiễu nền: {result.ambient.toFixed(4)} → ngưỡng {result.gate.toFixed(4)} (độ nhạy {noiseGateToSensitivity(result.gate)})
@@ -582,8 +586,14 @@ function Calibration() {
 const LISTEN_TEST_MS = 15_000;
 const LISTEN_TEST_MAX_NOTES = 16;
 
-/** Đánh thử: hiện các nốt NoteRecognizer nhận được trong 15 giây (mỗi phím phải hiện đúng một lần). */
-function ListenTest({ labelStyle }: { labelStyle: NoteLabelStyle }) {
+/** Nút trong hàng Hiệu chuẩn: chia đều chỗ trống, hẹp quá thì chữ xuống dòng trong nút chứ không đẩy nút xuống hàng. */
+const CALIBRATION_BUTTON = 'flex-auto px-3 text-center text-sm! leading-tight';
+
+/**
+ * Đánh thử: hiện các nốt NoteRecognizer nhận được trong 15 giây (mỗi phím phải hiện đúng một lần).
+ * `children` = các nút đứng trước nút Đánh thử trong cùng hàng; danh sách nốt nằm ngay dưới hàng.
+ */
+function ListenTest({ labelStyle, children }: { labelStyle: NoteLabelStyle; children: ReactNode }) {
   const status = useMic((s) => s.status);
   const [until, setUntil] = useState<number | null>(null);
   const [heard, setHeard] = useState<number[] | null>(null);
@@ -619,11 +629,14 @@ function ListenTest({ labelStyle }: { labelStyle: NoteLabelStyle }) {
 
   return (
     <>
-      <Button onClick={() => (listening ? setUntil(null) : void start())} data-testid="listen-test">
-        {listening ? `Dừng (còn ${secondsLeft} giây)` : 'Đánh thử (15 giây)'}
-      </Button>
+      <div className="mt-3 flex flex-wrap items-stretch gap-2 sm:flex-nowrap">
+        {children}
+        <Button onClick={() => (listening ? setUntil(null) : void start())} className={CALIBRATION_BUTTON} data-testid="listen-test">
+          {listening ? `Dừng (còn ${secondsLeft} giây)` : 'Đánh thử (15 giây)'}
+        </Button>
+      </div>
       {heard !== null && (
-        <div className="flex w-full flex-wrap items-center gap-2" data-testid="heard-notes">
+        <div className="mt-3 flex w-full flex-wrap items-center gap-2" data-testid="heard-notes">
           <span className="text-sm text-slate-500 dark:text-slate-400">
             {listening ? 'Đang nghe — đánh vài nốt, mỗi phím phải hiện đúng một lần:' : `Đã nghe ${heard.length} nốt:`}
           </span>
