@@ -15,6 +15,9 @@ import { LessonLibrary } from '../components/LessonLibrary';
 
 const scrollToLibrary = (behavior: ScrollBehavior) => document.getElementById('library')?.scrollIntoView({ behavior, block: 'start' });
 
+/** Nút trên đầu trang: gọn lại để cả hàng nằm trên một dòng từ iPad ngang (≥ 1024px), vẫn cao 48px. */
+const HEADER_BUTTON = 'shrink-0 px-2! text-sm! whitespace-nowrap';
+
 /**
  * Trang chủ: phía trên là giáo trình (cấp đang học, tiến độ, buổi tiếp theo, thành tích),
  * phía dưới là Thư viện bài. `focus="library"` (route `library`) cuộn thẳng xuống thư viện.
@@ -46,17 +49,17 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
   return (
     <div className="h-full overflow-y-auto" data-testid="dashboard" data-ui-mode={mode}>
       <div className="mx-auto max-w-6xl px-6 pt-[calc(1.5rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-10">
-        <header className="flex flex-wrap items-center gap-4 pl-10">
-          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-12 w-12" />
-          <div className="flex-1">
-            <h1 className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-400 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent dark:from-violet-300 dark:via-fuchsia-300 dark:to-orange-300">
+        <header className="flex flex-wrap items-center gap-2 pl-10 lg:flex-nowrap" data-testid="dashboard-header">
+          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-10 w-10 shrink-0" />
+          <div className="min-w-32 flex-1">
+            <h1 className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-400 bg-clip-text text-2xl font-extrabold tracking-tight text-transparent dark:from-violet-300 dark:via-fuchsia-300 dark:to-orange-300">
               VietPiano
             </h1>
-            <p className="text-slate-500 dark:text-slate-400">
+            <p className="truncate text-sm text-slate-500 dark:text-slate-400">
               {profile ? `${profile.avatar} Chào ${profile.name}!` : 'Học piano từng bước — nghe đàn của bạn qua micro hoặc MIDI.'}
             </p>
           </div>
-          <div className="inline-flex rounded-xl bg-violet-100 p-1 dark:bg-slate-700" role="radiogroup" aria-label="Giao diện">
+          <div className="inline-flex shrink-0 rounded-xl bg-violet-100 p-1 dark:bg-slate-700" role="radiogroup" aria-label="Giao diện">
             {(
               [
                 ['auto', 'Tự động'],
@@ -70,28 +73,28 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
                 role="radio"
                 aria-checked={uiMode === v}
                 onClick={() => update({ uiMode: v })}
-                className={`min-h-10 rounded-lg px-3 text-sm font-semibold ${uiMode === v ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'}`}
+                className={`min-h-10 rounded-lg px-2 text-sm font-semibold whitespace-nowrap ${uiMode === v ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'}`}
               >
                 {label}
               </button>
             ))}
           </div>
-          <FullscreenButton />
-          <Button onClick={() => navigate({ name: 'supplement' })} data-testid="open-supplement">
+          <FullscreenButton className="shrink-0" />
+          <Button className={HEADER_BUTTON} onClick={() => navigate({ name: 'supplement' })} data-testid="open-supplement">
             <span aria-hidden>🎵</span>
-            <span>Làm quen từng nốt</span>
+            <span>Làm quen nốt</span>
           </Button>
-          <Button onClick={() => navigate({ name: 'games' })} data-testid="open-games">
+          <Button className={HEADER_BUTTON} onClick={() => navigate({ name: 'games' })} data-testid="open-games">
             <Icon name="gamepad" />
             <span>Trò chơi</span>
           </Button>
-          <Button onClick={() => scrollToLibrary('smooth')} data-testid="open-library">
+          <Button className={HEADER_BUTTON} onClick={() => scrollToLibrary('smooth')} data-testid="open-library">
             <Icon name="count" />
             <span>Thư viện</span>
           </Button>
-          <Button onClick={() => navigate({ name: 'settings' })} aria-label="Cài đặt">
+          <Button className={HEADER_BUTTON} onClick={() => navigate({ name: 'settings' })}>
             <Icon name="settings" />
-            <span>Cài đặt & micro</span>
+            <span>Cài đặt</span>
           </Button>
         </header>
 

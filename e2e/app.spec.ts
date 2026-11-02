@@ -708,6 +708,25 @@ test('trang chủ là Dashboard giáo trình; Curriculum Browser có 6 cấp, c�
   await expect.poll(libraryTop).toBeLessThan(100);
 });
 
+test('hàng nút đầu trang chủ nằm trên một dòng ở iPad ngang', async ({ page }) => {
+  for (const width of [1024, 1180, 1366]) {
+    await page.setViewportSize({ width, height: 768 });
+    await page.goto('/');
+    const header = page.getByTestId('dashboard-header');
+    await expect(header).toBeVisible();
+    const fit = await header.evaluate((el) => {
+      const boxes = Array.from({ length: el.children.length }, (_, i) => el.children[i].getBoundingClientRect());
+      const mid = (b: DOMRect) => b.top + b.height / 2;
+      return {
+        rows: Math.max(...boxes.map(mid)) - Math.min(...boxes.map(mid)),
+        overflow: Math.max(...boxes.map((b) => b.right)) - el.getBoundingClientRect().right,
+      };
+    });
+    expect(fit.rows).toBeLessThan(2);
+    expect(fit.overflow).toBeLessThanOrEqual(0);
+  }
+});
+
 test('?screen=library mở trang chủ, cuộn sẵn tới thư viện; "Về thư viện" từ bài luyện cũng vậy', async ({ page }) => {
   await page.goto('/?screen=library');
   await expect(page.getByTestId('current-level')).toBeAttached();
