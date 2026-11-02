@@ -14,6 +14,7 @@ import { BalloonPopScreen } from './screens/BalloonPopScreen';
 import { TomatoHarvestScreen } from './screens/TomatoHarvestScreen';
 import { F1RacingScreen } from './screens/F1RacingScreen';
 import { SupplementScreen } from './screens/SupplementScreen';
+import { SongLibraryScreen } from './screens/SongLibraryScreen';
 import { useCurriculum } from './store/curriculumStore';
 import { useProfiles } from './store/profileStore';
 import { AppVersionSide } from './components/AppVersion';
@@ -44,6 +45,7 @@ export function App() {
       {route.name === 'curriculum' && <CurriculumScreen levelId={route.levelId} />}
       {route.name === 'lesson' && <LessonPlayerScreen lessonId={route.lessonId} stage={route.stage} />}
       {route.name === 'library' && <DashboardScreen focus="library" />}
+      {route.name === 'song-library' && <SongLibraryScreen />}
       {route.name === 'games' && <GamesScreen />}
       {route.name === 'note-hunter' && <NoteHunterScreen />}
       {route.name === 'flappy-note' && <FlappyNoteScreen />}

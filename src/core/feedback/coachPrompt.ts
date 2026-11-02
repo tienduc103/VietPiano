@@ -80,7 +80,7 @@ export function lessonReport(
 }
 
 /** Báo cáo từ một lượt chơi bài ở màn Luyện tập (Wait Mode / Đếm nốt). */
-export function practiceReport(title: string, state: PracticeState, labelStyle: NoteLabelStyle): CoachReport {
+export function practiceReport(title: string, state: PracticeState, labelStyle: NoteLabelStyle, pedal?: number | null): CoachReport {
   const accuracy = computeAccuracy(state);
   const mistakes = new Map<string, number>();
   state.results.forEach((r, i) => {
@@ -96,6 +96,7 @@ export function practiceReport(title: string, state: PracticeState, labelStyle: 
     criteria: [
       { label: 'Đúng nốt', value: accuracy },
       { label: 'Hoàn thành', value: notes ? (notes - state.skipped) / notes : 0 },
+      ...(pedal === undefined ? [] : [{ label: 'Pedal', value: pedal }]),
     ],
     mistakes: topMistakes(mistakes),
     durationMs: state.finishedAt !== null && state.startedAt !== null ? state.finishedAt - state.startedAt : undefined,
@@ -112,6 +113,7 @@ export function tempoReport(
   expected: readonly number[],
   labelStyle: NoteLabelStyle,
   targetBpm: number,
+  pedal?: number | null,
 ): CoachReport {
   const total = tempo.results.length;
   const completion = total ? tempo.hits / total : 0;
@@ -134,6 +136,7 @@ export function tempoReport(
       { label: 'Đúng nốt', value: null },
       { label: 'Đúng nhịp (trong các nốt đã đánh)', value: onTimeRatio },
       { label: 'Hoàn thành', value: completion },
+      ...(pedal === undefined ? [] : [{ label: 'Pedal', value: pedal }]),
     ],
     mistakes: list,
     durationMs: tempo.finishedAt !== null && tempo.startedAt !== null ? tempo.finishedAt - tempo.startedAt : undefined,

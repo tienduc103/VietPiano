@@ -97,6 +97,8 @@ export interface Lesson {
   dynamics?: { index: number; mark: DynamicMark }[];
   /** Ký hiệu pedal vang: đạp từ đầu ô `from` tới hết ô `to` (chỉ số ô từ 0, gồm cả ô lấy đà). */
   pedal?: { from: number; to: number }[];
+  /** Tuyển tập khuông đôi: chỉ hiện ở trang Thư viện bài hát, không hiện trong Thư viện bài ở trang chủ. */
+  repertoire?: boolean;
   /** Ghi chú nguồn gốc bản nhạc (bản quyền). */
   source?: string;
   /** Nhịp độ gợi ý cho chế độ chạy theo nhịp (nốt đen/phút); mặc định DEFAULT_TEMPO_BPM. */

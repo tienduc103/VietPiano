@@ -249,6 +249,24 @@ describe('PracticeEngine — hai tay (đàn MIDI)', () => {
   const make = (config = {}) =>
     new PracticeEngine([A4, G4b], { ...DEFAULT_PRACTICE_CONFIG, twoHands: true, ...config }, [[D3, F3, A3], []]);
 
+  it('bước có phím lặp (Alberti): đánh đủ số lần mới sang bước, không lần nào rơi sang bước sau thành sai', () => {
+    const C3 = 48, E3 = 52, G3 = 55, C5 = 72, B2 = 47, D3b = 50;
+    const e = new PracticeEngine([C5, A4], { ...DEFAULT_PRACTICE_CONFIG, twoHands: true }, [[C3, G3, E3, G3], [B2, D3b]]);
+    expect(e.handleNote(C5, 1000)).toBe('partial');
+    expect(e.handleNote(C3, 1001)).toBe('partial');
+    expect(e.handleNote(G3, 1200)).toBe('partial');
+    expect(e.handleNote(E3, 1400)).toBe('partial');
+    // Còn một lần Sol3: chưa được sang bước dù đã đánh đủ các phím khác nhau.
+    expect(e.getState()).toMatchObject({ index: 0, pendingLeft: [G3], melodyDone: true });
+    expect(e.handleNote(G3, 1600)).toBe('correct');
+    expect(e.getState()).toMatchObject({ index: 1, wrong: 0, pendingLeft: [B2, D3b] });
+    // Đánh thừa phím đã đủ số lần trong bước → bỏ qua, không tính sai.
+    const f = new PracticeEngine([C5, A4], { ...DEFAULT_PRACTICE_CONFIG, twoHands: true }, [[C3, E3], []]);
+    f.handleNote(C3, 1000);
+    expect(f.handleNote(C3, 1200)).toBe('ignored');
+    expect(f.getState().wrong).toBe(0);
+  });
+
   it('chỉ chuyển nốt khi đủ giai điệu và cả hợp âm tay trái, thứ tự bất kỳ', () => {
     const e = make();
     expect(e.getState().pendingLeft).toEqual([D3, F3, A3]);

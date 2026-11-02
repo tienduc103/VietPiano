@@ -11,6 +11,7 @@ import {
   Accidental,
   BarlineType,
   Beam,
+  Fraction,
   Dot,
   Formatter,
   Renderer,
@@ -282,7 +283,9 @@ export function formatMeasure(lesson: Lesson, staves: Stave[], notes: StaveNote[
     formatter.joinVoices([voice]);
     return voice;
   });
-  const beams = notes.flatMap((ns) => Beam.generateBeams(ns));
+  // Nhịp kép (6/8, 9/8, 12/8): móc đơn nối theo nhóm ba.
+  const compound = beatValue === 8 && beats > 3 && beats % 3 === 0;
+  const beams = notes.flatMap((ns) => Beam.generateBeams(ns, compound ? { groups: [new Fraction(3, 8)] } : undefined));
   formatter.format(voices, noteArea - MEASURE_PADDING);
   return { voices, beams };
 }

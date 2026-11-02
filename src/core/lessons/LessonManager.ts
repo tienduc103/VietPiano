@@ -24,12 +24,18 @@ export class LessonManager {
     return this.lessons.find((l) => l.id === id);
   }
 
+  /** Các nhóm bài ở Thư viện bài trang chủ; tuyển tập khuông đôi chỉ hiện ở trang Thư viện bài hát. */
   byCategory(): { category: LessonCategory; label: string; lessons: Lesson[] }[] {
     return CATEGORY_ORDER.map((category) => ({
       category,
       label: CATEGORY_LABELS[category],
-      lessons: this.lessons.filter((l) => l.category === category),
+      lessons: this.lessons.filter((l) => l.category === category && !l.repertoire),
     })).filter((g) => g.lessons.length > 0);
+  }
+
+  /** Mọi bài hát (trang Thư viện bài hát): bài ở trang chủ + tuyển tập khuông đôi. */
+  songs(): Lesson[] {
+    return this.lessons.filter((l) => l.category === 'song');
   }
 
   /** Bài kế tiếp trong thư viện (để gợi ý sau khi hoàn thành). */

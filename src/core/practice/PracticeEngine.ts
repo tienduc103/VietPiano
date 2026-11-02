@@ -74,7 +74,6 @@ export class PracticeEngine {
   private readonly listeners = new Set<(s: PracticeState) => void>();
   private lastAdvanceTime = -Infinity;
   private hadWrongOnCurrent = false;
-  private leftPressed = new Set<number>();
   private melodyDone = false;
 
   /** `leftHand[i]` = nốt tay trái cần đánh cùng nốt giai điệu thứ i (xem `accompanimentByNote`). */
@@ -130,7 +129,6 @@ export class PracticeEngine {
 
   private resetStep(): void {
     this.hadWrongOnCurrent = false;
-    this.leftPressed = new Set();
     this.melodyDone = false;
   }
 
@@ -163,10 +161,17 @@ export class PracticeEngine {
     const isLeft = left.includes(midi);
     const isMelody = !isLeft && this.matches(midi, expected);
     if (left.length > 0 && (isLeft || isMelody)) {
-      if (isLeft ? this.leftPressed.has(midi) : this.melodyDone) return 'ignored';
-      if (isLeft) this.leftPressed.add(midi);
-      else this.melodyDone = true;
-      const pendingLeft = left.filter((m) => !this.leftPressed.has(m));
+      // Tính từng lần đánh: bước rải hợp âm có thể lặp phím (Alberti C3 G3 E3 G3) — đánh đủ số lần mới sang bước,
+      // nếu không lần lặp sẽ rơi sang bước sau và bị tính sai. Đánh thừa trong bước thì bỏ qua.
+      const pendingLeft = s.pendingLeft.slice();
+      if (isLeft) {
+        const at = pendingLeft.indexOf(midi);
+        if (at < 0) return 'ignored';
+        pendingLeft.splice(at, 1);
+      } else {
+        if (this.melodyDone) return 'ignored';
+        this.melodyDone = true;
+      }
       if (!this.melodyDone || pendingLeft.length > 0) {
         this.setState({ status: 'waiting', pendingLeft, melodyDone: this.melodyDone, startedAt });
         return 'partial';

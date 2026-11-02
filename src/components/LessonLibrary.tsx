@@ -21,6 +21,7 @@ export function LessonLibrary() {
   const sessions = useApp((s) => s.sessions);
   const recent = useApp((s) => s.recent);
   const openLesson = useApp((s) => s.openLesson);
+  const navigate = useApp((s) => s.navigate);
   const profiles = useProfiles((s) => s.profiles);
   const profile = useProfiles(activeProfile);
   const labelStyle = useSettings((s) => s.settings.labelStyle);
@@ -74,7 +75,22 @@ export function LessonLibrary() {
         <section key={g.category} className="mt-8">
           <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
             <span className={`h-5 w-1.5 rounded-full ${ACCENTS[gi % ACCENTS.length]}`} />
-            {g.label}
+            {g.category === 'song' ? (
+              // Chữ "Bài hát" mở trang riêng; phần "Xem tất cả" ẩn với trình đọc màn hình để tên mục giữ nguyên.
+              <button
+                type="button"
+                onClick={() => navigate({ name: 'song-library' })}
+                data-testid="open-song-library"
+                className="-my-2 inline-flex min-h-12 items-center gap-2 rounded-xl pr-3 text-left text-violet-700 transition-colors hover:text-fuchsia-600 active:text-fuchsia-700 dark:text-violet-300 dark:hover:text-fuchsia-300"
+              >
+                {g.label}
+                <span className="text-sm font-medium opacity-80" aria-hidden>
+                  Xem tất cả {lessonManager.songs().length} bài ›
+                </span>
+              </button>
+            ) : (
+              g.label
+            )}
           </h2>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {g.lessons.map((l) => (
@@ -100,7 +116,7 @@ export function LessonLibrary() {
 }
 
 /** Màu nhấn cho từng nhóm bài (xoay vòng). */
-const ACCENTS = [
+export const ACCENTS = [
   'bg-gradient-to-r from-violet-500 to-fuchsia-500',
   'bg-gradient-to-r from-sky-400 to-cyan-400',
   'bg-gradient-to-r from-emerald-400 to-lime-400',
@@ -124,7 +140,7 @@ function Summary({ label, value, tone }: { label: string; value: string; tone: k
   );
 }
 
-function LessonCard({
+export function LessonCard({
   lesson,
   progress,
   accent,

@@ -18,6 +18,8 @@ export type Route =
   /** `stage`: mở thẳng phần Luyện tập / Trò chơi sau buổi (nút trên thẻ buổi học). */
   | { name: 'lesson'; lessonId: string; stage?: LessonStage }
   | { name: 'library' }
+  /** Thư viện bài hát: trang riêng gồm mọi bài hát, có tuyển tập khuông đôi. */
+  | { name: 'song-library' }
   /** Mục Trò chơi: mọi trò của các buổi học + trò chơi tự do. */
   | { name: 'games' }
   /** Săn nốt (Note Hunter): bản nhạc tự chạy, dừng ở nốt mục tiêu chờ người chơi đánh đúng. */
@@ -36,13 +38,15 @@ export type Route =
   | { name: 'tomato-harvest' }
   /** VietPiano F1 Racing: đọc nốt để giữ tốc độ, hai phím đàn để đổi làn. */
   | { name: 'f1-racing' }
-  | { name: 'practice'; lessonId: string }
+  /** `fromSongs`: mở từ Thư viện bài hát → nút quay lại / "Về thư viện" trở về trang đó. */
+  | { name: 'practice'; lessonId: string; fromSongs?: boolean }
   | { name: 'settings' };
 
 /** Màn hình mở đầu: Dashboard giáo trình; "?screen=library" / "?screen=curriculum" / "?screen=games" mở thẳng màn đó (đường tắt, dùng cả trong e2e). */
 export function initialRoute(search = typeof location === 'undefined' ? '' : location.search): Route {
   const screen = new URLSearchParams(search).get('screen');
   if (screen === 'library') return { name: 'library' };
+  if (screen === 'song-library') return { name: 'song-library' };
   if (screen === 'curriculum') return { name: 'curriculum' };
   if (screen === 'supplement') return { name: 'supplement' };
   if (screen === 'games') return { name: 'games' };
@@ -78,7 +82,12 @@ export const useApp = create<AppStore>((set, get) => ({
   recent: loadRecentLessons(),
   navigate: (route) => set({ route, previous: get().route }),
   back: () => set({ route: get().previous ?? { name: 'dashboard' }, previous: null }),
-  openLesson: (lessonId) => set({ route: { name: 'practice', lessonId }, previous: get().route, recent: pushRecentLesson(lessonId) }),
+  openLesson: (lessonId) => {
+    const from = get().route;
+    // "Bài tiếp theo" trong màn Luyện tập giữ nguyên trang thư viện đã mở bài.
+    const fromSongs = from.name === 'song-library' || (from.name === 'practice' && from.fromSongs);
+    set({ route: { name: 'practice', lessonId, ...(fromSongs ? { fromSongs } : {}) }, previous: from, recent: pushRecentLesson(lessonId) });
+  },
   loadProgress: async () => {
     try {
       const [progress, sessions] = await Promise.all([progressStorage.getAllProgress(), progressStorage.getAllSessions()]);

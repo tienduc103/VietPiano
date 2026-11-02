@@ -19,7 +19,7 @@ import { MidiBadge } from '../components/MidiPanel';
 import { Button, FullscreenButton, Icon, formatDuration, type IconName } from '../components/ui';
 import { AppVersion } from '../components/AppVersion';
 import { useSettings } from '../store/settingsStore';
-import { useApp } from '../store/appStore';
+import { useApp, type Route } from '../store/appStore';
 import { useMic } from '../store/micStore';
 import { useMidi } from '../store/midiStore';
 import { useWakeLock } from '../hooks/useAppLifecycle';
@@ -33,6 +33,8 @@ import { AiNoteHistory } from '../components/AiNoteHistory';
 import { useLibraryAiNotes } from '../hooks/useLibraryAiNotes';
 import { useListenSample } from '../hooks/useListenSample';
 import { usePlayingNow } from '../store/playingStore';
+import { pedalRanges } from '../core/curriculum/piece';
+import { PracticePedal, stepPedalRanges, waitPedalPosition } from '../core/practice/PracticePedal';
 import { hasHandChoice, isOtherHandMidi, practiceTrack, PRACTICE_HAND_LABEL, resultsOnScore, type PracticeHand, type PracticeTrack, type TrackStep } from '../core/practice/handPractice';
 
 const FEEDBACK_MS = 900;
@@ -66,6 +68,9 @@ function Practice({ lesson }: { lesson: Lesson }) {
   const updateSettings = useSettings((s) => s.update);
   const navigate = useApp((s) => s.navigate);
   const openLesson = useApp((s) => s.openLesson);
+  // Mở từ Thư viện bài hát → quay về trang đó.
+  const fromSongs = useApp((s) => s.route.name === 'practice' && !!s.route.fromSongs);
+  const libraryRoute: Route = fromSongs ? { name: 'song-library' } : { name: 'library' };
   const micLive = useMic((s) => s.live);
 
   // Chế độ chạy theo nhịp: khuông nhạc tự chạy, chỉ khớp thời điểm gõ phím, không xét cao độ.
@@ -210,6 +215,40 @@ function Practice({ lesson }: { lesson: Lesson }) {
     };
   }, [engine, follower, lesson]);
 
+  // Pedal vang: chỉ đàn MIDI gửi được (Control Change 64); micro / bàn phím ảo → "không đo".
+  const hasPedal = !!lesson.pedal?.length;
+  const pedal = useMemo(() => new PracticePedal(), []);
+  const pedalState = useSyncExternalStore(
+    (cb) => pedal.subscribe(cb),
+    () => pedal.getState(),
+  );
+  // Cùng trục với vị trí ghi sự kiện: Theo nhịp = phách thật, Chờ / Đếm nốt = số bước (`PracticePedal.ts`).
+  const pedalTarget = useMemo(() => {
+    if (!hasPedal) return null;
+    const beats = pedalRanges(lesson);
+    if (tempoMode) return { ranges: beats, end: track.steps[track.steps.length - 1].startBeat + track.steps[track.steps.length - 1].beats };
+    return { ranges: stepPedalRanges(beats, track.steps.map((s) => s.startBeat)), end: track.steps.length };
+  }, [lesson, hasPedal, tempoMode, track]);
+  const pedalPosition = useRef<(time: number) => number>(() => 0);
+  pedalPosition.current = (time) =>
+    tempoMode
+      ? follower.positionAt(time) + track.steps[0].startBeat
+      : waitPedalPosition(engine.getState().index, track.steps.length, engine.getState().status === 'finished');
+  useEffect(() => midiInput.onPedal((e) => pedal.handle(e.down, pedalPosition.current(e.time), !listeningRef.current)), [pedal]);
+  // Đổi tay / chế độ, chơi lại → lượt mới; lùi nốt → bỏ các lần đạp phía sau.
+  useEffect(() => pedal.reset(pedalPosition.current(performance.now())), [pedal, engine, follower, tempoMode]);
+  const waitIndexRef = useRef(state.index);
+  useEffect(() => {
+    if (!tempoMode && state.status !== 'finished' && state.index < waitIndexRef.current) pedal.rewind(waitPedalPosition(state.index, track.steps.length, false));
+    waitIndexRef.current = state.index;
+  }, [pedal, tempoMode, state.index, state.status, track]);
+  const tempoIdle = tempo.status === 'idle';
+  useEffect(() => {
+    if (tempoMode && tempoIdle) pedal.reset(-Infinity);
+  }, [pedal, tempoMode, tempoIdle]);
+  /** Điểm pedal: bài không có pedal → undefined; không có đàn MIDI → null ("không đo"). */
+  const pedalScore = !pedalTarget ? undefined : midiConnected ? pedal.score(pedalTarget.ranges, pedalTarget.end) : null;
+
   // Hiện Đúng/Sai trong chốc lát rồi quay về "Đang chờ".
   const [showFeedback, setShowFeedback] = useState(false);
   const aiNotes = useLibraryAiNotes(lesson.id);
@@ -300,7 +339,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
     <div className="flex h-full flex-col">
       {/* ── Trên: tên bài, tiến độ ── */}
       <header className="flex items-center gap-3 pr-4 pl-16 pt-[calc(1rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-2">
-        <Button variant="ghost" onClick={() => navigate({ name: 'library' })} aria-label="Về thư viện" className="px-2">
+        <Button variant="ghost" onClick={() => navigate(libraryRoute)} aria-label="Về thư viện" className="px-2">
           <Icon name="back" />
         </Button>
         <div className="min-w-0 flex-1">
@@ -391,6 +430,20 @@ function Practice({ lesson }: { lesson: Lesson }) {
         </div>
         <DetectedNote labelStyle={settings.labelStyle} />
         <MidiBadge />
+        {hasPedal &&
+          (midiConnected ? (
+            <span
+              className={`rounded-full px-3 py-1 text-sm font-semibold ${pedalState.down ? 'bg-fuchsia-500 text-white' : 'bg-violet-100 text-violet-700 dark:bg-slate-700 dark:text-slate-300'}`}
+              title='Đạp và nhả theo ký hiệu "Ped." dưới khuông; đạp ngay sau khi đánh nốt đầu ô là đúng kỹ thuật'
+              data-testid="pedal-state"
+            >
+              Pedal: {pedalState.down ? 'đang đạp' : 'nhả'}
+            </span>
+          ) : (
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200" title="Chỉ đàn MIDI gửi được pedal" data-testid="pedal-unmeasured">
+              Pedal: không đo
+            </span>
+          ))}
         {tempoMode ? (
           <TempoPanel
             tempo={tempo}
@@ -467,9 +520,10 @@ function Practice({ lesson }: { lesson: Lesson }) {
           bpm={baseBpm}
           onAiNote={aiNotes.add}
           tempo={tempo}
+          pedalScore={pedalScore}
           onRetry={() => follower.restart()}
           onNext={nextLesson ? () => openLesson(nextLesson.id) : undefined}
-          onLibrary={() => navigate({ name: 'library' })}
+          onLibrary={() => navigate(libraryRoute)}
         />
       )}
       {!tempoMode && state.status === 'finished' && (
@@ -478,9 +532,10 @@ function Practice({ lesson }: { lesson: Lesson }) {
           mode={mode === 'count' ? 'count' : 'wait'}
           onAiNote={aiNotes.add}
           state={state}
+          pedalScore={pedalScore}
           onRetry={restart}
           onNext={nextLesson ? () => openLesson(nextLesson.id) : undefined}
-          onLibrary={() => navigate({ name: 'library' })}
+          onLibrary={() => navigate(libraryRoute)}
         />
       )}
       {showAiNotes && (
@@ -819,6 +874,7 @@ function TempoFinishDialog({
   bpm,
   onAiNote,
   tempo,
+  pedalScore,
   onRetry,
   onNext,
   onLibrary,
@@ -828,6 +884,7 @@ function TempoFinishDialog({
   bpm: number;
   onAiNote: (note: AiNote) => void;
   tempo: TempoState;
+  pedalScore?: number | null;
   onRetry: () => void;
   onNext?: () => void;
   onLibrary: () => void;
@@ -836,7 +893,7 @@ function TempoFinishDialog({
   const onTimePct = tempo.hits === 0 ? 0 : Math.round((tempo.onTime / tempo.hits) * 100);
   const labelStyle = useSettings((s) => s.settings.labelStyle);
   const uiMode = useUiMode();
-  const report = tempoReport(title, tempo, midis, labelStyle, bpm);
+  const report = tempoReport(title, tempo, midis, labelStyle, bpm, pedalScore);
   const saveNote = useAiNoteSaver(report.score, 'tempo', onAiNote);
   return (
     <div className="fixed inset-0 z-20 grid place-items-center bg-violet-950/50 p-4 backdrop-blur-sm" role="dialog" aria-modal aria-label="Kết quả chạy theo nhịp">
@@ -848,6 +905,7 @@ function TempoFinishDialog({
           <Stat label="Đúng nhịp" value={`${onTimePct}%`} />
           <Stat label="Bị lỡ" value={String(tempo.missed)} />
           <Stat label="Nhịp độ cuối" value={`♩=${Math.round(tempo.currentBpm)}`} />
+          <PedalStat score={pedalScore} />
         </dl>
         <div className="mt-4 text-left">
           <AiCoachCard report={report} mode={uiMode} onDone={saveNote} />
@@ -873,6 +931,7 @@ function FinishDialog({
   mode,
   onAiNote,
   state,
+  pedalScore,
   onRetry,
   onNext,
   onLibrary,
@@ -881,6 +940,7 @@ function FinishDialog({
   mode: AiNoteMode;
   onAiNote: (note: AiNote) => void;
   state: PracticeState;
+  pedalScore?: number | null;
   onRetry: () => void;
   onNext?: () => void;
   onLibrary: () => void;
@@ -890,7 +950,7 @@ function FinishDialog({
   const accuracy = Math.round(computeAccuracy(state) * 100);
   const elapsed = state.finishedAt !== null && state.startedAt !== null ? state.finishedAt - state.startedAt : 0;
   const stars = accuracy >= 95 ? 3 : accuracy >= 80 ? 2 : 1;
-  const report = practiceReport(title, state, labelStyle);
+  const report = practiceReport(title, state, labelStyle, pedalScore);
   const saveNote = useAiNoteSaver(report.score, mode, onAiNote);
   return (
     <div className="fixed inset-0 z-20 grid place-items-center bg-violet-950/50 p-4 backdrop-blur-sm" role="dialog" aria-modal aria-label="Kết quả">
@@ -906,6 +966,7 @@ function FinishDialog({
           <Stat label="Thời gian" value={formatDuration(elapsed)} />
           <Stat label="Đúng" value={String(state.correct)} />
           <Stat label="Sai / Bỏ qua" value={`${state.wrong} / ${state.skipped}`} />
+          <PedalStat score={pedalScore} />
         </dl>
         <div className="mt-4 text-left">
           <AiCoachCard report={report} mode={uiMode} onDone={saveNote} />
@@ -922,6 +983,16 @@ function FinishDialog({
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Điểm pedal ở hộp thoại kết quả; bài không có pedal → không hiện. Không tính vào độ chính xác nốt. */
+function PedalStat({ score }: { score?: number | null }) {
+  if (score === undefined) return null;
+  return (
+    <div className="col-span-2" data-testid="pedal-score">
+      <Stat label="Pedal (đạp – nhả đúng ký hiệu)" value={score === null ? 'Không đo — cần đàn MIDI' : `${Math.round(score * 100)}%`} />
     </div>
   );
 }

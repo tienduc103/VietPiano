@@ -42,7 +42,9 @@ export function HandsGuide({
           <>
             <span className="flex gap-1.5 text-2xl font-bold" data-testid="expected-left">
               {left.pitches.map((p, i) => {
-                const pressed = grading && !pendingLeft.includes(left.midis[i]);
+                // Phím lặp trong bước (Alberti): gạch dần từ lần đầu, số lần còn thiếu giữ lại ở cuối.
+                const later = left.midis.slice(i).filter((m) => m === left.midis[i]).length;
+                const pressed = grading && later > pendingLeft.filter((m) => m === left.midis[i]).length;
                 return (
                   <span key={i} className={pressed ? 'text-emerald-600 line-through decoration-2 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-300'}>
                     {pitchToLabel(p, labelStyle)}

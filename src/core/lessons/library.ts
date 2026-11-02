@@ -4,6 +4,7 @@
  * được chép lại đơn giản hoá cho người mới học, chỉ dùng tay phải hoặc tay trái.
  */
 import { parseAccompaniment, parseNotes } from './notation';
+import { buildAccompaniment, REPERTOIRE_DEFS } from './repertoire';
 import type { Lesson } from './types';
 
 type LessonDef = Omit<Lesson, 'notes' | 'accompaniment'> & { notation: string; accompanimentNotation?: string };
@@ -1103,7 +1104,31 @@ const defs: LessonDef[] = [
   },
 ];
 
-export const LESSONS: Lesson[] = defs.map(({ notation, accompanimentNotation, ...rest }) => ({
+/** Tuyển tập khuông đôi (`repertoire.ts`) → cùng dạng bài thư viện; tay trái dựng từ dòng hợp âm. */
+const repertoireDefs: LessonDef[] = REPERTOIRE_DEFS.map((r) => {
+  const left = r.left ?? buildAccompaniment(r);
+  return {
+    id: `rep-${r.id}`,
+    title: r.title,
+    description: r.description,
+    category: 'song',
+    clef: 'grand',
+    timeSignature: r.time,
+    ...(r.key ? { keySignature: r.key } : {}),
+    ...(r.pickup ? { pickup: r.pickup } : {}),
+    ...(r.sections ? { sections: r.sections } : {}),
+    difficulty: r.difficulty,
+    hand: 'both',
+    tempo: r.tempo,
+    source: r.source,
+    repertoire: true,
+    notation: r.notation,
+    accompanimentNotation: left.notation,
+    pedal: left.pedal,
+  };
+});
+
+export const LESSONS: Lesson[] = [...defs, ...repertoireDefs].map(({ notation, accompanimentNotation, ...rest }) => ({
   ...rest,
   notes: parseNotes(notation),
   ...(accompanimentNotation ? { accompaniment: parseAccompaniment(accompanimentNotation) } : {}),

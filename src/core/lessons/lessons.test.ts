@@ -1,8 +1,10 @@
 import { hasHandChoice } from '../practice/handPractice';
+import { DEFAULT_PRACTICE_CONFIG, PracticeEngine } from '../practice/PracticeEngine';
 import { describe, expect, it } from 'vitest';
 import { LESSONS } from './library';
 import { parseAccompaniment, parseNotes, splitMeasures } from './notation';
 import { lessonManager } from './LessonManager';
+import { buildAccompaniment } from './repertoire';
 import { accompanimentByNote, fingerText, isAccompanimentMidi, measureLength, sectionAt, type Hand, type Lesson } from './types';
 
 describe('ký hiệu bài học', () => {
@@ -248,6 +250,56 @@ describe('thư viện bài học', () => {
     const lesson = LESSONS.find((l) => l.id === id)!;
     const count = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup).length;
     expect(lesson.pedal).toEqual(Array.from({ length: count }, (_, i) => ({ from: i, to: i })));
+  });
+
+  describe('tuyển tập khuông đôi (trang Thư viện bài hát)', () => {
+    const repertoire = LESSONS.filter((l) => l.repertoire);
+
+    it('đủ 50 bài, không hiện ở Thư viện bài trang chủ, đều nằm trong trang bài hát', () => {
+      expect(repertoire).toHaveLength(50);
+      const home = lessonManager.byCategory().flatMap((g) => g.lessons);
+      expect(home.filter((l) => l.repertoire)).toEqual([]);
+      expect(home.filter((l) => l.category === 'song')).toHaveLength(30);
+      expect(lessonManager.songs()).toHaveLength(80);
+    });
+
+    it.each(repertoire.map((l) => [l.id, l] as const))('%s: khuông đôi hai tay, có nguồn, chọn được tay, tập được tay trái, pedal đủ dùng', (_id, l) => {
+      expect(l).toMatchObject({ clef: 'grand', hand: 'both', category: 'song' });
+      expect(l.source).toMatch(/phạm vi công cộng/);
+      expect(hasHandChoice(l)).toBe(true);
+      expect(accompanimentByNote(l)).toHaveLength(l.notes.length);
+      const measures = splitMeasures(l.notes, measureLength(l.timeSignature), l.pickup).length;
+      // Ô đổi hợp âm giữa chừng không đạp, nhưng ít nhất 40% số ô có ký hiệu pedal để chấm.
+      expect(l.pedal!.length / measures).toBeGreaterThanOrEqual(0.4);
+      // Ô lấy đà không đạp.
+      if (l.pickup) expect(l.pedal![0].from).toBeGreaterThanOrEqual(1);
+    });
+
+    it.each(repertoire.map((l) => [l.id, l] as const))('%s: đánh hai tay đúng theo khuông → hết bài, không lỗi nào', (_id, l) => {
+      const left = accompanimentByNote(l)!;
+      const engine = new PracticeEngine(l.notes.map((n) => n.midi), { ...DEFAULT_PRACTICE_CONFIG, twoHands: true }, left.map((s) => s.midis));
+      let time = 1000;
+      l.notes.forEach((n, i) => {
+        engine.handleNote(n.midi, (time += 1000));
+        for (const m of left[i].midis) engine.handleNote(m, (time += 1000));
+      });
+      expect(engine.getState()).toMatchObject({ status: 'finished', wrong: 0, correct: l.notes.length });
+    });
+
+    it('dựng tay trái: hợp âm cả ô có pedal, ô đổi hợp âm không; có nghỉ ở ô lấy đà', () => {
+      const built = buildAccompaniment({ time: [3, 4], pickup: 1, chords: 'C | G C', pattern: 'hold' });
+      expect(parseAccompaniment(built.notation).map((n) => [n.pitches.join('+'), n.duration])).toEqual([
+        ['', 'q'],
+        ['C3+E3+G3', 'hd'],
+        ['G2+B2+D3', 'h'],
+        ['C3+E3+G3', 'q'],
+      ]);
+      expect(built.pedal).toEqual([{ from: 1, to: 1 }]);
+      expect(() => buildAccompaniment({ time: [4, 4], chords: 'H', pattern: 'hold' })).toThrow();
+      expect(parseAccompaniment(buildAccompaniment({ time: [6, 8], chords: 'C', pattern: 'arp8' }).notation).map((n) => n.pitches[0])).toEqual(['C3', 'E3', 'G3', 'C3', 'E3', 'G3']);
+      expect(parseAccompaniment(buildAccompaniment({ time: [4, 4], chords: 'C', pattern: 'alberti' }).notation).map((n) => n.pitches[0]).slice(0, 4)).toEqual(['C3', 'G3', 'E3', 'G3']);
+      expect(parseAccompaniment(buildAccompaniment({ time: [3, 4], chords: 'C', pattern: 'oompah' }).notation).map((n) => n.pitches.join('+'))).toEqual(['C3', 'E3+G3', 'E3+G3']);
+    });
   });
 
   it('dấu lặng tay trái "R" trong phần đệm', () => {

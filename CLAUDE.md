@@ -58,6 +58,9 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              không tính hoàn thành bài (`applySession`). Giáo trình không có chọn tay
   practice/NoteStats.ts       thống kê từng nốt trong phiên (suy từ PracticeState): tốc độ đọc nốt, đúng/sai + nốt nhầm
   lessons/                 kiểu dữ liệu, ký hiệu gọn "C4 D4/h", thư viện bài, LessonManager
+                             `repertoire.ts` 50 bài khuông đôi (`rep-*`, `Lesson.repertoire`): giai điệu + dòng hợp âm mỗi ô + kiểu đệm → `buildAccompaniment` dựng tay trái và pedal
+                             (thay mỗi ô một hợp âm; ô đổi hợp âm giữa chừng và ô lấy đà không đạp). Chỉ hiện ở trang Thư viện bài hát (`screens/SongLibraryScreen`,
+                             route `song-library`, `?screen=song-library`, mở bằng chữ "Bài hát" ở Thư viện bài)
   practice/PerformanceTracker.ts  Biểu diễn / Tiết tấu của giáo trình: đồng hồ nhịp CỐ ĐỊNH, chấm cao độ + thời điểm + trường độ (Note Off), dấu lặng
                            + pedal (`handlePedal`, chỉ đàn MIDI CC 64) khi bài có ký hiệu pedal
   curriculum/              giáo trình (xem docs/curriculum.md): Curriculum → Level → Week → Lesson → Activity/Exercise
@@ -193,7 +196,7 @@ src/hooks/           vòng đời app (ẩn nền → tắt micro), theme, wake 
 src/components/      ScoreView, PianoKeyboard, MicPanel, ui
 src/screens/         Dashboard (trang chủ = giáo trình phía trên + Thư viện bài `components/LessonLibrary` phía dưới),
                      Curriculum, Supplement (giáo trình bổ sung), LessonPlayer, Practice, Games, Settings. Route `library` = trang chủ cuộn tới thư viện;
-                     `?screen=library` / `?screen=curriculum` / `?screen=games` mở thẳng (e2e dùng)
+                     `?screen=library` / `?screen=song-library` / `?screen=curriculum` / `?screen=games` mở thẳng (e2e dùng)
 e2e/                 Playwright; global-setup sinh WAV gam Đô trưởng làm micro giả
 ```
 
@@ -227,7 +230,9 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
 - Pedal vang: `Piece.pedal` theo ô nhịp (`[1, 1], [2, 2]` = thay pedal mỗi ô) → vẽ "Ped." + đường kẻ, khấc "^" chỗ thay;
   Biểu diễn có thêm tiêu chí "Pedal" (15%). Chỉ đàn MIDI gửi pedal (Control Change 64); micro / bàn phím ảo → "không đo".
   Thả phím lúc pedal đang đạp không bị tính giữ thiếu trường độ. Giới thiệu ở cấp 6 buổi "Hoàng hôn" (l6-17); cùng buổi có bài thử sức không bắt buộc Romance d'Amour hai tay
-  có pedal (bài Thư viện `song-romance-2-hands`, `song-fur-elise-2-hands` , 5 bài `song-{ode-to-joy,amazing-grace,silent-night,greensleeves,auld-lang-syne}-2-hands` và 5 bài thay phiên `bh-*` (thay pedal mỗi ô) cũng có ký hiệu pedal nhưng màn Luyện tập không chấm pedal).
+  có pedal (bài Thư viện `song-romance-2-hands`, `song-fur-elise-2-hands`, 5 bài `song-{ode-to-joy,amazing-grace,silent-night,greensleeves,auld-lang-syne}-2-hands`, 5 bài thay phiên `bh-*` và 50 bài `rep-*` cũng có ký hiệu pedal).
+  Màn Luyện tập chấm pedal mọi bài có ký hiệu khi có đàn MIDI (`practice/PracticePedal.ts`, dùng lại `pedalQuality`): Theo nhịp theo phách thật; Chờ / Đếm nốt không có đồng hồ
+  nên dùng trục số bước (`waitPedalPosition`). Điểm hiện ở hộp thoại kết quả + báo cáo AI, KHÔNG tính vào độ chính xác nốt; micro / bàn phím ảo → "không đo".
 - Không tạo MIDI giả. `MIDIInputProvider` dùng Web MIDI thật (bật ở Cài đặt → `midiEnabled`, tự kết nối khi mở app).
   Safari và mọi trình duyệt trên iPad (WebKit) không có Web MIDI → báo "không hỗ trợ", dùng micro. MIDI trên iPad
   chỉ có qua app native (Core MIDI). Khi đàn MIDI đã nối, màn Luyện tập bỏ nốt từ micro (micro nghe chính tiếng đàn đó).
