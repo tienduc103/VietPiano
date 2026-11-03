@@ -54,7 +54,7 @@ test('pedal: đàn MIDI gửi Control Change 64 → hiện đang đạp / nhả'
   await openPedalExercise(page);
   await expect(page.getByTestId('pedal-state')).toHaveText('Pedal: nhả');
   await midiSend(page, [0xb0, 64, 127]);
-  await expect(page.getByTestId('pedal-state')).toHaveText('Pedal: đang đạp');
+  await expect(page.getByTestId('pedal-state')).toHaveText('Pedal: đạp');
   await midiSend(page, [0xb0, 64, 0]);
   await expect(page.getByTestId('pedal-state')).toHaveText('Pedal: nhả');
 });

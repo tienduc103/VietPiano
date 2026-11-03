@@ -101,7 +101,7 @@ test('đàn MIDI: chấm pedal ở Chờ nốt, tập tay phải; thay pedal đ�
         // Đánh nốt đầu ô rồi mới nhả + đạp lại.
         await midiSend(page, [0xb0, 64, 0]);
         await midiSend(page, [0xb0, 64, 127]);
-        await expect(page.getByTestId('pedal-state')).toHaveText('Pedal: đang đạp');
+        await expect(page.getByTestId('pedal-state')).toHaveText('Pedal: đạp');
       }
     }
   }

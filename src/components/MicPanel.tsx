@@ -142,7 +142,8 @@ export function FloatingMicNote({ className }: { className: string }) {
       }
       className={`z-10 flex min-h-12 min-w-12 items-center justify-center gap-2 rounded-2xl px-3 py-1.5 shadow-lg ring-1 transition-colors select-none ${
         midiDevice
-          ? 'relative bg-white/90 ring-sky-400/70 dark:bg-slate-800/90'
+          ? // Không thêm `relative`: đè mất `absolute` / `fixed` của nơi dùng → nút rơi khỏi góc, che nút micro.
+            'bg-white/90 ring-sky-400/70 dark:bg-slate-800/90'
           : on
           ? 'bg-white/90 ring-emerald-400/60 dark:bg-slate-800/90'
           : resumable

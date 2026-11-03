@@ -18,6 +18,8 @@ interface Props {
   staff?: 'melody' | 'accompaniment';
   /** Làm mờ tay không tập (tập một tay). */
   dim?: Hand;
+  /** Tỉ lệ thu nhỏ tối thiểu (mặc định 0.8). Màn Luyện tập cho thu nhỏ hơn để cửa sổ thấp vẫn thấy đủ khuông. */
+  minScale?: number;
 }
 
 /** Vị trí nốt hiện tại trên màn hình (tỉ lệ chiều rộng). */
@@ -27,7 +29,7 @@ const FOCUS_RATIO = 0.3;
 // Tối thiểu 0.8: khuông đôi có phần đệm + chữ đánh dấu đoạn thu nhỏ một chút thay vì bị cắt mất hàng tên nốt.
 const FIT = { minScale: 0.8, maxScale: 2.4, fallbackScale: 1.6 };
 
-export function ScoreView({ lesson, index, results, status, wrongPulse, showNames, labelStyle, staff = 'melody', dim }: Props) {
+export function ScoreView({ lesson, index, results, status, wrongPulse, showNames, labelStyle, staff = 'melody', dim, minScale = FIT.minScale }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const svgHostRef = useRef<HTMLDivElement>(null);
   const renderedRef = useRef<RenderedScore | null>(null);
@@ -101,7 +103,7 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
   const r = renderedRef.current;
   const height = r?.height ?? SCORE_HEIGHT;
   // Giữ cố định tỉ lệ + vị trí khi vùng nhìn chỉ co giãn chút ít theo từng nốt (khuông không nhảy lên xuống).
-  const fit = (fitRef.current = fitScore(fitRef.current, size.h, height, FIT));
+  const fit = (fitRef.current = fitScore(fitRef.current, size.h, height, { ...FIT, minScale }));
   const scale = fit.scale;
   const contentWidth = (r?.width ?? 0) * scale;
   const focusX = ((staff === 'accompaniment' ? r?.accompanimentCenters : r?.noteCenters)?.[index] ?? 0) * scale;

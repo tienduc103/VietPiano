@@ -890,3 +890,67 @@ test('Romance hai tay: khuông nhạc đứng yên theo chiều dọc khi chuy�
     expect(await box()).toBe(first);
   }
 });
+
+/** Vị trí + cỡ khuông nhạc: đổi là khuông nhảy lên xuống / phóng to thu nhỏ. Chờ qua ResizeObserver rồi mới đo. */
+async function scoreBox(page: Page) {
+  await page.waitForTimeout(120);
+  return page.locator('[data-testid="score"] svg').evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return `${Math.round(r.top)},${Math.round(r.height)}`;
+  });
+}
+
+test('đàn MIDI, cửa sổ laptop: đạp / nhả pedal và đánh nốt không làm hàng điều khiển xuống dòng, khuông nhạc đứng yên', async ({ page }) => {
+  await page.setViewportSize({ width: 1536, height: 730 });
+  await page.addInitScript(() => {
+    const input = { id: 'p1', name: 'Test Piano', manufacturer: 'Test', state: 'connected', onmidimessage: null as null | ((e: unknown) => void) };
+    const access = { inputs: new Map([[input.id, input]]), outputs: new Map(), onstatechange: null };
+    Object.defineProperty(Navigator.prototype, 'requestMIDIAccess', { configurable: true, value: () => Promise.resolve(access) });
+    (window as unknown as Record<string, unknown>).__midi = {
+      send: (data: number[]) => input.onmidimessage?.({ data: new Uint8Array(data), timeStamp: performance.now() }),
+    };
+    localStorage.setItem('vietpiano.settings.v1', JSON.stringify({ midiEnabled: true }));
+  });
+  const send = (d: number[]) => page.evaluate((x) => (window as unknown as { __midi: { send(d: number[]): void } }).__midi.send(x), d);
+  await openLesson(page, 'song-romance-2-hands');
+  await expect(page.getByTestId('pedal-state')).toHaveText('Pedal: nhả');
+  const first = await scoreBox(page);
+  // Nút nổi "Đã kết nối MIDI" nằm trong khung khuông nhạc, không rơi xuống che nút micro.
+  const floating = (await page.getByTestId('floating-mic').boundingBox())!;
+  const frame = (await page.getByTestId('score').boundingBox())!;
+  expect(floating.y).toBeGreaterThanOrEqual(frame.y);
+  expect(floating.y + floating.height).toBeLessThanOrEqual(frame.y + frame.height);
+  // Vừa một dòng: khung nhạc không bị mất chỗ cho hàng điều khiển.
+  const rowTops = () =>
+    page.getByTestId('status').evaluate((el) => new Set(Array.from(el.closest('section')!.children).filter((c) => c.getBoundingClientRect().height > 0).map((c) => {
+      const r = c.getBoundingClientRect();
+      return Math.round(r.top + r.height / 2);
+    })).size);
+  expect(await rowTops()).toBe(1);
+  for (const value of [127, 0, 127]) {
+    await send([0xb0, 64, value]);
+    expect(await scoreBox(page)).toBe(first);
+  }
+  await expect(page.getByTestId('pedal-state')).toHaveText('Pedal: đạp');
+  // Đi qua đoạn có Bb (ô tay phải rộng hơn), kèm một nốt sai.
+  for (let i = 0; i < 20; i++) {
+    await page.keyboard.press(i % 6 === 0 ? 'z' : 'ArrowRight');
+    expect(await scoreBox(page)).toBe(first);
+  }
+  expect(await rowTops()).toBe(1);
+});
+
+test('tay trái rộng hẹp theo từng nốt (Alberti, hợp âm, giữ): khuông nhạc đứng yên ở mọi tay', async ({ page }) => {
+  await page.setViewportSize({ width: 1536, height: 800 });
+  await page.goto('/?screen=song-library');
+  await page.getByTestId('lesson-rep-sonata-k545').click();
+  await expect(page.locator('[data-testid="score"] svg .score-note').first()).toBeVisible();
+  const first = await scoreBox(page);
+  for (let i = 0; i < 24; i++) {
+    await page.keyboard.press('ArrowRight');
+    expect(await scoreBox(page)).toBe(first);
+  }
+  // Bản chừa chỗ vô hình không được trùng test id với bản thật.
+  await expect(page.getByTestId('hands-guide')).toHaveCount(1);
+  await expect(page.getByTestId('expected-note')).toHaveCount(1);
+});

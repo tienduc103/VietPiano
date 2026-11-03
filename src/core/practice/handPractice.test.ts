@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { LESSONS } from '../lessons/library';
 import { DURATION_BEATS, isAccompanimentMidi } from '../lessons/types';
-import { hasHandChoice, isOtherHandMidi, leftHandSteps, practiceTrack, resultsOnScore, stepIndexAtBeat } from './handPractice';
+import { accompanimentByNote } from '../lessons/types';
+import { distinctStepGuides, hasHandChoice, isOtherHandMidi, leftHandSteps, practiceTrack, resultsOnScore, stepGuide, stepIndexAtBeat } from './handPractice';
 import { PracticeEngine, DEFAULT_PRACTICE_CONFIG } from './PracticeEngine';
 import { listenPlanAtBeat } from './listenSample';
 
@@ -86,6 +87,49 @@ describe('chọn tay — dòng tập', () => {
     expect(stepIndexAtBeat(t.steps, t.steps[k].startBeat)).toBe(k);
     expect(stepIndexAtBeat(t.steps, t.steps[k].startBeat + 1e-3)).toBe(k);
     expect(stepIndexAtBeat(t.steps, 0)).toBe(0);
+  });
+});
+
+describe('khối "Cần đánh" từng bước', () => {
+  const k545 = lesson('rep-sonata-k545');
+  const tracks = (l: typeof k545) => (['both', 'right', 'left'] as const).map((h) => practiceTrack(l, h, false)!);
+
+  it('hai tay: giai điệu + tay trái của đúng bước', () => {
+    const track = practiceTrack(romance, 'both', false)!;
+    const left = accompanimentByNote(romance)!;
+    const g = stepGuide(romance, track, left, 0)!;
+    expect(g.midi).toBe(track.steps[0].midis[0]);
+    expect(g.pitch).toBe(romance.notes[0].pitch);
+    expect(g.left).toBe(left[0]);
+    expect(g.chord).toBeUndefined();
+  });
+
+  it('tay trái: bước hợp âm có `chord`, tay luôn là trái; hết bài → không có', () => {
+    const track = practiceTrack(romance, 'left', false)!;
+    const g = stepGuide(romance, track, undefined, 0)!;
+    expect(g.hand).toBe('left');
+    expect(g.chord).toBe(track.steps[0]);
+    expect(stepGuide(romance, track, undefined, track.steps.length)).toBeUndefined();
+  });
+
+  it('bài một tay không ghi ngón: không nhắc tay', () => {
+    const noFingers = { ...twinkle, hand: 'right' as const, notes: twinkle.notes.map((n) => ({ ...n, finger: undefined })) };
+    const track = practiceTrack(noFingers, 'both', false)!;
+    expect(stepGuide(noFingers, track, undefined, 0)!.hand).toBeUndefined();
+  });
+
+  it('danh sách chừa chỗ gồm đủ mọi khối của mọi bước (không bỏ sót bước rộng nhất), không trùng', () => {
+    for (const l of [romance, elise, k545]) {
+      for (const track of tracks(l)) {
+        const left = track.hand === 'both' ? accompanimentByNote(l) : undefined;
+        const guides = distinctStepGuides(l, track, left);
+        const shape = (g: NonNullable<ReturnType<typeof stepGuide>>) => JSON.stringify([g.pitch ?? g.midi, g.finger, g.hand, g.left?.pitches, g.left?.fingers, g.left?.held, g.chord?.pitches, g.chord?.fingers]);
+        const shapes = guides.map(shape);
+        expect(new Set(shapes).size).toBe(shapes.length);
+        track.steps.forEach((_, i) => expect(shapes).toContain(shape(stepGuide(l, track, left, i)!)));
+        expect(guides.length).toBeLessThanOrEqual(track.steps.length);
+      }
+    }
   });
 });
 

@@ -12,7 +12,7 @@
  * "Dòng tập" (`PracticeTrack`) là danh sách bước cho PracticeEngine / TempoFollower, kèm chỉ số nốt trên khuông
  * để tô màu và đặt con trỏ đúng nốt đang tập.
  */
-import { DURATION_BEATS, noteHand, type Finger, type Hand, type Lesson } from '../lessons/types';
+import { DURATION_BEATS, noteHand, type Finger, type Hand, type LeftHandStep, type Lesson } from '../lessons/types';
 
 export type PracticeHand = 'both' | 'right' | 'left';
 
@@ -39,6 +39,53 @@ export interface PracticeTrack {
   steps: TrackStep[];
   /** Tay trái + micro: số hợp âm bị bỏ vì micro không nhận được hợp âm. */
   skippedChords: number;
+}
+
+/** Khối "Cần đánh" của một bước trên màn Luyện tập. */
+export interface StepGuide {
+  midi: number;
+  /** Tên nốt như viết trong bài ("Bb4") để hiện đúng dấu giáng. */
+  pitch?: string;
+  finger?: Finger;
+  hand?: Hand;
+  /** Bài có phần đệm, tập hai tay: tay trái ở bước này. */
+  left?: LeftHandStep;
+  /** Tập tay trái, bước là hợp âm. */
+  chord?: TrackStep;
+}
+
+/** `leftHand` = tay trái theo từng nốt giai điệu (chỉ có khi tập hai tay bài có phần đệm). */
+export function stepGuide(lesson: Lesson, track: PracticeTrack, leftHand: readonly LeftHandStep[] | undefined, index: number): StepGuide | undefined {
+  const step = track.steps[index];
+  if (!step) return undefined;
+  const midi = step.midis[0];
+  const note = track.staff === 'melody' ? lesson.notes[step.scoreIndex] : undefined;
+  if (track.hand === 'left') {
+    return { midi, pitch: step.pitches[0], finger: step.fingers[0], hand: 'left', chord: step.midis.length > 1 ? step : undefined };
+  }
+  return {
+    midi,
+    pitch: note?.midi === midi ? note.pitch : undefined,
+    finger: note?.finger,
+    // Bài hai tay luôn nhắc tay nào; bài một tay chỉ nhắc khi có số ngón.
+    hand: note && (lesson.hand === 'both' || note.finger) ? noteHand(lesson, note) : undefined,
+    left: note && leftHand?.[index],
+  };
+}
+
+/**
+ * Các khối "Cần đánh" khác nhau của cả dòng tập. Màn hình vẽ vô hình tất cả để chừa sẵn chỗ bằng khối rộng nhất:
+ * nếu hàng điều khiển đổi bề rộng theo từng nốt, nó xuống dòng rồi lại về một dòng → khuông nhạc phía trên nhảy.
+ */
+export function distinctStepGuides(lesson: Lesson, track: PracticeTrack, leftHand: readonly LeftHandStep[] | undefined): StepGuide[] {
+  const seen = new Map<string, StepGuide>();
+  track.steps.forEach((_, i) => {
+    const g = stepGuide(lesson, track, leftHand, i);
+    if (!g) return;
+    const key = JSON.stringify([g.pitch ?? g.midi, g.finger, g.hand, g.left?.pitches, g.left?.fingers, g.left?.held, g.chord?.pitches, g.chord?.fingers]);
+    if (!seen.has(key)) seen.set(key, g);
+  });
+  return [...seen.values()];
 }
 
 /** Bài hai tay thay phiên: không có phần đệm, các nốt ghi cả hai tay. */

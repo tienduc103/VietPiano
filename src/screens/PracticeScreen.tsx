@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { lessonManager } from '../core/lessons/LessonManager';
-import { accompanimentByNote, isAccompanimentMidi, lessonTempo, measureLength, HAND_LABEL, noteHand, type Finger, type Hand, type LeftHandStep, type Lesson } from '../core/lessons/types';
+import { accompanimentByNote, isAccompanimentMidi, lessonTempo, measureLength, HAND_LABEL, type Lesson } from '../core/lessons/types';
 import { midiToLabel, midiToName, pitchToLabel } from '../core/music/notes';
 import { computeAccuracy, isPerfect, PracticeEngine, DEFAULT_PRACTICE_CONFIG, type PracticeState } from '../core/practice/PracticeEngine';
 import { DEFAULT_TEMPO_CONFIG, TempoFollower, type TempoState } from '../core/practice/TempoFollower';
@@ -35,7 +35,7 @@ import { useListenSample } from '../hooks/useListenSample';
 import { usePlayingNow } from '../store/playingStore';
 import { pedalRanges } from '../core/curriculum/piece';
 import { PracticePedal, stepPedalRanges, waitPedalPosition } from '../core/practice/PracticePedal';
-import { hasHandChoice, isOtherHandMidi, practiceTrack, PRACTICE_HAND_LABEL, resultsOnScore, type PracticeHand, type PracticeTrack, type TrackStep } from '../core/practice/handPractice';
+import { distinctStepGuides, hasHandChoice, isOtherHandMidi, practiceTrack, PRACTICE_HAND_LABEL, resultsOnScore, stepGuide, type PracticeHand, type PracticeTrack, type StepGuide, type TrackStep } from '../core/practice/handPractice';
 
 const FEEDBACK_MS = 900;
 /**
@@ -97,6 +97,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
 
   const midis = useMemo(() => track.steps.map((s) => s.midis[0]), [track]);
   const leftHand = useMemo(() => (hand === 'both' ? accompanimentByNote(lesson) : undefined), [lesson, hand]);
+  const guideSizes = useMemo(() => distinctStepGuides(lesson, track, leftHand), [lesson, track, leftHand]);
   const engine = useMemo(() => {
     // Tay trái: nốt thấp nhất của hợp âm là nốt chính, các nốt còn lại chấm như phần "tay trái" của bước.
     const extra = hand === 'left' ? track.steps.map((s) => s.midis.slice(1)) : leftHand?.map((s) => s.midis);
@@ -302,8 +303,6 @@ function Practice({ lesson }: { lesson: Lesson }) {
   const currentStep: TrackStep | undefined = expected === null ? undefined : track.steps[currentIndex];
   const currentNote = track.staff === 'melody' && currentStep ? lesson.notes[currentStep.scoreIndex] : undefined;
   const expectedFinger = currentNote?.finger;
-  // Bài hai tay luôn nhắc tay nào; bài một tay chỉ nhắc khi có số ngón.
-  const expectedHand = currentNote && (lesson.hand === 'both' || expectedFinger) ? noteHand(lesson, currentNote) : undefined;
   // Bài có phần đệm: tay trái ở nốt hiện tại; phím tô vàng = nốt tay trái cần đánh (đang chấm: chỉ nốt còn thiếu).
   const leftStep = currentNote && leftHand?.[currentIndex];
   // Tay trái: hợp âm → mọi nốt chưa đánh tô vàng (nốt đơn dùng viền "cần đánh" như tay phải).
@@ -413,6 +412,8 @@ function Practice({ lesson }: { lesson: Lesson }) {
           index={scoreIndex}
           results={scoreResults}
           staff={track.staff}
+          // Cửa sổ laptop thấp: thu nhỏ cho vừa cả khuông đôi + tên nốt + pedal thay vì cắt mất.
+          minScale={0.5}
           dim={hand === 'right' ? 'left' : hand === 'left' ? 'right' : undefined}
           status={listen.playing ? 'waiting' : tempoMode ? (tempo.status === 'finished' ? 'finished' : 'waiting') : state.status}
           wrongPulse={tempoMode ? 0 : state.wrong}
@@ -423,7 +424,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
       </main>
 
       {/* ── Dưới: nhận diện, micro, điều khiển ── */}
-      <section className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3">
+      <section className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <div className="flex flex-col gap-1.5">
           <MicButton />
           <LevelMeter className="w-full" />
@@ -433,11 +434,11 @@ function Practice({ lesson }: { lesson: Lesson }) {
         {hasPedal &&
           (midiConnected ? (
             <span
-              className={`rounded-full px-3 py-1 text-sm font-semibold ${pedalState.down ? 'bg-fuchsia-500 text-white' : 'bg-violet-100 text-violet-700 dark:bg-slate-700 dark:text-slate-300'}`}
+              className={`min-w-23 rounded-full px-3 py-1 text-center text-sm font-semibold whitespace-nowrap ${pedalState.down ? 'bg-fuchsia-500 text-white' : 'bg-violet-100 text-violet-700 dark:bg-slate-700 dark:text-slate-300'}`}
               title='Đạp và nhả theo ký hiệu "Ped." dưới khuông; đạp ngay sau khi đánh nốt đầu ô là đúng kỹ thuật'
               data-testid="pedal-state"
             >
-              Pedal: {pedalState.down ? 'đang đạp' : 'nhả'}
+              Pedal: {pedalState.down ? 'đạp' : 'nhả'}
             </span>
           ) : (
             <span className="rounded-full bg-amber-50 px-3 py-1 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200" title="Chỉ đàn MIDI gửi được pedal" data-testid="pedal-unmeasured">
@@ -455,12 +456,8 @@ function Practice({ lesson }: { lesson: Lesson }) {
         ) : (
           <StatusPanel
             state={state}
-            expected={expected}
-            expectedPitch={hand === 'left' ? currentStep?.pitches[0] : currentNote?.midi === expected ? currentNote?.pitch : undefined}
-            finger={stepFinger}
-            hand={hand === 'left' ? 'left' : expectedHand}
-            leftStep={leftStep}
-            chord={leftChord}
+            guide={expected === null ? undefined : stepGuide(lesson, track, leftHand, currentIndex)}
+            guideSizes={guideSizes}
             chordGraded={chordGraded}
             twoHands={twoHands && !listen.playing}
             showFeedback={showFeedback && !listen.playing}
@@ -470,7 +467,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
         )}
         <div className="ml-auto flex gap-2">
           {listen.supported && (
-            <Button onClick={toggleListen} aria-pressed={listen.playing} title="Nghe mẫu từ đầu ô nhịp đang tập (cả hai tay, có pedal)" data-testid="listen-sample">
+            <Button onClick={toggleListen} aria-pressed={listen.playing} title="Nghe mẫu từ đầu ô nhịp đang tập (cả hai tay, có pedal)" className="min-w-35" data-testid="listen-sample">
               <Icon name={listen.playing ? 'pause' : 'play'} />
               {listen.playing ? 'Dừng' : 'Nghe mẫu'}
             </Button>
@@ -552,30 +549,22 @@ function Practice({ lesson }: { lesson: Lesson }) {
 
 function StatusPanel({
   state,
-  expected,
-  expectedPitch,
-  finger,
-  hand,
-  leftStep,
+  guide,
+  guideSizes,
   twoHands,
-  chord,
   chordGraded,
   showFeedback,
   listening,
   labelStyle,
 }: {
   state: PracticeState;
-  expected: number | null;
-  /** Tên nốt như viết trong bài ("Bb4") để hiện đúng dấu giáng. */
-  expectedPitch?: string;
-  finger?: Finger;
-  hand?: Hand;
-  /** Bài có phần đệm: tay trái ở nốt hiện tại → hướng dẫn cả hai tay. */
-  leftStep?: LeftHandStep;
+  /** Khối "Cần đánh" của bước hiện tại (hết bài → không có). */
+  guide?: StepGuide;
+  /** Mọi khối của bài: vẽ vô hình để chừa chỗ bằng khối rộng nhất (hàng điều khiển không đổi bề rộng theo từng nốt). */
+  guideSizes: readonly StepGuide[];
   /** Đang chấm cả hai tay: đánh dấu nốt đã đánh / còn thiếu. */
   twoHands?: boolean;
-  /** Tập tay trái, bước là hợp âm: hiện mọi nốt; `chordGraded` → gạch nốt đã đánh. */
-  chord?: TrackStep;
+  /** Tập tay trái, bước là hợp âm: `chordGraded` → gạch nốt đã đánh. */
   chordGraded?: boolean;
   showFeedback: boolean;
   /** Đang nghe mẫu: con trỏ chạy theo tiếng đàn, chưa chấm. */
@@ -600,7 +589,7 @@ function StatusPanel({
     <div className="flex items-center gap-3" data-testid="status">
       <div
         key={`${state.status}-${state.lastEventTime}`}
-        className={`flex min-h-16 min-w-36 flex-col justify-center rounded-xl px-4 py-2 text-center ${tone} ${showFeedback ? (state.status === 'wrong' ? 'animate-shake' : 'animate-pop') : ''}`}
+        className={`flex min-h-16 w-36 flex-col justify-center rounded-xl px-4 py-2 text-center leading-tight ${tone} ${showFeedback ? (state.status === 'wrong' ? 'animate-shake' : 'animate-pop') : ''}`}
         role="status"
         aria-live="polite"
       >
@@ -609,52 +598,89 @@ function StatusPanel({
         </div>
         {detail && <div className="text-sm">{detail}</div>}
       </div>
-      {expected !== null && leftStep && (
-        <HandsGuide
-          rightPitch={expectedPitch ?? midiToName(expected)}
-          rightFinger={finger}
-          left={leftStep}
-          pendingLeft={state.pendingLeft}
-          melodyDone={state.melodyDone}
-          grading={!!twoHands}
-          labelStyle={labelStyle}
-        />
-      )}
-      {expected !== null && chord && (
-        <div className="text-center">
-          <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Cần đánh · tay trái</div>
-          <div className="flex gap-1.5 text-3xl font-bold" data-testid="expected-note">
-            {chord.pitches.map((p, i) => {
-              const pressed = chordGraded && (i === 0 ? state.melodyDone : !state.pendingLeft.includes(chord.midis[i]));
-              return (
-                <span key={i} className={pressed ? 'text-emerald-600 line-through decoration-2 dark:text-emerald-400' : 'text-fuchsia-600 dark:text-fuchsia-300'}>
-                  {pitchToLabel(p, labelStyle)}
-                </span>
-              );
-            })}
+      <div className="grid items-center justify-items-center [&>*]:[grid-area:1/1]">
+        {guideSizes.map((g, i) => (
+          <div key={i} className="invisible" aria-hidden>
+            <ExpectedGuide guide={g} state={EMPTY_GUIDE_STATE} labelStyle={labelStyle} sizer />
           </div>
-          {chord.fingers.every(Boolean) && (
-            <div className="text-lg font-bold text-orange-500 dark:text-orange-300" data-testid="expected-finger">
-              ngón {chord.fingers.join('·')}
-            </div>
-          )}
+        ))}
+        {guide && <ExpectedGuide guide={guide} state={state} twoHands={twoHands} chordGraded={chordGraded} labelStyle={labelStyle} />}
+      </div>
+    </div>
+  );
+}
+
+const EMPTY_GUIDE_STATE = { pendingLeft: [], melodyDone: false } satisfies Pick<PracticeState, 'pendingLeft' | 'melodyDone'>;
+
+/** Khối "Cần đánh" của một bước. `sizer` = bản vô hình chừa chỗ: không gắn `data-testid` (trùng với bản thật). */
+function ExpectedGuide({
+  guide,
+  state,
+  twoHands,
+  chordGraded,
+  labelStyle,
+  sizer = false,
+}: {
+  guide: StepGuide;
+  state: Pick<PracticeState, 'pendingLeft' | 'melodyDone'>;
+  twoHands?: boolean;
+  chordGraded?: boolean;
+  labelStyle: 'letter' | 'solfege';
+  sizer?: boolean;
+}) {
+  const { midi, pitch, finger, hand, left, chord } = guide;
+  const testId = (id: string) => (sizer ? undefined : id);
+  if (left) {
+    return (
+      <HandsGuide
+        rightPitch={pitch ?? midiToName(midi)}
+        rightFinger={finger}
+        left={left}
+        pendingLeft={state.pendingLeft}
+        melodyDone={state.melodyDone}
+        grading={!!twoHands}
+        labelStyle={labelStyle}
+        sizer={sizer}
+      />
+    );
+  }
+  if (chord) {
+    return (
+      <div className="text-center">
+        <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Cần đánh · tay trái</div>
+        <div className="flex gap-1.5 text-3xl font-bold" data-testid={testId('expected-note')}>
+          {chord.pitches.map((p, i) => {
+            const pressed = chordGraded && (i === 0 ? state.melodyDone : !state.pendingLeft.includes(chord.midis[i]));
+            return (
+              <span key={i} className={pressed ? 'text-emerald-600 line-through decoration-2 dark:text-emerald-400' : 'text-fuchsia-600 dark:text-fuchsia-300'}>
+                {pitchToLabel(p, labelStyle)}
+              </span>
+            );
+          })}
         </div>
-      )}
-      {expected !== null && !leftStep && !chord && (
-        <div className="text-center">
-          <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Cần đánh</div>
-          <div className="text-4xl font-bold text-fuchsia-600 dark:text-fuchsia-300" data-testid="expected-note">
-            {expectedPitch ? pitchToLabel(expectedPitch, labelStyle) : midiToLabel(expected, labelStyle)}
+        {chord.fingers.every(Boolean) && (
+          <div className="text-lg font-bold text-orange-500 dark:text-orange-300" data-testid={testId('expected-finger')}>
+            ngón {chord.fingers.join('·')}
           </div>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-3">
+      <div className="text-center">
+        <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Cần đánh</div>
+        <div className="text-4xl font-bold text-fuchsia-600 dark:text-fuchsia-300" data-testid={testId('expected-note')}>
+          {pitch ? pitchToLabel(pitch, labelStyle) : midiToLabel(midi, labelStyle)}
         </div>
-      )}
-      {expected !== null && !leftStep && !chord && hand && (
+      </div>
+      {hand && (
         <div className="text-center">
-          <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400" data-testid="expected-hand">
+          <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400" data-testid={testId('expected-hand')}>
             {HAND_LABEL[hand]}
           </div>
           {finger && (
-            <div className="text-4xl font-bold text-orange-500 dark:text-orange-300" data-testid="expected-finger" aria-label={`Ngón ${finger}`}>
+            <div className="text-4xl font-bold text-orange-500 dark:text-orange-300" data-testid={testId('expected-finger')} aria-label={`Ngón ${finger}`}>
               ngón {finger}
             </div>
           )}
@@ -830,7 +856,7 @@ function TempoPanel({
       <Button variant="primary" onClick={onToggleRun} aria-label={running ? 'Tạm dừng' : 'Chạy'} title="Chạy / tạm dừng (phím cách)" data-testid="tempo-run">
         <Icon name={running ? 'pause' : 'play'} />
       </Button>
-      <div className={`min-w-40 rounded-xl px-4 py-2 text-center ${tone}`} role="status" aria-live="polite">
+      <div className={`w-52 rounded-xl px-4 py-2 text-center ${tone}`} role="status" aria-live="polite">
         <div className="text-xl font-bold tabular-nums" data-testid="tempo-status">
           {title}
         </div>

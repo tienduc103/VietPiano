@@ -550,7 +550,7 @@ function TimedRunner({ exercise, lesson, timeline, hand, kind, bpm, mode, scored
               className={`rounded-full px-3 py-1 font-semibold ${state.pedalDown ? 'bg-fuchsia-500 text-white' : 'bg-violet-100 text-violet-700 dark:bg-slate-700 dark:text-slate-300'}`}
               data-testid="pedal-state"
             >
-              Pedal: {state.pedalDown ? 'đang đạp' : 'nhả'}
+              Pedal: {state.pedalDown ? 'đạp' : 'nhả'}
             </span>
           ) : (
             <span className="text-amber-700 dark:text-amber-300" data-testid="pedal-unmeasured">
