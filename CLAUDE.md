@@ -148,7 +148,7 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              `RIVAL_SPEED_RATIO` × tốc độ người chơi nên đoạn bị chặn chỉ phụ thuộc quãng đường, `isTrackFeasible` chứng minh được luôn có đường vượt.
                              Độ khó 500 / 1.000 / 1.500 m (`config.ts`), mọi xe cùng hiệu năng. `audio.ts` WebAudio tổng hợp, AudioContext riêng; đang nghe bằng micro thì tắt hết
                              (micro nghe nhầm thành nốt). `storage.ts`: cúp theo hồ sơ × độ khó, bảng xếp hạng (thời gian làm tròn 0,1 s → độ chính xác → va chạm),
-                             cài đặt (localStorage). Vẽ: `components/f1Racing` (`F1Canvas` đọc `getWorld()` mỗi khung, `carArt` vẽ xe bằng canvas, cùng hàm cho xem trước).
+                             chỉ ván có ≥ 1 nốt đúng mỗi 25 m (`minCorrectNotes` 20/40/60, `qualifies`) mới lập kỷ lục / lên bảng (ván thiếu vẫn lưu lịch sử + cúp), cài đặt (localStorage). Vẽ: `components/f1Racing` (`F1Canvas` đọc `getWorld()` mỗi khung, `carArt` vẽ xe bằng canvas, cùng hàm cho xem trước).
                              Một màn duy nhất: "gara" chọn xe / độ khó / hồ sơ là lớp phủ Sẵn sàng. Tự tạm dừng khi ẩn app / mất focus / rút đàn MIDI.
                              Nốt sai tô đỏ, đúng tô xanh qua CSS `.f1-note-*` (chỉ tô nốt, không tô khuông)
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt

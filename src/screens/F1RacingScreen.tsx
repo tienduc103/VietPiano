@@ -12,7 +12,7 @@ import { soundOutput } from '../core/audio/SoundOutput';
 import { F1Audio } from '../core/f1Racing/audio';
 import { CARS, DIFFICULTIES, DIFFICULTY_ORDER, STREAK_FOR_ASSIST, findCar, keyboardSpan, practiceNotes, resolveNavKeys, type CarDef, type F1Difficulty } from '../core/f1Racing/config';
 import { F1RacingGame, f1Accuracy, type F1State } from '../core/f1Racing/F1RacingGame';
-import { f1Leaderboard, formatRaceTime, loadF1Progress, loadF1Settings, recordF1Run, saveF1Settings, trophyFor, TROPHY_INFO, TROPHY_ORDER, type F1Progress, type F1Run, type F1Settings } from '../core/f1Racing/storage';
+import { f1Leaderboard, formatRaceTime, loadF1Progress, loadF1Settings, minCorrectNotes, personalBest, recordF1Run, saveF1Settings, trophyFor, TROPHY_INFO, TROPHY_ORDER, type F1Progress, type F1Run, type F1Settings } from '../core/f1Racing/storage';
 import { midiInput } from '../core/input/MIDIInputProvider';
 import { micOnlyInput } from '../core/input/sourceFilter';
 import { virtualInput } from '../core/input/VirtualInputProvider';
@@ -28,7 +28,9 @@ type Modal = 'settings' | 'trophies' | 'leaderboard' | null;
 interface Finished {
   run: F1Run;
   isRecord: boolean;
-  personalBest: F1Run;
+  /** Đủ nốt đúng tối thiểu để lập kỷ lục / lên bảng. */
+  qualified: boolean;
+  personalBest: F1Run | undefined;
   rank: number;
   rankOf: number;
 }
@@ -201,7 +203,7 @@ export function F1RacingScreen() {
       const out = recordF1Run(progress, entry);
       const rows = f1Leaderboard(out.progress, profiles, difficulty);
       setProgress(out.progress);
-      setFinished({ run: entry, isRecord: out.isRecord, personalBest: out.progress.best[profile.id]?.[difficulty] ?? entry, rank: rows.findIndex((r) => r.profile.id === profile.id) + 1, rankOf: rows.length });
+      setFinished({ run: entry, isRecord: out.isRecord, qualified: out.qualified, personalBest: personalBest(out.progress, profile.id, difficulty), rank: rows.findIndex((r) => r.profile.id === profile.id) + 1, rankOf: rows.length });
     }
     return () => window.clearTimeout(id);
   }, [state.status, game]);
@@ -513,6 +515,9 @@ function Garage({
           <p className="text-sm font-semibold" data-testid="f1-difficulty-summary">
             {DIFFICULTIES[settings.difficulty].summary}
           </p>
+          <p className="text-xs text-slate-600 dark:text-slate-300" data-testid="f1-min-notes">
+            Lập kỷ lục và lên bảng xếp hạng: cần ít nhất {minCorrectNotes(settings.difficulty)} nốt đúng.
+          </p>
         </div>
         <div className="flex flex-wrap justify-center gap-2">
           <Button variant="primary" onClick={onStart} disabled={!canStart} data-testid="f1-start" midiNav={midiNav ? 'forward' : undefined} className="min-h-14 px-8 text-xl">
@@ -561,11 +566,17 @@ function Results({ result, state, midiNav, onAgain, onChangeCar, onExit, onLeade
           <Stat label="Tốc độ cuối" value={`${state.speedPercent}%`} />
         </dl>
         <p className="font-bold" data-testid="f1-result-record">
-          {result.isRecord ? '🎉 Kỷ lục cá nhân mới!' : `Kỷ lục cá nhân: ${formatRaceTime(result.personalBest.timeMs)}`}
+          {!result.qualified
+            ? `Cần ít nhất ${minCorrectNotes(run.difficulty)} nốt đúng để lập kỷ lục và lên bảng xếp hạng (ván này: ${run.correct} nốt).`
+            : result.isRecord
+              ? '🎉 Kỷ lục cá nhân mới!'
+              : `Kỷ lục cá nhân: ${result.personalBest ? formatRaceTime(result.personalBest.timeMs) : '—'}`}
         </p>
-        <p className="font-bold" data-testid="f1-result-rank">
-          Bảng xếp hạng gia đình: hạng {result.rank}/{result.rankOf}
-        </p>
+        {result.rank > 0 && (
+          <p className="font-bold" data-testid="f1-result-rank">
+            Bảng xếp hạng gia đình: hạng {result.rank}/{result.rankOf}
+          </p>
+        )}
         <div className="flex flex-wrap justify-center gap-2">
           <Button variant="primary" onClick={onAgain} midiNav={midiNav ? 'forward' : undefined} data-testid="f1-again">
             ↻ Chơi lại
@@ -715,7 +726,7 @@ function LeaderboardModal({ progress, profiles, initial, highlight, onClose }: {
           </table>
         </div>
       )}
-      <p className="text-xs text-slate-500 dark:text-slate-400">Xếp theo thời gian về đích, rồi độ chính xác, rồi số lần va chạm. Mỗi người một dòng: ván tốt nhất.</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">Chỉ tính ván có ít nhất {minCorrectNotes(difficulty)} nốt đúng (1 nốt mỗi 25 m). Xếp theo thời gian về đích, rồi độ chính xác, rồi số lần va chạm. Mỗi người một dòng: ván tốt nhất.</p>
     </ModalShell>
   );
 }

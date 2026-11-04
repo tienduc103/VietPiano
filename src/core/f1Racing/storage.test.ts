@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { LearnerProfile } from '../profile/LearnerProfile';
-import { compareRuns, DEFAULT_F1_SETTINGS, f1Leaderboard, formatRaceTime, loadF1Progress, loadF1Settings, recordF1Run, sanitizeF1Progress, sanitizeF1Settings, saveF1Settings, topTrophy, trophyFor, type F1Run } from './storage';
+import { compareRuns, minCorrectNotes, qualifies, DEFAULT_F1_SETTINGS, f1Leaderboard, formatRaceTime, loadF1Progress, loadF1Settings, recordF1Run, sanitizeF1Progress, sanitizeF1Settings, saveF1Settings, topTrophy, trophyFor, type F1Run } from './storage';
 
 const profile = (id: string): LearnerProfile => ({ id, name: id, age: 8, avatar: '🏎️', experience: 'new', goals: [], dailyMinutes: 10, createdAt: 1 });
 const run = (patch: Partial<F1Run> = {}): F1Run => ({
@@ -10,7 +10,7 @@ const run = (patch: Partial<F1Run> = {}): F1Run => ({
   carId: 'red-flash',
   timeMs: 50_000,
   accuracy: 0.9,
-  correct: 9,
+  correct: 30,
   wrong: 1,
   collisions: 1,
   bestStreak: 5,
@@ -58,8 +58,8 @@ describe('xếp hạng', () => {
 
   it('riêng từng độ khó; hồ sơ đã xoá không hiện', () => {
     let p = loadF1Progress();
-    p = recordF1Run(p, run({ profileId: 'a', difficulty: 'hard' })).progress;
-    p = recordF1Run(p, run({ profileId: 'gone', difficulty: 'hard' })).progress;
+    p = recordF1Run(p, run({ profileId: 'a', difficulty: 'hard', correct: 60 })).progress;
+    p = recordF1Run(p, run({ profileId: 'gone', difficulty: 'hard', correct: 60 })).progress;
     expect(f1Leaderboard(p, [profile('a')], 'easy')).toHaveLength(0);
     expect(f1Leaderboard(p, [profile('a')], 'hard').map((r) => r.profile.id)).toEqual(['a']);
   });
@@ -98,6 +98,46 @@ describe('xếp hạng', () => {
     expect(clean.best.a.easy).toBeUndefined();
     expect(clean.best.a.hard?.difficulty).toBe('hard');
     expect(clean.trophies.a.easy).toEqual({ gold: 2 });
+  });
+});
+
+describe('số nốt đúng tối thiểu', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('1 nốt mỗi 25 m: 20 / 40 / 60 nốt', () => {
+    expect(minCorrectNotes('easy')).toBe(20);
+    expect(minCorrectNotes('medium')).toBe(40);
+    expect(minCorrectNotes('hard')).toBe(60);
+    expect(qualifies(run({ correct: 19 }))).toBe(false);
+    expect(qualifies(run({ correct: 20 }))).toBe(true);
+    expect(qualifies(run({ difficulty: 'hard', correct: 59 }))).toBe(false);
+  });
+
+  it('không đánh nốt nào: vẫn lưu lịch sử và cúp, nhưng không kỷ lục, không lên bảng', () => {
+    const out = recordF1Run(loadF1Progress(), run({ correct: 0, wrong: 0, accuracy: 0, timeMs: 50_000, trophy: 'bronze' }));
+    expect(out.qualified).toBe(false);
+    expect(out.isRecord).toBe(false);
+    expect(out.progress.history).toHaveLength(1);
+    expect(out.progress.trophies.a.easy).toEqual({ bronze: 1 });
+    expect(f1Leaderboard(out.progress, [profile('a')], 'easy')).toHaveLength(0);
+  });
+
+  it('ván không đủ nốt dù nhanh hơn không thay kỷ lục hợp lệ', () => {
+    let p = recordF1Run(loadF1Progress(), run({ timeMs: 60_000 })).progress;
+    const cheat = recordF1Run(p, run({ timeMs: 50_000, correct: 5 }));
+    expect(cheat.isRecord).toBe(false);
+    p = cheat.progress;
+    expect(p.best.a.easy?.timeMs).toBe(60_000);
+    expect(f1Leaderboard(p, [profile('a')], 'easy')[0].best.timeMs).toBe(60_000);
+  });
+
+  it('dữ liệu cũ có kỷ lục không đủ nốt: bị bỏ khỏi bảng, ván hợp lệ đầu tiên thành kỷ lục', () => {
+    localStorage.setItem('vietpiano.f1-racing.v1', JSON.stringify({ history: [], best: { a: { easy: run({ correct: 0, timeMs: 50_000 }) } }, trophies: {} }));
+    const old = loadF1Progress();
+    expect(f1Leaderboard(old, [profile('a')], 'easy')).toHaveLength(0);
+    const out = recordF1Run(old, run({ timeMs: 70_000 }));
+    expect(out.isRecord).toBe(true);
+    expect(f1Leaderboard(out.progress, [profile('a')], 'easy')[0].best.timeMs).toBe(70_000);
   });
 });
 

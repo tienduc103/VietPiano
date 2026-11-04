@@ -1,6 +1,6 @@
 /** Cúp, kỷ lục, bảng xếp hạng gia đình và cài đặt của F1 Racing (localStorage, theo hồ sơ người học). */
 import type { LearnerProfile } from '../profile/LearnerProfile';
-import { CARS, DEFAULT_NAV, isCarId, type CarId, type F1Difficulty, type NavKeys } from './config';
+import { CARS, DEFAULT_NAV, DIFFICULTIES, isCarId, type CarId, type F1Difficulty, type NavKeys } from './config';
 
 export type TrophyId = 'bronze' | 'silver' | 'gold' | 'diamond';
 export const TROPHY_ORDER: readonly TrophyId[] = ['bronze', 'silver', 'gold', 'diamond'];
@@ -123,20 +123,43 @@ export function compareRuns(a: Pick<F1Run, 'timeMs' | 'accuracy' | 'collisions'>
   return timeBucket(a.timeMs) - timeBucket(b.timeMs) || b.accuracy - a.accuracy || a.collisions - b.collisions;
 }
 
+/** Mỗi chừng này mét đường cần một nốt đúng thì ván mới được lập kỷ lục và lên bảng xếp hạng. */
+export const METRES_PER_REQUIRED_NOTE = 25;
+
+/** Số nốt đúng tối thiểu của một độ khó: 20 / 40 / 60. Không đánh nốt mà xe vẫn chạy 100% → không được xếp hạng. */
+export function minCorrectNotes(difficulty: F1Difficulty): number {
+  return Math.ceil(DIFFICULTIES[difficulty].trackLength / METRES_PER_REQUIRED_NOTE);
+}
+
+/** Ván đủ nốt đúng để lập kỷ lục và lên bảng xếp hạng. */
+export function qualifies(run: Pick<F1Run, 'correct' | 'difficulty'>): boolean {
+  return run.correct >= minCorrectNotes(run.difficulty);
+}
+
 export interface RecordOutcome {
   progress: F1Progress;
   /** Ván này là kỷ lục cá nhân mới của hồ sơ ở độ khó này. */
   isRecord: boolean;
+  /** Ván đủ nốt đúng tối thiểu; chưa đủ thì vẫn lưu lịch sử và cúp nhưng không lập kỷ lục. */
+  qualified: boolean;
+}
+
+/** Kỷ lục cá nhân hợp lệ (đủ nốt đúng). Dữ liệu cũ có thể còn ván không đủ nốt → bỏ qua. */
+export function personalBest(progress: F1Progress, profileId: string, difficulty: F1Difficulty): F1Run | undefined {
+  const best = progress.best[profileId]?.[difficulty];
+  return best && qualifies(best) ? best : undefined;
 }
 
 export function recordF1Run(progress: F1Progress, run: F1Run): RecordOutcome {
-  const previous = progress.best[run.profileId]?.[run.difficulty];
-  const isRecord = !previous || compareRuns(run, previous) < 0;
+  const stored = progress.best[run.profileId]?.[run.difficulty];
+  const previous = personalBest(progress, run.profileId, run.difficulty);
+  const qualified = qualifies(run);
+  const isRecord = qualified && (!previous || compareRuns(run, previous) < 0);
   const counts = progress.trophies[run.profileId]?.[run.difficulty] ?? {};
   const next: F1Progress = {
     version: 1,
     history: [...progress.history, run].slice(-HISTORY_LIMIT),
-    best: { ...progress.best, [run.profileId]: { ...progress.best[run.profileId], [run.difficulty]: isRecord ? run : previous } },
+    best: { ...progress.best, [run.profileId]: { ...progress.best[run.profileId], [run.difficulty]: isRecord ? run : stored } },
     trophies: {
       ...progress.trophies,
       [run.profileId]: { ...progress.trophies[run.profileId], [run.difficulty]: { ...counts, [run.trophy]: (counts[run.trophy] ?? 0) + 1 } },
@@ -147,7 +170,7 @@ export function recordF1Run(progress: F1Progress, run: F1Run): RecordOutcome {
   } catch {
     // Safari có thể không cho lưu cục bộ; ván chơi vẫn tiếp tục.
   }
-  return { progress: next, isRecord };
+  return { progress: next, isRecord, qualified };
 }
 
 /** Cúp cao nhất của hồ sơ ở một độ khó. */
@@ -164,11 +187,11 @@ export interface LeaderboardRow {
   top: TrophyId;
 }
 
-/** Bảng xếp hạng gia đình của một độ khó: mỗi hồ sơ một dòng (ván tốt nhất). */
+/** Bảng xếp hạng gia đình của một độ khó: mỗi hồ sơ một dòng (ván tốt nhất trong các ván đủ nốt đúng). */
 export function f1Leaderboard(progress: F1Progress, profiles: readonly LearnerProfile[], difficulty: F1Difficulty): LeaderboardRow[] {
   const rows: LeaderboardRow[] = [];
   for (const profile of profiles) {
-    const best = progress.best[profile.id]?.[difficulty];
+    const best = personalBest(progress, profile.id, difficulty);
     if (best) rows.push({ profile, best, top: topTrophy(progress, profile.id, difficulty) ?? best.trophy });
   }
   return rows.sort((a, b) => compareRuns(a.best, b.best));
