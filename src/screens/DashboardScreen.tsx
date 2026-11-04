@@ -17,6 +17,9 @@ const scrollToLibrary = (behavior: ScrollBehavior) => document.getElementById('l
 
 /** Nút trên đầu trang: gọn lại để cả hàng nằm trên một dòng từ iPad ngang (≥ 1024px), vẫn cao 48px. */
 const HEADER_BUTTON = 'shrink-0 px-2! text-sm! whitespace-nowrap';
+/** Nút có biểu tượng dễ nhận (Trò chơi, Thư viện, Cài đặt): dưới 1280px chỉ hiện biểu tượng (tên vẫn đọc được qua sr-only). */
+const ICON_ONLY_BELOW_XL = 'min-w-12 justify-center';
+const LABEL_BELOW_XL = 'sr-only xl:not-sr-only';
 
 /**
  * Trang chủ: phía trên là giáo trình (cấp đang học, tiến độ, buổi tiếp theo, thành tích),
@@ -88,17 +91,17 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
             <span aria-hidden>🎵</span>
             <span>Làm quen nốt</span>
           </Button>
-          <Button className={HEADER_BUTTON} onClick={() => navigate({ name: 'games' })} data-testid="open-games">
+          <Button className={`${HEADER_BUTTON} ${ICON_ONLY_BELOW_XL}`} title="Trò chơi" onClick={() => navigate({ name: 'games' })} data-testid="open-games">
             <Icon name="gamepad" />
-            <span>Trò chơi</span>
+            <span className={LABEL_BELOW_XL}>Trò chơi</span>
           </Button>
-          <Button className={HEADER_BUTTON} onClick={() => scrollToLibrary('smooth')} data-testid="open-library">
+          <Button className={`${HEADER_BUTTON} ${ICON_ONLY_BELOW_XL}`} title="Thư viện" onClick={() => scrollToLibrary('smooth')} data-testid="open-library">
             <Icon name="count" />
-            <span>Thư viện</span>
+            <span className={LABEL_BELOW_XL}>Thư viện</span>
           </Button>
-          <Button className={HEADER_BUTTON} onClick={() => navigate({ name: 'settings' })}>
+          <Button className={`${HEADER_BUTTON} ${ICON_ONLY_BELOW_XL}`} title="Cài đặt" onClick={() => navigate({ name: 'settings' })}>
             <Icon name="settings" />
-            <span>Cài đặt</span>
+            <span className={LABEL_BELOW_XL}>Cài đặt</span>
           </Button>
         </header>
 
