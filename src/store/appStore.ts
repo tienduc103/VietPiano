@@ -39,6 +39,8 @@ export type Route =
   | { name: 'tomato-harvest' }
   /** VietPiano F1 Racing: đọc nốt để giữ tốc độ, hai phím đàn để đổi làn. */
   | { name: 'f1-racing' }
+  /** 5 ngón – 8 nốt liên tục: chuỗi 8 nốt sinh tự động trong vị trí 5 ngón (tay phải / trái / luân phiên / hai tay). */
+  | { name: 'five-finger' }
   /** `fromSongs`: mở từ Thư viện bài hát → nút quay lại / "Về thư viện" trở về trang đó. */
   | { name: 'practice'; lessonId: string; fromSongs?: boolean }
   | { name: 'settings' };
@@ -57,6 +59,7 @@ export function initialRoute(search = typeof location === 'undefined' ? '' : loc
   if (screen === 'balloon-pop') return { name: 'balloon-pop' };
   if (screen === 'tomato-harvest') return { name: 'tomato-harvest' };
   if (screen === 'f1-racing') return { name: 'f1-racing' };
+  if (screen === 'five-finger') return { name: 'five-finger' };
   return { name: 'dashboard' };
 }
 

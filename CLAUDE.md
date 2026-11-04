@@ -162,6 +162,13 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              chỉ ván có ≥ 1 nốt đúng mỗi 25 m (`minCorrectNotes` 20/40/60, `qualifies`) mới lập kỷ lục / lên bảng (ván thiếu vẫn lưu lịch sử + cúp), cài đặt (localStorage). Vẽ: `components/f1Racing` (`F1Canvas` đọc `getWorld()` mỗi khung, `carArt` vẽ xe bằng canvas, cùng hàm cho xem trước).
                              Một màn duy nhất: "gara" chọn xe / độ khó / hồ sơ là lớp phủ Sẵn sàng. Tự tạm dừng khi ẩn app / mất focus / rút đàn MIDI.
                              Nốt sai tô đỏ, đúng tô xanh qua CSS `.f1-note-*` (chỉ tô nốt, không tô khuông)
+  fiveFinger/              "5 ngón · 8 nốt liên tục" (`screens/FiveFingerScreen`, route `five-finger`, `?screen=five-finger`, nút "5 ngón · 8 nốt" ở đầu màn Giáo trình;
+                             chi tiết + checklist thử thật: docs/five-finger.md). `positions.ts` thế 5 phím (tay phải mặc định C4–G4, tay trái C3–G3,
+                             ngón theo tay), `generator.ts` chuỗi 8 sự kiện theo SEED (chỉ số phím 0–4, luật Dễ/Trung bình/Khó, tránh trùng chuỗi vừa xong,
+                             `focus` = chuyển động yếu), `FiveFingerDrill` Wait Mode (≤ 1 bước/sự kiện, hai tay cùng lúc cần đủ 2 nốt trong `syncToleranceMs`,
+                             muộn → `late-sync` không tính sai nốt), `FiveFingerSession` buổi liên tục (xong chuỗi → ăn mừng 1,5 s → chuỗi mới; 5/10/20/∞;
+                             luyện từng tay trước), `stats.ts` thống kê theo hồ sơ (ngón chỉ là ngón ĐƯỢC HƯỚNG DẪN — không kết luận sai ngón) + gợi ý độ khó.
+                             Micro không chấm được hai tay cùng lúc → khoá Bắt đầu
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt
   score/scoreFit.ts        tỉ lệ + vị trí dọc của khuông một dòng (ScoreView, Săn nốt): vùng nhìn co giãn ít (≤ 8%) theo từng nốt
                              → giữ nguyên, khuông không nhảy lên xuống; ô hướng dẫn dưới khuông cũng phải cao cố định, và hàng điều khiển

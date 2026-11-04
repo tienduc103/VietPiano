@@ -17,6 +17,7 @@ import { SupplementScreen } from './screens/SupplementScreen';
 import { NoteDiscoveryScreen } from './screens/NoteDiscoveryScreen';
 import { NoteDiscoveryOverviewScreen } from './screens/NoteDiscoveryOverviewScreen';
 import { SongLibraryScreen } from './screens/SongLibraryScreen';
+import { FiveFingerScreen } from './screens/FiveFingerScreen';
 import { useCurriculum } from './store/curriculumStore';
 import { useProfiles } from './store/profileStore';
 import { AppVersionSide } from './components/AppVersion';
@@ -56,11 +57,12 @@ export function App() {
       {route.name === 'tomato-harvest' && <TimedGameRoute><TomatoHarvestScreen /></TimedGameRoute>}
       {route.name === 'f1-racing' && <TimedGameRoute><F1RacingScreen /></TimedGameRoute>}
       {route.name === 'supplement' && <SupplementScreen />}
+      {route.name === 'five-finger' && <FiveFingerScreen />}
       {route.name === 'note-discovery' && (route.stageId ? <NoteDiscoveryScreen stageId={route.stageId} /> : <NoteDiscoveryOverviewScreen />)}
       {route.name === 'practice' && <PracticeScreen lessonId={route.lessonId} />}
       {route.name === 'settings' && <SettingsScreen />}
       {/* Màn hình Luyện tập tự đặt nút trong khung khuông nhạc (góc phải dưới có bàn phím ảo + nút điều khiển). */}
-      {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && route.name !== 'flappy-note' && route.name !== 'balloon-pop' && route.name !== 'tomato-harvest' && route.name !== 'f1-racing' && route.name !== 'note-discovery' && (
+      {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && route.name !== 'flappy-note' && route.name !== 'balloon-pop' && route.name !== 'tomato-harvest' && route.name !== 'f1-racing' && route.name !== 'note-discovery' && route.name !== 'five-finger' && (
         <FloatingMicNote className="fixed right-[calc(12px+env(safe-area-inset-right,0px))] bottom-[calc(12px+env(safe-area-inset-bottom,0px))]" />
       )}
       <FloatingReloadButton />

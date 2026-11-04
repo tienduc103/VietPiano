@@ -37,6 +37,10 @@ export function CurriculumScreen({ levelId }: { levelId?: string }) {
             <span aria-hidden>🎹</span>
             <span>Khám phá nốt</span>
           </Button>
+          <Button variant="secondary" onClick={() => navigate({ name: 'five-finger' })} className="px-3 text-sm font-bold" data-testid="open-five-finger">
+            <span aria-hidden>🖐</span>
+            <span>5 ngón · 8 nốt</span>
+          </Button>
           <FullscreenButton />
         </header>
 
