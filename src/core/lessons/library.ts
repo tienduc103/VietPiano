@@ -890,6 +890,45 @@ const defs: LessonDef[] = [
     pedal: pedalEachMeasure(1, 16),
   },
   {
+    id: 'song-canon-in-d-easy',
+    title: 'Canon in D',
+    description:
+      'Bản dễ cho người mới (Rê trưởng, nhịp 4/4, Andantino): tay phải giai điệu nốt trắng rồi nốt đen, tay trái rải hợp âm móc đơn ' +
+      'theo vòng Rê – La – Si thứ – Fa thăng thứ – Sol – Rê – Sol – La. Đàn MIDI: chấm cả hai tay. Micro: chỉ chấm giai điệu tay phải.',
+    category: 'song',
+    clef: 'grand',
+    timeSignature: [4, 4],
+    keySignature: 'D',
+    difficulty: 2,
+    hand: 'both',
+    tempo: 76,
+    source:
+      'Johann Pachelbel (khoảng 1680) — phạm vi công cộng; theo bản piano dễ "Easy/Beginner". App chỉ chấm một nốt: tay phải lấy bè trên ' +
+      '(ô 9 nốt đầu lấy bè dưới vì bè trên nghỉ, ô 14 lấy bè dưới), nốt cao hơn Đô6 hạ một quãng tám (ô 13, 16, 17)',
+    notation:
+      // Ô 1–8: nốt trắng (ô 5–8 bản in là quãng ba, lấy nốt trên).
+      'F#5/h E5/h | D5/h C#5/h | B4/h A4/h | B4/h C#5/h | F#5/h E5/h | D5/h C#5/h | B4/h A4/h | B4/h C#5/h | ' +
+      // Ô 9–16: nốt đen.
+      'D5 F#5 A5 G5 | F#5 D5 F#5 E5 | D5 B4 D5 A5 | G5 B5 A5 G5 | F#5 D5 E5 C#5 | F#5 D5 F#5 E5 | B5 G5 A5 F#5 | ' +
+      'G5 D5 D5/qd C#5/8 | D5/w',
+    accompanimentNotation:
+      'D3/8 F#3/8 A3/8 D3/8:3 A2/8 E3/8 A3/8 C#3/8:3 | B2/8 D3/8 F#3/8 B2/8:3 F#2/8 C#3/8 F#3/8 A2/8:4 | ' +
+      'G2/8 B2/8 D3/8 G2/8 D2/8:2 F#2/8 A2/8 D3/8 | G2/8:5 E3/8 B2/8 D3/8 A2/8:5 E3/8 A3/8 C#3/8 | ' +
+      'D3/8 F#3/8 A3/8 D3/8:3 A2/8 E3/8 A3/8 C#3/8:3 | B2/8 D3/8 F#3/8 B2/8:3 F#2/8 C#3/8 F#3/8 A2/8:5 | ' +
+      'G2/8 B2/8 D3/8 G2/8 D2/8:2 F#2/8 A2/8 D3/8 | G2/8:5 B2/8 D3/8 G3/8 A2/8:5 C#3/8 E3/8 A3/8 | ' +
+      'D3/8 F#3/8 A3/8 D3/8:3 A2/8 E3/8 A3/8 C#3/8:3 | B2/8 D3/8 F#3/8 B2/8:3 F#2/8 C#3/8 F#3/8 A2/8:4 | ' +
+      'G2/8 B2/8 D3/8 G2/8 D2/8:2 F#2/8 A2/8 D3/8 | G2/8:5 B2/8 D3/8 G3/8 A2/8:5 C#3/8 E3/8 A3/8 | ' +
+      'D3/8 F#3/8 A3/8 D3/8 A2/8 E3/8 A3/8 C#3/8 | B2/8 D3/8 F#3/8 B2/8 F#2/8 C#3/8 F#3/8 A2/8 | ' +
+      'G2/8 B2/8 D3/8 G2/8 D2/8 F#2/8 A2/8 D3/8 | G2/8 B2/8 E3/8 B2/8 A2/8 E3/8 A3/8 E3/8 | D3/w',
+    dynamics: [
+      { index: 0, mark: 'p' },
+      { index: 16, mark: 'mp' },
+      { index: 44, mark: 'mf' },
+    ],
+    // Bản in không ghi pedal; mỗi ô hai hợp âm nên chỉ đạp ở nốt kết cho tiếng ngân.
+    pedal: [{ from: 16, to: 16 }],
+  },
+  {
     id: 'song-tieng-duong-cam',
     title: 'Tiếng dương cầm (Piano sound)',
     titleColor: 'text-rose-600 dark:text-rose-400 font-bold',

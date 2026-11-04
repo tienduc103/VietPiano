@@ -235,6 +235,20 @@ describe('thư viện bài học', () => {
     expect(lesson.dynamics).toHaveLength(6);
   });
 
+  it('Canon in D: Rê trưởng 4/4, 17 ô, tay trái móc đơn, sắc thái p → mp → mf', () => {
+    const lesson = LESSONS.find((l) => l.id === 'song-canon-in-d-easy')!;
+    expect(lesson).toMatchObject({ clef: 'grand', hand: 'both', keySignature: 'D', timeSignature: [4, 4] });
+    const full = measureLength(lesson.timeSignature);
+    expect(splitMeasures(lesson.notes, full)).toHaveLength(17);
+    expect(splitMeasures(lesson.accompaniment!, full)).toHaveLength(17);
+    expect(lesson.accompaniment!.slice(0, -1).every((n) => n.duration === '8' && n.midis.length === 1)).toBe(true);
+    expect(lesson.dynamics!.map((d) => [lesson.notes[d.index].pitch, d.mark])).toEqual([
+      ['F#5', 'p'],
+      ['D5', 'mp'],
+      ['G5', 'mf'],
+    ]);
+  });
+
   it.each(pedalSongs)('%s: hai tay, pedal thay mỗi ô có tay trái (ô lấy đà không đạp)', (id) => {
     const lesson = LESSONS.find((l) => l.id === id)!;
     expect(lesson).toMatchObject({ clef: 'grand', hand: 'both', category: 'song' });
@@ -272,8 +286,8 @@ describe('thư viện bài học', () => {
       expect(repertoire).toHaveLength(50);
       const home = lessonManager.byCategory().flatMap((g) => g.lessons);
       expect(home.filter((l) => l.repertoire)).toEqual([]);
-      expect(home.filter((l) => l.category === 'song')).toHaveLength(32);
-      expect(lessonManager.songs()).toHaveLength(82);
+      expect(home.filter((l) => l.category === 'song')).toHaveLength(33);
+      expect(lessonManager.songs()).toHaveLength(83);
     });
 
     it.each(repertoire.map((l) => [l.id, l] as const))('%s: khuông đôi hai tay, có nguồn, chọn được tay, tập được tay trái, pedal đủ dùng', (_id, l) => {
