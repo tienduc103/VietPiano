@@ -268,6 +268,8 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   Test `lessons.test.ts` kiểm tra mọi ô nhịp đủ phách và nốt nằm trong tầm micro (MIDI 36–84).
 - VexFlow dùng entry `vexflow/bravura` (font nhúng → offline). Màu khuông nhạc qua `currentColor` + CSS
   (`.score-note.is-current` …) — không vẽ lại khi chuyển nốt.
+- Màn Luyện tập: nút "Tự ẩn" (`hideKeyboardWhilePlaying`, mặc định tắt; cũng ở Cài đặt → Hiển thị) ẩn bàn phím ảo lúc đang đánh
+  (cùng điều kiện `usePlayingNow`), hết bài / chơi lại / nghe mẫu → hiện lại; không micro, không đàn MIDI (bàn phím ảo là nguồn nốt) → không ẩn.
 - UI tiếng Việt, nút ≥ 48px cho cảm ứng, tối ưu iPad ngang, hỗ trợ dark mode (`.dark` trên `<html>`).
 - Trò chơi: cài đặt của game LUÔN nằm trong màn chơi — vào thẳng màn chơi, nút ⚙ Cài đặt mở bảng đè lên màn chơi
   (không có màn cài đặt / màn chọn riêng trước khi chơi). Mở giữa ván → tạm dừng và bỏ qua nốt vào; đổi thứ làm thay đổi
