@@ -440,7 +440,7 @@ const defs: LessonDef[] = [
   },
   {
     id: 'kid-rh-hot-cross-buns',
-    title: 'Bé chơi: Hot Cross Buns (tay phải)',
+    title: 'Bé chơi: Bánh nóng giòn – Hot Cross Buns (tay phải)',
     description: 'Bài hát đầu tiên chỉ với ngón 3 – 2 – 1.',
     category: 'kids',
     clef: 'treble',
@@ -568,7 +568,7 @@ const defs: LessonDef[] = [
   },
   {
     id: 'kid-lh-hot-cross-buns',
-    title: 'Bé chơi: Hot Cross Buns (tay trái)',
+    title: 'Bé chơi: Bánh nóng giòn – Hot Cross Buns (tay trái)',
     description: 'Cùng bài hát nhưng bằng tay trái: ngón 3 – 4 – 5.',
     category: 'kids',
     clef: 'bass',
@@ -605,6 +605,21 @@ const defs: LessonDef[] = [
     hand: 'right',
     source: 'Lowell Mason (1830s) — phạm vi công cộng',
     notation: 'E4 D4 C4 D4 | E4 E4 E4/h | D4 D4 D4/h | E4 G4 G4/h | E4 D4 C4 D4 | E4 E4 E4 E4 | D4 D4 E4 D4 | C4/w',
+  },
+  {
+    id: 'song-hot-cross-buns',
+    title: 'Bánh nóng giòn (Hot Cross Buns)',
+    description: 'Bài hát đầu tiên cho bé: chỉ 3 nốt Mi Rê Đô với ngón 3 – 2 – 1, có nhịp móc đơn vui tai.',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [4, 4],
+    difficulty: 1,
+    hand: 'right',
+    tempo: 60,
+    source: 'Đồng dao Anh "Hot Cross Buns" (thế kỷ 18) — phạm vi công cộng',
+    notation:
+      'E4:3 D4:2 C4/h:1 | E4:3 D4:2 C4/h:1 | C4/8:1 C4/8:1 C4/8:1 C4/8:1 D4/8:2 D4/8:2 D4/8:2 D4/8:2 | E4:3 D4:2 C4/h:1 | ' +
+      'E4:3 D4:2 C4/h:1 | E4:3 D4:2 C4/h:1 | C4/8:1 C4/8:1 C4/8:1 C4/8:1 D4/8:2 D4/8:2 D4/8:2 D4/8:2 | E4:3 D4:2 C4/h:1',
   },
   {
     id: 'song-frere-jacques',

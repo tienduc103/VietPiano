@@ -259,8 +259,8 @@ describe('thư viện bài học', () => {
       expect(repertoire).toHaveLength(50);
       const home = lessonManager.byCategory().flatMap((g) => g.lessons);
       expect(home.filter((l) => l.repertoire)).toEqual([]);
-      expect(home.filter((l) => l.category === 'song')).toHaveLength(30);
-      expect(lessonManager.songs()).toHaveLength(80);
+      expect(home.filter((l) => l.category === 'song')).toHaveLength(31);
+      expect(lessonManager.songs()).toHaveLength(81);
     });
 
     it.each(repertoire.map((l) => [l.id, l] as const))('%s: khuông đôi hai tay, có nguồn, chọn được tay, tập được tay trái, pedal đủ dùng', (_id, l) => {

@@ -20,7 +20,7 @@ test('bấm chữ "Bài hát" mở trang Thư viện bài hát; lọc, tìm, qua
   await page.getByTestId('open-song-library').click();
   await expect(page.getByRole('heading', { name: 'Thư viện bài hát' })).toBeVisible();
   await expect(page.locator('[data-testid^="lesson-rep-"]')).toHaveCount(50);
-  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(30);
+  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(31);
 
   await page.getByTestId('song-filter-single').click();
   await expect(page.locator('[data-testid^="lesson-rep-"]')).toHaveCount(0);
