@@ -103,6 +103,8 @@ export interface Lesson {
   source?: string;
   /** Nhịp độ gợi ý cho chế độ chạy theo nhịp (nốt đen/phút); mặc định DEFAULT_TEMPO_BPM. */
   tempo?: number;
+  /** Màu chữ đánh dấu tên bài khác biệt trong thư viện (lớp Tailwind hoặc mã màu CSS). */
+  titleColor?: string;
 }
 
 /** Tay chơi một nốt của bài. */

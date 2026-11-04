@@ -60,7 +60,7 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
       className="flex min-h-24 flex-col rounded-2xl bg-gradient-to-br from-white to-fuchsia-50 p-4 text-left shadow-sm ring-1 ring-fuchsia-200 transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] dark:from-slate-800 dark:to-fuchsia-950/40 dark:ring-fuchsia-900"
     >
       <div className="flex items-start gap-2">
-        <h3 className="flex-1 leading-snug font-semibold">{lesson.title}</h3>
+        <h3 className={`flex-1 leading-snug font-semibold ${lesson.titleColor ?? ''}`}>{lesson.title}</h3>
         <span className="text-orange-400" aria-label={`Độ khó ${lesson.difficulty}`}>
           {'●'.repeat(lesson.difficulty)}
           <span className="text-slate-300 dark:text-slate-600">{'●'.repeat(3 - lesson.difficulty)}</span>

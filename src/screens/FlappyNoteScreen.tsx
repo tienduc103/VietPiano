@@ -35,6 +35,7 @@ import { useApp } from '../store/appStore';
 import { useCurriculum } from '../store/curriculumStore';
 import { useMic } from '../store/micStore';
 import { useSettings } from '../store/settingsStore';
+import { useGameTimeNow } from '../store/gameTimeStore';
 
 const DIFFICULTY_HELP: Record<FlappyDifficulty, string> = {
   'super-easy': `Rơi rất chậm, đánh nhiều nốt liên tục; nốt dài (trắng, tròn) bay cao hơn · ${DIFFICULTY_CONFIG['super-easy'].lives} mạng · ${DIFFICULTY_CONFIG['super-easy'].pipes} ống`,
@@ -334,6 +335,7 @@ function FlappyPlay({
     if (status === 'won' || status === 'over') restart();
   };
   const paused = state.status === 'paused';
+  useGameTimeNow((state.status === 'ready' || state.status === 'playing') && !panelOpen);
   const targetLabel = pitchToLabel(state.target.pitch, labelStyle);
 
   return (

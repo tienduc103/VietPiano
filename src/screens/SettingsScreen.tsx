@@ -64,10 +64,10 @@ export function SettingsScreen() {
           </Card>
 
           <Card>
-            <h2 className="text-xl font-semibold">Đàn MIDI (nối dây USB)</h2>
+            <h2 className="text-xl font-semibold">Đàn MIDI</h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              Nối đàn điện vào máy tính bằng dây USB để nhận nốt chính xác thay cho micro. Chạy trên Chrome hoặc Edge
-              máy tính; không có trên iPad.
+              Nối đàn điện hoặc MIDI controller (USB, Bluetooth MIDI) để nhận nốt chính xác thay cho micro. Dùng mọi đàn
+              theo chuẩn MIDI; chạy trên Chrome hoặc Edge máy tính. Trình duyệt trên iPad chưa có MIDI.
             </p>
             <MidiSettings labelStyle={settings.labelStyle} />
           </Card>
@@ -197,6 +197,11 @@ export function SettingsScreen() {
             <div className="mt-2 divide-y divide-slate-200 dark:divide-slate-700">
               <Toggle label="Hiện tên nốt dưới khuông" checked={settings.showNoteNames} onChange={(v) => update({ showNoteNames: v })} />
               <Toggle label="Hiện bàn phím piano ảo" checked={settings.showKeyboard} onChange={(v) => update({ showKeyboard: v })} />
+              <Toggle
+                label="Tự ẩn bàn phím ảo khi đang đánh bài hát (Luyện tập, dùng micro / đàn MIDI)"
+                checked={settings.hideKeyboardWhilePlaying}
+                onChange={(v) => update({ hideKeyboardWhilePlaying: v })}
+              />
               <Toggle
                 label="Hiện nút micro nổi (bật/tắt micro, xem nốt đang nghe)"
                 checked={settings.showFloatingNote}

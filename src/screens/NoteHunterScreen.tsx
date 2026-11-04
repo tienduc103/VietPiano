@@ -30,6 +30,7 @@ import { useMic } from '../store/micStore';
 import { useMidi } from '../store/midiStore';
 import { useProfiles } from '../store/profileStore';
 import { useSettings } from '../store/settingsStore';
+import { useGameTimeNow } from '../store/gameTimeStore';
 
 const MODE_HELP: Record<HunterMode, string> = {
   wait: 'Bản nhạc dừng ở mỗi nốt mục tiêu, chờ bạn đánh đúng. Không tính thời gian, sai thì thử lại.',
@@ -522,6 +523,7 @@ function HunterPlay({
     game.restart(now());
   };
   const playing = status === 'PLAYING' || status === 'WAITING_FOR_NOTE';
+  useGameTimeNow(playing);
 
   return (
     <div

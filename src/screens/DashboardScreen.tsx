@@ -80,6 +80,10 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
             ))}
           </div>
           <FullscreenButton className="shrink-0" />
+          <Button className={HEADER_BUTTON} onClick={() => navigate({ name: 'note-discovery' })} data-testid="open-note-discovery">
+            <span aria-hidden>🎹</span>
+            <span>Khám phá nốt</span>
+          </Button>
           <Button className={HEADER_BUTTON} onClick={() => navigate({ name: 'supplement' })} data-testid="open-supplement">
             <span aria-hidden>🎵</span>
             <span>Làm quen nốt</span>

@@ -57,6 +57,8 @@ import { useApp, type Route } from '../store/appStore';
 import { useCurriculum } from '../store/curriculumStore';
 import { useMic } from '../store/micStore';
 import { useSettings } from '../store/settingsStore';
+import { NotePoolProvider } from '../core/noteDiscovery/NotePoolProvider';
+import { useGameTimeNow } from '../store/gameTimeStore';
 
 const DIFFICULTY_HELP: Record<BalloonDifficulty, string> = {
   easy: `Mỗi lần một quả · ${DIFFICULTY_CONFIG.easy.lives} mạng · ${DIFFICULTY_CONFIG.easy.balloons} quả`,
@@ -76,7 +78,15 @@ type Update = (p: Partial<BalloonSettings>) => void;
  */
 export function BalloonPopScreen({ preset, returnTo }: { preset?: Partial<BalloonSettings>; returnTo?: Route }) {
   // Mở từ bài học: áp cấu hình sẵn lên cài đặt đã lưu (chưa ghi lại tới khi người chơi đổi gì đó).
-  const [settings, setSettingsState] = useState<BalloonSettings>(() => (preset ? sanitizeBalloonSettings({ ...loadBalloonSettings(), ...preset }) : loadBalloonSettings()));
+  const [settings, setSettingsState] = useState<BalloonSettings>(() => {
+    const loaded = loadBalloonSettings();
+    if (preset) return sanitizeBalloonSettings({ ...loaded, ...preset });
+    if (!loaded.huntLetters || loaded.huntLetters.length === 0) {
+      const suggested = NotePoolProvider.getForBalloonHunt(useCurriculum.getState().profileKey).huntLetters;
+      return { ...loaded, huntLetters: suggested };
+    }
+    return loaded;
+  });
   const profileKey = useCurriculum((s) => s.profileKey);
   const [records, setRecords] = useState<ArcadeRecords>(() => loadBalloonRecords(profileKey));
   useEffect(() => setRecords(loadBalloonRecords(profileKey)), [profileKey]);
@@ -478,6 +488,7 @@ function BalloonPlay({
     setPanelOpen(true);
   };
   const paused = state.status === 'paused';
+  useGameTimeNow(state.status === 'playing' && !panelOpen);
   // Tên chỉ hiện ở chế độ tên chữ (hình nốt / nghe đoán: người chơi tự đọc / tự nghe).
   const urgentName = !urgent ? null : display === 'staff' || display === 'ear' || settings.hiddenLetters.includes(urgent.note.letter) ? '?' : noteName(urgent.note.midi, display, withOctave);
   const hint = display === 'staff' ? 'đọc hình nốt' : display === 'ear' ? 'nghe đoán nốt' : withOctave ? 'phải đúng phím' : 'chỉ cần đúng tên nốt';

@@ -64,7 +64,7 @@ export function LessonLibrary() {
           <div className="flex flex-wrap gap-2">
             {recentLessons.map((l) => (
               <Button key={l.id} onClick={() => openLesson(l.id)}>
-                {l.title}
+                <span className={l.titleColor}>{l.title}</span>
               </Button>
             ))}
           </div>
@@ -164,7 +164,12 @@ export function LessonCard({
       >
         <span className={`absolute inset-x-0 top-0 h-1 ${accent}`} aria-hidden />
         <div className="flex items-start gap-2 pr-9">
-          <h3 className="flex-1 text-base leading-snug font-semibold">{lesson.title}</h3>
+          <h3
+            className={`flex-1 text-base leading-snug font-semibold ${lesson.titleColor?.startsWith('text-') ? lesson.titleColor : ''}`}
+            style={lesson.titleColor && !lesson.titleColor.startsWith('text-') ? { color: lesson.titleColor } : undefined}
+          >
+            {lesson.title}
+          </h3>
           {completed && (
             <span className="flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
               <Icon name="check" className="h-3.5 w-3.5" />

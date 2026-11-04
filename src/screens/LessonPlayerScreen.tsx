@@ -601,6 +601,10 @@ function LessonResult({
         <Info label="Điểm đạt" value={`${lesson.assessment.passScore}`} />
       </dl>
 
+      <p className="rounded-2xl bg-emerald-100 px-4 py-3 text-center font-bold text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:ring-emerald-800" data-testid="game-time-reward">
+        🎁 Hoàn thành bài học: +10 phút chơi game
+      </p>
+
       <div className="grid gap-2">
         {feedback.map((f, i) => (
           <p key={i} className={kids ? 'text-xl' : ''} data-testid="lesson-feedback">

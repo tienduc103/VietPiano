@@ -33,6 +33,10 @@ export function CurriculumScreen({ levelId }: { levelId?: string }) {
             <Icon name="back" />
           </Button>
           <h1 className="flex-1 text-3xl font-bold">{text(CURRICULUM.title)}</h1>
+          <Button variant="secondary" onClick={() => navigate({ name: 'note-discovery' })} className="px-3 text-sm font-bold" data-testid="curriculum-open-note-discovery">
+            <span aria-hidden>🎹</span>
+            <span>Khám phá nốt</span>
+          </Button>
           <FullscreenButton />
         </header>
 

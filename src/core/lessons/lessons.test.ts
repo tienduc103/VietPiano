@@ -220,7 +220,20 @@ describe('thư viện bài học', () => {
     'song-silent-night-2-hands',
     'song-greensleeves-2-hands',
     'song-auld-lang-syne-2-hands',
+    'song-tieng-duong-cam',
   ];
+
+  it('Tiếng dương cầm (Piano sound): có màu tên bài nổi bật, khuông đôi 16 ô, sắc thái f và p', () => {
+    const lesson = LESSONS.find((l) => l.id === 'song-tieng-duong-cam')!;
+    expect(lesson).toBeDefined();
+    expect(lesson.title).toBe('Tiếng dương cầm (Piano sound)');
+    expect(lesson.titleColor).toBeDefined();
+    expect(lesson.clef).toBe('grand');
+    expect(lesson.hand).toBe('both');
+    expect(lesson.notes).toHaveLength(36);
+    expect(lesson.accompaniment).toHaveLength(16);
+    expect(lesson.dynamics).toHaveLength(6);
+  });
 
   it.each(pedalSongs)('%s: hai tay, pedal thay mỗi ô có tay trái (ô lấy đà không đạp)', (id) => {
     const lesson = LESSONS.find((l) => l.id === id)!;
@@ -259,8 +272,8 @@ describe('thư viện bài học', () => {
       expect(repertoire).toHaveLength(50);
       const home = lessonManager.byCategory().flatMap((g) => g.lessons);
       expect(home.filter((l) => l.repertoire)).toEqual([]);
-      expect(home.filter((l) => l.category === 'song')).toHaveLength(31);
-      expect(lessonManager.songs()).toHaveLength(81);
+      expect(home.filter((l) => l.category === 'song')).toHaveLength(32);
+      expect(lessonManager.songs()).toHaveLength(82);
     });
 
     it.each(repertoire.map((l) => [l.id, l] as const))('%s: khuông đôi hai tay, có nguồn, chọn được tay, tập được tay trái, pedal đủ dùng', (_id, l) => {

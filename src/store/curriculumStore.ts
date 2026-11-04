@@ -15,6 +15,7 @@ import {
 import type { ExerciseScore } from '../core/curriculum/scoring';
 import type { CurriculumLesson } from '../core/curriculum/types';
 import { curriculumStorage } from '../core/storage/CurriculumStorage';
+import { useGameTime } from './gameTimeStore';
 
 interface CurriculumStore {
   /** Người học đang xem tiến độ (id hồ sơ, hoặc "guest"). */
@@ -71,7 +72,9 @@ export const useCurriculum = create<CurriculumStore>((set, get) => {
     },
     recordExercise: (lesson, score, practiceMs) => update(lesson, (r) => applyExerciseScore(r, lesson, score, practiceMs, Date.now())),
     recordRun: async (lesson, runScore) => {
+      const profileKey = get().profileKey;
       await update(lesson, (r) => applyLessonRun(r, runScore, Date.now()));
+      useGameTime.getState().rewardLesson(profileKey);
     },
     markIntroDone: async (lesson) => {
       await update(lesson, (r) => markActivitiesDone(r, lesson, Date.now()));

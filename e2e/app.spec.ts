@@ -135,6 +135,26 @@ test('tự cuộn khuông nhạc theo tiến độ', async ({ page }) => {
   await expect.poll(() => strip.evaluate((el) => getComputedStyle(el).transform)).not.toBe(before);
 });
 
+test('tự ẩn bàn phím ảo khi đang đánh: chỉ ẩn khi dùng micro, tắt micro thì hiện lại', async ({ page }) => {
+  await openLesson(page, 'scale-c-major');
+  const keyboard = page.locator('button[data-midi="60"]');
+  await page.getByTestId('auto-hide-keyboard').click();
+  await expect(page.getByTestId('auto-hide-keyboard')).toHaveAttribute('aria-pressed', 'true');
+
+  // Bàn phím ảo là nguồn nốt → vẫn hiện để bấm được.
+  await page.keyboard.press('a');
+  await expect(page.getByTestId('progress-text')).toHaveText('1/16');
+  await expect(keyboard).toBeVisible();
+
+  // Micro: đánh được nốt → bàn phím ẩn; tắt micro (bàn phím ảo thành nguồn nốt) → hiện lại.
+  await page.getByRole('button', { name: 'Chơi lại từ đầu' }).click();
+  await page.getByTestId('mic-button').click();
+  await expect(page.getByTestId('progress-text')).not.toHaveText('0/16', { timeout: 20_000 });
+  await expect(keyboard).toBeHidden();
+  await page.getByTestId('mic-button').click();
+  await expect(keyboard).toBeVisible();
+});
+
 test('báo lỗi rõ ràng khi bị từ chối quyền micro', async ({ page }) => {
   await page.addInitScript(() => {
     navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('denied', 'NotAllowedError'));

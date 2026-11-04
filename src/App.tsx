@@ -14,12 +14,15 @@ import { BalloonPopScreen } from './screens/BalloonPopScreen';
 import { TomatoHarvestScreen } from './screens/TomatoHarvestScreen';
 import { F1RacingScreen } from './screens/F1RacingScreen';
 import { SupplementScreen } from './screens/SupplementScreen';
+import { NoteDiscoveryScreen } from './screens/NoteDiscoveryScreen';
+import { NoteDiscoveryOverviewScreen } from './screens/NoteDiscoveryOverviewScreen';
 import { SongLibraryScreen } from './screens/SongLibraryScreen';
 import { useCurriculum } from './store/curriculumStore';
 import { useProfiles } from './store/profileStore';
 import { AppVersionSide } from './components/AppVersion';
 import { FloatingMicNote } from './components/MicPanel';
 import { FloatingReloadButton } from './components/FloatingReloadButton';
+import { GameTimeController, TimedGameRoute } from './components/GameTimeLimit';
 
 export function App() {
   const route = useApp((s) => s.route);
@@ -47,19 +50,21 @@ export function App() {
       {route.name === 'library' && <DashboardScreen focus="library" />}
       {route.name === 'song-library' && <SongLibraryScreen />}
       {route.name === 'games' && <GamesScreen />}
-      {route.name === 'note-hunter' && <NoteHunterScreen />}
-      {route.name === 'flappy-note' && <FlappyNoteScreen />}
-      {route.name === 'balloon-pop' && <BalloonPopScreen key={route.preset ? JSON.stringify(route.preset) : 'free'} preset={route.preset} returnTo={route.returnTo} />}
-      {route.name === 'tomato-harvest' && <TomatoHarvestScreen />}
-      {route.name === 'f1-racing' && <F1RacingScreen />}
+      {route.name === 'note-hunter' && <TimedGameRoute><NoteHunterScreen /></TimedGameRoute>}
+      {route.name === 'flappy-note' && <TimedGameRoute><FlappyNoteScreen /></TimedGameRoute>}
+      {route.name === 'balloon-pop' && <TimedGameRoute><BalloonPopScreen key={route.preset ? JSON.stringify(route.preset) : 'free'} preset={route.preset} returnTo={route.returnTo} /></TimedGameRoute>}
+      {route.name === 'tomato-harvest' && <TimedGameRoute><TomatoHarvestScreen /></TimedGameRoute>}
+      {route.name === 'f1-racing' && <TimedGameRoute><F1RacingScreen /></TimedGameRoute>}
       {route.name === 'supplement' && <SupplementScreen />}
+      {route.name === 'note-discovery' && (route.stageId ? <NoteDiscoveryScreen stageId={route.stageId} /> : <NoteDiscoveryOverviewScreen />)}
       {route.name === 'practice' && <PracticeScreen lessonId={route.lessonId} />}
       {route.name === 'settings' && <SettingsScreen />}
       {/* Màn hình Luyện tập tự đặt nút trong khung khuông nhạc (góc phải dưới có bàn phím ảo + nút điều khiển). */}
-      {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && route.name !== 'flappy-note' && route.name !== 'balloon-pop' && route.name !== 'tomato-harvest' && route.name !== 'f1-racing' && (
+      {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && route.name !== 'flappy-note' && route.name !== 'balloon-pop' && route.name !== 'tomato-harvest' && route.name !== 'f1-racing' && route.name !== 'note-discovery' && (
         <FloatingMicNote className="fixed right-[calc(12px+env(safe-area-inset-right,0px))] bottom-[calc(12px+env(safe-area-inset-bottom,0px))]" />
       )}
       <FloatingReloadButton />
+      <GameTimeController />
       {/* TẠM THỜI trong giai đoạn xây dựng site — xoá khi không cần */}
       <AppVersionSide />
     </div>

@@ -6,6 +6,7 @@ import type { NoteLabelStyle } from '../music/notes';
 import type { PracticeHand } from '../practice/handPractice';
 import { DEFAULT_RECOGNIZER_CONFIG } from '../audio/NoteRecognizer';
 import { sanitizePosition, type FloatingPosition } from './floatingPosition';
+import { isLiveTimbre, type LiveTimbre } from '../audio/SoundOutput';
 import { DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_URL, LOCAL_OLLAMA_URL, normalizeOllamaUrl } from '../feedback/OllamaClient';
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
@@ -35,6 +36,9 @@ export interface DeviceSettings {
   labelStyle: NoteLabelStyle;
   theme: ThemeSetting;
   showKeyboard: boolean;
+  /** Màn Luyện tập (bài Thư viện): tự ẩn bàn phím ảo trong lúc đang đánh bài, hết bài / chơi lại → hiện lại.
+   *  Chỉ ẩn khi đang nghe bằng micro hoặc đàn MIDI (bàn phím ảo là nguồn nốt thì vẫn hiện). */
+  hideKeyboardWhilePlaying: boolean;
   /** Nút micro nổi ở mọi màn hình: bấm bật/tắt micro, hiện nốt đang nghe khi micro bật. */
   showFloatingNote: boolean;
   /** Vị trí nút nổi "Tải lại bản mới nhất" do người dùng kéo tới; null = góc trên bên trái. */
@@ -46,6 +50,10 @@ export interface DeviceSettings {
   tempoPercent: number;
   /** Nhận nốt từ đàn nối dây MIDI (Web MIDI, Chrome/Edge máy tính); tự kết nối khi mở app. */
   midiEnabled: boolean;
+  /** Tiếng piano app phát khi gõ trên controller MIDI không có loa (bật / tắt theo từng đàn trong Quản lý thiết bị). */
+  midiSoundTimbre: LiveTimbre;
+  /** Thêm đàn MIDI mô phỏng vào Quản lý thiết bị — để thử / phát triển khi chưa có đàn thật. */
+  midiSimulator: boolean;
   uiMode: UiModeSetting;
   inputSource: InputSourceSetting;
   /** Tiếng metronome khi dùng micro (mặc định tắt: micro có thể nghe nhầm tiếng click — dùng tai nghe thì bật). */
@@ -82,12 +90,15 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
   labelStyle: 'letter',
   theme: 'system',
   showKeyboard: true,
+  hideKeyboardWhilePlaying: false,
   showFloatingNote: true,
   reloadButtonPos: null,
   practiceMode: 'wait',
   practiceHand: 'both',
   tempoPercent: 100,
   midiEnabled: false,
+  midiSoundTimbre: 'grand',
+  midiSimulator: false,
   uiMode: 'auto',
   inputSource: 'auto',
   metronomeWithMic: false,
@@ -171,12 +182,15 @@ function sanitize(s: DeviceSettings): DeviceSettings {
     labelStyle: s.labelStyle === 'solfege' ? 'solfege' : 'letter',
     theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system',
     showKeyboard: Boolean(s.showKeyboard),
+    hideKeyboardWhilePlaying: s.hideKeyboardWhilePlaying === true,
     showFloatingNote: Boolean(s.showFloatingNote),
     reloadButtonPos: sanitizePosition(s.reloadButtonPos),
     practiceMode: sanitizeMode(s),
     practiceHand: s.practiceHand === 'right' || s.practiceHand === 'left' ? s.practiceHand : 'both',
     tempoPercent: Math.round(num(s.tempoPercent, 100, TEMPO_PERCENT_MIN, TEMPO_PERCENT_MAX)),
     midiEnabled: s.midiEnabled === true,
+    midiSoundTimbre: isLiveTimbre(s.midiSoundTimbre) ? s.midiSoundTimbre : 'grand',
+    midiSimulator: s.midiSimulator === true,
     uiMode: s.uiMode === 'kids' || s.uiMode === 'adult' ? s.uiMode : 'auto',
     inputSource: s.inputSource === 'microphone' || s.inputSource === 'midi' ? s.inputSource : 'auto',
     metronomeWithMic: s.metronomeWithMic === true,

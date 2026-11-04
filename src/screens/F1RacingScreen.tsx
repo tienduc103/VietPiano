@@ -21,6 +21,7 @@ import { useNoteInput } from '../hooks/useNoteInput';
 import { useApp } from '../store/appStore';
 import { useMic } from '../store/micStore';
 import { usePlayingNow } from '../store/playingStore';
+import { useGameTimeNow } from '../store/gameTimeStore';
 import { activeProfile, useProfiles } from '../store/profileStore';
 import { useSettings } from '../store/settingsStore';
 
@@ -71,6 +72,7 @@ export function F1RacingScreen() {
   const state = useGameState(game);
   const racing = state.status === 'racing' || state.status === 'countdown';
   usePlayingNow(racing);
+  useGameTimeNow(racing && !modal);
 
   const updateSettings = (patch: Partial<F1Settings>) => {
     const next = { ...settings, ...patch };

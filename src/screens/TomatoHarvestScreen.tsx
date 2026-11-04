@@ -12,12 +12,14 @@ import { midiToLabel, midiToName } from '../core/music/notes';
 import { TomatoFarmAudio } from '../core/tomatoHarvest/audio';
 import { TOMATO_NOTES, TomatoHarvestGame, tomatoAccuracy, tomatoStars, type TomatoDifficulty, type TomatoEvent, type TomatoHarvestState, type TomatoPlant } from '../core/tomatoHarvest/TomatoHarvestGame';
 import { loadTomatoAudio, loadTomatoProgress, recordTomatoResult, saveTomatoAudio, tomatoLeaderboard, TOMATO_DIFFICULTY_LABEL, TOMATO_TROPHY, type TomatoAudioSettings, type TomatoProgress } from '../core/tomatoHarvest/storage';
+import { NotePoolProvider } from '../core/noteDiscovery/NotePoolProvider';
 import { useNoteInput } from '../hooks/useNoteInput';
 import { useApp } from '../store/appStore';
 import { useMic } from '../store/micStore';
 import { activeProfile, useProfiles } from '../store/profileStore';
 import { useSettings } from '../store/settingsStore';
 import { usePlayingNow } from '../store/playingStore';
+import { useGameTimeNow } from '../store/gameTimeStore';
 
 type Modal = 'settings' | 'trophies' | 'leaderboard' | null;
 const ALL_NOTES = TOMATO_NOTES.hard;
@@ -31,7 +33,9 @@ export function TomatoHarvestScreen() {
   const inputSource = useSettings((s) => s.settings.inputSource);
   const labelStyle = useSettings((s) => s.settings.labelStyle);
   const micLive = useMic((s) => s.live);
-  const [difficulty, setDifficulty] = useState<TomatoDifficulty>('easy');
+  const [difficulty, setDifficulty] = useState<TomatoDifficulty>(() => {
+    return NotePoolProvider.getForTomatoHarvest(profile?.id ?? 'guest').suggestedDifficulty;
+  });
   const [run, setRun] = useState(0);
   const [modal, setModal] = useState<Modal>(null);
   const [audio, setAudio] = useState<TomatoAudioSettings>(loadTomatoAudio);
@@ -41,6 +45,7 @@ export function TomatoHarvestScreen() {
   const state = useGameState(game);
   const active = state.gameStatus === 'playing' || state.gameStatus === 'waitingForRegrowth';
   usePlayingNow(active);
+  useGameTimeNow(active && !modal);
   useFrameClock(active, (now) => game.tick(now));
   const flash = useKeyFlash(state.lastEventTime, state.lastMidi, state.lastOutcome);
 

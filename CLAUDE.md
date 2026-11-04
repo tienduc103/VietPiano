@@ -38,7 +38,18 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   input/NoteInputProvider.ts  interface nguồn nốt (microphone | virtual | midi)
   input/MicrophoneInputProvider.ts  AudioInput → PitchDetector + AttackAnalyzer → NoteRecognizer
   input/VirtualInputProvider.ts     bàn phím ảo / bàn phím máy tính (demo mode)
-  input/MIDIInputProvider.ts        đàn nối dây qua Web MIDI (Chrome/Edge máy tính; iPad không có) — Note On → sự kiện nốt (+ velocity), Note Off → `onNoteOff`
+  input/MIDIInputProvider.ts        `midiInput` — giữ tên + API cũ, toàn bộ xử lý ở `core/midi/MidiEngine` (xem dưới)
+  midi/                    Universal MIDI (docs/midi.md): MỌI màn chỉ nghe `midiInput`, không chạm thiết bị / hãng.
+                             `backends/` adapter chỉ chuyển byte + danh sách cổng: `WebMidiBackend` (Chrome/Edge), `NativeBridgeBackend`
+                             (app vỏ iPad Core MIDI / Windows WebView2, giao thức JSON v1, cờ `__VIETPIANO_NATIVE_MIDI__`),
+                             `SimulatedMidiBackend` (thiết bị mô phỏng cho test / Cài đặt → "Đàn MIDI mô phỏng"), `CompositeBackend`
+                             (mở song song); `platform.ts` chọn adapter. `MidiEngine`: `MidiByteParser` (running status) → cấu hình từng
+                             đàn (`deviceConfig.ts`: bật/tắt, kênh, số phím / dải, transpose, quãng tám, đường cong lực gõ, tiếng; lưu theo
+                             TÊN đàn `deviceConfigStore.ts`) → noteOn / noteOff / pedal (chỉ khi đổi trạng thái); chống kẹt phím (rút đàn /
+                             đổi cấu hình / stop → Note Off + nhả pedal); tự kết nối lại sau lỗi. `deviceProfiles.ts` nhận dạng hãng / số phím /
+                             có loa CHỈ để gợi ý mặc định. `MidiSoundMonitor` + `soundOutput.live*`: tiếng piano khi controller không loa
+                             (không đụng `isPlayingUntil`). UI: `components/midi/MidiDeviceManager` + `MidiSignalTest` (Cài đặt → Đàn MIDI).
+                             `appMidi.ts`: thiết bị mô phỏng (`window.__vietpianoMidiSim`), tiếng piano. App iPad: `native/ios/` (tham khảo, chưa build)
   input/midiNav.ts                  đàn MIDI bấm nút khi màn KHÔNG nghe nốt: phím trắng bất kỳ / đạp pedal → nút `midiNav="forward"`
                                     (Tiếp, Bắt đầu, Chơi lại…), phím đen → `midiNav="back"` (Trước, Về…; chờ 200 ms: hai phím đen bất kỳ
                                     cùng lúc → Trang chủ, chỉ ở màn có nút điều hướng đang hiện); bỏ phím 1,2 s sau khi nút hiện,
@@ -234,7 +245,9 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   có pedal (bài Thư viện `song-romance-2-hands`, `song-fur-elise-2-hands`, 5 bài `song-{ode-to-joy,amazing-grace,silent-night,greensleeves,auld-lang-syne}-2-hands`, 5 bài thay phiên `bh-*` và 50 bài `rep-*` cũng có ký hiệu pedal).
   Màn Luyện tập chấm pedal mọi bài có ký hiệu khi có đàn MIDI (`practice/PracticePedal.ts`, dùng lại `pedalQuality`): Theo nhịp theo phách thật; Chờ / Đếm nốt không có đồng hồ
   nên dùng trục số bước (`waitPedalPosition`). Điểm hiện ở hộp thoại kết quả + báo cáo AI, KHÔNG tính vào độ chính xác nốt; micro / bàn phím ảo → "không đo".
-- Không tạo MIDI giả. `MIDIInputProvider` dùng Web MIDI thật (bật ở Cài đặt → `midiEnabled`, tự kết nối khi mở app).
+- Không giả vờ có MIDI. `midiInput` dùng Web MIDI thật hoặc cầu nối native thật (bật ở Cài đặt → `midiEnabled`, tự kết nối khi mở app).
+  Thiết bị mô phỏng chỉ để test / phát triển: mặc định tắt (`midiSimulator`), tên luôn có chữ "Mô phỏng".
+  Bảng tương thích phần cứng ở docs/midi.md chỉ đánh dấu ✅ sau khi chạy checklist thủ công trên đàn thật.
   Safari và mọi trình duyệt trên iPad (WebKit) không có Web MIDI → báo "không hỗ trợ", dùng micro. MIDI trên iPad
   chỉ có qua app native (Core MIDI). Khi đàn MIDI đã nối, màn Luyện tập bỏ nốt từ micro (micro nghe chính tiếng đàn đó).
 - Micro: chỉ một stream (`microphoneInput` singleton), tắt AGC/khử ồn/khử vọng, phải `stop()` để giải phóng track +

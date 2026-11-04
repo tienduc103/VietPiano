@@ -890,6 +890,39 @@ const defs: LessonDef[] = [
     pedal: pedalEachMeasure(1, 16),
   },
   {
+    id: 'song-tieng-duong-cam',
+    title: 'Tiếng dương cầm (Piano sound)',
+    titleColor: 'text-rose-600 dark:text-rose-400 font-bold',
+    description:
+      'Bài hát Nhật Bản (nhịp 3/4, khuông đôi): tay phải giai điệu Đô – Rê – Mi – Fa, tay trái đệm Sol và Đô, có tương phản mạnh nhẹ (f / p).',
+    category: 'song',
+    clef: 'grand',
+    timeSignature: [3, 4],
+    difficulty: 1,
+    hand: 'both',
+    tempo: 80,
+    source: 'Bài hát Nhật Bản (Japanese song) — Sách PPS Music',
+    notation:
+      'C4:1 D4:2 C4:1 | E4/hd:3 | C4:1 D4:2 C4:1 | E4/hd:3 | ' +
+      'C4:1 D4:2 E4:3 | F4:4 E4:3 D4:2 | E4:3 D4:2 C4:1 | D4/hd:2 | ' +
+      'C4:1 D4:2 C4:1 | E4/hd:3 | C4:1 D4:2 C4:1 | E4/hd:3 | ' +
+      'C4:1 D4:2 E4:3 | F4:4 E4:3 D4:2 | E4:3 D4:2 C4:1 | C4/hd:1',
+    accompanimentNotation:
+      'G3/hd:1 | G3/hd | G3/hd | G3/hd | ' +
+      'G3/hd | G3/hd | G3/hd | G3/hd | ' +
+      'G3/hd | G3/hd | G3/hd | G3/hd | ' +
+      'G3/hd | G3/hd | G3/hd | C3/hd:5',
+    dynamics: [
+      { index: 0, mark: 'f' },
+      { index: 4, mark: 'p' },
+      { index: 8, mark: 'f' },
+      { index: 18, mark: 'f' },
+      { index: 22, mark: 'p' },
+      { index: 26, mark: 'f' },
+    ],
+    pedal: pedalEachMeasure(0, 15),
+  },
+  {
     id: 'song-happy-birthday',
     title: 'Happy Birthday (Chúc mừng sinh nhật)',
     description: 'Bài hát chúc mừng sinh nhật (Đô trưởng, nhịp 3/4), bắt đầu bằng nhịp lấy đà.',

@@ -15,6 +15,7 @@ export type Route =
   | { name: 'curriculum'; levelId?: string }
   /** Giáo trình bổ sung "Làm quen từng nốt" (danh sách nốt). Buổi học mở bằng route `lesson` như giáo trình chính. */
   | { name: 'supplement' }
+  | { name: 'note-discovery'; stageId?: string }
   /** `stage`: mở thẳng phần Luyện tập / Trò chơi sau buổi (nút trên thẻ buổi học). */
   | { name: 'lesson'; lessonId: string; stage?: LessonStage }
   | { name: 'library' }
@@ -49,6 +50,7 @@ export function initialRoute(search = typeof location === 'undefined' ? '' : loc
   if (screen === 'song-library') return { name: 'song-library' };
   if (screen === 'curriculum') return { name: 'curriculum' };
   if (screen === 'supplement') return { name: 'supplement' };
+  if (screen === 'note-discovery') return { name: 'note-discovery' };
   if (screen === 'games') return { name: 'games' };
   if (screen === 'note-hunter') return { name: 'note-hunter' };
   if (screen === 'flappy-note') return { name: 'flappy-note' };

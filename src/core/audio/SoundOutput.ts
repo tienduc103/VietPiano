@@ -24,6 +24,35 @@ export function scheduleNotes(notes: readonly { midiNote: number | null; startBe
     .map((n) => ({ midi: n.midiNote, start: n.startBeat * sec, duration: n.durationBeats * sec, velocity: n.velocity }));
 }
 
+/** Tiếng piano khi dùng controller MIDI không có loa. */
+export type LiveTimbre = 'grand' | 'bright' | 'electric' | 'soft';
+
+export const LIVE_TIMBRE_LABEL: Record<LiveTimbre, string> = {
+  grand: 'Piano cơ',
+  bright: 'Piano sáng',
+  electric: 'Piano điện',
+  soft: 'Piano êm',
+};
+
+interface TimbreSpec {
+  attack: number;
+  /** Hằng số thời gian tắt dần ở Đô giữa (giây). */
+  decay: number;
+  sustainLevel: number;
+  partials: readonly (readonly [mult: number, amp: number, type: OscillatorType])[];
+}
+
+const LIVE_TIMBRES: Record<LiveTimbre, TimbreSpec> = {
+  grand: { attack: 0.006, decay: 1.4, sustainLevel: 0.02, partials: [[1, 1, 'sine'], [2, 0.4, 'sine'], [3, 0.15, 'sine'], [4, 0.06, 'sine']] },
+  bright: { attack: 0.004, decay: 1.1, sustainLevel: 0.02, partials: [[1, 0.8, 'triangle'], [2, 0.45, 'sine'], [3, 0.25, 'sine'], [5, 0.08, 'sine']] },
+  electric: { attack: 0.004, decay: 1.8, sustainLevel: 0.05, partials: [[1, 1, 'sine'], [2, 0.2, 'sine'], [7, 0.05, 'sine']] },
+  soft: { attack: 0.015, decay: 2.2, sustainLevel: 0.04, partials: [[1, 1, 'sine'], [2, 0.15, 'sine']] },
+};
+
+export function isLiveTimbre(v: unknown): v is LiveTimbre {
+  return typeof v === 'string' && v in LIVE_TIMBRES;
+}
+
 type Ctor = typeof AudioContext;
 
 function audioContextCtor(): Ctor | null {
@@ -178,6 +207,76 @@ class SoundOutputImpl {
         }
       },
     };
+  }
+
+  // ——— Tiếng đàn trực tiếp khi gõ trên controller MIDI không có loa ———
+  // Tách khỏi phần phát mẫu: KHÔNG cập nhật `isPlayingUntil` (không làm màn học bỏ nốt) và `stop()` không tắt.
+
+  private live = new Map<number, { env: GainNode; oscs: OscillatorNode[]; sustained: boolean }>();
+  private liveSustain = false;
+
+  /** Bắt đầu một nốt và giữ tới `liveNoteOff` (piano tự tắt dần trong lúc giữ). */
+  liveNoteOn(midi: number, velocity: number, timbre: LiveTimbre = 'grand'): void {
+    const ctx = this.ensure();
+    if (!ctx) return;
+    this.releaseLive(midi, 0.03);
+    const at = ctx.currentTime + 0.005;
+    const spec = LIVE_TIMBRES[timbre];
+    const f = midiToFrequency(midi);
+    const peak = 0.22 * Math.pow(Math.min(127, Math.max(1, velocity)) / 127, 1.3) + 0.01;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0, at);
+    env.gain.linearRampToValueAtTime(peak, at + spec.attack);
+    // Tắt dần như dây đàn: nốt cao tắt nhanh hơn.
+    env.gain.setTargetAtTime(peak * spec.sustainLevel, at + spec.attack, spec.decay * Math.pow(0.5, (midi - 60) / 24));
+    env.connect(this.master!);
+    const oscs: OscillatorNode[] = [];
+    for (const [mult, amp, type] of spec.partials) {
+      const osc = ctx.createOscillator();
+      osc.type = type;
+      osc.frequency.value = f * mult;
+      const g = ctx.createGain();
+      g.gain.value = amp;
+      osc.connect(g).connect(env);
+      osc.start(at);
+      oscs.push(osc);
+    }
+    this.live.set(midi, { env, oscs, sustained: false });
+  }
+
+  liveNoteOff(midi: number): void {
+    const v = this.live.get(midi);
+    if (!v) return;
+    if (this.liveSustain) v.sustained = true;
+    else this.releaseLive(midi, 0.12);
+  }
+
+  /** Pedal vang: nhả pedal thì tắt các nốt đã thả phím trong lúc đạp. */
+  liveSetSustain(down: boolean): void {
+    this.liveSustain = down;
+    if (down) return;
+    for (const [midi, v] of this.live) if (v.sustained) this.releaseLive(midi, 0.25);
+  }
+
+  liveAllOff(): void {
+    this.liveSustain = false;
+    for (const midi of [...this.live.keys()]) this.releaseLive(midi, 0.05);
+  }
+
+  private releaseLive(midi: number, releaseSec: number): void {
+    const v = this.live.get(midi);
+    if (!v || !this.ctx) return;
+    this.live.delete(midi);
+    const t = this.ctx.currentTime;
+    v.env.gain.cancelScheduledValues(t);
+    v.env.gain.setTargetAtTime(0, t, releaseSec / 3);
+    for (const osc of v.oscs) {
+      try {
+        osc.stop(t + releaseSec * 2 + 0.05);
+      } catch {
+        // đã dừng
+      }
+    }
   }
 
   stop(): void {

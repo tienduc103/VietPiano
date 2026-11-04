@@ -62,6 +62,15 @@ describe('DeviceSettings', () => {
     expect(loadSettings(st)).toEqual(DEFAULT_SETTINGS);
   });
 
+  it('tự ẩn bàn phím khi đang đánh: mặc định tắt, chỉ bật khi đúng true', () => {
+    const st = memoryStorage();
+    expect(loadSettings(st).hideKeyboardWhilePlaying).toBe(false);
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ hideKeyboardWhilePlaying: 'yes' }));
+    expect(loadSettings(st).hideKeyboardWhilePlaying).toBe(false);
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ hideKeyboardWhilePlaying: true }));
+    expect(loadSettings(st).hideKeyboardWhilePlaying).toBe(true);
+  });
+
   it('giao diện giáo trình và nguồn nốt: giá trị lạ → auto', () => {
     const st = memoryStorage();
     expect(loadSettings(st)).toMatchObject({ uiMode: 'auto', inputSource: 'auto', metronomeWithMic: false });

@@ -20,6 +20,8 @@ import { RhythmTrainView } from './RhythmTrainView';
 import { StaffShootView } from './StaffShootView';
 import { SteadyBeatView } from './SteadyBeatView';
 import { Stars, type GameResult } from './shared';
+import { GameTimeLocked } from '../GameTimeLimit';
+import { useGameTime, useGameTimeNow, useGameTimeOpen } from '../../store/gameTimeStore';
 
 const HOW_TO: Record<GameKind, { adult: string; kids: string }> = {
   'note-catch': {
@@ -151,6 +153,9 @@ export function GamePlayer({
   const [phase, setPhase] = useState<'intro' | 'play' | 'result'>('intro');
   const [run, setRun] = useState(0);
   const [result, setResult] = useState<GameResult | null>(null);
+  const remainingMs = useGameTime((s) => s.remainingMs);
+  useGameTimeOpen();
+  useGameTimeNow(phase === 'play' && remainingMs > 0);
   /** Kỷ lục của trò này trước ván vừa chơi (để báo "Kỷ lục mới"). */
   const previousBest = useRef(0);
   /** Nốt "vàng" (×2 điểm) của ván, lấy lúc bắt đầu ván. */
@@ -174,6 +179,8 @@ export function GamePlayer({
   };
   /** Trò kế tiếp trong danh sách (vòng lại) — nút "Chơi …" ở màn kết quả. */
   const other = specs.length > 1 ? specs[(specs.findIndex((s) => s.kind === spec.kind) + 1) % specs.length] : undefined;
+
+  if (remainingMs <= 0) return <GameTimeLocked />;
 
   if (phase === 'play') {
     return (

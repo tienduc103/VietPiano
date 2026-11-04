@@ -128,7 +128,8 @@ function Practice({ lesson }: { lesson: Lesson }) {
   // Đồng hồ nhịp chạy theo khung hình khi đang đếm vào / đang chạy.
   const ticking = tempoMode && (tempo.status === 'running' || tempo.status === 'countIn');
   // Đang chơi (đã đánh nốt đầu / đồng hồ nhịp chạy) → ẩn nút nổi; hết bài hoặc chơi lại từ đầu → hiện lại.
-  usePlayingNow(tempoMode ? ticking : state.startedAt !== null && state.status !== 'finished');
+  const playingNow = tempoMode ? ticking : state.startedAt !== null && state.status !== 'finished';
+  usePlayingNow(playingNow);
   useEffect(() => {
     if (!ticking) return;
     let id = 0;
@@ -321,6 +322,11 @@ function Practice({ lesson }: { lesson: Lesson }) {
     });
     return f;
   }, [leftChord]);
+  // Tự ẩn bàn phím lúc đang đánh: chỉ khi nốt đến từ micro / đàn MIDI (chạm bàn phím ảo thì phải thấy phím);
+  // nghe mẫu → hiện lại để xem con trỏ theo tiếng đàn.
+  const keyboardInput = !micRunning && !midiConnected;
+  const showKeyboardNow =
+    settings.showKeyboard && !(settings.hideKeyboardWhilePlaying && playingNow && !listen.playing && !keyboardInput);
   const keyboardExpected = leftChord || (state.melodyDone && !listen.playing) ? null : expected;
   const stepFinger = hand === 'left' ? currentStep?.fingers[0] : expectedFinger;
   const rawResults = tempoMode ? tempo.results : state.results;
@@ -342,7 +348,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
           <Icon name="back" />
         </Button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-bold">{lesson.title}</h1>
+          <h1 className={`truncate text-xl font-bold ${lesson.titleColor ?? ''}`}>{lesson.title}</h1>
           <div className="mt-1 flex items-center gap-3">
             <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-violet-100 dark:bg-slate-700">
               <div className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-orange-400 transition-[width] duration-300" style={{ width: `${(done / midis.length) * 100}%` }} />
@@ -395,6 +401,23 @@ function Practice({ lesson }: { lesson: Lesson }) {
         >
           <Icon name="keyboard" />
         </Button>
+        {settings.showKeyboard && (
+          <Button
+            variant="ghost"
+            aria-label="Tự ẩn bàn phím khi đang đánh"
+            aria-pressed={settings.hideKeyboardWhilePlaying}
+            title={
+              keyboardInput
+                ? 'Tự ẩn bàn phím khi đang đánh — chỉ có tác dụng khi dùng micro hoặc đàn MIDI (bàn phím ảo đang là nguồn nốt)'
+                : 'Tự ẩn bàn phím khi đang đánh, hết bài / chơi lại thì hiện lại'
+            }
+            onClick={() => updateSettings({ hideKeyboardWhilePlaying: !settings.hideKeyboardWhilePlaying })}
+            className={`px-2 text-sm font-semibold ${settings.hideKeyboardWhilePlaying ? 'text-violet-700 dark:text-violet-300' : 'opacity-60'}`}
+            data-testid="auto-hide-keyboard"
+          >
+            Tự ẩn
+          </Button>
+        )}
         <FullscreenButton />
       </header>
 
@@ -491,7 +514,7 @@ function Practice({ lesson }: { lesson: Lesson }) {
         </div>
       </section>
 
-      {settings.showKeyboard && (
+      {showKeyboardNow && (
         <footer className="h-[20vh] min-h-28 px-3">
           <PianoKeyboard
             from={range.from}

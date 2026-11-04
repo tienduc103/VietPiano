@@ -3,19 +3,39 @@ import { midiInput } from '../core/input/MIDIInputProvider';
 import { useMidi } from '../store/midiStore';
 import { useSettings } from '../store/settingsStore';
 import { Button, Icon, Toggle } from './ui';
+import { MidiDeviceManager, MidiUnsupportedNote } from './midi/MidiDeviceManager';
 
-/** Phần cài đặt đàn MIDI: bật/tắt, trạng thái kết nối, tên đàn, nốt vừa nhận để thử. */
+/**
+ * Phần cài đặt đàn MIDI: bật/tắt, trạng thái kết nối, nốt vừa nhận để thử, Quản lý thiết bị MIDI
+ * (danh sách đàn, cấu hình dải phím / transpose / kênh, kiểm tra tín hiệu, tiếng piano), đàn mô phỏng.
+ */
 export function MidiSettings({ labelStyle }: { labelStyle: NoteLabelStyle }) {
   const enabled = useSettings((s) => s.settings.midiEnabled);
+  const simulator = useSettings((s) => s.settings.midiSimulator);
   const update = useSettings((s) => s.update);
-  const { status, devices, error, lastNote } = useMidi();
+  const { status, devices, error, lastNote, lastVelocity } = useMidi();
+
+  const simulatorToggle = (
+    <Toggle
+      label={
+        <span>
+          Đàn MIDI mô phỏng
+          <span className="block text-sm text-slate-500 dark:text-slate-400">
+            Thêm hai đàn ảo (controller 25 phím, đàn điện 88 phím) để thử cấu hình khi chưa có đàn thật. Bấm phím trên hình ở mục Kiểm tra tín hiệu.
+          </span>
+        </span>
+      }
+      checked={simulator}
+      onChange={(v) => update(v ? { midiSimulator: true, midiEnabled: true } : { midiSimulator: false })}
+    />
+  );
 
   if (status === 'unsupported') {
     return (
-      <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200" data-testid="midi-unsupported">
-        Trình duyệt này không hỗ trợ MIDI (Web MIDI). Safari và mọi trình duyệt trên iPad/iPhone đều không có. Hãy mở
-        VietPiano bằng Chrome hoặc Edge trên máy tính, hoặc tiếp tục dùng micro.
-      </p>
+      <>
+        <MidiUnsupportedNote />
+        <div className="mt-2">{simulatorToggle}</div>
+      </>
     );
   }
 
@@ -26,7 +46,7 @@ export function MidiSettings({ labelStyle }: { labelStyle: NoteLabelStyle }) {
           <span>
             Dùng đàn MIDI
             <span className="block text-sm text-slate-500 dark:text-slate-400">
-              Nhận nốt chính xác qua dây, không cần micro. Khi đàn đã nối, nốt nghe qua micro bị bỏ qua khi luyện tập.
+              Nhận nốt chính xác qua dây USB hoặc Bluetooth MIDI, không cần micro. Khi đàn đã nối, nốt nghe qua micro bị bỏ qua khi luyện tập.
             </span>
           </span>
         }
@@ -46,8 +66,9 @@ export function MidiSettings({ labelStyle }: { labelStyle: NoteLabelStyle }) {
           )}
           {status === 'ready' && devices.length === 0 && (
             <p>
-              <b>Chưa thấy đàn.</b> Cắm dây USB từ đàn vào máy và bật đàn — danh sách tự cập nhật. Nếu vẫn không thấy, đóng
-              các phần mềm nhạc khác đang dùng đàn (trên Windows mỗi lúc chỉ một chương trình mở được cổng MIDI).
+              <b>Chưa thấy đàn.</b> Cắm dây USB từ đàn vào máy và bật đàn — danh sách tự cập nhật. Đàn Bluetooth MIDI: ghép trong cài đặt
+              Bluetooth / phần mềm MIDI của hệ điều hành trước. Nếu vẫn không thấy, đóng các phần mềm nhạc khác đang dùng đàn (trên Windows mỗi lúc
+              chỉ một chương trình mở được cổng MIDI) rồi bấm Kết nối lại.
             </p>
           )}
           {status === 'ready' && devices.length > 0 && (
@@ -60,11 +81,14 @@ export function MidiSettings({ labelStyle }: { labelStyle: NoteLabelStyle }) {
                 <span className="min-w-16 text-3xl font-bold tabular-nums" data-testid="midi-last-note">
                   {lastNote === null ? '—' : midiToLabel(lastNote, labelStyle)}
                 </span>
+                {lastNote !== null && lastVelocity !== null && <span className="text-sm text-slate-500 dark:text-slate-400">lực {lastVelocity}</span>}
               </p>
             </>
           )}
+          {(status === 'ready' || status === 'error') && <MidiDeviceManager labelStyle={labelStyle} />}
         </div>
       )}
+      <div className="mt-2">{simulatorToggle}</div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { microphoneInput } from '../core/input/MicrophoneInputProvider';
 import { midiInput } from '../core/input/MIDIInputProvider';
+import { midiSound, setMidiSimulator } from '../core/midi/appMidi';
 import { useMic } from '../store/micStore';
 import { useSettings } from '../store/settingsStore';
 
@@ -37,11 +38,28 @@ export function useAppLifecycle(): void {
  */
 export function useMidiConnection(): void {
   const enabled = useSettings((s) => s.settings.midiEnabled);
+  const simulator = useSettings((s) => s.settings.midiSimulator);
+  const timbre = useSettings((s) => s.settings.midiSoundTimbre);
+  // Đổi adapter trước khi kết nối (effect chạy theo thứ tự khai báo).
+  useEffect(() => {
+    void setMidiSimulator(simulator);
+  }, [simulator]);
   useEffect(() => {
     if (!enabled) return;
     void midiInput.start();
-    return () => void midiInput.stop();
+    midiSound.start();
+    // Trở lại từ nền: cầu nối native (iPad) có thể đã mất kết nối Bluetooth → quét lại cổng.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') midiInput.refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      midiSound.stop();
+      void midiInput.stop();
+    };
   }, [enabled]);
+  useEffect(() => midiSound.setTimbre(timbre), [timbre]);
 }
 
 /** Áp dụng giao diện sáng/tối theo cài đặt hoặc theo hệ thống. */
