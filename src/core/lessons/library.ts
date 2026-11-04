@@ -609,17 +609,16 @@ const defs: LessonDef[] = [
   {
     id: 'song-hot-cross-buns',
     title: 'Bánh nóng giòn (Hot Cross Buns)',
-    description: 'Bài hát đầu tiên cho bé: chỉ 3 nốt Mi Rê Đô với ngón 3 – 2 – 1, có nhịp móc đơn vui tai.',
+    description: 'Bài hát đầu tiên cho bé: nhịp 2/4, chỉ 3 nốt Mi Rê Đô với ngón 3 – 2 – 1.',
     category: 'song',
     clef: 'treble',
-    timeSignature: [4, 4],
+    timeSignature: [2, 4],
     difficulty: 1,
     hand: 'right',
     tempo: 60,
     source: 'Đồng dao Anh "Hot Cross Buns" (thế kỷ 18) — phạm vi công cộng',
-    notation:
-      'E4:3 D4:2 C4/h:1 | E4:3 D4:2 C4/h:1 | C4/8:1 C4/8:1 C4/8:1 C4/8:1 D4/8:2 D4/8:2 D4/8:2 D4/8:2 | E4:3 D4:2 C4/h:1 | ' +
-      'E4:3 D4:2 C4/h:1 | E4:3 D4:2 C4/h:1 | C4/8:1 C4/8:1 C4/8:1 C4/8:1 D4/8:2 D4/8:2 D4/8:2 D4/8:2 | E4:3 D4:2 C4/h:1',
+    // Theo bản "1. Bánh nóng giòn" (sách PPS): nốt Đô + dấu lặng đen cuối ô → Đô nốt trắng (bài thư viện không có dấu lặng).
+    notation: 'E4:3 D4:2 | C4/h:1 | E4:3 D4:2 | C4/h:1 | C4:1 C4:1 | D4:2 D4:2 | E4:3 D4:2 | C4/h:1',
   },
   {
     id: 'song-frere-jacques',
