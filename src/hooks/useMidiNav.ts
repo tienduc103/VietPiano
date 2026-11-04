@@ -1,6 +1,7 @@
 import { useEffect, type RefObject } from 'react';
 import { MIDI_NAV_CHORD_MS, MidiNav, type MidiNavAction } from '../core/input/midiNav';
 import { midiInput } from '../core/input/MIDIInputProvider';
+import type { NoteInputEvent } from '../core/input/NoteInputProvider';
 import { useApp } from '../store/appStore';
 
 /** Một bộ điều hướng cho toàn app (xem `core/input/midiNav.ts`). */
@@ -8,7 +9,22 @@ export const midiNav = new MidiNav();
 
 let installed = false;
 
-/** Nghe đàn MIDI + chạm màn hình — gắn một lần, khi nút điều hướng đầu tiên xuất hiện. */
+/**
+ * Phím đàn đã dùng để bấm nút (hoặc phím đen đang chờ "lùi lại" / về Trang chủ). Nút bấm có thể đổi màn ngay trong
+ * lúc phát sự kiện (vd "Bắt đầu" → ván chuyển sang đang chơi), nên màn nghe nốt phải bỏ chính phím đó (`useNoteInput`).
+ */
+const consumed = new WeakSet<NoteInputEvent>();
+
+/** Phím này đã được điều hướng bằng đàn MIDI dùng → không phải nốt của bài / trò chơi. */
+export function consumedByMidiNav(e: NoteInputEvent): boolean {
+  return consumed.has(e);
+}
+
+/**
+ * Nghe đàn MIDI + chạm màn hình — gắn một lần, khi nút điều hướng đầu tiên xuất hiện hoặc màn nghe nốt đầu tiên
+ * mở (`useMidiNavListening`, chạy trước khi màn đăng ký nghe nốt). Nhờ vậy điều hướng luôn nhận phím TRƯỚC mọi màn
+ * và kịp đánh dấu phím đã dùng (`consumedByMidiNav`).
+ */
 function install(): void {
   if (installed || typeof window === 'undefined') return;
   installed = true;
@@ -16,10 +32,10 @@ function install(): void {
   midiNav.setHome(() => useApp.getState().navigate({ name: 'dashboard' }));
   midiInput.onNote((e) => {
     if (document.hidden) return;
+    const result = midiNav.press({ kind: 'note', midi: e.midi, time: e.time });
+    if (result !== null) consumed.add(e);
     // Phím đen: chờ xem có phím đen thứ hai (về Trang chủ) rồi mới "lùi lại".
-    if (midiNav.press({ kind: 'note', midi: e.midi, time: e.time }) === 'pending') {
-      window.setTimeout(() => midiNav.flush(performance.now()), MIDI_NAV_CHORD_MS + 20);
-    }
+    if (result === 'pending') window.setTimeout(() => midiNav.flush(performance.now()), MIDI_NAV_CHORD_MS + 20);
   });
   midiInput.onPedal((e) => {
     if (!e.down || document.hidden) return;
@@ -47,7 +63,10 @@ export function useMidiNavTarget(ref: RefObject<HTMLButtonElement | null>, actio
   }, [action, ref]);
 }
 
-/** Màn đang nghe nốt (`active`) → phím đàn không điều hướng. */
+/** Màn đang nghe nốt (`active`) → phím đàn không điều hướng. Gọi TRƯỚC khi màn đăng ký nghe nốt (xem `install`). */
 export function useMidiNavListening(active: boolean): void {
-  useEffect(() => (active ? midiNav.listen() : undefined), [active]);
+  useEffect(() => {
+    install();
+    return active ? midiNav.listen() : undefined;
+  }, [active]);
 }

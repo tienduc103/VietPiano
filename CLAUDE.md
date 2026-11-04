@@ -56,6 +56,8 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                                     sau mỗi lần điều hướng, sau mỗi lần chạm màn hình. `useNoteInput` mặc định = đang nghe nốt (chặn điều hướng);
                                     lớp phủ Sẵn sàng / tạm dừng / tổng kết của game truyền `listening: false`. Glue: `hooks/useMidiNav.ts`,
                                     prop `midiNav` của `Button` (mỗi màn tối đa một nút mỗi loại; nút sau cùng hiện + không bị hộp thoại che được ưu tiên)
+                                    Phím đã bấm nút KHÔNG thành nốt của màn (nút có thể đổi màn ngay trong lúc phát phím, vd "Bắt đầu" → ván đang chơi):
+                                    `consumedByMidiNav` đánh dấu, `useNoteInput` bỏ qua; điều hướng gắn trước mọi màn nghe nốt nên luôn nhận phím trước
   practice/PracticeEngine.ts  Wait Mode (máy trạng thái thuần); `advanceOnWrong` = chế độ Đếm nốt (sai vẫn đi tiếp, ghi 'wrong')
   practice/TempoFollower.ts   chế độ chạy theo nhịp: đồng hồ nhịp tự chạy, khớp pha + nhịp độ theo onset, KHÔNG xét cao độ
   practice/listenSample.ts    nút "Nghe mẫu" màn Luyện tập: phát từ đầu ô nhịp đang tập (hai tay + ngân theo pedal), con trỏ theo tiếng đàn,

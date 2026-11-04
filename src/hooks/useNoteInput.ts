@@ -8,7 +8,7 @@ import { soundOutput } from '../core/audio/SoundOutput';
 import type { InputSourceSetting } from '../core/settings/DeviceSettings';
 import { acceptSource } from '../core/input/sourceFilter';
 import { voiceTeacher } from '../core/voice/teacher';
-import { useMidiNavListening } from './useMidiNav';
+import { consumedByMidiNav, useMidiNavListening } from './useMidiNav';
 
 /** Bỏ nốt micro thêm chừng này sau khi tiếng đàn mẫu tắt (âm ngân của loa). */
 const PLAYBACK_GUARD_MS = 300;
@@ -33,6 +33,7 @@ export function useNoteInput(
     listening?: boolean;
   } = {},
 ): void {
+  // Phải đứng trước effect đăng ký nghe nốt bên dưới: điều hướng bằng đàn MIDI nhận phím trước màn.
   useMidiNavListening(opts.listening ?? true);
   const ref = useRef(handlers);
   ref.current = handlers;
@@ -46,6 +47,8 @@ export function useNoteInput(
     microphoneInput.resetRecognizer();
     const onNote = (e: NoteInputEvent) => {
       if (!acceptSource(e.source, settingRef.current, midiInput.hasDevice())) return;
+      // Phím vừa bấm nút (vd "Bắt đầu" → ván chuyển sang đang chơi ngay trong lúc phát sự kiện) không phải nốt trả lời.
+      if (e.source === 'midi' && consumedByMidiNav(e)) return;
       if (guardRef.current && e.source === 'microphone' && e.time < soundOutput.isPlayingUntil + PLAYBACK_GUARD_MS) return;
       // Tiếng cô giáo qua loa có cao độ → micro có thể nhận thành nốt. Đàn MIDI / bàn phím ảo không bị ảnh hưởng.
       if (e.source === 'microphone' && voiceTeacher.blocksMic(e.time)) return;

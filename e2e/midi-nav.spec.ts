@@ -131,9 +131,15 @@ test('đàn MIDI: Thu hoạch cà chua — phím trắng bấm "Bắt đầu"; �
   await page.goto('/?screen=tomato-harvest');
   const game = page.getByTestId('tomato-harvest');
   await expect(game).toHaveAttribute('data-status', 'ready');
+  // Bấm "Bắt đầu" bằng chính nốt cần hái đầu tiên (mọi nốt của trò là phím trắng): ván chuyển sang đang chơi ngay
+  // trong lúc phát sự kiện phím, nhưng phím đã dùng để bấm nút không được tính là một lần hái.
+  const firstTarget = Number(await game.getAttribute('data-target'));
   await settle(page);
-  await press(page, 60);
+  await press(page, firstTarget);
   await expect(game).toHaveAttribute('data-status', 'playing');
+  await page.waitForTimeout(200);
+  await expect(game).toHaveAttribute('data-harvested', '0');
+  await expect(game).toHaveAttribute('data-target', String(firstTarget));
   // Đang chơi: phím đàn hái cà chua, không điều hướng; hai phím đen không về Trang chủ.
   await settle(page);
   const target = Number(await game.getAttribute('data-target'));
