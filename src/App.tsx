@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { useApp } from './store/appStore';
 import { useAppLifecycle, useMidiConnection, useTheme } from './hooks/useAppLifecycle';
 import { useVoiceTeacherLifecycle } from './hooks/useVoiceTeacher';
@@ -23,6 +23,9 @@ import { AppVersionSide } from './components/AppVersion';
 import { FloatingMicNote } from './components/MicPanel';
 import { FloatingReloadButton } from './components/FloatingReloadButton';
 import { GameTimeController, TimedGameRoute } from './components/GameTimeLimit';
+
+/** AI Piano Coach tải riêng (chunk khác, vẫn được service worker cache để chạy offline). */
+const CoachScreen = lazy(() => import('./screens/CoachScreen').then((m) => ({ default: m.CoachScreen })));
 
 export function App() {
   const route = useApp((s) => s.route);
@@ -59,6 +62,11 @@ export function App() {
       {route.name === 'five-finger' && <FiveFingerScreen />}
       {route.name === 'note-discovery' && <NoteDiscoveryScreen />}
       {route.name === 'practice' && <PracticeScreen lessonId={route.lessonId} />}
+      {route.name === 'coach' && (
+        <Suspense fallback={<div className="grid h-full place-items-center text-slate-500">Đang mở AI Piano Coach…</div>}>
+          <CoachScreen key={`${route.lessonId ?? ''}|${route.measures?.join('-') ?? ''}`} lessonId={route.lessonId} measures={route.measures} />
+        </Suspense>
+      )}
       {route.name === 'settings' && <SettingsScreen />}
       {/* Màn hình Luyện tập tự đặt nút trong khung khuông nhạc (góc phải dưới có bàn phím ảo + nút điều khiển). */}
       {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && route.name !== 'flappy-note' && route.name !== 'balloon-pop' && route.name !== 'tomato-harvest' && route.name !== 'f1-racing' && route.name !== 'five-finger' && (

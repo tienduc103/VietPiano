@@ -147,6 +147,9 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
               <Button onClick={() => navigate({ name: 'curriculum', levelId: level.levelId })} data-testid="open-curriculum">
                 Xem toàn bộ giáo trình
               </Button>
+              <Button onClick={() => navigate({ name: 'coach' })} data-testid="open-coach">
+                <span aria-hidden>🤖</span> AI Piano Coach — chấm bài đàn
+              </Button>
             </div>
           </section>
         )}

@@ -190,6 +190,18 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              muộn → `late-sync` không tính sai nốt), `FiveFingerSession` buổi liên tục (xong chuỗi → ăn mừng 1,5 s → chuỗi mới; 5/10/20/∞;
                              luyện từng tay trước), `stats.ts` thống kê theo hồ sơ (ngón chỉ là ngón ĐƯỢC HƯỚNG DẪN — không kết luận sai ngón) + gợi ý độ khó.
                              Micro không chấm được hai tay cùng lúc → khoá Bắt đầu
+  coach/                   "AI Piano Coach" (`screens/CoachScreen`, route `coach`, `?screen=coach`, nút ở trang chủ; tài liệu + backlog + checklist:
+                             docs/ai-coach/). Bốn thành phần, thuần + có test: `recorder/` log GỐC (on/off/cc 64·66·67/mark, mốc nguồn + mốc nhận,
+                             không làm tròn) → `buildPerformance` (ghép nốt, retrigger, Off mồ côi, ngân pedal / sostenuto, bỏ khoảng tạm dừng, lệch đồng hồ
+                             driver); `reference/fromLesson` (`ScoreReference` từ `Lesson`, id nốt `m:i`/`h:i:k`/`a:i:k`); `scoring/` (`align` DTW nhóm nốt +
+                             khớp từng nốt QH động đơn điệu theo phím, `ScoringEngine` 5 tiêu chí — dùng lại `timingQuality` / `durationQuality` / `pedalQuality` /
+                             `dynamicsQuality`; Mode A 40/25/15/10/10, B 30/30/10/10/20, C = A + `progress/compare`; tiêu chí thiếu tín hiệu → null + chia lại
+                             trọng số; mỗi issue có `deduction` /100 ⇒ tổng = 100 − Σ; có `SCORING_ENGINE_VERSION`); `ai/` (payload tóm tắt có mã I…/R…,
+                             Ollama JSON schema + timeout / retry, `verify` bỏ câu sai ô / số / tên nốt, `fallback` nhận xét theo quy tắc, `link` trạng thái kết nối AI
+                             hiện cả lúc ĐANG ĐÁNH — chỉ GET /api/tags định kỳ, thanh ghi hai hàng để chữ đổi không làm khuông nhảy); `practice/`
+                             (`recommendPractice` ≤ 3 → tính năng sẵn có, `PracticePlan` 7 bước); `storage/CoachStorage` IndexedDB riêng "vietpiano-coach"
+                             theo `profileKey` (lưu nháp 3 s → khôi phục phiên dở dang; kết quả theo phiên bản engine, chấm lại không xoá bản cũ).
+                             Rubric Biểu diễn cũ không đổi, điểm Coach không ghi vào tiến độ giáo trình. Thử thật: docs/ai-coach/acceptance-checklist.md
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt. Chùm nốt tay phải: số ngón xếp chồng trên chùm
                              (`noteFingerRows`, nốt đơn vẫn hàng cố định), ký hiệu hợp âm (`.score-chord`), hình nêm (`.score-hairpin`), pedal giữa ô; tuỳ chọn
                              `showFingers / showChords / showPedal` (nút Hiển thị màn Luyện tập + cỡ khuông `scoreZoom`); vượt mép trên → mở rộng viewBox lên trên
@@ -237,7 +249,7 @@ src/store/           Zustand: settingsStore, micStore, appStore (route + tiến 
 src/hooks/           vòng đời app (ẩn nền → tắt micro), theme, wake lock, ghi phiên luyện tập
 src/components/      ScoreView, PianoKeyboard, MicPanel, ui
 src/screens/         Dashboard (trang chủ = giáo trình phía trên + Thư viện bài `components/LessonLibrary` phía dưới),
-                     Curriculum, Supplement (giáo trình bổ sung), NoteDiscovery (danh sách buổi "Khám phá nốt nhạc"), LessonPlayer, Practice, Games, Settings. Route `library` = trang chủ cuộn tới thư viện;
+                     Curriculum, Supplement (giáo trình bổ sung), NoteDiscovery (danh sách buổi "Khám phá nốt nhạc"), LessonPlayer, Practice, Games, Coach (AI Piano Coach, tải lazy), Settings. Route `library` = trang chủ cuộn tới thư viện;
                      `?screen=library` / `?screen=song-library` / `?screen=curriculum` / `?screen=games` mở thẳng (e2e dùng)
 e2e/                 Playwright; global-setup sinh WAV gam Đô trưởng làm micro giả
 ```
@@ -296,6 +308,8 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   máy chạy server (bỏ header Origin; `OLLAMA_PROXY_TARGET`, `OLLAMA_PROXY=0`) → iPad trong LAN dùng chung AI của máy đó.
   GitHub Pages không có proxy → chỉ dùng được Ollama trên chính máy mở app. Prompt yêu cầu model chỉ dựa
   vào số liệu được cung cấp; e2e giả lập Ollama bằng `page.route` (`e2e/ai-coach.spec.ts`).
+  AI Piano Coach (`core/coach/ai`): AI không bao giờ tạo / sửa điểm; mặc định không gửi tên học viên (`aiShareName`, cài đặt riêng
+  `vietpiano.coach.settings.v1`); không gửi log MIDI; câu trả lời coi là dữ liệu không tin cậy (schema + `verifyFeedback`) — `e2e/coach.spec.ts`.
 - Bài hát mới phải là giai điệu tự biên soạn hoặc thuộc phạm vi công cộng; ghi `source`.
   Test `lessons.test.ts` kiểm tra mọi ô nhịp đủ phách và nốt nằm trong tầm micro (MIDI 36–84).
 - VexFlow dùng entry `vexflow/bravura` (font nhúng → offline). Màu khuông nhạc qua `currentColor` + CSS

@@ -45,6 +45,8 @@ export type Route =
   /** `fromSongs`: mở từ Thư viện bài hát → nút quay lại / "Về thư viện" trở về trang đó.
    *  `measures`: luyện riêng đoạn ô [từ, tới] (số ô in trên bản nhạc, ô lấy đà = 0). */
   | { name: 'practice'; lessonId: string; fromSongs?: boolean; measures?: [number, number] }
+  /** AI Piano Coach: ghi bài đàn → chấm theo bản nhạc → lỗi trên khuông, nhận xét, bài luyện sửa lỗi (docs/ai-coach). */
+  | { name: 'coach'; lessonId?: string; measures?: [number, number] }
   | { name: 'settings' };
 
 /** Màn hình mở đầu: Dashboard giáo trình; "?screen=library" / "?screen=curriculum" / "?screen=games" mở thẳng màn đó (đường tắt, dùng cả trong e2e). */
@@ -62,6 +64,7 @@ export function initialRoute(search = typeof location === 'undefined' ? '' : loc
   if (screen === 'tomato-harvest') return { name: 'tomato-harvest' };
   if (screen === 'f1-racing') return { name: 'f1-racing' };
   if (screen === 'five-finger') return { name: 'five-finger' };
+  if (screen === 'coach') return { name: 'coach' };
   return { name: 'dashboard' };
 }
 

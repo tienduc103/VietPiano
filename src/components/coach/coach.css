@@ -1,0 +1,83 @@
+/* AI Piano Coach — tô kết quả trên khuông (không vẽ lại, chỉ đổi class), kèm ký hiệu để không chỉ dựa vào màu. */
+:root {
+  --coach-ok: #059669;
+  --coach-warn: #b45309;
+  --coach-err: #e11d48;
+  --coach-pedal: #7c3aed;
+  --coach-select: rgb(217 70 239 / 0.18);
+}
+.dark {
+  --coach-ok: #34d399;
+  --coach-warn: #fbbf24;
+  --coach-err: #fb7185;
+  --coach-pedal: #c4b5fd;
+  --coach-select: rgb(232 121 249 / 0.22);
+}
+.coach-score .score-note,
+.coach-score .score-acc {
+  cursor: pointer;
+}
+.coach-score .score-note.coach-ok,
+.coach-score .score-acc.coach-ok {
+  color: var(--coach-ok);
+}
+.coach-score .score-note.coach-warn,
+.coach-score .score-acc.coach-warn {
+  color: var(--coach-warn);
+}
+.coach-score .score-note.coach-err,
+.coach-score .score-acc.coach-err {
+  color: var(--coach-err);
+}
+.coach-score .score-note.coach-ungraded,
+.coach-score .score-acc.coach-ungraded {
+  opacity: 0.35;
+}
+.coach-score .score-note:focus,
+.coach-score .score-acc:focus {
+  outline: none;
+}
+.coach-score .score-note:focus-visible,
+.coach-score .score-acc:focus-visible {
+  outline: 2px dashed var(--coach-pedal);
+  outline-offset: 3px;
+}
+.coach-score .score-cursor {
+  fill: var(--coach-select);
+}
+.coach-mark {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 800;
+  stroke: none;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.coach-mark.is-ok {
+  fill: var(--coach-ok);
+}
+.coach-mark.is-warn {
+  fill: var(--coach-warn);
+}
+.coach-mark.is-err {
+  fill: var(--coach-err);
+}
+.coach-mark.is-pedal {
+  fill: var(--coach-pedal);
+  font-size: 14px;
+}
+.coach-mark.is-extra {
+  fill: var(--coach-err);
+  font-size: 18px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.coach-legend-swatch {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 0.4rem;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
