@@ -15,7 +15,8 @@ export type Route =
   | { name: 'curriculum'; levelId?: string }
   /** Giáo trình bổ sung "Làm quen từng nốt" (danh sách nốt). Buổi học mở bằng route `lesson` như giáo trình chính. */
   | { name: 'supplement' }
-  | { name: 'note-discovery'; stageId?: string }
+  /** "Khám phá nốt nhạc": danh sách 11 buổi (buổi học mở bằng route `lesson`, lessonId "nd-…"). */
+  | { name: 'note-discovery' }
   /** `stage`: mở thẳng phần Luyện tập / Trò chơi sau buổi (nút trên thẻ buổi học). */
   | { name: 'lesson'; lessonId: string; stage?: LessonStage }
   | { name: 'library' }
@@ -41,8 +42,9 @@ export type Route =
   | { name: 'f1-racing' }
   /** 5 ngón – 8 nốt liên tục: chuỗi 8 nốt sinh tự động trong vị trí 5 ngón (tay phải / trái / luân phiên / hai tay). */
   | { name: 'five-finger' }
-  /** `fromSongs`: mở từ Thư viện bài hát → nút quay lại / "Về thư viện" trở về trang đó. */
-  | { name: 'practice'; lessonId: string; fromSongs?: boolean }
+  /** `fromSongs`: mở từ Thư viện bài hát → nút quay lại / "Về thư viện" trở về trang đó.
+   *  `measures`: luyện riêng đoạn ô [từ, tới] (số ô in trên bản nhạc, ô lấy đà = 0). */
+  | { name: 'practice'; lessonId: string; fromSongs?: boolean; measures?: [number, number] }
   | { name: 'settings' };
 
 /** Màn hình mở đầu: Dashboard giáo trình; "?screen=library" / "?screen=curriculum" / "?screen=games" mở thẳng màn đó (đường tắt, dùng cả trong e2e). */
@@ -73,7 +75,8 @@ interface AppStore {
   recent: string[];
   navigate: (route: Route) => void;
   back: () => void;
-  openLesson: (lessonId: string) => void;
+  /** `measures`: mở để luyện riêng đoạn ô nhịp [từ, tới]. */
+  openLesson: (lessonId: string, measures?: [number, number]) => void;
   loadProgress: () => Promise<void>;
   recordSession: (session: PracticeSession) => Promise<void>;
   clearProgress: () => Promise<void>;
@@ -87,11 +90,15 @@ export const useApp = create<AppStore>((set, get) => ({
   recent: loadRecentLessons(),
   navigate: (route) => set({ route, previous: get().route }),
   back: () => set({ route: get().previous ?? { name: 'dashboard' }, previous: null }),
-  openLesson: (lessonId) => {
+  openLesson: (lessonId, measures) => {
     const from = get().route;
     // "Bài tiếp theo" trong màn Luyện tập giữ nguyên trang thư viện đã mở bài.
     const fromSongs = from.name === 'song-library' || (from.name === 'practice' && from.fromSongs);
-    set({ route: { name: 'practice', lessonId, ...(fromSongs ? { fromSongs } : {}) }, previous: from, recent: pushRecentLesson(lessonId) });
+    set({
+      route: { name: 'practice', lessonId, ...(fromSongs ? { fromSongs } : {}), ...(measures ? { measures } : {}) },
+      previous: from,
+      recent: pushRecentLesson(lessonId),
+    });
   },
   loadProgress: async () => {
     try {

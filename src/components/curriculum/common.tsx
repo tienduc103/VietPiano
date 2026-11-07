@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { highlightedKeys } from '../../core/curriculum/keys';
-import { accompanimentTimeline, lessonTimeline, pedalRanges, pieceToLesson } from '../../core/curriculum/piece';
+import { pedalRanges, pieceToLesson, soundingNotes } from '../../core/curriculum/piece';
 import { sustainUnderPedal } from '../../core/music/pedal';
 import { text, type Illustration, type Piece, type UiMode } from '../../core/curriculum/types';
 import { scheduleNotes, soundOutput } from '../../core/audio/SoundOutput';
@@ -203,7 +203,7 @@ export function ListenButton({ piece, bpm, label = 'Nghe mẫu' }: { piece: Piec
     voiceTeacher.interrupt();
     const lesson = pieceToLesson(piece, 'listen');
     // Bài có phần đệm: nghe cả hai tay cùng lúc; có pedal: nốt ngân tới chỗ nhả pedal.
-    const notes = sustainUnderPedal([...lessonTimeline(lesson), ...accompanimentTimeline(lesson)], pedalRanges(lesson));
+    const notes = sustainUnderPedal(soundingNotes(lesson), pedalRanges(lesson));
     const ms = soundOutput.playSequence(scheduleNotes(notes, bpm ?? piece.bpm));
     setPlaying(true);
     window.setTimeout(() => setPlaying(false), ms);

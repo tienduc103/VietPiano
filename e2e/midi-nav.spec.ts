@@ -1,13 +1,16 @@
 import { expect, test, type Page } from '@playwright/test';
 
-/** Web MIDI giả + bật "Dùng đàn MIDI"; `window.__midi.send([...])` gửi một thông điệp MIDI thô. */
+/**
+ * Web MIDI giả + bật "Dùng đàn MIDI"; `window.__midi.send([...], skewMs)` gửi một thông điệp MIDI thô.
+ * `skewMs`: timeStamp lệch so với performance.now() (đàn / driver gắn mốc thời gian sai), tối thiểu 1 ms.
+ */
 async function fakeMidi(page: Page) {
   await page.addInitScript(() => {
     const input = { id: 'p1', name: 'Test Piano', manufacturer: 'Test', state: 'connected', onmidimessage: null as null | ((e: unknown) => void) };
     const access = { inputs: new Map([[input.id, input]]), outputs: new Map(), onstatechange: null };
     Object.defineProperty(Navigator.prototype, 'requestMIDIAccess', { configurable: true, value: () => Promise.resolve(access) });
     (window as unknown as Record<string, unknown>).__midi = {
-      send: (data: number[]) => input.onmidimessage?.({ data: new Uint8Array(data), timeStamp: performance.now() }),
+      send: (data: number[], skewMs = 0) => input.onmidimessage?.({ data: new Uint8Array(data), timeStamp: Math.max(1, performance.now() + skewMs) }),
     };
     const key = 'vietpiano.settings.v1';
     const s = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<string, unknown>;
@@ -15,10 +18,11 @@ async function fakeMidi(page: Page) {
   });
 }
 
-const midiSend = (page: Page, data: number[]) => page.evaluate((d) => (window as unknown as { __midi: { send(d: number[]): void } }).__midi.send(d), data);
-const press = async (page: Page, midi: number) => {
-  await midiSend(page, [0x90, midi, 90]);
-  await midiSend(page, [0x80, midi, 0]);
+const midiSend = (page: Page, data: number[], skewMs = 0) =>
+  page.evaluate(([d, skew]) => (window as unknown as { __midi: { send(d: number[], skew: number): void } }).__midi.send(d, skew), [data, skewMs] as const);
+const press = async (page: Page, midi: number, skewMs = 0) => {
+  await midiSend(page, [0x90, midi, 90], skewMs);
+  await midiSend(page, [0x80, midi, 0], skewMs);
 };
 /** Quá thời gian chờ 1,2 s sau khi màn xuất hiện / sau lần bấm trước. */
 const settle = (page: Page) => page.waitForTimeout(1400);
@@ -88,6 +92,32 @@ test('đàn MIDI: chạm màn hình rồi bấm phím ngay → chưa điều hư
   await settle(page);
   await press(page, 60);
   await expect(page.getByTestId('step-title')).toHaveText('Nhóm 3 phím đen');
+});
+
+test('đàn MIDI: mốc thời gian của đàn lệch đồng hồ trang (driver, Bluetooth MIDI) → điều hướng vẫn theo lúc nhận phím', async ({ page }) => {
+  await fakeMidi(page);
+  await page.goto('/?screen=curriculum');
+  await page.getByTestId('cur-lesson-l1-02-find-c').click();
+  await page.getByTestId('start-lesson').click();
+  await expect(page.getByTestId('step-title')).toHaveText('Đô nằm bên trái nhóm 2 phím đen');
+  await settle(page);
+  await page.getByTestId('intro-next').click();
+  await expect(page.getByTestId('step-title')).toHaveText('Đô giữa — C4');
+
+  // Mốc trễ xa (đàn báo phím được bấm 1 ms sau khi mở trang): trước đây mọi phím bị coi là bấm trước khi nút hiện → kẹt trang.
+  await settle(page);
+  await press(page, 60, -1e9);
+  await expect(page.getByTestId('step-title')).toHaveText('Các nốt Đô khác');
+
+  // Mốc sớm hơn đồng hồ trang: phím đen trước đây chờ phím đen thứ hai mãi, không bao giờ "Quay lại".
+  await settle(page);
+  await press(page, 61, 60_000);
+  await expect(page.getByTestId('step-title')).toHaveText('Đô giữa — C4');
+
+  // Thời gian chờ 1,2 s sau lần điều hướng vẫn đo bằng đồng hồ trang: bấm ngay → bỏ qua.
+  await press(page, 60, 60_000);
+  await page.waitForTimeout(300);
+  await expect(page.getByTestId('step-title')).toHaveText('Đô giữa — C4');
 });
 
 test('đàn MIDI: hai phím đen bất kỳ cùng lúc → về Trang chủ; đang làm bài thì không', async ({ page }) => {

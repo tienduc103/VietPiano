@@ -1,3 +1,4 @@
+import { pedalRanges } from '../curriculum/piece';
 import { hasHandChoice } from '../practice/handPractice';
 import { DEFAULT_PRACTICE_CONFIG, PracticeEngine } from '../practice/PracticeEngine';
 import { describe, expect, it } from 'vitest';
@@ -38,6 +39,27 @@ describe('ký hiệu bài học', () => {
     ]);
     expect(() => parseNotes('R:1')).toThrow();
     expect(splitMeasures(parseNotes('C4 R C4/h'), 4)[0].beats).toBe(4);
+  });
+
+  it('chùm nốt tay phải: nốt cao nhất là giai điệu, còn lại là hoà âm; số ngón theo thứ tự viết', () => {
+    expect(parseNotes('E4+C5/h:1+5')).toEqual([
+      { pitch: 'C5', midi: 72, duration: 'h', finger: 5, harmony: [{ pitch: 'E4', midi: 64, finger: 1 }] },
+    ]);
+    // Viết từ cao xuống vẫn được sắp thấp → cao; "+" trống = không ghi ngón; "(3)" khoanh tròn.
+    expect(parseNotes('C5+G4+E4:5++(1)')[0]).toEqual({
+      pitch: 'C5',
+      midi: 72,
+      duration: 'q',
+      finger: 5,
+      harmony: [
+        { pitch: 'E4', midi: 64, finger: 1, fingerCircled: true },
+        { pitch: 'G4', midi: 67 },
+      ],
+    });
+    expect(parseNotes('RH G4+B4')[0]).toMatchObject({ pitch: 'B4', hand: 'right', harmony: [{ pitch: 'G4' }] });
+    expect(() => parseNotes('E4+E4')).toThrow();
+    expect(() => parseNotes('E4+C5:1+5+3')).toThrow();
+    expect(() => parseNotes('E4+R')).toThrow();
   });
 
   it('báo lỗi với nốt hoặc trường độ sai', () => {
@@ -264,11 +286,14 @@ describe('thư viện bài học', () => {
     for (const l of grand) {
       expect(l.pedal?.length, l.id).toBeGreaterThan(0);
       expect(hasHandChoice(l), l.id).toBe(true);
-      // Pedal nằm trong bài: chỉ số ô hợp lệ, không chồng nhau.
+      // Pedal nằm trong bài: chỉ số ô hợp lệ; theo phách thì mỗi khoảng có độ dài và không chồng khoảng trước
+      // (đổi pedal giữa ô: hai khoảng cùng ô nối nhau ở `fromBeat` / `toBeat`).
       const count = splitMeasures(l.notes, measureLength(l.timeSignature), l.pickup).length;
+      const ranges = pedalRanges(l);
       l.pedal!.forEach((p, i) => {
         expect(p.to, l.id).toBeLessThan(count);
-        if (i > 0) expect(p.from, l.id).toBeGreaterThan(l.pedal![i - 1].to);
+        expect(ranges[i].endBeat, l.id).toBeGreaterThan(ranges[i].startBeat);
+        if (i > 0) expect(ranges[i].startBeat, l.id).toBeGreaterThanOrEqual(ranges[i - 1].endBeat - 1e-9);
       });
     }
   });
@@ -286,8 +311,9 @@ describe('thư viện bài học', () => {
       expect(repertoire).toHaveLength(50);
       const home = lessonManager.byCategory().flatMap((g) => g.lessons);
       expect(home.filter((l) => l.repertoire)).toEqual([]);
-      expect(home.filter((l) => l.category === 'song')).toHaveLength(33);
-      expect(lessonManager.songs()).toHaveLength(83);
+      // 33 bài hát + 3 bản phối Happy Birthday (Cơ bản / Trung cấp / Nâng cao).
+      expect(home.filter((l) => l.category === 'song')).toHaveLength(36);
+      expect(lessonManager.songs()).toHaveLength(86);
     });
 
     it.each(repertoire.map((l) => [l.id, l] as const))('%s: khuông đôi hai tay, có nguồn, chọn được tay, tập được tay trái, pedal đủ dùng', (_id, l) => {

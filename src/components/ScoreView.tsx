@@ -20,6 +20,16 @@ interface Props {
   dim?: Hand;
   /** Tỉ lệ thu nhỏ tối thiểu (mặc định 0.8). Màn Luyện tập cho thu nhỏ hơn để cửa sổ thấp vẫn thấy đủ khuông. */
   minScale?: number;
+  /** Vẽ số ngón / ký hiệu hợp âm / ký hiệu pedal (mặc định có). */
+  showFingers?: boolean;
+  showChords?: boolean;
+  showPedal?: boolean;
+  /** Phóng to / thu nhỏ so với cỡ vừa khung (1 = vừa khung); phóng to quá khung thì cuộn dọc được. */
+  zoom?: number;
+  /** Kết quả từng nốt / hợp âm phần đệm khi đang chấm cả hai tay (`staff` = giai điệu) — tô đúng / sai cả khuông Fa. */
+  accResults?: readonly NoteResult[];
+  /** Khuông đôi: tô màu riêng nốt tay trái. */
+  colorHands?: boolean;
 }
 
 /** Vị trí nốt hiện tại trên màn hình (tỉ lệ chiều rộng). */
@@ -29,7 +39,24 @@ const FOCUS_RATIO = 0.3;
 // Tối thiểu 0.8: khuông đôi có phần đệm + chữ đánh dấu đoạn thu nhỏ một chút thay vì bị cắt mất hàng tên nốt.
 const FIT = { minScale: 0.8, maxScale: 2.4, fallbackScale: 1.6 };
 
-export function ScoreView({ lesson, index, results, status, wrongPulse, showNames, labelStyle, staff = 'melody', dim, minScale = FIT.minScale }: Props) {
+export function ScoreView({
+  lesson,
+  index,
+  results,
+  status,
+  wrongPulse,
+  showNames,
+  labelStyle,
+  staff = 'melody',
+  dim,
+  minScale = FIT.minScale,
+  showFingers = true,
+  showChords = true,
+  showPedal = true,
+  zoom = 1,
+  accResults,
+  colorHands = false,
+}: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const svgHostRef = useRef<HTMLDivElement>(null);
   const renderedRef = useRef<RenderedScore | null>(null);
@@ -54,17 +81,17 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
     return () => ro.disconnect();
   }, []);
 
-  // Vẽ lại toàn bộ chỉ khi đổi bài hoặc cách hiển thị tên nốt.
+  // Vẽ lại toàn bộ chỉ khi đổi bài hoặc cách hiển thị (tên nốt, số ngón, hợp âm, pedal).
   useLayoutEffect(() => {
     if (!ready || !svgHostRef.current) return;
     try {
-      renderedRef.current = renderScore(svgHostRef.current, lesson, { showNames, labelStyle });
+      renderedRef.current = renderScore(svgHostRef.current, lesson, { showNames, labelStyle, showFingers, showChords, showPedal });
     } catch (err) {
       console.error('[VietPiano] Lỗi vẽ khuông nhạc', err);
       renderedRef.current = null;
     }
     setLayoutVersion((v) => v + 1);
-  }, [ready, lesson, showNames, labelStyle]);
+  }, [ready, lesson, showNames, labelStyle, showFingers, showChords, showPedal]);
 
   // Cập nhật trạng thái từng nốt bằng CSS class (không vẽ lại).
   useLayoutEffect(() => {
@@ -82,14 +109,24 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
         el.classList.toggle('is-wrong', res === 'wrong');
       });
     mark(r.noteElements, !onAcc);
-    mark(r.accompanimentElements, onAcc);
+    if (!onAcc && accResults)
+      r.accompanimentElements.forEach((el, i) => {
+        if (!el) return;
+        const res = accResults[i];
+        el.classList.remove('is-current');
+        el.classList.toggle('is-correct', res === 'correct');
+        el.classList.toggle('is-corrected', res === 'corrected');
+        el.classList.toggle('is-skipped', res === 'skipped');
+        el.classList.toggle('is-wrong', res === 'wrong');
+      });
+    else mark(r.accompanimentElements, onAcc);
     r.labelElements.forEach((el, i) => el?.classList.toggle('is-current', !onAcc && i === index && status !== 'finished'));
     r.fingerElements.forEach((el, i) => el?.classList.toggle('is-current', !onAcc && i === index && status !== 'finished'));
     const cx = (onAcc ? r.accompanimentCenters : r.noteCenters)[index] ?? 0;
     r.cursor.setAttribute('x', String(cx - 17));
     r.cursor.style.display = status === 'finished' ? 'none' : '';
     r.cursor.classList.toggle('is-wrong', status === 'wrong');
-  }, [index, results, status, staff, layoutVersion]);
+  }, [index, results, status, staff, layoutVersion, accResults]);
 
   // Rung nhẹ khuông nhạc khi đánh sai (khởi động lại animation CSS).
   useEffect(() => {
@@ -104,7 +141,9 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
   const height = r?.height ?? SCORE_HEIGHT;
   // Giữ cố định tỉ lệ + vị trí khi vùng nhìn chỉ co giãn chút ít theo từng nốt (khuông không nhảy lên xuống).
   const fit = (fitRef.current = fitScore(fitRef.current, size.h, height, { ...FIT, minScale }));
-  const scale = fit.scale;
+  const scale = fit.scale * zoom;
+  // Phóng to quá khung: đặt khuông sát mép trên, khung cuộn dọc được; thu nhỏ: giữ khuông giữa khung.
+  const top = zoom === 1 ? fit.top : Math.max(0, (size.h - height * scale) / 2);
   const contentWidth = (r?.width ?? 0) * scale;
   const focusX = ((staff === 'accompaniment' ? r?.accompanimentCenters : r?.noteCenters)?.[index] ?? 0) * scale;
   const maxOffset = Math.max(0, contentWidth - size.w);
@@ -113,15 +152,16 @@ export function ScoreView({ lesson, index, results, status, wrongPulse, showName
   return (
     <div
       ref={viewportRef}
-      className={`relative h-full w-full overflow-hidden ${dim ? `score-dim-${dim}` : ''}`}
+      className={`relative h-full w-full ${zoom > 1 ? 'overflow-x-hidden overflow-y-auto' : 'overflow-hidden'} ${dim ? `score-dim-${dim}` : ''} ${colorHands && lesson.clef === 'grand' ? 'score-hand-colors' : ''}`}
       aria-label={`Khuông nhạc bài ${lesson.title}`}
       data-testid="score"
+      data-zoom={zoom}
     >
       {!ready && <div className="absolute inset-0 grid place-items-center text-slate-400">Đang tải khuông nhạc…</div>}
       <div
         className="absolute left-0"
         style={{
-          top: fit.top,
+          top,
           width: contentWidth,
           height: height * scale,
           transform: `translateX(${-offset}px)`,

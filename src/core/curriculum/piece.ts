@@ -45,7 +45,7 @@ function pedalMarks(lesson: Lesson, ranges: NonNullable<Piece['pedal']>): NonNul
   });
 }
 
-/** Ký hiệu pedal của bài → khoảng theo phách (để chấm và phát mẫu). */
+/** Ký hiệu pedal của bài → khoảng theo phách (để chấm và phát mẫu); có `fromBeat` / `toBeat` = đổi pedal giữa ô. */
 export function pedalRanges(lesson: Lesson): PedalRange[] {
   if (!lesson.pedal?.length) return [];
   const measures = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup);
@@ -56,7 +56,10 @@ export function pedalRanges(lesson: Lesson): PedalRange[] {
     beat += m.beats;
   }
   starts.push(beat);
-  return lesson.pedal.map((p) => ({ startBeat: starts[p.from], endBeat: starts[p.to + 1] }));
+  return lesson.pedal.map((p) => ({
+    startBeat: starts[p.from] + (p.fromBeat ?? 0),
+    endBeat: p.toBeat !== undefined ? starts[p.to] + p.toBeat : starts[p.to + 1],
+  }));
 }
 
 /** Dấu sắc thái theo ô nhịp (từ 1, ô lấy đà không đánh số) → chỉ số nốt đầu ô. Ô không tồn tại → lỗi. */
@@ -123,25 +126,89 @@ export function lessonTimeline(lesson: Lesson): TimelineNote[] {
       beat += durationBeats;
     }
   });
+  applyHairpins(lesson, out);
+  return out;
+}
+
+/** Bước lực gõ khi to dần / nhỏ dần mà không có dấu sắc thái đích phía sau. */
+const HAIRPIN_STEP = 15;
+
+/**
+ * To dần / nhỏ dần: lực gõ các nốt dưới hình nêm đổi dần (theo phách) từ sắc thái ở đầu hình nêm tới sắc thái
+ * đứng ngay sau nó (không có thì ± HAIRPIN_STEP). Chỉ ảnh hưởng nghe mẫu / xuất MIDI, không đổi đoạn chấm sắc thái.
+ */
+function applyHairpins(lesson: Lesson, out: TimelineNote[]): void {
+  for (const h of lesson.hairpins ?? []) {
+    const first = out[h.from];
+    const last = out[h.to];
+    if (!first || !last || h.to < h.from) continue;
+    const after = out[h.to + 1];
+    const startV = first.velocity;
+    const sign = h.type === 'cresc' ? 1 : -1;
+    const target = after && Math.sign(after.velocity - startV) === sign ? after.velocity : Math.min(127, Math.max(1, startV + sign * HAIRPIN_STEP));
+    const span = (after?.startBeat ?? last.startBeat + last.durationBeats) - first.startBeat;
+    for (let i = h.from; i <= h.to; i++) {
+      const t = span > 0 ? (out[i].startBeat - first.startBeat) / span : 0;
+      out[i].velocity = Math.round(startV + (target - startV) * t);
+    }
+  }
+}
+
+/** Nốt phát lại (mẫu, MIDI): một phím một mục. */
+export interface SoundingNote {
+  midiNote: number;
+  startBeat: number;
+  durationBeats: number;
+  velocity: number;
+  hand: Hand;
+}
+
+/** Bè trong của tay phải mềm hơn giai điệu khi nghe mẫu (giai điệu nổi lên trên). */
+const HARMONY_VELOCITY_RATIO = 0.8;
+
+/** Nốt hoà âm tay phải (chùm nốt), cùng phách + trường độ với nốt giai điệu; không chấm điểm ở đây. */
+export function harmonyTimeline(lesson: Lesson, melody: readonly TimelineNote[] = lessonTimeline(lesson)): SoundingNote[] {
+  const out: SoundingNote[] = [];
+  lesson.notes.forEach((n, i) => {
+    for (const h of n.harmony ?? []) {
+      const m = melody[i];
+      out.push({ midiNote: h.midi, startBeat: m.startBeat, durationBeats: m.durationBeats, velocity: Math.round(m.velocity * HARMONY_VELOCITY_RATIO), hand: m.hand });
+    }
+  });
   return out;
 }
 
 /** Nốt phần đệm (mỗi nốt của hợp âm một mục) để phát mẫu cùng giai điệu; không chấm điểm. */
-export function accompanimentTimeline(lesson: Lesson): { midiNote: number; startBeat: number; durationBeats: number; velocity: number }[] {
-  const out: { midiNote: number; startBeat: number; durationBeats: number; velocity: number }[] = [];
-  // Bài có sắc thái: tay trái theo sắc thái của nốt giai điệu đang vang.
-  const melody = lesson.dynamics ? lessonTimeline(lesson) : [];
+export function accompanimentTimeline(lesson: Lesson): SoundingNote[] {
+  const out: SoundingNote[] = [];
+  // Bài có sắc thái: tay trái theo lực gõ của nốt giai điệu đang vang (kể cả to dần / nhỏ dần).
+  const melody = lesson.dynamics || lesson.hairpins ? lessonTimeline(lesson) : [];
   let beat = 0;
   for (const chord of lesson.accompaniment ?? []) {
     const durationBeats = DURATION_BEATS[chord.duration];
     const under = melody.filter((n) => n.startBeat <= beat + 1e-9).pop();
-    const scale = under?.dynamic ? DYNAMIC_VELOCITY[under.dynamic] / DEFAULT_VELOCITY : 1;
+    const scale = under ? under.velocity / DEFAULT_VELOCITY : 1;
     // Tay trái nhỏ hơn giai điệu một chút khi nghe mẫu.
     const velocity = Math.round(ACCOMPANIMENT_VELOCITY * scale);
-    for (const midi of chord.midis) out.push({ midiNote: midi, startBeat: beat, durationBeats, velocity });
+    for (const midi of chord.midis) out.push({ midiNote: midi, startBeat: beat, durationBeats, velocity, hand: 'left' });
     beat += durationBeats;
   }
   return out;
+}
+
+/**
+ * Mọi phím của bài theo thời gian (giai điệu + hoà âm tay phải + phần đệm tay trái), xếp theo phách —
+ * nghe mẫu và xuất MIDI đọc cùng một nguồn với khuông nhạc nên luôn khớp nhau.
+ */
+export function soundingNotes(lesson: Lesson): SoundingNote[] {
+  const melody = lessonTimeline(lesson);
+  const played = melody.filter((n): n is TimelineNote & { midiNote: number } => n.midiNote !== null).map(({ midiNote, startBeat, durationBeats, velocity, hand }) => ({ midiNote, startBeat, durationBeats, velocity, hand }));
+  return [...played, ...harmonyTimeline(lesson, melody), ...accompanimentTimeline(lesson)].sort((a, b) => a.startBeat - b.startBeat || a.midiNote - b.midiNote);
+}
+
+/** File MIDI chuẩn của cả bài (tay phải kênh 1, tay trái kênh 2), nhịp độ gợi ý của bài. */
+export function lessonToMidi(lesson: Lesson, bpm = lesson.tempo ?? 72): Uint8Array {
+  return timelineToMidi(soundingNotes(lesson), bpm, lesson.timeSignature);
 }
 
 const ACCOMPANIMENT_VELOCITY = 55;
@@ -179,7 +246,11 @@ function varLen(value: number): number[] {
  * File MIDI một track: tempo, nhịp, rồi Note On / Note Off theo thứ tự thời gian.
  * Tay phải kênh 1, tay trái kênh 2.
  */
-export function timelineToMidi(timeline: readonly TimelineNote[], bpm: number, timeSignature: [number, 4 | 8] = [4, 4]): Uint8Array {
+export function timelineToMidi(
+  timeline: readonly Pick<TimelineNote, 'midiNote' | 'startBeat' | 'durationBeats' | 'velocity' | 'hand'>[],
+  bpm: number,
+  timeSignature: [number, 4 | 8] = [4, 4],
+): Uint8Array {
   type Ev = { tick: number; order: number; bytes: number[] };
   const events: Ev[] = [];
   const usPerQuarter = Math.round(60_000_000 / bpm);

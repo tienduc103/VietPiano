@@ -12,7 +12,8 @@ import { midiToLabel, midiToName } from '../core/music/notes';
 import { TomatoFarmAudio } from '../core/tomatoHarvest/audio';
 import { TOMATO_NOTES, TomatoHarvestGame, tomatoAccuracy, tomatoStars, type TomatoDifficulty, type TomatoEvent, type TomatoHarvestState, type TomatoPlant } from '../core/tomatoHarvest/TomatoHarvestGame';
 import { loadTomatoAudio, loadTomatoProgress, recordTomatoResult, saveTomatoAudio, tomatoLeaderboard, TOMATO_DIFFICULTY_LABEL, TOMATO_TROPHY, type TomatoAudioSettings, type TomatoProgress } from '../core/tomatoHarvest/storage';
-import { NotePoolProvider } from '../core/noteDiscovery/NotePoolProvider';
+import { suggestedTomatoDifficulty } from '../core/curriculum/learnedNotes';
+import { useCurriculum } from '../store/curriculumStore';
 import { useNoteInput } from '../hooks/useNoteInput';
 import { useApp } from '../store/appStore';
 import { useMic } from '../store/micStore';
@@ -34,7 +35,7 @@ export function TomatoHarvestScreen() {
   const labelStyle = useSettings((s) => s.settings.labelStyle);
   const micLive = useMic((s) => s.live);
   const [difficulty, setDifficulty] = useState<TomatoDifficulty>(() => {
-    return NotePoolProvider.getForTomatoHarvest(profile?.id ?? 'guest').suggestedDifficulty;
+    return suggestedTomatoDifficulty(useCurriculum.getState().records);
   });
   const [run, setRun] = useState(0);
   const [modal, setModal] = useState<Modal>(null);

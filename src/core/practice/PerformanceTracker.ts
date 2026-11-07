@@ -15,6 +15,11 @@
  * Bài có ký hiệu pedal (`config.pedal`): sự kiện đạp / nhả (`handlePedal`, chỉ đàn MIDI) → điểm pedal
  * (`music/pedal.ts`); nguồn vào không có pedal (`setPedalInput(false)`) → "không đo".
  * Thả phím lúc pedal đang đạp: tiếng vẫn ngân nên không bị tính là giữ thiếu trường độ.
+ *
+ * Nhiều nốt cùng phách (hợp âm, hai tay — màn Luyện tập chế độ Biểu diễn với đàn MIDI / bàn phím ảo): cửa sổ tính theo
+ * các MỐC phách khác nhau (không theo từng nốt), nên mọi nốt của một chùm có chung cửa sổ; onset rơi vào chùm thì ưu tiên
+ * nốt đúng cao độ chưa chấm, không có thì nốt đầu tiên chưa chấm của chùm bị chấm sai. `debounceSamePitch` = chỉ bỏ onset
+ * sát onset trước CÙNG phím (đàn MIDI gửi các nốt của hợp âm cách nhau vài ms). Bài một dòng nốt: y như trước.
  */
 
 import { dynamicsQuality, type DynamicMark, type DynamicSection } from '../music/dynamics';
@@ -51,6 +56,8 @@ export interface PerformanceConfig {
   minOnsetIntervalMs: number;
   /** Ký hiệu pedal của bài (theo phách); rỗng = bài không có pedal. */
   pedal: readonly PedalRange[];
+  /** Chỉ bỏ onset quá sát onset trước của CÙNG phím (đàn MIDI / bàn phím ảo chơi hợp âm); mặc định mọi phím (micro). */
+  debounceSamePitch?: boolean;
 }
 
 export const DEFAULT_PERFORMANCE_CONFIG: PerformanceConfig = {
@@ -126,6 +133,7 @@ export class PerformanceTracker {
   private originTime = 0;
   private pausedBeat = 0;
   private lastOnsetTime = -Infinity;
+  private readonly lastOnsetByMidi = new Map<number, number>();
   /** Lúc gõ của từng nốt đã chấm (để tính thời gian giữ khi thả phím). */
   private readonly onsetTimes: (number | null)[];
   private pedalEvents: PedalEvent[] = [];
@@ -140,15 +148,18 @@ export class PerformanceTracker {
     this.config = { ...DEFAULT_PERFORMANCE_CONFIG, ...config };
     const playable = notes.map((n, i) => (n.midi === null ? -1 : i)).filter((i) => i >= 0);
     this.windows = notes.map(() => null);
-    playable.forEach((i, k) => {
+    // Cửa sổ theo các mốc phách khác nhau: nốt cùng phách (hợp âm) chung cửa sổ; bài một dòng nốt = mỗi nốt một mốc.
+    const onsets = [...new Set(playable.map((i) => notes[i].startBeat))].sort((a, b) => a - b);
+    const max = this.config.maxWindowBeats;
+    playable.forEach((i) => {
       const start = notes[i].startBeat;
-      const prev = k > 0 ? notes[playable[k - 1]].startBeat : -Infinity;
-      const next = k < playable.length - 1 ? notes[playable[k + 1]].startBeat : Infinity;
-      const max = this.config.maxWindowBeats;
+      const k = onsets.indexOf(start);
+      const prev = k > 0 ? onsets[k - 1] : -Infinity;
+      const next = k < onsets.length - 1 ? onsets[k + 1] : Infinity;
       this.windows[i] = { lo: start - Math.min(max, (start - prev) / 2), hi: start + Math.min(max, (next - start) / 2) };
     });
-    const last = notes[notes.length - 1];
-    this.endBeat = last.startBeat + last.durationBeats;
+    // Nốt kết thúc muộn nhất (danh sách hai tay xếp theo phách: nốt cuối danh sách chưa chắc ngân lâu nhất).
+    this.endBeat = Math.max(...notes.map((n) => n.startBeat + n.durationBeats));
     this.onsetTimes = notes.map(() => null);
     this.state = this.initialState();
   }
@@ -235,6 +246,7 @@ export class PerformanceTracker {
   restart(): void {
     this.pausedBeat = 0;
     this.lastOnsetTime = -Infinity;
+    this.lastOnsetByMidi.clear();
     this.onsetTimes.fill(null);
     this.pedalEvents = [];
     this.state = this.initialState();
@@ -276,19 +288,29 @@ export class PerformanceTracker {
   handleNoteOn(midi: number, time: number, loudness: number | null = null): PerformanceOutcome {
     const s = this.state;
     if (s.status !== 'running' && s.status !== 'countIn') return 'ignored';
-    if (time - this.lastOnsetTime < this.config.minOnsetIntervalMs) return 'ignored';
+    const last = this.config.debounceSamePitch ? (this.lastOnsetByMidi.get(midi) ?? -Infinity) : this.lastOnsetTime;
+    if (time - last < this.config.minOnsetIntervalMs) return 'ignored';
     this.lastOnsetTime = time;
+    this.lastOnsetByMidi.set(midi, time);
     this.tick(time);
     const beat = this.beatAt(time);
 
+    // Nốt chưa chấm gần nhất mà cửa sổ chứa onset; cùng khoảng cách (cùng phách — hợp âm) thì ưu tiên nốt đúng cao độ.
     let best = -1;
     let bestDist = Infinity;
+    let bestMatches = false;
     this.windows.forEach((w, i) => {
       if (!w || this.state.results[i] !== 'pending' || beat < w.lo || beat > w.hi) return;
       const d = Math.abs(beat - this.notes[i].startBeat);
-      if (d < bestDist) {
+      const sameOnset = best >= 0 && this.notes[i].startBeat === this.notes[best].startBeat;
+      const ok = this.matches(midi, this.notes[i].midi!);
+      if (d < bestDist - 1e-12 && !sameOnset) {
         best = i;
         bestDist = d;
+        bestMatches = ok;
+      } else if (sameOnset && ok && !bestMatches) {
+        best = i;
+        bestMatches = true;
       }
     });
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { SOLFEGE } from '../../core/balloonPop/notes';
-import { SUPPLEMENT_GAMES, type SupplementGame } from '../../core/curriculum/content/supplement';
+import type { SupplementGame } from '../../core/curriculum/content/supplement';
 import type { CurriculumLesson, UiMode } from '../../core/curriculum/types';
 import { GAME_ICON, GAME_TITLE } from '../../core/games/gameForLesson';
 import { useApp } from '../../store/appStore';
@@ -14,6 +14,9 @@ const DESCRIPTION: Record<string, string> = {
   'key-hunt': 'Đọc yêu cầu rồi bấm thật nhanh đúng phím.',
   'staff-shoot': 'Nhìn nốt vẽ trên khuông rồi bấm đúng phím để bắn bóng.',
   'note-catch': 'Bấm đúng phím để hứng nốt trước khi chạm đất.',
+  'ear-finder': 'Nghe tiếng đàn rồi tìm phím: cao hơn thì sang phải, thấp hơn thì sang trái.',
+  'note-sprint': 'Đọc nốt trên khuông thật nhanh trong 60 giây.',
+  'echo-melody': 'Nghe giai điệu ngắn rồi đánh lại cho đúng.',
 };
 
 function gameInfo(g: SupplementGame): { id: string; icon: string; title: string; description: string } {
@@ -24,25 +27,30 @@ function gameInfo(g: SupplementGame): { id: string; icon: string; title: string;
 }
 
 /**
- * Bước cuối buổi giáo trình bổ sung: bé tự chọn một trò tìm nốt của buổi (đã cấu hình sẵn nốt).
- * Không tính vào điểm buổi; trò trong app ghi kỷ lục vào bản ghi buổi, Bóng bay lưu kỷ lục riêng của trò.
+ * Bước cuối buổi của giáo trình dẫn dắt ("Làm quen từng nốt", "Khám phá nốt nhạc" — `content/guided.ts`): bé tự chọn một trò
+ * của buổi (đã cấu hình sẵn nốt). Không tính vào điểm buổi; trò trong app ghi kỷ lục vào bản ghi buổi, Bóng bay lưu kỷ lục riêng của trò.
  */
 export function SupplementGames({
   lesson,
+  games,
   mode,
   onResult,
   onNext,
+  nextLabel = 'Buổi tiếp theo →',
   onBack,
+  backLabel,
 }: {
   lesson: CurriculumLesson;
+  games: readonly SupplementGame[];
   mode: UiMode;
   onResult: (r: GameResult & { kind: string }) => void;
   onNext?: () => void;
+  nextLabel?: string;
   onBack: () => void;
+  backLabel: string;
 }) {
   const navigate = useApp((s) => s.navigate);
   const record = useCurriculum((s) => s.records[lesson.lessonId]);
-  const games = SUPPLEMENT_GAMES[lesson.lessonId] ?? [];
   const [picked, setPicked] = useState<number | null>(null);
   const kids = mode === 'kids';
 
@@ -79,7 +87,7 @@ export function SupplementGames({
   return (
     <section className="mx-auto grid max-w-4xl gap-4" data-testid="supplement-games">
       <h2 className={`text-center font-extrabold ${kids ? 'text-3xl' : 'text-2xl'}`}>{kids ? 'Chọn một trò chơi nào! 🎮' : 'Chọn trò chơi'}</h2>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className={`grid gap-4 ${games.length === 2 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
         {games.map((g, i) => {
           const info = gameInfo(g);
           const rec = g.type === 'lesson' ? record?.games?.[g.spec.kind] : undefined;
@@ -110,11 +118,11 @@ export function SupplementGames({
       <div className="flex flex-wrap justify-center gap-3">
         {onNext && (
           <Button variant="primary" onClick={onNext} data-testid="supplement-next" midiNav="forward">
-            Nốt tiếp theo →
+            {nextLabel}
           </Button>
         )}
         <Button variant="ghost" onClick={onBack} data-testid="supplement-games-back" midiNav="back">
-          Về giáo trình bổ sung
+          {backLabel}
         </Button>
       </div>
     </section>

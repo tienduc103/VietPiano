@@ -11,7 +11,8 @@ import { DEFAULT_OLLAMA_MODEL, DEFAULT_OLLAMA_URL, LOCAL_OLLAMA_URL, normalizeOl
 
 export type ThemeSetting = 'system' | 'light' | 'dark';
 /** wait = chờ đánh đúng mới chuyển; count = mỗi nốt nghe thấy chuyển một nốt; tempo = chạy theo nhịp. */
-export type PracticeMode = 'wait' | 'count' | 'tempo';
+/** Chế độ màn Luyện tập: Chờ nốt / Đếm nốt / Theo nhịp (không xét cao độ) / Biểu diễn (đồng hồ nhịp cố định, chấm cao độ + nhịp). */
+export type PracticeMode = 'wait' | 'count' | 'tempo' | 'perform';
 /** Giao diện giáo trình: auto = theo tuổi hồ sơ người học (≤ 11 tuổi → Kids). */
 export type UiModeSetting = 'auto' | 'kids' | 'adult';
 /** Nguồn nốt cho giáo trình: auto = đàn MIDI nếu đã nối, không thì micro. Bàn phím ảo luôn dùng được. */
@@ -33,6 +34,16 @@ export interface DeviceSettings {
   /** Chấp nhận đúng nốt sai quãng tám. */
   octaveTolerant: boolean;
   showNoteNames: boolean;
+  /** Khuông nhạc: vẽ số ngón tay. */
+  showFingers: boolean;
+  /** Khuông nhạc: vẽ ký hiệu hợp âm (bài có ghi hợp âm). */
+  showChordSymbols: boolean;
+  /** Khuông nhạc: vẽ ký hiệu pedal (ẩn chỉ đổi hình vẽ, vẫn chấm pedal). */
+  showPedalMarks: boolean;
+  /** Khuông đôi: tô màu riêng nốt tay trái để phân biệt với tay phải. */
+  colorHands: boolean;
+  /** Phóng to / thu nhỏ khuông nhạc màn Luyện tập (1 = vừa khung). */
+  scoreZoom: number;
   labelStyle: NoteLabelStyle;
   theme: ThemeSetting;
   showKeyboard: boolean;
@@ -87,6 +98,11 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
   onsetRatio: DEFAULT_RECOGNIZER_CONFIG.onsetRatio,
   octaveTolerant: false,
   showNoteNames: true,
+  showFingers: true,
+  showChordSymbols: true,
+  showPedalMarks: true,
+  colorHands: true,
+  scoreZoom: 1,
   labelStyle: 'letter',
   theme: 'system',
   showKeyboard: true,
@@ -118,6 +134,11 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
 export const VOICE_RATE_MIN = 0.5;
 export const VOICE_RATE_MAX = 1.3;
 export const VOICE_REMIND_MAX_SEC = 60;
+
+/** Phóng to / thu nhỏ khuông nhạc (màn Luyện tập). */
+export const SCORE_ZOOM_MIN = 0.6;
+export const SCORE_ZOOM_MAX = 1.6;
+export const SCORE_ZOOM_STEP = 0.1;
 
 export const TEMPO_PERCENT_MIN = 40;
 export const TEMPO_PERCENT_MAX = 160;
@@ -179,6 +200,11 @@ function sanitize(s: DeviceSettings): DeviceSettings {
     onsetRatio: num(s.onsetRatio, DEFAULT_SETTINGS.onsetRatio, 1.1, 3),
     octaveTolerant: Boolean(s.octaveTolerant),
     showNoteNames: Boolean(s.showNoteNames),
+    showFingers: s.showFingers !== false,
+    showChordSymbols: s.showChordSymbols !== false,
+    showPedalMarks: s.showPedalMarks !== false,
+    colorHands: s.colorHands !== false,
+    scoreZoom: Math.round(num(s.scoreZoom, 1, SCORE_ZOOM_MIN, SCORE_ZOOM_MAX) * 100) / 100,
     labelStyle: s.labelStyle === 'solfege' ? 'solfege' : 'letter',
     theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system',
     showKeyboard: Boolean(s.showKeyboard),
@@ -215,7 +241,7 @@ function sanitizeRemind(v: unknown): number {
 }
 
 function sanitizeMode({ practiceMode: m }: DeviceSettings): PracticeMode {
-  return m === 'count' || m === 'tempo' ? m : 'wait';
+  return m === 'count' || m === 'tempo' || m === 'perform' ? m : 'wait';
 }
 
 export function safeLocalStorage(): Storage | undefined {

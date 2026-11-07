@@ -9,6 +9,8 @@
 :root {
   color-scheme: light;
   --score-ink: #1e1b4b;
+  /* Nốt tay trái trên khuông đôi (bật "Tô màu riêng tay trái"). */
+  --score-lh-ink: #1d4ed8;
   --score-current: #c026d3;
   --score-cursor: rgb(217 70 239 / 0.16);
   --score-correct: #059669;
@@ -34,6 +36,7 @@
 .dark {
   color-scheme: dark;
   --score-ink: #ede9fe;
+  --score-lh-ink: #93c5fd;
   --score-current: #f0abfc;
   --score-cursor: rgb(232 121 249 / 0.24);
   --score-correct: #34d399;
@@ -92,6 +95,10 @@ body::before {
   transition:
     color 150ms ease,
     opacity 150ms ease;
+}
+/* Phân biệt hai tay: nốt tay trái màu riêng — `:where` = độ đặc hiệu 0 để màu đúng / sai / đang chơi luôn đè lên. */
+:where(.score-hand-colors) :where(.score-note.score-lh, .score-acc) {
+  color: var(--score-lh-ink);
 }
 .score-note.is-correct,
 .score-acc.is-correct {
@@ -190,6 +197,21 @@ body::before {
 .score-finger.is-current {
   fill: var(--score-current);
   font-weight: 800;
+}
+
+/* Ký hiệu hợp âm phía trên khuông Sol (C, G7/B, Fm/A♭…). */
+.score-chord {
+  fill: var(--score-label);
+  stroke: none;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font-sans);
+}
+
+/* To dần / nhỏ dần: hình nêm cùng hàng dấu sắc thái. */
+.score-hairpin line {
+  stroke: currentColor;
+  stroke-width: 1.5;
 }
 
 @keyframes shake {

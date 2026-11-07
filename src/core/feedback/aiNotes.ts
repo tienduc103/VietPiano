@@ -4,7 +4,7 @@
  */
 
 /** Chế độ chơi ở màn Luyện tập (bài thư viện); buổi giáo trình không ghi. */
-export type AiNoteMode = 'wait' | 'count' | 'tempo';
+export type AiNoteMode = 'wait' | 'count' | 'tempo' | 'perform';
 
 /** Nhận xét của AI cục bộ (Ollama) cho một lần làm bài / buổi. */
 export interface AiNote {
@@ -27,7 +27,7 @@ export function mergeAiNote(notes: readonly AiNote[], note: AiNote): AiNote[] {
   return [...notes.filter((n) => n.at !== note.at), { ...note, text }].sort((a, b) => a.at - b.at).slice(-MAX_AI_NOTES);
 }
 
-export const AI_NOTE_MODE_LABEL: Record<AiNoteMode, string> = { wait: 'Chờ nốt', count: 'Đếm nốt', tempo: 'Theo nhịp' };
+export const AI_NOTE_MODE_LABEL: Record<AiNoteMode, string> = { wait: 'Chờ nốt', count: 'Đếm nốt', tempo: 'Theo nhịp', perform: 'Biểu diễn' };
 
 /** Đọc từ bộ nhớ ngoài: bỏ mục hỏng. */
 export function sanitizeAiNotes(raw: unknown): AiNote[] {
@@ -39,7 +39,7 @@ export function sanitizeAiNotes(raw: unknown): AiNote[] {
     )
     .map((n) => {
       const note: AiNote = { at: n.at, score: n.score, text: n.text, model: typeof n.model === 'string' ? n.model : '' };
-      if (n.mode === 'wait' || n.mode === 'count' || n.mode === 'tempo') note.mode = n.mode;
+      if (n.mode === 'wait' || n.mode === 'count' || n.mode === 'tempo' || n.mode === 'perform') note.mode = n.mode;
       return note;
     })
     .sort((a, b) => a.at - b.at)

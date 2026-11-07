@@ -44,9 +44,11 @@ const { module: content } = await runnerImport<Content>(join(root, 'src/core/cur
 
 type Supplement = typeof import('../src/core/curriculum/content/supplement');
 const { module: supplement } = await runnerImport<Supplement>(join(root, 'src/core/curriculum/content/supplement.ts'), config);
+type Discovery = typeof import('../src/core/curriculum/content/discovery');
+const { module: discovery } = await runnerImport<Discovery>(join(root, 'src/core/curriculum/content/discovery.ts'), config);
 
-// Giáo trình chính + giáo trình bổ sung "Làm quen từng nốt".
-const lines = [...new Set([...catalog.voiceLines(content.CURRICULUM), ...catalog.voiceLines(supplement.SUPPLEMENT)])];
+// Giáo trình chính + giáo trình bổ sung "Làm quen từng nốt" + "Khám phá nốt nhạc".
+const lines = [...new Set([...catalog.voiceLines(content.CURRICULUM), ...catalog.voiceLines(supplement.SUPPLEMENT), ...catalog.voiceLines(discovery.DISCOVERY)])];
 const fileOf = (line: string) => `${createHash('sha1').update(`${VOICE}|${RATE}|${line}`).digest('hex').slice(0, 12)}.mp3`;
 const exists = (f: string) => existsSync(join(audioDir, f)) && statSync(join(audioDir, f)).size >= MIN_BYTES;
 const missing = lines.filter((l) => !exists(fileOf(l)));

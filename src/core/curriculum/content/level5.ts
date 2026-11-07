@@ -547,7 +547,10 @@ export const LEVEL5_WEEKS: Week[] = [
     title: 'Tuần 1 — Nốt trầm tay trái',
     description: 'Hai tay cùng lúc: nốt trầm giữ, đổi nửa ô nhịp, quãng 5; bài "Ngày nắng".',
     lessonIds: ['l5-01-bass-whole', 'l5-02-bass-half', 'l5-03-fifths', 'l5-04-sunny', 'l5-05-week1-test'],
-    extraPractice: [{ lessonId: 'bh-parallel', tip: 'Ôn hai tay chơi lần lượt trước khi chơi cùng lúc.' }],
+    extraPractice: [
+      { lessonId: 'bh-parallel', tip: 'Ôn hai tay chơi lần lượt trước khi chơi cùng lúc.' },
+      { lessonId: 'song-happy-birthday-beginner', tip: 'Happy Birthday bản Cơ bản: tay trái một nốt trầm giữ cả ô ở thế Đô — đúng kỹ năng của tuần này.' },
+    ],
   },
   {
     weekId: 'l5-w2',
@@ -566,6 +569,7 @@ export const LEVEL5_WEEKS: Week[] = [
     extraPractice: [
       { lessonId: 'song-prelude-c', tip: 'Hợp âm rải liên tục — nghe từng hợp âm chuyển màu.' },
       { lessonId: 'song-romance-2-hands', tip: 'Đoạn B: tay trái rải hợp âm từng nốt đen.' },
+      { lessonId: 'song-happy-birthday-intermediate', tip: 'Happy Birthday bản Trung cấp: tay trái đệm valse (trầm – hợp âm – hợp âm), tay phải thêm quãng 3, quãng 6.' },
     ],
   },
   {

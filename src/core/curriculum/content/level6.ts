@@ -791,7 +791,10 @@ export const LEVEL6_WEEKS: Week[] = [
     title: 'Tuần 4 — Buổi hoà nhạc',
     description: 'To dần, nhỏ dần; bài "Hoàng hôn"; chuẩn bị chương trình, tổng duyệt và buổi hoà nhạc tốt nghiệp.',
     lessonIds: ['l6-16-cresc-dim', 'l6-17-sunset', 'l6-18-program', 'l6-19-rehearsal', 'l6-20-final'],
-    extraPractice: [{ lessonId: 'bh-ode-to-joy', tip: 'Ôn "Ode to Joy" hai tay chơi lần lượt trong Thư viện.' }],
+    extraPractice: [
+      { lessonId: 'bh-ode-to-joy', tip: 'Ôn "Ode to Joy" hai tay chơi lần lượt trong Thư viện.' },
+      { lessonId: 'song-happy-birthday-advanced', tip: 'Happy Birthday bản Nâng cao: đủ sắc thái, to dần / nhỏ dần, pedal đổi theo hợp âm — bài biểu diễn cho buổi hoà nhạc.' },
+    ],
   },
 ];
 

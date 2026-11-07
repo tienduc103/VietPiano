@@ -31,8 +31,20 @@ export const CLEF_LABEL: Record<LessonClef, string> = { treble: 'Khoá Sol', bas
 /** Số ngón tay: 1 = ngón cái, 2 = trỏ, 3 = giữa, 4 = áp út, 5 = út (cả hai tay). */
 export type Finger = 1 | 2 | 3 | 4 | 5;
 
+/**
+ * Nốt tay phải đánh CÙNG LÚC với nốt giai điệu (quãng 3, quãng 6, quãng 8… — ký hiệu "E4+C5/h:1+5"),
+ * luôn thấp hơn nốt giai điệu (nốt giai điệu là nốt cao nhất của chùm), cùng trường độ.
+ * Micro chỉ nhận một nốt mỗi lúc → chỉ chấm nốt giai điệu; đàn MIDI / bàn phím ảo chấm đủ cả chùm.
+ */
+export interface HarmonyNote {
+  pitch: string;
+  midi: number;
+  finger?: Finger;
+  fingerCircled?: boolean;
+}
+
 export interface LessonNote {
-  /** Tên nốt khoa học, vd "C4", "F#3". */
+  /** Tên nốt khoa học, vd "C4", "F#3". Chùm nốt tay phải: nốt cao nhất (giai điệu). */
   pitch: string;
   midi: number;
   duration: Duration;
@@ -40,6 +52,8 @@ export interface LessonNote {
   finger?: Finger;
   /** Số ngón vẽ khoanh tròn (③) như bản in — thường đánh dấu ngón 3 trên phím đen. */
   fingerCircled?: boolean;
+  /** Nốt hoà âm tay phải đánh cùng nốt giai điệu, thấp → cao (bài khuông đôi có phần đệm). */
+  harmony?: HarmonyNote[];
   /** Tay chơi nốt này — chỉ có ở bài hai tay. */
   hand?: Hand;
   /**
@@ -74,6 +88,36 @@ export interface LessonSection {
   label: string;
 }
 
+/** Ký hiệu hợp âm ("C", "G7/B", "Fm/Ab") vẽ phía trên khuông Sol, ở nốt giai điệu `index`. */
+export interface ChordSymbol {
+  index: number;
+  symbol: string;
+}
+
+/** Dấu to dần / nhỏ dần (cresc. / dim.) từ nốt giai điệu `from` tới hết nốt `to`. */
+export interface Hairpin {
+  from: number;
+  to: number;
+  type: 'cresc' | 'dim';
+}
+
+/**
+ * Ký hiệu pedal vang: đạp từ đầu ô `from` tới hết ô `to` (chỉ số ô từ 0, gồm cả ô lấy đà).
+ * Đổi pedal giữa ô nhịp (theo hợp âm): `fromBeat` = đạp muộn hơn đầu ô `from` bấy nhiêu phách (nốt đen),
+ * `toBeat` = nhả ở phách này của ô `to` (không có = hết ô).
+ */
+export interface PedalMark {
+  from: number;
+  to: number;
+  fromBeat?: number;
+  toBeat?: number;
+}
+
+/** Cấp độ bản phối của một bài có nhiều bản (Cơ bản / Trung cấp / Nâng cao). */
+export type ArrangementLevel = 1 | 2 | 3;
+
+export const ARRANGEMENT_LEVEL_LABEL: Record<ArrangementLevel, string> = { 1: 'Cơ bản', 2: 'Trung cấp', 3: 'Nâng cao' };
+
 export interface Lesson {
   id: string;
   title: string;
@@ -95,8 +139,20 @@ export interface Lesson {
   sections?: LessonSection[];
   /** Dấu sắc thái (p, f…) đặt ở nốt `index` của `notes`, có hiệu lực tới dấu sau. */
   dynamics?: { index: number; mark: DynamicMark }[];
-  /** Ký hiệu pedal vang: đạp từ đầu ô `from` tới hết ô `to` (chỉ số ô từ 0, gồm cả ô lấy đà). */
-  pedal?: { from: number; to: number }[];
+  /** To dần / nhỏ dần giữa hai dấu sắc thái (vẽ hình nêm, nghe mẫu tăng / giảm lực gõ dần). */
+  hairpins?: Hairpin[];
+  /** Ký hiệu pedal vang (xem `PedalMark`). */
+  pedal?: PedalMark[];
+  /** Pedal chỉ là gợi ý (bản Cơ bản): vẫn vẽ + nghe mẫu có ngân, nhưng không chấm pedal. */
+  pedalOptional?: boolean;
+  /** Ký hiệu hợp âm phía trên khuông (bật / tắt ở màn Luyện tập). */
+  chordSymbols?: ChordSymbol[];
+  /** Bản phối thuộc một bài nhiều cấp độ (`family` = mã bài chung, xem `lessons/arrangements`). */
+  arrangement?: { family: string; level: ArrangementLevel };
+  /** Khoảng nhịp độ tham khảo (♩/phút). */
+  tempoRange?: [number, number];
+  /** Bài là một đoạn cắt ra để luyện (ô `from`…`to` theo số in của bài gốc, ô lấy đà = 0). */
+  slice?: { from: number; to: number };
   /** Tuyển tập khuông đôi: chỉ hiện ở trang Thư viện bài hát, không hiện trong Thư viện bài ở trang chủ. */
   repertoire?: boolean;
   /** Ghi chú nguồn gốc bản nhạc (bản quyền). */
@@ -110,6 +166,21 @@ export interface Lesson {
 /** Tay chơi một nốt của bài. */
 export function noteHand(lesson: Pick<Lesson, 'hand'>, note: Pick<LessonNote, 'hand'>): Hand {
   return note.hand ?? (lesson.hand === 'left' ? 'left' : 'right');
+}
+
+/** Nốt hoà âm tay phải của một nốt (rỗng nếu đánh một nốt). */
+export function harmonyMidis(note: Pick<LessonNote, 'harmony'>): number[] {
+  return note.harmony?.map((h) => h.midi) ?? [];
+}
+
+/** Mọi phím của nốt / chùm nốt tay phải, thấp → cao (nốt giai điệu cuối cùng). */
+export function chordMidis(note: Pick<LessonNote, 'harmony' | 'midi'>): number[] {
+  return [...harmonyMidis(note), note.midi];
+}
+
+/** Bài có nốt hoà âm tay phải (chùm nốt). */
+export function hasRightHarmony(lesson: Pick<Lesson, 'notes'>): boolean {
+  return lesson.notes.some((n) => (n.harmony?.length ?? 0) > 0);
 }
 
 /**

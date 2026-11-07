@@ -19,8 +19,10 @@ interface Props {
   onPress: (midi: number) => void;
   /** Thả phím (để chấm trường độ). */
   onRelease?: (midi: number) => void;
-  /** Các phím tô sáng (hình minh hoạ giáo trình). */
+  /** Các phím tô sáng (hình minh hoạ giáo trình; tay trái ở bài hai tay). */
   highlighted?: ReadonlySet<number>;
+  /** Phím cần đánh thêm của chùm nốt tay phải (nốt hoà âm), tô cùng màu nốt cần đánh nhưng nhạt hơn. */
+  expectedExtra?: ReadonlySet<number>;
   /** Số ngón vẽ trên từng phím (hình minh hoạ thế tay). */
   fingers?: Readonly<Record<number, number>>;
   /** Hiện tên mọi phím trắng (mặc định chỉ hiện nốt Đô và nốt cần đánh). */
@@ -33,6 +35,7 @@ function keyClasses(midi: number, black: boolean, p: Props): string {
   if (p.flash?.midi === midi) return p.flash.kind === 'correct' ? 'bg-emerald-400! text-white' : 'bg-rose-500! text-white';
   if (p.detected === midi) return black ? 'bg-cyan-500!' : 'bg-cyan-200! dark:bg-cyan-700!';
   if (p.expected === midi) return black ? 'bg-fuchsia-500! ring-4 ring-fuchsia-300' : 'bg-fuchsia-100! ring-4 ring-inset ring-fuchsia-500 dark:bg-fuchsia-200!';
+  if (p.expectedExtra?.has(midi)) return black ? 'bg-fuchsia-400! ring-2 ring-fuchsia-200' : 'bg-fuchsia-50! ring-4 ring-inset ring-fuchsia-300 dark:bg-fuchsia-100!';
   if (p.highlighted?.has(midi)) return black ? 'bg-amber-500! ring-2 ring-amber-300' : 'bg-amber-100! ring-4 ring-inset ring-amber-400 dark:bg-amber-200!';
   return '';
 }
@@ -77,6 +80,7 @@ export const PianoKeyboard = memo(function PianoKeyboard(props: Props) {
             aria-label={midiToLabel(m, labelStyle)}
             data-midi={m}
             data-highlighted={props.highlighted?.has(m) || undefined}
+            data-expected-extra={props.expectedExtra?.has(m) || undefined}
             onPointerDown={press(m)}
             onPointerUp={release(m)}
             onPointerLeave={release(m)}
@@ -103,6 +107,7 @@ export const PianoKeyboard = memo(function PianoKeyboard(props: Props) {
           aria-label={midiToLabel(midi, labelStyle)}
           data-midi={midi}
           data-highlighted={props.highlighted?.has(midi) || undefined}
+          data-expected-extra={props.expectedExtra?.has(midi) || undefined}
           onPointerDown={press(midi)}
           onPointerUp={release(midi)}
           onPointerLeave={release(midi)}

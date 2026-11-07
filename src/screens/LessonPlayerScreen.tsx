@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CURRICULUM } from '../core/curriculum/content/curriculum';
-import { isSupplementLesson, SUPPLEMENT } from '../core/curriculum/content/supplement';
+import { findGuidedLesson, guidedCourseOf } from '../core/curriculum/content/guided';
 import { lessonFeedback } from '../core/curriculum/feedback';
 import { formatMistake, scoreLesson, starsFor, type ExerciseScore } from '../core/curriculum/scoring';
 import { text, type Activity, type CurriculumLesson, type Exercise, type UiMode } from '../core/curriculum/types';
@@ -33,7 +33,7 @@ type Step = { type: 'overview' } | { type: 'activity'; activity: Activity } | { 
 type Phase = 'steps' | 'result' | LessonStage;
 
 export function LessonPlayerScreen({ lessonId, stage }: { lessonId: string; stage?: LessonStage }) {
-  const lesson = findLesson(CURRICULUM, lessonId) ?? findLesson(SUPPLEMENT, lessonId);
+  const lesson = findLesson(CURRICULUM, lessonId) ?? findGuidedLesson(lessonId);
   const navigate = useApp((s) => s.navigate);
   if (!lesson) {
     return (
@@ -57,10 +57,14 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
   const saveError = useCurriculum((s) => s.saveError);
   const { recordExercise, recordRun, markIntroDone, addTime, recordReview, recordGame } = useCurriculum.getState();
   useWakeLock(true);
-  /** Buổi của giáo trình bổ sung: không có Luyện tập sau buổi, trò chơi do bé tự chọn (`SupplementGames`). */
-  const supplement = isSupplementLesson(lesson.lessonId);
-  const home: Route = supplement ? { name: 'supplement' } : { name: 'curriculum' };
-  const homeLabel = supplement ? 'Về giáo trình bổ sung' : 'Về giáo trình';
+  /**
+   * Buổi của giáo trình dẫn dắt (Làm quen từng nốt / Khám phá nốt nhạc — `content/guided.ts`): không có Luyện tập sau buổi,
+   * trò chơi do bé tự chọn (`SupplementGames`).
+   */
+  const course = guidedCourseOf(lesson.lessonId);
+  const guided = course !== undefined;
+  const home: Route = course ? { name: course.home } : { name: 'curriculum' };
+  const homeLabel = course?.homeLabel ?? 'Về giáo trình';
   // Đổi buổi học (Player dựng lại theo key) → huỷ lời cô giáo của buổi cũ.
   useVoiceScope();
 
@@ -143,7 +147,7 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
   }, [phase]);
 
   const record = records[lesson.lessonId];
-  const next = nextLessonAfter(supplement ? SUPPLEMENT : CURRICULUM, lesson.lessonId);
+  const next = nextLessonAfter(course?.curriculum ?? CURRICULUM, lesson.lessonId);
   const tempoPercent = lesson.ageVariants[mode]?.tempoPercent ?? 100;
 
   return (
@@ -153,7 +157,7 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
           <Icon name="back" />
         </Button>
         <div className="min-w-0 flex-1">
-          <div className="text-sm text-slate-500 dark:text-slate-400">{supplement ? 'Giáo trình bổ sung' : `Buổi ${lesson.number}`}</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">{course ? course.kicker(lesson) : `Buổi ${lesson.number}`}</div>
           <h1 className="truncate text-xl font-bold" data-testid="lesson-title">
             {text(lesson.title)}
           </h1>
@@ -193,7 +197,7 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
               { p: 'game', icon: '🎮', label: 'Trò chơi', done: (record?.gamePlays ?? 0) > 0 },
             ] as const
           )
-            .filter((x) => !supplement || x.p === 'game')
+            .filter((x) => !guided || x.p === 'game')
             .map((x) => (
             <button
               key={x.p}
@@ -234,13 +238,16 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
           )}
           {phase === 'review' ? (
             <ReviewSession lesson={lesson} mode={mode} tempoPercent={tempoPercent} onComplete={() => void recordReview(lesson, takeElapsed())} onGame={() => enterStage('game')} />
-          ) : phase === 'game' && supplement ? (
+          ) : phase === 'game' && course ? (
             <SupplementGames
               lesson={lesson}
+              games={course.games[lesson.lessonId] ?? []}
               mode={mode}
               onResult={(r) => void recordGame(lesson, r, takeElapsed())}
               onNext={next ? () => navigate({ name: 'lesson', lessonId: next.lessonId }) : undefined}
+              nextLabel={course.nextLabel}
               onBack={() => navigate(home)}
+              backLabel={homeLabel}
             />
           ) : phase === 'game' ? (
             <GameStage
@@ -258,8 +265,8 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
                 scores={runScores}
                 passedEver={record?.passed ?? false}
                 onRetry={retryLesson}
-                onReview={() => enterStage(supplement ? 'game' : 'review')}
-                reviewLabel={supplement ? '🎮 Tiếp: Chọn trò chơi' : undefined}
+                onReview={() => enterStage(guided ? 'game' : 'review')}
+                reviewLabel={guided ? '🎮 Tiếp: Chọn trò chơi' : undefined}
                 onNext={next ? () => navigate({ name: 'lesson', lessonId: next.lessonId }) : undefined}
                 onBack={() => navigate(home)}
                 backLabel={homeLabel}
@@ -328,7 +335,8 @@ function stepLabel(s: Step): string {
 
 function Overview({ lesson, mode, onStart }: { lesson: CurriculumLesson; mode: UiMode; onStart: () => void }) {
   const records = useCurriculum((s) => s.records);
-  const missing = missingPrerequisites(lesson, records).map((id) => findLesson(CURRICULUM, id)).filter((l): l is CurriculumLesson => !!l);
+  const curriculum = guidedCourseOf(lesson.lessonId)?.curriculum ?? CURRICULUM;
+  const missing = missingPrerequisites(lesson, records).map((id) => findLesson(curriculum, id)).filter((l): l is CurriculumLesson => !!l);
   const variant = lesson.ageVariants[mode];
   const rec = records[lesson.lessonId];
   useVoiceScope();

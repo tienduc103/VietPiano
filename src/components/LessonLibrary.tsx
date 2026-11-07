@@ -188,7 +188,11 @@ export function LessonCard({
             {'●'.repeat(lesson.difficulty)}
             <span className="text-slate-300 dark:text-slate-600">{'●'.repeat(3 - lesson.difficulty)}</span>
           </span>
-          {progress && progress.sessions > 0 && <span>· {progress.sessions} lần</span>}
+          {progress && progress.sessions > 0 && (
+            <span title="Số lần luyện · số lần chơi xong cả bài">
+              · {progress.sessions} lần{progress.completions > 0 ? ` · xong ${progress.completions}` : ''}
+            </span>
+          )}
         </div>
       </button>
       {/* Nút riêng (không lồng trong nút mở bài): xuất bản nhạc thành ảnh để tự học. */}

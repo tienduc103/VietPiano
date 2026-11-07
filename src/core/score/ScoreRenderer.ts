@@ -21,8 +21,11 @@ import {
   Voice,
   type RenderContext,
 } from 'vexflow/bravura';
+import { pedalRanges } from '../curriculum/piece';
 import { splitMeasures, type Measure } from '../lessons/notation';
-import { fingerText, measureLength, noteHand, sectionAt, type AccompanimentNote, type Clef, type Duration, type Lesson, type LessonNote } from '../lessons/types';
+import { measureStarts } from '../lessons/positions';
+import { DURATION_BEATS, fingerText, measureLength, noteHand, sectionAt, type AccompanimentNote, type Clef, type Duration, type Lesson, type LessonNote } from '../lessons/types';
+import { displayChordSymbol } from '../music/chordSymbols';
 import { measureAccidentals } from '../music/keySignature';
 import { pitchToLabel, type NoteLabelStyle } from '../music/notes';
 
@@ -31,6 +34,12 @@ export interface ScoreRenderOptions {
   labelStyle: NoteLabelStyle;
   /** Vẽ số chỉ nhịp ở đầu khuông (mặc định có). Thẻ nốt lẻ của trò chơi bỏ đi cho gọn. */
   timeSignature?: boolean;
+  /** Vẽ số ngón tay (mặc định có). */
+  showFingers?: boolean;
+  /** Vẽ ký hiệu hợp âm phía trên khuông khi bài có (mặc định có). */
+  showChords?: boolean;
+  /** Vẽ ký hiệu pedal khi bài có (mặc định có). Ẩn chỉ đổi hình vẽ — vẫn chấm pedal. */
+  showPedal?: boolean;
 }
 
 export interface RenderedScore {
@@ -89,6 +98,18 @@ const PEDAL_TICK = 10;
 const PEDAL_NOTCH = 5;
 /** Chừa chỗ cho chữ "Ped." trước đường kẻ. */
 const PEDAL_TEXT_WIDTH = 34;
+/** Chùm nốt tay phải: các số ngón xếp chồng, mỗi hàng cách nhau bấy nhiêu (nốt thấp ở dưới, nốt giai điệu trên cùng). */
+export const FINGER_ROW_STEP = 16;
+/** Chiều cao chữ số ngón (để chừa chỗ phía trên). */
+const FINGER_GLYPH = 14;
+/** Khoảng hở tối thiểu giữa số ngón và đầu nốt / đỉnh đuôi nốt phía dưới. */
+const HEAD_CLEAR = 7;
+const STEM_CLEAR = 6;
+/** Ký hiệu hợp âm: cách đỉnh chồng số ngón / đỉnh nốt phía dưới. */
+const CHORD_GAP = 8;
+const CHORD_GLYPH = 16;
+/** Hình nêm to dần / nhỏ dần: độ mở ở đầu rộng. */
+const HAIRPIN_OPEN = 12;
 /** Khoảng trống thêm phía trên khi bài có chữ đánh dấu đoạn (khung chữ nằm trên hàng số ngón tay). */
 export const SECTION_SPACE = 24;
 /** Khung chữ đánh dấu đoạn: cạnh vuông, khoảng cách từ đáy khung tới dòng kẻ trên cùng (trên hàng số ngón tay). */
@@ -141,6 +162,35 @@ export function accompanimentFingerRows(note: AccompanimentNote, staveNote: Stav
   for (let i = note.fingers.length - 1; i >= 0; i--) {
     const f = note.fingers[i];
     if (f) rows.push({ text: fingerText(f, note.fingersCircled[i]), y: lowest + LH_FINGER_TOP + row++ * LH_FINGER_STEP });
+  }
+  return rows;
+}
+
+/** Đỉnh của nốt (đầu nốt cao nhất, hoặc đỉnh đuôi nốt quay lên), theo trục y SVG (nhỏ = cao). */
+function noteTop(staveNote: StaveNote): number {
+  const { topY, baseY } = staveNote.getStemExtents();
+  return Math.min(...staveNote.getYs(), staveNote.getStemDirection() > 0 ? Math.min(topY, baseY) : Infinity);
+}
+
+/**
+ * Toạ độ y (đường chân chữ) của từng số ngón tay của một nốt giai điệu, nốt thấp ở dưới như bản in.
+ * Nốt đơn: hàng cố định phía trên khuông (như bài cho bé), chỉ nâng lên khi đầu nốt cao hơn hàng đó.
+ * Chùm nốt tay phải: xếp chồng phía trên đầu nốt cao nhất / đỉnh đuôi nốt để không đè lên nốt.
+ */
+export function noteFingerRows(note: LessonNote, staveNote: StaveNote, staffTop: number): { text: string; y: number }[] {
+  const fixed = staffTop - FINGER_OFFSET;
+  if (!note.harmony?.length) {
+    if (!note.finger) return [];
+    return [{ text: fingerText(note.finger, note.fingerCircled), y: Math.min(fixed, Math.min(...staveNote.getYs()) - HEAD_CLEAR) }];
+  }
+  const fingers = [...note.harmony.map((h) => ({ f: h.finger, c: h.fingerCircled })), { f: note.finger, c: note.fingerCircled }];
+  if (!fingers.some((x) => x.f)) return [];
+  let y = Math.min(fixed, noteTop(staveNote) - STEM_CLEAR);
+  const rows: { text: string; y: number }[] = [];
+  for (const x of fingers) {
+    if (!x.f) continue;
+    rows.push({ text: fingerText(x.f, x.c), y });
+    y -= FINGER_ROW_STEP;
   }
   return rows;
 }
@@ -220,7 +270,9 @@ export function createMeasureNotes(
     if (own.length === 0 && fullMeasure) {
       return [new StaveNote({ keys: [REST_KEY[clef]], duration: 'w', type: 'r', clef, alignCenter: true })];
     }
-    const accidentals = measureAccidentals(own.filter((n) => !n.rest).map((n) => n.pitch), lesson.keySignature);
+    // Chùm nốt tay phải: các phím thấp → cao (hoà âm rồi giai điệu), dấu hoá xét lần lượt từng phím trong ô.
+    const keysOf = (n: LessonNote) => [...(n.harmony ?? []).map((h) => h.pitch), n.pitch];
+    const accidentals = measureAccidentals(own.filter((n) => !n.rest).flatMap(keysOf), lesson.keySignature);
     let k = 0;
     return items.map((n, ni) => {
       if (staffOf(lesson, n) !== si) return createRest(n.duration, clef);
@@ -230,10 +282,13 @@ export function createMeasureNotes(
         played[ni] = rest;
         return rest;
       }
-      const note = new StaveNote({ keys: [toVexKey(n.pitch)], duration: n.duration, clef, autoStem: true });
+      const keys = keysOf(n);
+      const note = new StaveNote({ keys: keys.map(toVexKey), duration: n.duration, clef, autoStem: true });
       if (n.duration.endsWith('d')) Dot.buildAndAttach([note], { all: true });
-      const accidental = accidentals[k++];
-      if (accidental) note.addModifier(new Accidental(accidental), 0);
+      keys.forEach((_, ki) => {
+        const accidental = accidentals[k++];
+        if (accidental) note.addModifier(new Accidental(accidental), ki);
+      });
       note.setLedgerLineStyle(LEDGER_STYLE);
       played[ni] = note;
       return note;
@@ -330,10 +385,11 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
   ctx.setStrokeStyle('currentColor');
 
   const clefs = lessonClefs(lesson);
+  const showPedal = opts.showPedal !== false && !!lesson.pedal?.length;
   const top = STAVE_Y + (lesson.sections?.length ? SECTION_SPACE : 0);
   const ys = clefs.map((_, si) => top + si * GRAND_STAFF_GAP);
   const height =
-    SCORE_HEIGHT + (top - STAVE_Y) + (labelOffset(lesson) - LABEL_OFFSET) + (clefs.length - 1) * GRAND_STAFF_GAP + (lesson.pedal?.length ? PEDAL_SPACE : 0);
+    SCORE_HEIGHT + (top - STAVE_Y) + (labelOffset(lesson) - LABEL_OFFSET) + (clefs.length - 1) * GRAND_STAFF_GAP + (showPedal ? PEDAL_SPACE : 0);
   const measures = splitMeasures(lesson.notes, measureLength(lesson.timeSignature), lesson.pickup);
   const accMeasures = accompanimentMeasures(lesson);
 
@@ -409,18 +465,54 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     return t;
   });
 
-  // Số ngón tay: một hàng cố định phía trên khuông của nốt (bài tập cho bé dùng thế tay cố định nên không đè nốt).
+  // Số ngón tay: một hàng cố định phía trên khuông của nốt (bài tập cho bé dùng thế tay cố định nên không đè nốt);
+  // chùm nốt tay phải xếp chồng phía trên chùm. `stackTops` = đỉnh phần đã vẽ phía trên từng nốt (để đặt ký hiệu hợp âm).
+  let topMost = Infinity;
+  const stackTops: number[] = [];
   const fingerElements = lesson.notes.map((n, i) => {
-    if (!n.finger) return null;
+    const staveNote = allNotes[i];
+    stackTops[i] = n.rest ? staffTops[staffOf(lesson, n)] : Math.min(staffTops[staffOf(lesson, n)], noteTop(staveNote));
+    const rows = opts.showFingers === false || n.rest ? [] : noteFingerRows(n, staveNote, staffTops[staffOf(lesson, n)]);
+    if (rows.length === 0) return null;
     const t = document.createElementNS(SVG_NS, 'text');
     t.setAttribute('x', String(noteCenters[i]));
-    t.setAttribute('y', String(staffTops[staffOf(lesson, n)] - FINGER_OFFSET));
+    t.setAttribute('y', String(rows[0].y));
     t.setAttribute('text-anchor', 'middle');
     t.setAttribute('class', `score-finger ${handClass(lesson, n)}`);
-    t.textContent = fingerText(n.finger, n.fingerCircled);
+    if (rows.length === 1) t.textContent = rows[0].text;
+    else
+      for (const row of rows) {
+        const span = document.createElementNS(SVG_NS, 'tspan');
+        span.setAttribute('x', String(noteCenters[i]));
+        span.setAttribute('y', String(row.y));
+        span.textContent = row.text;
+        t.appendChild(span);
+      }
     svg.appendChild(t);
+    const top = rows[rows.length - 1].y - FINGER_GLYPH;
+    stackTops[i] = Math.min(stackTops[i], top);
+    topMost = Math.min(topMost, top);
     return t;
   });
+
+  // Ký hiệu hợp âm: phía trên số ngón; mỗi ký hiệu nằm trên mọi nốt tới ký hiệu kế tiếp (không đè số ngón / nốt cao).
+  if (opts.showChords !== false && lesson.chordSymbols?.length && lesson.clef !== 'bass') {
+    const base = staffTops[0] - (opts.showFingers !== false && fingerElements.some(Boolean) ? FINGER_OFFSET + FINGER_GLYPH : 0) - CHORD_GAP;
+    lesson.chordSymbols.forEach((c, k) => {
+      if (noteCenters[c.index] === undefined) return;
+      const end = lesson.chordSymbols![k + 1]?.index ?? lesson.notes.length;
+      const above = Math.min(...stackTops.slice(c.index, Math.max(c.index + 1, end)).filter((y) => y !== undefined));
+      const y = Math.min(base, above - CHORD_GAP);
+      const t = document.createElementNS(SVG_NS, 'text');
+      t.setAttribute('x', String(allNotes[c.index].getNoteHeadBeginX() - 2));
+      t.setAttribute('y', String(y));
+      t.setAttribute('class', 'score-chord');
+      t.setAttribute('data-chord', c.symbol);
+      t.textContent = displayChordSymbol(c.symbol);
+      svg.appendChild(t);
+      topMost = Math.min(topMost, y - CHORD_GLYPH);
+    });
+  }
 
   // Chữ đánh dấu đoạn (A, B…) trong khung vuông như bản in.
   built.forEach((b, mi) => {
@@ -447,8 +539,10 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
   const topBottom = built[0].staves[0].getYForLine(4);
   const lowestHead = Math.max(topBottom, ...lesson.notes.map((n, i) => (n.rest || staffOf(lesson, n) !== 0 ? -Infinity : Math.max(...allNotes[i].getYs()))));
   const dynamicY = Math.max(topBottom + DYNAMIC_OFFSET, lowestHead + DYNAMIC_BELOW_NOTE);
+  const dynamicMarks = new Set<number>();
   for (const d of lesson.dynamics ?? []) {
     if (noteCenters[d.index] === undefined) continue;
+    dynamicMarks.add(d.index);
     const t = document.createElementNS(SVG_NS, 'text');
     t.setAttribute('x', String(noteCenters[d.index]));
     t.setAttribute('y', String(dynamicY));
@@ -459,28 +553,57 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     svg.appendChild(t);
   }
 
-  // Ký hiệu pedal: "Ped." + đường kẻ, gạch đứng ở chỗ nhả; thay pedal (khoảng liền sau) vẽ thành khấc "^" trên vạch nhịp.
-  const pedalY = labelY + PEDAL_OFFSET;
-  const pedals = (lesson.pedal ?? []).filter((p) => built[p.from] && built[p.to]);
-  const pedalEndX = (p: { to: number }) => {
-    const st = built[p.to].staves[0];
+  // To dần (<) / nhỏ dần (>): hình nêm cùng hàng dấu sắc thái, từ nốt `from` tới trước nốt sau `to`
+  // (chừa chỗ cho chữ sắc thái đứng ở nốt đó).
+  const measureEndX = (mi: number) => {
+    const st = built[mi].staves[0];
     return st.getX() + st.getWidth();
   };
-  pedals.forEach((p, i) => {
-    const chainedBefore = i > 0 && pedals[i - 1].to + 1 === p.from;
-    const chainedAfter = i < pedals.length - 1 && p.to + 1 === pedals[i + 1].from;
-    const x1 = pedalEndX(p) - (chainedAfter ? 0 : 4);
+  const noteMeasure: number[] = built.flatMap((b, mi) => b.played.map(() => mi));
+  for (const h of lesson.hairpins ?? []) {
+    if (noteCenters[h.from] === undefined || noteCenters[h.to] === undefined) continue;
+    const x0 = noteCenters[h.from] - (dynamicMarks.has(h.from) ? -16 : 6);
+    const next = noteCenters[h.to + 1];
+    const x1 = next !== undefined ? next - (dynamicMarks.has(h.to + 1) ? 20 : 10) : measureEndX(noteMeasure[h.to]) - 6;
+    if (x1 <= x0 + 8) continue;
+    const yc = dynamicY - 7;
+    const [narrow, wide] = h.type === 'cresc' ? [x0, x1] : [x1, x0];
+    const g = document.createElementNS(SVG_NS, 'g');
+    g.setAttribute('class', 'score-hairpin');
+    g.setAttribute('data-hairpin', h.type);
+    g.append(svgLine(narrow, yc, wide, yc - HAIRPIN_OPEN / 2), svgLine(narrow, yc, wide, yc + HAIRPIN_OPEN / 2));
+    svg.appendChild(g);
+  }
+
+  // Ký hiệu pedal: "Ped." + đường kẻ, gạch đứng ở chỗ nhả; thay pedal (khoảng liền sau) vẽ thành khấc "^" ở chỗ thay —
+  // trên vạch nhịp, hoặc ngay trước nốt nếu đổi pedal giữa ô (theo hợp âm).
+  const pedalY = labelY + PEDAL_OFFSET;
+  const starts = measureStarts(lesson);
+  const beatRanges = pedalRanges(lesson);
+  const stepX = beatXs(lesson, built, starts);
+  /** x của chỗ đạp / nhả ở phách `beat`: đầu ô → đầu phần nốt; cuối ô → vạch nhịp; giữa ô → ngay trước nốt ở phách đó. */
+  const pedalX = (beat: number, edge: 'start' | 'end') => {
+    const mi = starts.findIndex((s) => Math.abs(s - beat) < 1e-9);
+    if (mi >= 0 && edge === 'end' && mi > 0) return measureEndX(mi - 1);
+    if (mi >= 0 && mi < built.length) return built[mi].staves[0].getNoteStartX();
+    return stepX(beat) - 6;
+  };
+  const pedals = (lesson.pedal ?? []).map((p, i) => ({ p, r: beatRanges[i] })).filter(({ p }) => showPedal && built[p.from] && built[p.to]);
+  pedals.forEach(({ p, r }, i) => {
+    const chainedBefore = i > 0 && Math.abs(pedals[i - 1].r.endBeat - r.startBeat) < 1e-9;
+    const chainedAfter = i < pedals.length - 1 && Math.abs(r.endBeat - pedals[i + 1].r.startBeat) < 1e-9;
+    const x1 = pedalX(r.endBeat, 'end') - (chainedAfter ? 0 : 4);
     const g = document.createElementNS(SVG_NS, 'g');
     g.setAttribute('class', 'score-pedal');
-    g.setAttribute('data-pedal', `${p.from}-${p.to}`);
+    g.setAttribute('data-pedal', `${p.from}${p.fromBeat ? `+${p.fromBeat}` : ''}-${p.to}${p.toBeat !== undefined ? `+${p.toBeat}` : ''}`);
     let lineStart: number;
     if (chainedBefore) {
-      // Nửa sau của khấc: từ đỉnh khấc trên vạch nhịp xuống lại đường kẻ.
-      const xn = pedalEndX(pedals[i - 1]);
+      // Nửa sau của khấc: từ đỉnh khấc ở chỗ thay xuống lại đường kẻ.
+      const xn = pedalX(r.startBeat, 'end');
       g.appendChild(svgLine(xn, pedalY - PEDAL_TICK, xn + PEDAL_NOTCH, pedalY));
       lineStart = xn + PEDAL_NOTCH;
     } else {
-      const x0 = built[p.from].staves[0].getNoteStartX();
+      const x0 = pedalX(r.startBeat, 'start');
       const t = document.createElementNS(SVG_NS, 'text');
       t.setAttribute('x', String(x0));
       t.setAttribute('y', String(pedalY));
@@ -498,7 +621,7 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
   });
 
   // Số ngón tay phần đệm: chồng dưới khuông Fa, không tô sáng vì app không chấm phần đệm.
-  if (accMeasures) {
+  if (accMeasures && opts.showFingers !== false) {
     accMeasures.flatMap((m) => m.items).forEach((n, i) => {
       for (const row of accompanimentFingerRows(n, accStaveNotes[i], staveBottom)) {
         const t = document.createElementNS(SVG_NS, 'text');
@@ -512,5 +635,38 @@ export function renderScore(container: HTMLElement, lesson: Lesson, opts: ScoreR
     });
   }
 
-  return { width, height, noteCenters, noteElements, labelElements, fingerElements, accompanimentCenters, accompanimentElements, cursor };
+  // Số ngón / ký hiệu hợp âm của chùm nốt cao (vd hợp âm Đô6 ở coda) có thể vượt mép trên: mở rộng vùng nhìn lên trên
+  // thay vì dời cả khuông (bài cũ không bị ảnh hưởng).
+  const extraTop = Number.isFinite(topMost) ? Math.max(0, Math.ceil(4 - topMost)) : 0;
+  if (extraTop > 0) svg.setAttribute('viewBox', `0 ${-extraTop} ${width} ${height + extraTop}`);
+
+  return { width, height: height + extraTop, noteCenters, noteElements, labelElements, fingerElements, accompanimentCenters, accompanimentElements, cursor };
+}
+
+/**
+ * x của phách bất kỳ (nốt đen, tính từ đầu bài): đầu nốt bắt đầu đúng phách đó (giai điệu hoặc phần đệm),
+ * không có nốt nào thì nội suy giữa hai mốc gần nhất (mốc cuối mỗi ô = vạch nhịp).
+ */
+function beatXs(lesson: Lesson, built: { staves: Stave[]; played: StaveNote[]; accompaniment: StaveNote[] }[], starts: readonly number[]): (beat: number) => number {
+  const points: { beat: number; x: number }[] = [];
+  const add = (items: readonly { duration: Duration }[], notes: readonly StaveNote[]) => {
+    let beat = 0;
+    items.forEach((n, i) => {
+      if (notes[i]) points.push({ beat, x: notes[i].getNoteHeadBeginX() });
+      beat += DURATION_BEATS[n.duration];
+    });
+  };
+  add(lesson.notes, built.flatMap((b) => b.played));
+  add(lesson.accompaniment ?? [], built.flatMap((b) => b.accompaniment));
+  built.forEach((b, mi) => points.push({ beat: starts[mi + 1], x: b.staves[0].getX() + b.staves[0].getWidth() }));
+  points.sort((a, b) => a.beat - b.beat || a.x - b.x);
+  return (beat) => {
+    const exact = points.find((p) => Math.abs(p.beat - beat) < 1e-9);
+    if (exact) return exact.x;
+    const after = points.findIndex((p) => p.beat > beat);
+    if (after <= 0) return points[Math.max(0, after)]?.x ?? 0;
+    const a = points[after - 1];
+    const c = points[after];
+    return a.x + ((c.x - a.x) * (beat - a.beat)) / (c.beat - a.beat);
+  };
 }

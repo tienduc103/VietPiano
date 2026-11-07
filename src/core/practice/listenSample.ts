@@ -1,8 +1,9 @@
 /**
- * Nghe mẫu ở màn Luyện tập: phát bài từ đầu ô nhịp chứa nốt đang tập tới hết bài — giai điệu + phần đệm tay trái,
+ * Nghe mẫu ở màn Luyện tập: phát bài từ đầu ô nhịp chứa nốt đang tập tới hết bài — giai điệu (cả chùm nốt tay phải)
+ * + phần đệm tay trái,
  * nốt ngân theo pedal — và tính nốt giai điệu đang vang để con trỏ khuông nhạc chạy theo.
  */
-import { accompanimentTimeline, lessonTimeline, pedalRanges } from '../curriculum/piece';
+import { lessonTimeline, pedalRanges, soundingNotes } from '../curriculum/piece';
 import { sustainUnderPedal } from '../music/pedal';
 import type { Lesson } from '../lessons/types';
 
@@ -42,9 +43,10 @@ export function listenPlanAtBeat(lesson: Lesson, beat: number): ListenPlan {
 function planFrom(lesson: Lesson, timeline: ReturnType<typeof lessonTimeline>, at: ReturnType<typeof lessonTimeline>[number] | undefined): ListenPlan {
   const fromIndex = at ? timeline.findIndex((n) => n.measureIndex === at.measureIndex) : 0;
   const fromBeat = timeline[fromIndex]?.startBeat ?? 0;
-  const all = sustainUnderPedal([...timeline, ...accompanimentTimeline(lesson)], pedalRanges(lesson));
+  // Mọi phím (giai điệu + hoà âm tay phải + tay trái), nốt ngân tới chỗ nhả pedal.
+  const all = sustainUnderPedal(soundingNotes(lesson), pedalRanges(lesson));
   const notes = all
-    .filter((n): n is typeof n & { midiNote: number } => n.midiNote !== null && n.startBeat >= fromBeat - EPS)
+    .filter((n) => n.startBeat >= fromBeat - EPS)
     .map((n) => ({ midiNote: n.midiNote, startBeat: n.startBeat - fromBeat, durationBeats: n.durationBeats, velocity: n.velocity }))
     .sort((a, b) => a.startBeat - b.startBeat);
   return { fromIndex, fromBeat, notes, melodyStarts: timeline.slice(fromIndex).map((n) => n.startBeat - fromBeat) };

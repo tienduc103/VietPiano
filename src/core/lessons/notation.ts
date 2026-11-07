@@ -5,6 +5,8 @@ import { DURATION_BEATS, REST_PITCH, type AccompanimentNote, type Duration, type
  * Phân tích chuỗi ký hiệu gọn: "C4 D4 E4/h | G4/qd A4/8".
  * Mặc định trường độ là nốt đen (q). Hậu tố ":1"…":5" là số ngón tay ("C4:1", "E4/h:3"); ":(3)" = ngón vẽ khoanh tròn.
  * Bài hai tay: "RH" / "LH" đặt tay cho các nốt phía sau ("LH C3:5 D3:4 | RH E4:3").
+ * Chùm nốt tay phải (quãng, hợp âm) nối bằng "+": "E4+C5/h:1+5" — nốt CAO NHẤT là giai điệu, các nốt còn lại
+ * là hoà âm (`harmony`); số ngón ghi theo đúng thứ tự viết ("+" để trống = không ghi ngón).
  * Dấu lặng: "R" ("R/h" = lặng trắng), không ghi ngón.
  * Dấu "|" chỉ để dễ đọc, bị bỏ qua
  * (ô nhịp được tính lại từ trường độ và được kiểm tra bằng unit test).
@@ -32,6 +34,10 @@ export function parseNotes(source: string): LessonNote[] {
       notes.push({ pitch, midi: -1, duration: dur as Duration, rest: true, ...(hand ? { hand } : {}) });
       continue;
     }
+    if (pitch.includes('+')) {
+      notes.push(parseChordNote(pitch, dur as Duration, finger, tok, hand));
+      continue;
+    }
     const note: LessonNote = { pitch, midi: requireMidi(pitch), duration: dur as Duration };
     if (finger !== undefined) {
       const f = parseFinger(finger, tok);
@@ -42,6 +48,31 @@ export function parseNotes(source: string): LessonNote[] {
     notes.push(note);
   }
   return notes;
+}
+
+/** Chùm nốt tay phải "E4+G4+C5" (+ số ngón "1+2+5"): nốt cao nhất là giai điệu, còn lại là hoà âm. */
+function parseChordNote(chord: string, duration: Duration, fingerPart: string | undefined, tok: string, hand: Hand | undefined): LessonNote {
+  const pitches = chord.split('+');
+  const fingerToks = fingerPart === undefined ? [] : fingerPart.split('+');
+  if (fingerToks.length > pitches.length) throw new Error(`Thừa số ngón tay: "${tok}"`);
+  const parts = pitches
+    .map((pitch, i) => {
+      if (pitch === REST_PITCH) throw new Error(`Dấu lặng không nằm trong chùm nốt: "${tok}"`);
+      const f = fingerToks[i] ? parseFinger(fingerToks[i], tok) : undefined;
+      return { pitch, midi: requireMidi(pitch), ...(f ? { finger: f.finger } : {}), ...(f?.circled ? { fingerCircled: true } : {}) };
+    })
+    .sort((a, b) => a.midi - b.midi);
+  if (new Set(parts.map((p) => p.midi)).size !== parts.length) throw new Error(`Chùm nốt trùng phím: "${tok}"`);
+  const top = parts[parts.length - 1];
+  return {
+    pitch: top.pitch,
+    midi: top.midi,
+    duration,
+    ...(top.finger ? { finger: top.finger } : {}),
+    ...(top.fingerCircled ? { fingerCircled: true } : {}),
+    harmony: parts.slice(0, -1),
+    ...(hand ? { hand } : {}),
+  };
 }
 
 /**

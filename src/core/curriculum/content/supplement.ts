@@ -7,9 +7,12 @@
  * KHUÔN CHUNG: mọi buổi sinh từ `noteLesson(note)` + bảng `SUPPLEMENT_NOTES` (chỉ phần riêng của từng nốt: vị trí
  * trên bàn phím, trên khuông, ngón đánh). Sửa / thêm bước → sửa `noteLesson` để MỌI nốt cùng đổi, không sửa riêng một nốt,
  * rồi ghi vào nhật ký `docs/supplement.md`.
+ *
+ * "Khám phá nốt nhạc" (`discovery.ts`) dùng lại `SUPPLEMENT_NOTES` (một nguồn dữ kiện nốt cho cả hai giáo trình) và các hàm
+ * dựng hình / câu đố export bên dưới — sửa ở đây thì cả hai giáo trình cùng đổi.
  */
 import type { Letter } from '../../balloonPop/notes';
-import type { LessonGameSpec } from '../../games/gameForLesson';
+import type { GameSpec } from '../../games/gameForLesson';
 import type { NoteValue, NoteValueEquation } from '../noteValues';
 import type { ChoiceQuestion, Curriculum, CurriculumLesson, Illustration, IntroPage } from '../types';
 import { buildLessons, rh } from './helpers';
@@ -17,19 +20,19 @@ import { buildLessons, rh } from './helpers';
 /** Bàn phím của bài: C3–B5 (đủ ba quãng tám: nốt thấp, nốt giữa, nốt cao của mọi nốt trắng). */
 const KEYS = { from: 48, to: 83 };
 /** Bàn phím nhỏ trong thẻ hình đáp án: A3–B4, quanh các nốt giữa. */
-const MINI = { from: 57, to: 71 };
+export const MINI = { from: 57, to: 71 };
 /** Bàn phím trang ngón tay: G3–E5 (đủ thế Đô và thế Sol tay phải). */
-const HAND_KEYS = { from: 55, to: 76 };
+export const HAND_KEYS = { from: 55, to: 76 };
 
 const LETTER_OF_PC: Record<number, Letter> = { 0: 'C', 2: 'D', 4: 'E', 5: 'F', 7: 'G', 9: 'A', 11: 'B' };
-const isWhite = (m: number) => LETTER_OF_PC[m % 12] !== undefined;
+export const isWhite = (m: number) => LETTER_OF_PC[m % 12] !== undefined;
 /** MIDI → ký hiệu bài ("D4"). Chỉ phím trắng. */
-const pitchOf = (m: number) => `${LETTER_OF_PC[m % 12]}${Math.floor(m / 12) - 1}`;
+export const pitchOf = (m: number) => `${LETTER_OF_PC[m % 12]}${Math.floor(m / 12) - 1}`;
 const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
 
-const FINGER_NAME = ['', 'cái', 'trỏ', 'giữa', 'áp út', 'út'];
+export const FINGER_NAME = ['', 'cái', 'trỏ', 'giữa', 'áp út', 'út'];
 /** Thế tay phải 5 ngón: ngón → phím. */
-const HAND_POSITION = {
+export const HAND_POSITION = {
   C: { name: 'Đô', fingers: { 60: 1, 62: 2, 64: 3, 65: 4, 67: 5 } },
   G: { name: 'Sol', fingers: { 67: 1, 69: 2, 71: 3, 72: 4, 74: 5 } },
 } as const;
@@ -142,7 +145,8 @@ export const SUPPLEMENT_NOTES: readonly SupplementNote[] = [
       body: 'La giữa (A4) nằm ở khe thứ hai của khuông khoá Sol — giữa dòng kẻ 2 và dòng kẻ 3.',
       kids: 'Bạn La nằm trong khe thứ hai, ngay trên bạn Sol.',
     },
-    finger: { n: 2, position: 'G' },
+    // Thế tay mới: nói rõ chuyển ngón cái, không thì La ngón 2 trùng Rê ngón 2 mà không có lời giải thích.
+    finger: { n: 2, position: 'G', kids: 'Ngón cái chuyển sang bạn Sol. Ngón trỏ là ngón số 2, chạm bạn La nhé!' },
   },
   {
     letter: 'B',
@@ -157,16 +161,16 @@ export const SUPPLEMENT_NOTES: readonly SupplementNote[] = [
       body: 'Si giữa (B4) nằm trên dòng kẻ thứ ba — dòng chính giữa khuông khoá Sol; đuôi nốt quay xuống.',
       kids: 'Bạn Si nằm trên dòng kẻ chính giữa khuông nhạc.',
     },
-    finger: { n: 3, position: 'G' },
+    finger: { n: 3, position: 'G', kids: 'Ngón cái chuyển sang bạn Sol. Ngón giữa là ngón số 3, chạm bạn Si nhé!' },
   },
 ];
 
 // ── Hình minh hoạ dùng chung ──
 
-const miniKey = (midi: number): Illustration => ({ type: 'keyboard', ...MINI, highlight: [midi], noLabels: true });
-const staffNote = (pitch: string): Illustration => ({ type: 'staff', piece: { ...rh(`${pitch}/w`), timeSignature: [4, 4] } });
-const finger = (n: number): Illustration => ({ type: 'hand', hand: 'right', highlight: n });
-const bar44 = (notation: string) => ({ ...rh(notation), timeSignature: [4, 4] as [number, 4] });
+export const miniKey = (midi: number): Illustration => ({ type: 'keyboard', ...MINI, highlight: [midi], noLabels: true });
+export const staffNote = (pitch: string): Illustration => ({ type: 'staff', piece: { ...rh(`${pitch}/w`), timeSignature: [4, 4] } });
+export const finger = (n: number): Illustration => ({ type: 'hand', hand: 'right', highlight: n });
+export const bar44 = (notation: string) => ({ ...rh(notation), timeSignature: [4, 4] as [number, 4] });
 
 /** Phép so sánh "`a` nốt `x` = `b` nốt `y`". */
 const equals = (a: number, x: NoteValue, b: number, y: NoteValue): NoteValueEquation => ({ left: { count: a, value: x }, right: { count: b, value: y } });
@@ -239,7 +243,7 @@ function durationsStaff(pitch: string): Extract<Illustration, { type: 'staff' }>
 }
 
 /** Câu đố chọn hình; nhãn trung tính "Hình 1…" để không lộ đáp án. Đáp án đặt ở vị trí `pos` (xoay theo nốt). */
-function pictureQuestion(prompt: string, correct: Illustration, distractors: Illustration[], pos: number): ChoiceQuestion {
+export function pictureQuestion(prompt: string, correct: Illustration, distractors: Illustration[], pos: number): ChoiceQuestion {
   const images = [...distractors];
   const answer = pos % (distractors.length + 1);
   images.splice(answer, 0, correct);
@@ -247,7 +251,7 @@ function pictureQuestion(prompt: string, correct: Illustration, distractors: Ill
 }
 
 /** `k` phím trắng gần `m` nhất trong [from, to] (không tính `m`). */
-function nearestWhites(m: number, k: number, from: number, to: number): number[] {
+export function nearestWhites(m: number, k: number, from: number, to: number): number[] {
   return range(from, to)
     .filter((x) => x !== m && isWhite(x))
     .sort((a, b) => Math.abs(a - m) - Math.abs(b - m) || b - a)
@@ -255,7 +259,7 @@ function nearestWhites(m: number, k: number, from: number, to: number): number[]
 }
 
 /** Phím trắng cách `m` đúng `steps` bậc (âm = đi xuống). */
-function whiteStep(m: number, steps: number): number {
+export function whiteStep(m: number, steps: number): number {
   let x = m;
   for (let left = Math.abs(steps); left > 0; ) {
     x += Math.sign(steps);
@@ -265,7 +269,7 @@ function whiteStep(m: number, steps: number): number {
 }
 
 /** Phím đen của nhóm (2 hoặc 3 phím) chứa vị trí của nốt, trong quãng tám bắt đầu ở `base` (một nốt Đô). */
-function blackGroup(pc: number, base: number): number[] {
+export function blackGroup(pc: number, base: number): number[] {
   return (pc <= 4 ? [1, 3] : [6, 8, 10]).map((o) => base + o);
 }
 
@@ -445,8 +449,11 @@ export const SUPPLEMENT_NOTE: Record<string, { letter: Letter; name: string }> =
   SUPPLEMENT_NOTES.map((note) => [lessonIdOf(note), { letter: note.letter, name: note.name }]),
 );
 
-/** Trò chơi cuối buổi — bé tự chọn; trò đều cấu hình sẵn nốt của buổi. Không tính vào điểm buổi. */
-export type SupplementGame = { type: 'lesson'; spec: LessonGameSpec } | { type: 'balloon-hunt'; letters: Letter[] };
+/**
+ * Trò chơi cuối buổi — bé tự chọn; trò đều cấu hình sẵn nốt của buổi. Không tính vào điểm buổi.
+ * `lesson`: trò trong app (`GamePlayer`, kỷ lục ở bản ghi buổi); `balloon-hunt`: mở Bóng bay kiểu Tìm nốt.
+ */
+export type SupplementGame = { type: 'lesson'; spec: GameSpec } | { type: 'balloon-hunt'; letters: Letter[] };
 
 function noteGames({ letter, name, midi }: SupplementNote): SupplementGame[] {
   return [

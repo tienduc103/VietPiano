@@ -57,7 +57,7 @@ import { useApp, type Route } from '../store/appStore';
 import { useCurriculum } from '../store/curriculumStore';
 import { useMic } from '../store/micStore';
 import { useSettings } from '../store/settingsStore';
-import { NotePoolProvider } from '../core/noteDiscovery/NotePoolProvider';
+import { suggestedHuntLetters } from '../core/curriculum/learnedNotes';
 import { useGameTimeNow } from '../store/gameTimeStore';
 
 const DIFFICULTY_HELP: Record<BalloonDifficulty, string> = {
@@ -82,8 +82,8 @@ export function BalloonPopScreen({ preset, returnTo }: { preset?: Partial<Balloo
     const loaded = loadBalloonSettings();
     if (preset) return sanitizeBalloonSettings({ ...loaded, ...preset });
     if (!loaded.huntLetters || loaded.huntLetters.length === 0) {
-      const suggested = NotePoolProvider.getForBalloonHunt(useCurriculum.getState().profileKey).huntLetters;
-      return { ...loaded, huntLetters: suggested };
+      // Chưa chọn nốt cần tìm → gợi ý các nốt bé đã học (buổi nốt đã đạt ở Khám phá nốt / Làm quen nốt).
+      return { ...loaded, huntLetters: suggestedHuntLetters(useCurriculum.getState().records) };
     }
     return loaded;
   });

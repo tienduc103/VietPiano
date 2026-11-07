@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { lessonToMidi } from '../core/curriculum/piece';
 import type { Lesson } from '../core/lessons/types';
 import type { NoteLabelStyle } from '../core/music/notes';
 import { scoreFontsReady } from '../core/score/ScoreRenderer';
@@ -123,6 +124,14 @@ export function ScoreExportDialog({ lesson, labelStyle, onClose }: Props) {
           <Button variant={canShare ? 'secondary' : 'primary'} onClick={() => file && downloadFile(file)} disabled={!file}>
             <Icon name="download" />
             Tải ảnh PNG
+          </Button>
+          {/* File MIDI chuẩn: cùng nguồn nốt với khuông + nghe mẫu (cả chùm nốt tay phải, phần đệm; tay phải kênh 1, tay trái kênh 2). */}
+          <Button
+            onClick={() => downloadFile(new File([lessonToMidi(lesson) as BlobPart], sheetFileName(lesson.title, 'mid'), { type: 'audio/midi' }))}
+            data-testid="export-midi"
+          >
+            <Icon name="download" />
+            Tải file MIDI
           </Button>
         </div>
       </div>

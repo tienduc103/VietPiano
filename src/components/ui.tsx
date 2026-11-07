@@ -122,6 +122,14 @@ const ICONS = {
   volumeOff: 'M11 5L6 9H2v6h4l5 4V5zM22 9l-6 6M16 9l6 6',
   gamepad: 'M6 11h4M8 9v4M15 12h.01M18 10h.01M17.3 5H6.7a4 4 0 0 0-4 3.6l-.9 8.1A2.5 2.5 0 0 0 4.3 19.5c.9 0 1.7-.5 2.1-1.3L7.5 16h9l1.1 2.2c.4.8 1.2 1.3 2.1 1.3a2.5 2.5 0 0 0 2.5-2.8l-.9-8.1a4 4 0 0 0-4-3.6z',
   image: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21',
+  /** Tuỳ chọn hiển thị khuông nhạc. */
+  sliders: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
+  /** Chế độ Biểu diễn. */
+  star: 'M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1L12 2z',
+  /** Lộ trình luyện. */
+  list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  /** Luyện theo đoạn (ô nhịp). */
+  brackets: 'M8 4H4v16h4M16 4h4v16h-4',
 } as const;
 
 export type IconName = keyof typeof ICONS;

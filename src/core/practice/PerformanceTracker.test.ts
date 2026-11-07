@@ -245,3 +245,63 @@ describe('PerformanceTracker — pedal', () => {
   });
 });
 
+
+describe('PerformanceTracker — hợp âm, hai tay (Biểu diễn ở màn Luyện tập)', () => {
+  /** Phách 0: tay trái Đô3 + Mi3 + Sol3, tay phải Đô5; phách 1: tay phải Rê5 (nốt trắng); phách 2: tay trái Sol2. */
+  const chordNotes: TimedNote[] = [
+    { startBeat: 0, durationBeats: 1, midi: 48 },
+    { startBeat: 0, durationBeats: 1, midi: 52 },
+    { startBeat: 0, durationBeats: 1, midi: 55 },
+    { startBeat: 0, durationBeats: 1, midi: 72 },
+    { startBeat: 1, durationBeats: 2, midi: 74 },
+    { startBeat: 2, durationBeats: 0.5, midi: 43 },
+  ];
+
+  it('đàn MIDI gửi các nốt hợp âm cách nhau vài ms → chấm đủ cả chùm (chỉ bỏ onset lặp CÙNG phím)', () => {
+    const t = started(chordNotes, { debounceSamePitch: true });
+    for (const [k, m] of [72, 48, 55, 52].entries()) expect(t.handleNoteOn(m, at(0) + 20 + k * 3)).toBe('hit');
+    expect(t.getState().results.slice(0, 4)).toEqual(['correct', 'correct', 'correct', 'correct']);
+    // Cùng phím lặp quá sát → bỏ qua; phím khác vẫn nhận.
+    expect(t.handleNoteOn(74, at(1))).toBe('hit');
+    expect(t.handleNoteOn(74, at(1) + 30)).toBe('ignored');
+  });
+
+  it('không bật debounceSamePitch (micro): onset sát nhau vẫn bị bỏ như cũ', () => {
+    const t = started(chordNotes);
+    expect(t.handleNoteOn(48, at(0))).toBe('hit');
+    expect(t.handleNoteOn(52, at(0) + 10)).toBe('ignored');
+  });
+
+  it('ưu tiên nốt đúng cao độ trong chùm; phím sai chấm sai MỘT nốt chưa chấm của chùm', () => {
+    const t = started(chordNotes, { debounceSamePitch: true });
+    // Sol3 đánh trước: chấm đúng nốt Sol3 (chỉ số 2), không lấy nhầm Đô3 (chỉ số 0, gần như nhau).
+    expect(t.handleNoteOn(55, at(0))).toBe('hit');
+    expect(t.getState().results.slice(0, 4)).toEqual(['pending', 'pending', 'correct', 'pending']);
+    // Fa3 (sai) → nốt đầu chưa chấm của chùm (Đô3) bị chấm sai.
+    expect(t.handleNoteOn(53, at(0) + 5)).toBe('wrong');
+    expect(t.getState().results.slice(0, 4)).toEqual(['wrong', 'pending', 'correct', 'pending']);
+    expect(t.handleNoteOn(52, at(0) + 10)).toBe('hit');
+    expect(t.handleNoteOn(72, at(0) + 15)).toBe('hit');
+    // Thừa một phím ngay chùm đó → gõ thừa, không ăn vào nốt phách sau.
+    expect(t.handleNoteOn(60, at(0) + 25)).toBe('extra');
+    expect(t.getState().results[4]).toBe('pending');
+  });
+
+  it('các nốt cùng phách chung cửa sổ: lệch sớm nửa khoảng cách tới mốc trước vẫn trúng chùm', () => {
+    const t = started(chordNotes, { debounceSamePitch: true });
+    t.tick(at(0));
+    // Mốc phách 1 (Rê5) cách mốc phách 0 một phách → cửa sổ lo = 0.5; đánh sớm 0.4 phách vẫn trúng.
+    expect(t.handleNoteOn(74, at(1) - 400)).toBe('hit');
+    expect(t.getState().offsetsMs[4]).toBeCloseTo(-400);
+  });
+
+  it('hết bài theo nốt kết thúc muộn nhất (nốt trắng tay phải dài hơn nốt cuối danh sách)', () => {
+    const t = started(chordNotes, { debounceSamePitch: true });
+    expect(t.totalBeats).toBe(3);
+    t.tick(at(2.6));
+    expect(t.getState().status).toBe('running');
+    t.tick(at(3.6));
+    expect(t.getState().status).toBe('finished');
+    expect(t.result()).toMatchObject({ notes: 6, missed: 6, completion: 0 });
+  });
+});

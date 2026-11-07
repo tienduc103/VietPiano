@@ -24,6 +24,11 @@ export function consumedByMidiNav(e: NoteInputEvent): boolean {
  * Nghe đàn MIDI + chạm màn hình — gắn một lần, khi nút điều hướng đầu tiên xuất hiện hoặc màn nghe nốt đầu tiên
  * mở (`useMidiNavListening`, chạy trước khi màn đăng ký nghe nốt). Nhờ vậy điều hướng luôn nhận phím TRƯỚC mọi màn
  * và kịp đánh dấu phím đã dùng (`consumedByMidiNav`).
+ *
+ * Mọi mốc thời gian của điều hướng (nút xuất hiện, chạm màn hình, phím đen chờ phím thứ hai) đo bằng `performance.now()`
+ * → phím cũng tính theo lúc NHẬN, không dùng `e.time`: Web MIDI lấy mốc của driver (Windows: lúc mở cổng + số ms driver
+ * báo; Bluetooth MIDI tự ước lượng) nên trên đàn thật có thể lệch xa đồng hồ của trang. Mốc trễ → mọi phím bị coi là
+ * bấm trước khi nút hiện (kẹt trang); mốc sớm → phím đen chờ mãi, không "Quay lại".
  */
 function install(): void {
   if (installed || typeof window === 'undefined') return;
@@ -32,14 +37,14 @@ function install(): void {
   midiNav.setHome(() => useApp.getState().navigate({ name: 'dashboard' }));
   midiInput.onNote((e) => {
     if (document.hidden) return;
-    const result = midiNav.press({ kind: 'note', midi: e.midi, time: e.time });
+    const result = midiNav.press({ kind: 'note', midi: e.midi, time: performance.now() });
     if (result !== null) consumed.add(e);
     // Phím đen: chờ xem có phím đen thứ hai (về Trang chủ) rồi mới "lùi lại".
     if (result === 'pending') window.setTimeout(() => midiNav.flush(performance.now()), MIDI_NAV_CHORD_MS + 20);
   });
   midiInput.onPedal((e) => {
     if (!e.down || document.hidden) return;
-    midiNav.press({ kind: 'pedal', time: e.time });
+    midiNav.press({ kind: 'pedal', time: performance.now() });
   });
   // Chạm / bấm chuột thường đổi màn → chờ lại trước khi nhận phím đàn.
   window.addEventListener('pointerdown', () => midiNav.touched(performance.now()), true);

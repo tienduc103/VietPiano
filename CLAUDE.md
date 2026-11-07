@@ -53,7 +53,8 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   input/midiNav.ts                  đàn MIDI bấm nút khi màn KHÔNG nghe nốt: phím trắng bất kỳ / đạp pedal → nút `midiNav="forward"`
                                     (Tiếp, Bắt đầu, Chơi lại…), phím đen → `midiNav="back"` (Trước, Về…; chờ 200 ms: hai phím đen bất kỳ
                                     cùng lúc → Trang chủ, chỉ ở màn có nút điều hướng đang hiện); bỏ phím 1,2 s sau khi nút hiện,
-                                    sau mỗi lần điều hướng, sau mỗi lần chạm màn hình. `useNoteInput` mặc định = đang nghe nốt (chặn điều hướng);
+                                    sau mỗi lần điều hướng, sau mỗi lần chạm màn hình — mọi mốc đo bằng `performance.now()` lúc NHẬN phím, không
+                                    dùng `e.time` (mốc Web MIDI do driver gắn, đàn thật có thể lệch xa → kẹt trang). `useNoteInput` mặc định = đang nghe nốt (chặn điều hướng);
                                     lớp phủ Sẵn sàng / tạm dừng / tổng kết của game truyền `listening: false`. Glue: `hooks/useMidiNav.ts`,
                                     prop `midiNav` của `Button` (mỗi màn tối đa một nút mỗi loại; nút sau cùng hiện + không bị hộp thoại che được ưu tiên)
                                     Phím đã bấm nút KHÔNG thành nốt của màn (nút có thể đổi màn ngay trong lúc phát phím, vd "Bắt đầu" → ván đang chơi):
@@ -74,8 +75,19 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              `repertoire.ts` 50 bài khuông đôi (`rep-*`, `Lesson.repertoire`): giai điệu + dòng hợp âm mỗi ô + kiểu đệm → `buildAccompaniment` dựng tay trái và pedal
                              (thay mỗi ô một hợp âm; ô đổi hợp âm giữa chừng và ô lấy đà không đạp). Chỉ hiện ở trang Thư viện bài hát (`screens/SongLibraryScreen`,
                              route `song-library`, `?screen=song-library`, mở bằng chữ "Bài hát" ở Thư viện bài)
+                             `arrangements/` bài nhiều bản phối theo cấp (docs/happy-birthday.md): `happyBirthday.ts` 3 bài `song-happy-birthday-{beginner,intermediate,advanced}`
+                             (`Lesson.arrangement` = họ + cấp 1–3, mỗi cấp tiến độ riêng; vị trí trong dữ liệu ghi [ô in, phách] → `noteIndexAt`), lộ trình 5 bước / cấp,
+                             `index.ts` họ bản phối (`familyLessons`, `recommendedLevel` = cấp thấp nhất chưa vững ≥ 90%, `nextLevel`), `planProgress.ts` (localStorage).
+                             Trường tuỳ chọn mới của Lesson: chùm nốt tay phải `LessonNote.harmony` (ký hiệu "E4+C5/h:1+5", nốt CAO NHẤT là giai điệu, chung trường độ),
+                             `chordSymbols`, `hairpins` (cresc./dim.: vẽ + nghe mẫu, không chấm), `PedalMark.fromBeat/toBeat` (đổi pedal giữa ô), `pedalOptional` (vẽ, không chấm),
+                             `tempoRange`, `slice`. `positions.ts` số ô in ↔ phách ↔ chỉ số nốt; `slice.ts` cắt đoạn ô (luyện theo đoạn, route `practice.measures`)
   practice/PerformanceTracker.ts  Biểu diễn / Tiết tấu của giáo trình: đồng hồ nhịp CỐ ĐỊNH, chấm cao độ + thời điểm + trường độ (Note Off), dấu lặng
-                           + pedal (`handlePedal`, chỉ đàn MIDI CC 64) khi bài có ký hiệu pedal
+                           + pedal (`handlePedal`, chỉ đàn MIDI CC 64) khi bài có ký hiệu pedal. Hợp âm / hai tay: cửa sổ theo MỐC phách (nốt cùng phách chung
+                           cửa sổ), ưu tiên phím đúng trong chùm, `debounceSamePitch` chỉ bỏ onset lặp cùng phím — bài một dòng chấm y như trước
+  practice/performPlan.ts  chế độ "Biểu diễn" màn Luyện tập (`practiceMode: 'perform'`, hook `usePracticePerformance`): danh sách nốt cần chấm theo tay +
+                           nguồn vào (micro → chỉ nốt đơn), tổng kết = rubric Biểu diễn giáo trình + điểm từng tay + đồng bộ hai tay (≤ 80 ms) + ô nhiều lỗi
+  practice/waitBreakdown.ts  Chờ / Đếm nốt: điểm từng tay (`WaitTally`, suy từ trạng thái engine trước / sau mỗi phím) + lỗi theo ô (lưu `PracticeSession.measureErrors`
+                           → "đoạn hay sai" ở nút Đoạn). Pedal màn Luyện tập: "không đo" tới khi đàn gửi tín hiệu pedal đầu tiên (`hooks/usePedalSeen`)
   curriculum/              giáo trình (xem docs/curriculum.md): Curriculum → Level → Week → Lesson → Activity/Exercise
     content/                 CHỈ dữ liệu (cấp 1–6: mỗi cấp 20 buổi; `helpers.ts` hàm dựng chung);
                              `extraPractice` = bài thư viện luyện thêm (gộp từ khoá học cũ)
@@ -90,6 +102,13 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              MỘT khuôn `noteLesson` + bảng `SUPPLEMENT_NOTES` (chỉ phần riêng từng nốt). Sửa bài → sửa khuôn
                              (mọi nốt cùng đổi), không sửa riêng một nốt, rồi ghi nhật ký `docs/supplement.md`;
                              `npm run voice` đọc cả giáo trình này
+                             `discovery.ts` "Khám phá nốt nhạc" (`DISCOVERY`, route `note-discovery`, `?screen=note-discovery`,
+                             docs/note-discovery.md): CÙNG phương pháp "Làm quen từng nốt" nhưng TÍCH LUỸ — 11 buổi "nd-…":
+                             bàn phím (nhóm 2/3 phím đen, trầm – bổng, đố nghe cao/thấp) → Đô … Si (khuôn `noteLesson`: 1 nốt mới
+                             + câu đố / luyện phím xen nốt đã học) → đọc khuông Đô giữa → Đô cao → giai điệu (Wait Mode) → ôn tập.
+                             KHÔNG dạy trường độ. Dữ kiện nốt + hàm dựng câu đố dùng chung `supplement.ts` (`SUPPLEMENT_NOTES`).
+                             `guided.ts`: giáo trình dẫn dắt (sup- / nd-) cho LessonPlayer — màn về, nhãn, trò của buổi (`SupplementGames`)
+                             `learnedNotes.ts` (thư mục curriculum/): nốt đã học = buổi nốt đã đạt ở hai giáo trình → gợi ý nốt Bóng bay, độ khó cà chua
     validate.ts              kiểm tra dữ liệu (đủ phách, tầm micro, tiên quyết, đáp án) — test chạy cho toàn giáo trình
     piece.ts / QuizEngine.ts / scoring.ts / unlock.ts / progress.ts  bản nhạc→dòng thời gian/MIDI, bài nhiều lượt, rubric, gợi ý mở khoá, tiến độ
     review.ts                Luyện tập sau buổi: tự sinh từ bài tập của buổi (bài yếu nhất, trộn lượt, hỏi thêm nốt hay nhầm);
@@ -171,7 +190,9 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              muộn → `late-sync` không tính sai nốt), `FiveFingerSession` buổi liên tục (xong chuỗi → ăn mừng 1,5 s → chuỗi mới; 5/10/20/∞;
                              luyện từng tay trước), `stats.ts` thống kê theo hồ sơ (ngón chỉ là ngón ĐƯỢC HƯỚNG DẪN — không kết luận sai ngón) + gợi ý độ khó.
                              Micro không chấm được hai tay cùng lúc → khoá Bắt đầu
-  score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt
+  score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt. Chùm nốt tay phải: số ngón xếp chồng trên chùm
+                             (`noteFingerRows`, nốt đơn vẫn hàng cố định), ký hiệu hợp âm (`.score-chord`), hình nêm (`.score-hairpin`), pedal giữa ô; tuỳ chọn
+                             `showFingers / showChords / showPedal` (nút Hiển thị màn Luyện tập + cỡ khuông `scoreZoom`); vượt mép trên → mở rộng viewBox lên trên
   score/scoreFit.ts        tỉ lệ + vị trí dọc của khuông một dòng (ScoreView, Săn nốt): vùng nhìn co giãn ít (≤ 8%) theo từng nốt
                              → giữ nguyên, khuông không nhảy lên xuống; ô hướng dẫn dưới khuông cũng phải cao cố định, và hàng điều khiển
                              không được đổi bề rộng theo từng nốt / pedal (xuống dòng → vùng nhìn đổi quá 8%): khối "Cần đánh" chừa chỗ bằng bước rộng nhất của bài (`distinctStepGuides`)
@@ -216,7 +237,7 @@ src/store/           Zustand: settingsStore, micStore, appStore (route + tiến 
 src/hooks/           vòng đời app (ẩn nền → tắt micro), theme, wake lock, ghi phiên luyện tập
 src/components/      ScoreView, PianoKeyboard, MicPanel, ui
 src/screens/         Dashboard (trang chủ = giáo trình phía trên + Thư viện bài `components/LessonLibrary` phía dưới),
-                     Curriculum, Supplement (giáo trình bổ sung), LessonPlayer, Practice, Games, Settings. Route `library` = trang chủ cuộn tới thư viện;
+                     Curriculum, Supplement (giáo trình bổ sung), NoteDiscovery (danh sách buổi "Khám phá nốt nhạc"), LessonPlayer, Practice, Games, Settings. Route `library` = trang chủ cuộn tới thư viện;
                      `?screen=library` / `?screen=song-library` / `?screen=curriculum` / `?screen=games` mở thẳng (e2e dùng)
 e2e/                 Playwright; global-setup sinh WAV gam Đô trưởng làm micro giả
 ```
@@ -248,6 +269,8 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   `PracticeEngine` (`twoHands` + `leftHand`) chờ đủ giai điệu + nốt tay trái của bước (thứ tự bất kỳ, 'partial').
   Chỉ micro (`micOnlyInput`) → chỉ chấm tay phải. Hướng dẫn luôn hiện cả hai tay (`components/HandsGuide`)
   kèm thông báo đang chấm một hay hai tay.
+  Chùm nốt tay phải (`LessonNote.harmony`): đàn MIDI / bàn phím ảo → nốt hoà âm là nốt phụ của bước (`melodyStepExtras`, cùng cơ chế nốt tay trái);
+  micro / Theo nhịp → chỉ chấm nốt giai điệu, nốt hoà âm của bước đang tập bỏ qua (`isUngradedHarmonyMidi`). Tay trái luôn thấp hơn mọi nốt tay phải.
 - Pedal vang: `Piece.pedal` theo ô nhịp (`[1, 1], [2, 2]` = thay pedal mỗi ô) → vẽ "Ped." + đường kẻ, khấc "^" chỗ thay;
   Biểu diễn có thêm tiêu chí "Pedal" (15%). Chỉ đàn MIDI gửi pedal (Control Change 64); micro / bàn phím ảo → "không đo".
   Thả phím lúc pedal đang đạp không bị tính giữ thiếu trường độ. Giới thiệu ở cấp 6 buổi "Hoàng hôn" (l6-17); cùng buổi có bài thử sức không bắt buộc Romance d'Amour hai tay
@@ -277,8 +300,10 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   Test `lessons.test.ts` kiểm tra mọi ô nhịp đủ phách và nốt nằm trong tầm micro (MIDI 36–84).
 - VexFlow dùng entry `vexflow/bravura` (font nhúng → offline). Màu khuông nhạc qua `currentColor` + CSS
   (`.score-note.is-current` …) — không vẽ lại khi chuyển nốt.
-- Màn Luyện tập: nút "Tự ẩn" (`hideKeyboardWhilePlaying`, mặc định tắt; cũng ở Cài đặt → Hiển thị) ẩn bàn phím ảo lúc đang đánh
-  (cùng điều kiện `usePlayingNow`), hết bài / chơi lại / nghe mẫu → hiện lại; không micro, không đàn MIDI (bàn phím ảo là nguồn nốt) → không ẩn.
+- Màn Luyện tập: MỘT nút bàn phím xoay vòng Hiện → Tự ẩn → Ẩn (`keyboard-mode`, bề rộng cố định; = `showKeyboard` + `hideKeyboardWhilePlaying`,
+  Tự ẩn cũng ở Cài đặt → Hiển thị). Tự ẩn: bàn phím trong suốt lúc đang đánh (cùng điều kiện `usePlayingNow`) nhưng VẪN GIỮ CHỖ
+  (`invisible`, không gỡ khỏi layout → khuông không co giãn / nhảy); hết bài / chơi lại / nghe mẫu → hiện lại; không micro, không đàn MIDI
+  (bàn phím ảo là nguồn nốt) → không ẩn.
 - UI tiếng Việt, nút ≥ 48px cho cảm ứng, tối ưu iPad ngang, hỗ trợ dark mode (`.dark` trên `<html>`).
 - Trò chơi: cài đặt của game LUÔN nằm trong màn chơi — vào thẳng màn chơi, nút ⚙ Cài đặt mở bảng đè lên màn chơi
   (không có màn cài đặt / màn chọn riêng trước khi chơi). Mở giữa ván → tạm dừng và bỏ qua nốt vào; đổi thứ làm thay đổi

@@ -5,6 +5,8 @@
 import { midiToLabel, type NoteLabelStyle } from '../music/notes';
 import { computeAccuracy, type PracticeState } from '../practice/PracticeEngine';
 import type { TempoState } from '../practice/TempoFollower';
+import type { PerformanceState } from '../practice/PerformanceTracker';
+import type { PerformBreakdown, PerformNote } from '../practice/performPlan';
 import { formatMistake, scoreLesson, type ExerciseScore } from '../curriculum/scoring';
 import { text, type CurriculumLesson, type UiMode } from '../curriculum/types';
 import { EXPERIENCE_LABELS, type LearnerProfile } from '../profile/LearnerProfile';
@@ -79,8 +81,29 @@ export function lessonReport(
   };
 }
 
+/** Thông tin thêm của lượt chơi ở màn Luyện tập: điểm từng tay, ô hay sai (đã chấm bằng số liệu, AI chỉ diễn giải). */
+export interface PracticeExtras {
+  /** Độ chính xác từng tay 0..1 (null = tay đó không bấm phím nào / không chấm). */
+  hands?: { right?: number | null; left?: number | null };
+  /** Ô nhịp có lỗi (số ô in trên bản nhạc), nhiều lỗi trước. */
+  weakMeasures?: { measure: number; total: number }[];
+  /** Ghi chú cách chấm (vd "micro chỉ chấm giai điệu tay phải"). */
+  facts?: string[];
+}
+
+function extrasFacts(extra: PracticeExtras | undefined): string[] {
+  if (!extra) return [];
+  const out: string[] = [];
+  const pctOrNot = (v: number | null | undefined) => (v === null || v === undefined ? null : `${Math.round(v * 100)}%`);
+  const r = pctOrNot(extra.hands?.right);
+  const l = pctOrNot(extra.hands?.left);
+  if (r || l) out.push(`Đúng nốt từng tay: ${[r && `tay phải ${r}`, l && `tay trái ${l}`].filter(Boolean).join(', ')}.`);
+  if (extra.weakMeasures?.length) out.push(`Ô nhịp nhiều lỗi: ${extra.weakMeasures.map((m) => `ô ${m.measure} (${m.total} lỗi)`).join(', ')}.`);
+  return [...out, ...(extra.facts ?? [])];
+}
+
 /** Báo cáo từ một lượt chơi bài ở màn Luyện tập (Wait Mode / Đếm nốt). */
-export function practiceReport(title: string, state: PracticeState, labelStyle: NoteLabelStyle, pedal?: number | null): CoachReport {
+export function practiceReport(title: string, state: PracticeState, labelStyle: NoteLabelStyle, pedal?: number | null, extra?: PracticeExtras): CoachReport {
   const accuracy = computeAccuracy(state);
   const mistakes = new Map<string, number>();
   state.results.forEach((r, i) => {
@@ -100,6 +123,47 @@ export function practiceReport(title: string, state: PracticeState, labelStyle: 
     ],
     mistakes: topMistakes(mistakes),
     durationMs: state.finishedAt !== null && state.startedAt !== null ? state.finishedAt - state.startedAt : undefined,
+    facts: ['Chờ nốt / Đếm nốt không có đồng hồ nhịp nên không có điểm tiết tấu.', ...extrasFacts(extra)],
+  };
+}
+
+/** Báo cáo lượt Biểu diễn ở màn Luyện tập (đồng hồ nhịp cố định, chấm cả hai tay khi có đàn MIDI / bàn phím ảo). */
+export function performReport(
+  title: string,
+  plan: readonly PerformNote[],
+  state: PerformanceState,
+  breakdown: PerformBreakdown,
+  labelStyle: NoteLabelStyle,
+  bpm: number,
+  extraFacts: string[] = [],
+): CoachReport {
+  const mistakes = new Map<string, number>();
+  plan.forEach((n, i) => {
+    const r = state.results[i];
+    const played = state.playedMidis[i];
+    const t =
+      r === 'wrong' && played !== null
+        ? `Cần ${midiToLabel(n.midi, labelStyle)}, đánh ${midiToLabel(played, labelStyle)} (${n.hand === 'left' ? 'tay trái' : 'tay phải'})`
+        : r === 'skipped'
+          ? `Lỡ nốt ${midiToLabel(n.midi, labelStyle)} (${n.hand === 'left' ? 'tay trái' : 'tay phải'})`
+          : null;
+    if (t) mistakes.set(t, (mistakes.get(t) ?? 0) + 1);
+  });
+  const list = topMistakes(mistakes);
+  if (state.extras > 0) list.push({ text: 'Gõ thừa (không khớp nốt nào)', count: state.extras });
+  const hands = breakdown.hands;
+  return {
+    title,
+    kind: 'piece',
+    score: breakdown.score,
+    criteria: breakdown.criteria.map((c) => ({ label: c.label, value: c.value })),
+    mistakes: list,
+    facts: [
+      `Chế độ Biểu diễn: đồng hồ nhịp cố định ♩=${bpm}, chơi một mạch, sai không dừng.`,
+      ...extrasFacts({ hands: { right: hands.right?.pitchAccuracy, left: hands.left?.pitchAccuracy }, weakMeasures: breakdown.measures.slice(0, 3) }),
+      ...(breakdown.sync !== null ? [`Hai tay đánh cùng lúc (lệch ≤ 80 ms) ở ${Math.round(breakdown.sync * 100)}% số chỗ có cả hai tay.`] : []),
+      ...extraFacts,
+    ],
   };
 }
 
@@ -161,6 +225,7 @@ export function buildCoachMessages(report: CoachReport, learner: CoachLearner | 
     'Cấu trúc: (1) một lời khen cụ thể dựa trên số liệu; (2) chỉ ra điểm yếu nhất; (3) một bài tập/mẹo luyện cụ thể cho lần sau.',
     'CHỈ dựa vào số liệu được cung cấp, không bịa thêm nốt, số liệu hay chi tiết bản nhạc.',
     'Tiêu chí ghi "không đo" thì không được nhắc tới.',
+    'Không nhận xét học viên dùng ngón tay nào: app không đo được ngón tay (số ngón trên khuông chỉ là gợi ý).',
   ].join('\n');
 
   const lines: string[] = [];

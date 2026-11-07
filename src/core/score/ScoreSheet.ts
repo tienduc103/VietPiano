@@ -7,7 +7,8 @@
  */
 import { CanvasContext } from 'vexflow/bravura';
 import { splitMeasures } from '../lessons/notation';
-import { CLEF_LABEL, fingerText, HAND_LABEL, measureLength, sectionAt, type Lesson } from '../lessons/types';
+import { CLEF_LABEL, HAND_LABEL, measureLength, sectionAt, type Lesson } from '../lessons/types';
+import { displayChordSymbol } from '../music/chordSymbols';
 import { pitchToLabel, type NoteLabelStyle } from '../music/notes';
 import {
   accompanimentFingerRows,
@@ -16,6 +17,7 @@ import {
   createMeasureStaves,
   drawMeasure,
   FINGER_OFFSET,
+  FINGER_ROW_STEP,
   formatMeasure,
   GRAND_STAFF_GAP,
   LABEL_OFFSET,
@@ -23,10 +25,14 @@ import {
   lessonClefs,
   naturalNoteArea,
   noteCenterX,
+  noteFingerRows,
   SECTION_SPACE,
   sectionBox,
   staffOf,
 } from './ScoreRenderer';
+
+/** Chỗ thêm phía trên mỗi dòng cho hàng ký hiệu hợp âm. */
+const CHORD_SPACE = 24;
 import { layoutSystems } from './sheetLayout';
 
 export interface ScoreSheetOptions {
@@ -64,9 +70,16 @@ export function renderScoreSheet(canvas: HTMLCanvasElement, lesson: Lesson, opts
   );
 
   const staffCount = lessonClefs(lesson).length;
-  const sectionSpace = lesson.sections?.length ? SECTION_SPACE : 0;
+  // Chùm nốt tay phải: số ngón xếp chồng + ký hiệu hợp âm cần thêm chỗ phía trên mỗi dòng.
+  const stackRows = Math.max(1, ...lesson.notes.map((n) => [n.finger, ...(n.harmony ?? []).map((h) => h.finger)].filter(Boolean).length));
+  const chordSpace = (lesson.chordSymbols?.length ? CHORD_SPACE : 0) + (stackRows > 1 ? (stackRows - 1) * FINGER_ROW_STEP + 20 : 0);
+  const sectionSpace = (lesson.sections?.length ? SECTION_SPACE : 0) + chordSpace;
   const lhFingerSpace = labelOffset(lesson) - LABEL_OFFSET;
   const systemHeight = SYSTEM_HEIGHT + sectionSpace + lhFingerSpace + (staffCount - 1) * GRAND_STAFF_GAP + (opts.showNames ? LABEL_EXTRA : 0);
+  // Chỉ số nốt đầu mỗi ô (để tìm ký hiệu hợp âm theo chỉ số nốt của cả bài).
+  const firstIndex: number[] = [];
+  measures.reduce((i, m) => (firstIndex.push(i), i + m.items.length), 0);
+  const chordAt = new Map((lesson.chordSymbols ?? []).map((c) => [c.index, c.symbol]));
   const height = SYSTEMS_TOP + systems.length * systemHeight + FOOTER_HEIGHT;
 
   const ctx2d = canvas.getContext('2d');
@@ -134,13 +147,24 @@ export function renderScoreSheet(canvas: HTMLCanvasElement, lesson: Lesson, opts
         ctx2d.textBaseline = 'alphabetic';
       }
 
-      // Số ngón tay phía trên khuông của nốt.
+      // Số ngón tay phía trên khuông của nốt (chùm nốt: xếp chồng phía trên chùm), rồi ký hiệu hợp âm phía trên nữa.
       ctx2d.fillStyle = INK;
       ctx2d.textAlign = 'center';
       ctx2d.font = `700 16px ${FONT}`;
+      const tops: number[] = [];
       measure.items.forEach((n, ni) => {
-        if (n.finger) ctx2d.fillText(fingerText(n.finger, n.fingerCircled), noteCenterX(played[ni]), staves[staffOf(lesson, n)].getYForLine(0) - FINGER_OFFSET);
+        const staffTop = staves[staffOf(lesson, n)].getYForLine(0);
+        const rows = noteFingerRows(n, played[ni], staffTop);
+        for (const row of rows) ctx2d.fillText(row.text, noteCenterX(played[ni]), row.y);
+        tops[ni] = Math.min(staffTop - FINGER_OFFSET, rows.length ? rows[rows.length - 1].y : Infinity, n.rest ? Infinity : Math.min(...played[ni].getYs()) - 8) - 16;
       });
+      ctx2d.textAlign = 'left';
+      ctx2d.font = `700 16px ${FONT}`;
+      measure.items.forEach((_n, ni) => {
+        const symbol = chordAt.get(firstIndex[mi] + ni);
+        if (symbol) ctx2d.fillText(displayChordSymbol(symbol), played[ni].getNoteHeadBeginX() - 2, Math.min(tops[ni], staves[0].getYForLine(0) - FINGER_OFFSET - 16) - 6);
+      });
+      ctx2d.textAlign = 'center';
 
       // Số ngón tay phần đệm: chồng dưới khuông Fa.
       ctx2d.font = `700 13px ${FONT}`;

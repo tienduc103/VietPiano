@@ -12,7 +12,8 @@ test('thư viện hiển thị đủ nhóm bài học', async ({ page }) => {
   for (const name of ['Nhận biết nốt', 'Gam', 'Bài tập tay phải', 'Bài tập tay trái', 'Bài tập hai tay', 'Bé tự học theo số ngón tay', 'Bài hát']) {
     await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
   }
-  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(33);
+  // 33 bài hát + 3 bản phối Happy Birthday (Cơ bản / Trung cấp / Nâng cao).
+  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(36);
 });
 
 test('dòng phiên bản hiện ở cuối mọi màn hình', async ({ page }) => {
@@ -138,20 +139,36 @@ test('tự cuộn khuông nhạc theo tiến độ', async ({ page }) => {
 test('tự ẩn bàn phím ảo khi đang đánh: chỉ ẩn khi dùng micro, tắt micro thì hiện lại', async ({ page }) => {
   await openLesson(page, 'scale-c-major');
   const keyboard = page.locator('button[data-midi="60"]');
-  await page.getByTestId('auto-hide-keyboard').click();
-  await expect(page.getByTestId('auto-hide-keyboard')).toHaveAttribute('aria-pressed', 'true');
+  const modeButton = page.getByTestId('keyboard-mode');
+  const score = page.getByTestId('score');
+  // Một nút xoay vòng Hiện → Tự ẩn → Ẩn; bề rộng cố định → hàng tiêu đề không xê dịch.
+  await expect(modeButton).toHaveAttribute('data-mode', 'on');
+  const width = (await modeButton.boundingBox())!.width;
+  await modeButton.click();
+  await expect(modeButton).toHaveAttribute('data-mode', 'auto');
+  expect((await modeButton.boundingBox())!.width).toBe(width);
 
   // Bàn phím ảo là nguồn nốt → vẫn hiện để bấm được.
   await page.keyboard.press('a');
   await expect(page.getByTestId('progress-text')).toHaveText('1/16');
   await expect(keyboard).toBeVisible();
 
-  // Micro: đánh được nốt → bàn phím ẩn; tắt micro (bàn phím ảo thành nguồn nốt) → hiện lại.
+  // Micro: đánh được nốt → bàn phím ẩn nhưng vẫn giữ chỗ (khuông không đổi kích thước); tắt micro → hiện lại.
   await page.getByRole('button', { name: 'Chơi lại từ đầu' }).click();
+  const scoreHeight = (await score.boundingBox())!.height;
   await page.getByTestId('mic-button').click();
   await expect(page.getByTestId('progress-text')).not.toHaveText('0/16', { timeout: 20_000 });
   await expect(keyboard).toBeHidden();
+  expect((await score.boundingBox())!.height).toBe(scoreHeight);
   await page.getByTestId('mic-button').click();
+  await expect(keyboard).toBeVisible();
+
+  // Chế độ Ẩn: bỏ hẳn bàn phím; bấm tiếp → Hiện.
+  await modeButton.click();
+  await expect(modeButton).toHaveAttribute('data-mode', 'off');
+  await expect(page.getByTestId('practice-keyboard')).toHaveCount(0);
+  await modeButton.click();
+  await expect(modeButton).toHaveAttribute('data-mode', 'on');
   await expect(keyboard).toBeVisible();
 });
 
@@ -720,7 +737,8 @@ test('trang chủ là Dashboard giáo trình; Curriculum Browser có 6 cấp, c�
   // Thư viện bài nằm ngay dưới phần giáo trình của trang chủ; nút "Thư viện" cuộn xuống.
   await page.getByRole('button', { name: 'Về trang chủ' }).click();
   await expect(page.getByTestId('dashboard').getByTestId('library')).toBeAttached();
-  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(33);
+  // 33 bài hát + 3 bản phối Happy Birthday (Cơ bản / Trung cấp / Nâng cao).
+  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(36);
   // Mép trên thư viện có thể đã lọt vào cuối màn hình (trang chủ ngắn) — so vị trí thay vì "có trong khung nhìn".
   const libraryTop = async () => (await page.getByTestId('library').boundingBox())?.y ?? Infinity;
   expect(await libraryTop()).toBeGreaterThan(400);

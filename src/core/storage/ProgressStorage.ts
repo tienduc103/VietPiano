@@ -27,6 +27,14 @@ export interface PracticeSession {
   noteTallies?: NoteTally[];
   /** Bài khuông đôi tập riêng một tay (màn Luyện tập); không có = cả bài như soạn. */
   hand?: 'right' | 'left';
+  /** Chế độ màn Luyện tập (phiên cũ không có = Chờ nốt / Đếm nốt). */
+  mode?: 'wait' | 'count' | 'perform';
+  /** Điểm 0–100 của lượt Biểu diễn (rubric Biểu diễn). */
+  score?: number;
+  /** Lỗi theo ô nhịp (số ô in trên bản nhạc → số lỗi) — để tìm lại đoạn hay sai. */
+  measureErrors?: Record<string, number>;
+  /** Luyện riêng đoạn ô `[từ, tới]` (số ô in); không có = cả bài. */
+  measures?: [number, number];
 }
 
 export interface LessonProgress {
@@ -75,8 +83,8 @@ export function emptyProgress(lessonId: string): LessonProgress {
 export function applySession(prev: LessonProgress, s: PracticeSession): LessonProgress {
   const attempts = s.correct + s.wrong;
   const accuracy = attempts ? s.correct / attempts : 0;
-  // Tập riêng một tay: vẫn cộng thời gian + số nốt, nhưng chưa phải là đã chơi xong cả bài.
-  const completed = s.completed && !s.hand;
+  // Tập riêng một tay / một đoạn ô nhịp: vẫn cộng thời gian + số nốt, nhưng chưa phải là đã chơi xong cả bài.
+  const completed = s.completed && !s.hand && !s.measures;
   return {
     lessonId: prev.lessonId,
     sessions: prev.sessions + 1,

@@ -5,6 +5,7 @@
  */
 import { parseAccompaniment, parseNotes } from './notation';
 import { buildAccompaniment, REPERTOIRE_DEFS } from './repertoire';
+import { HAPPY_BIRTHDAY_LESSONS } from './arrangements/happyBirthday';
 import type { Lesson } from './types';
 
 type LessonDef = Omit<Lesson, 'notes' | 'accompaniment'> & { notation: string; accompanimentNotation?: string };
@@ -1214,8 +1215,17 @@ const repertoireDefs: LessonDef[] = REPERTOIRE_DEFS.map((r) => {
   };
 });
 
-export const LESSONS: Lesson[] = [...defs, ...repertoireDefs].map(({ notation, accompanimentNotation, ...rest }) => ({
+const parsed: Lesson[] = [...defs, ...repertoireDefs].map(({ notation, accompanimentNotation, ...rest }) => ({
   ...rest,
   notes: parseNotes(notation),
   ...(accompanimentNotation ? { accompaniment: parseAccompaniment(accompanimentNotation) } : {}),
 }));
+
+/** Bản phối nhiều cấp độ (`arrangements/`) đứng ngay sau bài một bè cùng tên trong thư viện. */
+function insertAfter(list: Lesson[], id: string, extra: Lesson[]): Lesson[] {
+  const at = list.findIndex((l) => l.id === id);
+  if (at < 0) throw new Error(`Không thấy bài ${id} để chèn bản phối`);
+  return [...list.slice(0, at + 1), ...extra, ...list.slice(at + 1)];
+}
+
+export const LESSONS: Lesson[] = insertAfter(parsed, 'song-happy-birthday', HAPPY_BIRTHDAY_LESSONS);

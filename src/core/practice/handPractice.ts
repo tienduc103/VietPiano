@@ -12,7 +12,7 @@
  * "Dòng tập" (`PracticeTrack`) là danh sách bước cho PracticeEngine / TempoFollower, kèm chỉ số nốt trên khuông
  * để tô màu và đặt con trỏ đúng nốt đang tập.
  */
-import { DURATION_BEATS, noteHand, type Finger, type Hand, type LeftHandStep, type Lesson } from '../lessons/types';
+import { DURATION_BEATS, harmonyMidis, noteHand, type Finger, type Hand, type HarmonyNote, type LeftHandStep, type Lesson } from '../lessons/types';
 
 export type PracticeHand = 'both' | 'right' | 'left';
 
@@ -48,6 +48,8 @@ export interface StepGuide {
   pitch?: string;
   finger?: Finger;
   hand?: Hand;
+  /** Chùm nốt tay phải: các nốt hoà âm đánh cùng nốt giai điệu (thấp → cao). */
+  harmony?: HarmonyNote[];
   /** Bài có phần đệm, tập hai tay: tay trái ở bước này. */
   left?: LeftHandStep;
   /** Tập tay trái, bước là hợp âm. */
@@ -70,6 +72,7 @@ export function stepGuide(lesson: Lesson, track: PracticeTrack, leftHand: readon
     // Bài hai tay luôn nhắc tay nào; bài một tay chỉ nhắc khi có số ngón.
     hand: note && (lesson.hand === 'both' || note.finger) ? noteHand(lesson, note) : undefined,
     left: note && leftHand?.[index],
+    ...(note?.harmony?.length ? { harmony: note.harmony } : {}),
   };
 }
 
@@ -82,7 +85,7 @@ export function distinctStepGuides(lesson: Lesson, track: PracticeTrack, leftHan
   track.steps.forEach((_, i) => {
     const g = stepGuide(lesson, track, leftHand, i);
     if (!g) return;
-    const key = JSON.stringify([g.pitch ?? g.midi, g.finger, g.hand, g.left?.pitches, g.left?.fingers, g.left?.held, g.chord?.pitches, g.chord?.fingers]);
+    const key = JSON.stringify([g.pitch ?? g.midi, g.finger, g.hand, g.harmony, g.left?.pitches, g.left?.fingers, g.left?.held, g.chord?.pitches, g.chord?.fingers]);
     if (!seen.has(key)) seen.set(key, g);
   });
   return [...seen.values()];
@@ -166,16 +169,35 @@ export function practiceTrack(lesson: Lesson, hand: PracticeHand, singleNotesOnl
 
 /**
  * Tập một tay: nốt ngoài tầm của tay đó, về phía tay kia, là nốt tay kia đánh kèm → bỏ qua, không tính sai.
- * Tay trái: cao hơn mọi nốt tay trái; tay phải: thấp hơn mọi nốt tay phải.
+ * Tay trái: cao hơn mọi nốt tay trái; tay phải: thấp hơn mọi nốt tay phải (kể cả nốt hoà âm của chùm nốt).
  */
 export function isOtherHandMidi(lesson: Pick<Lesson, 'accompaniment' | 'notes' | 'hand'>, hand: Hand, midi: number): boolean {
   const played = lesson.notes.filter((n) => !n.rest);
   if (hand === 'right') {
-    const right = played.filter((n) => noteHand(lesson, n) === 'right').map((n) => n.midi);
+    const right = played.filter((n) => noteHand(lesson, n) === 'right').flatMap((n) => [n.midi, ...harmonyMidis(n)]);
     return right.length > 0 && midi < Math.min(...right);
   }
   const left = [...played.filter((n) => noteHand(lesson, n) === 'left').map((n) => n.midi), ...(lesson.accompaniment ?? []).flatMap((c) => c.midis)];
   return left.length > 0 && midi > Math.max(...left);
+}
+
+/**
+ * Nốt PracticeEngine phải chờ thêm ở từng bước giai điệu (tham số `leftHand` của engine): nốt hoà âm tay phải
+ * (`withHarmony` — chỉ khi nốt đến từ đàn MIDI / bàn phím ảo) + tay trái của bước (`left` — tập hai tay có chấm tay trái).
+ * Không có gì phải chờ thêm → `undefined` (engine chỉ chờ giai điệu như cũ).
+ */
+export function melodyStepExtras(lesson: Pick<Lesson, 'notes'>, left: readonly LeftHandStep[] | undefined, withHarmony: boolean): number[][] | undefined {
+  const extras = lesson.notes.map((n, i) => [...(withHarmony ? harmonyMidis(n) : []), ...(left?.[i]?.midis ?? [])]);
+  return extras.some((e) => e.length > 0) ? extras : undefined;
+}
+
+/**
+ * Micro chỉ chấm nốt giai điệu: nốt hoà âm của chùm nốt đang tập (bước `index`) mà micro nghe được thì bỏ qua,
+ * không tính sai (micro không tách được hai nốt đánh cùng lúc).
+ */
+export function isUngradedHarmonyMidi(lesson: Pick<Lesson, 'notes'>, index: number, midi: number): boolean {
+  const note = lesson.notes[index];
+  return !!note && harmonyMidis(note).includes(midi);
 }
 
 /** Bước đang vang ở phách `beat` (tính từ đầu bài): bước cuối cùng bắt đầu không muộn hơn `beat`. */
