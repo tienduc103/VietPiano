@@ -6,7 +6,7 @@
  * Kết quả ghi phiên bản engine / thuật toán / trọng số → chấm lại phiên cũ bằng bản mới mà vẫn giữ kết quả cũ.
  */
 import { ALIGNMENT_VERSION, CRITERION_LABEL, SCORING_ENGINE_VERSION, WEIGHTS_VERSION, type BuiltPerformance, type CoachMode, type CriterionKey, type CriterionScore, type InputCapabilities, type MeasureSummary, type NoteAlignment, type ScoreReference, type ScoringIssue, type ScoringResult } from '../types';
-import { alignPerformance } from './align';
+import { alignPerformance, mapOfRef } from './align';
 import { analyzeDuration } from './analyzeDuration';
 import { analyzeDynamics } from './analyzeDynamics';
 import { analyzeNotes, baseAlignment } from './analyzeNotes';
@@ -76,13 +76,13 @@ export function scorePerformance(input: ScoreInput): ScoringResult {
   const total = totalWeight > 0 ? Math.round(criteria.reduce((a, c) => a + (c.value === null ? 0 : c.value * c.effectiveWeight), 0)) : 0;
 
   // ── bảng ghép từng nốt ──
-  const alignment: NoteAlignment[] = baseAlignment(ctx, notes.extras).map((a, i) => {
+  const alignment: NoteAlignment[] = baseAlignment(ctx, notes.extras, notes.replayed).map((a, i) => {
     if (i >= ref.notes.length) return a;
     const t = rhythm.timing.get(i);
     const d = duration.durations.get(i);
     return {
       ...a,
-      ...(t ? { expectedMs: Math.round(t.expectedMs), deviationMs: Math.round(t.deviationMs), timing: t.status } : { expectedMs: Math.round(aligned.map.msAt(ref.notes[i].onsetBeat)) }),
+      ...(t ? { expectedMs: Math.round(t.expectedMs), deviationMs: Math.round(t.deviationMs), timing: t.status } : { expectedMs: Math.round(mapOfRef(aligned, i).msAt(ref.notes[i].onsetBeat)) }),
       ...(d ? { heldMs: d.heldMs === null ? null : Math.round(d.heldMs), soundingMs: d.soundingMs === null ? null : Math.round(d.soundingMs), expectedDurationMs: Math.round(d.expectedMs), ...(d.ratio !== null ? { durationRatio: Math.round(d.ratio * 100) / 100 } : {}), duration: d.status } : {}),
     };
   });
@@ -98,6 +98,8 @@ export function scorePerformance(input: ScoreInput): ScoringResult {
     repeated: notes.extras.filter((x) => x.kind === 'repeated').length,
     simultaneous: notes.extras.filter((x) => x.kind === 'simultaneous').length,
     performed: perf.notes.length,
+    replayed: notes.replayed.length,
+    restarts: aligned.restarts.filter((r) => !r.afterEnd).length,
   };
 
   // ── theo ô nhịp ──
@@ -121,7 +123,7 @@ export function scorePerformance(input: ScoreInput): ScoringResult {
     if (iss.measure === null) continue;
     const s = m(iss.measure);
     s.lost = Math.round((s.lost + iss.deduction) * 100) / 100;
-    if (iss.criterion === 'rhythm' && (iss.type === 'early' || iss.type === 'late' || iss.type === 'hesitation' || iss.type.endsWith('async'))) s.timing++;
+    if (iss.criterion === 'rhythm' && (iss.type === 'early' || iss.type === 'late' || iss.type === 'hesitation' || iss.type === 'restart' || iss.type.endsWith('async'))) s.timing++;
     if (iss.criterion === 'duration') s.duration++;
     if (iss.criterion === 'pedal') s.pedal++;
   }
@@ -133,6 +135,12 @@ export function scorePerformance(input: ScoreInput): ScoringResult {
   const explanation: string[] = [];
   for (const u of unavailable) explanation.push(`${CRITERION_LABEL[u.criterion]}: ${u.reason}. Trọng số ${params.weights[u.criterion]} được chia lại cho các tiêu chí còn lại.`);
   if (lowAlign) explanation.push(`Chỉ đối chiếu được ${Math.round(anchored * 100)}% bản nhạc — có thể đã chơi bài khác hoặc chơi rất ít nốt; điểm chỉ mang tính tham khảo.`);
+  if (counts.restarts)
+    explanation.push(
+      `Có ${counts.restarts} lần dừng lại rồi chơi lại: mỗi nốt chấm theo lần đầu chơi tới nó (nốt sai trước khi dừng vẫn tính), ${counts.replayed} nốt chơi lại đoạn đã qua không chấm và không tính là nốt thừa; mỗi lần chơi lại trừ như một chỗ ngắt quãng.`,
+    );
+  const afterEnd = aligned.restarts.find((r) => r.afterEnd);
+  if (afterEnd) explanation.push(`Sau khi đã chơi hết bài có chơi thêm ${aligned.replayed.filter((p) => perf.notes[p].onMs >= afterEnd.atMs).length} nốt — phần chơi thêm không chấm.`);
   if (perf.sustain.continuous) explanation.push('Đàn gửi pedal liên tục (half-pedal): app ghi lại độ sâu nhưng chỉ chấm đạp / nhả theo ngưỡng 64.');
   if (perf.orphanOffs) explanation.push(`${perf.orphanOffs} lần thả phím không có lần nhấn tương ứng (vd phím dùng để bấm nút) — đã bỏ qua.`);
   if (perf.disconnects) explanation.push(`Đàn mất kết nối ${perf.disconnects} lần trong lúc ghi — nốt bị ngắt khi đó không tính trường độ.`);
@@ -166,9 +174,12 @@ export function scorePerformance(input: ScoreInput): ScoringResult {
     confidence: { alignment: Math.round(anchored * 100) / 100, overall },
     unavailable,
     explanation,
-    tempoMap: aligned.map.points.map(([b, ms]) => [Math.round(b * 1000) / 1000, Math.round(ms * 10) / 10]),
+    tempoMap: roundPoints(aligned.map.points),
+    ...(aligned.passes.length > 1 ? { passes: aligned.passes.map((p) => ({ fromMs: Number.isFinite(p.fromMs) ? Math.round(p.fromMs * 10) / 10 : 0, toMs: Number.isFinite(p.toMs) ? Math.round(p.toMs * 10) / 10 : null, tempoMap: roundPoints(p.map.points) })) } : {}),
   };
 }
+
+const roundPoints = (points: readonly (readonly [number, number])[]): [number, number][] => points.map(([b, ms]) => [Math.round(b * 1000) / 1000, Math.round(ms * 10) / 10]);
 
 /** Ô nhịp nên luyện lại: ô mất nhiều điểm nhất, gộp ô kề cũng mất điểm (tối đa `maxLength` ô). */
 export function weakestMeasures(result: Pick<ScoringResult, 'measures'>, maxLength = 4): [number, number] | null {

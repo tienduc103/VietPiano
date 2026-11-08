@@ -27,6 +27,25 @@ describe('ScoreFollower', () => {
     expect(f.finished).toBe(true);
   });
 
+  it('chơi lại từ đầu ô: con trỏ quay về (không nhảy nhầm lên trước vì nốt chơi lại trùng nốt phía sau)', () => {
+    const r = referenceFromLesson(testLesson('C4 D4 E4 F4 | G4 A4 B4 C5 | C5 B4 A4 G4 | F4 E4 D4 C4'));
+    const f = new ScoreFollower(r);
+    for (const m of [60, 62, 64, 65, 67, 69, 71, 74]) f.handle(m); // … B4 rồi đánh nhầm D5 ở chỗ C5
+    expect(f.group).toBe(7);
+    f.handle(67); // G4: chưa đủ để biết
+    f.handle(69); // A4: G4 A4 = đầu ô 2 → về B4 (không nhảy tới A4 của ô 3)
+    expect(f.group).toBe(6);
+    expect(f.measure).toBe(2);
+    for (const m of [71, 72, 72, 71, 69, 67, 65, 64, 62, 60]) f.handle(m);
+    expect(f.finished).toBe(true);
+    // Chơi đúng một mạch (có câu lặp) không bao giờ quay lui.
+    const g = new ScoreFollower(r);
+    const seen: number[] = [];
+    for (const n of r.notes) seen.push(g.handle(n.midi));
+    expect(seen).toEqual([...seen].sort((a, b) => a - b));
+    expect(g.finished).toBe(true);
+  });
+
   it('cursorAt chọn nốt giai điệu đang vang; bài chỉ tay trái → khuông Fa', () => {
     expect(cursorAt(ref, 2.5)).toEqual({ staff: 'melody', index: 2 });
     const left = referenceFromLesson(lesson, { hand: 'left' });

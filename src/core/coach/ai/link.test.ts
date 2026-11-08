@@ -248,6 +248,10 @@ describe('aiLinkView', () => {
     expect(off.detail).toContain('Ollama không trả lời trong 5 giây (kiểm tra lúc 17:00:00)');
     expect(off.detail).toContain('mỗi 15 giây');
     expect(aiLinkView(snap({ state: 'offline', lastConnectedAt: at })).label).toBe('AI cục bộ: mất kết nối');
+    // Cách sửa theo nơi mở app (GitHub Pages: quyền mạng cục bộ của Chrome + OLLAMA_ORIGINS).
+    const hinted = aiLinkView(snap({ state: 'offline' }), { hint: 'Đặt OLLAMA_ORIGINS=https://x.github.io' });
+    expect(hinted.detail).toContain('Đặt OLLAMA_ORIGINS=https://x.github.io');
+    expect(hinted.detail).not.toContain('Kiểm tra Ollama đang chạy;');
   });
 
   it('câu dữ liệu: trong lúc đánh không gửi gì, điểm do thuật toán', () => {

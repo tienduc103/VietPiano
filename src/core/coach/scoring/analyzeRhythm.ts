@@ -5,15 +5,18 @@
  *                 dung sai (10% phách, 50–120 ms ở Mode A), 0 điểm ở 3 × dung sai.
  *  - tempo      : tempo trung bình (Theil–Sen trong từng đoạn liền) so tempo mục tiêu.
  *  - stability  : hệ số biến thiên tempo giữa các ô.
- *  - continuity : số chỗ ngắt quãng (khoảng giữa hai nhóm > max(2 × kỳ vọng, kỳ vọng + 700 ms)).
+ *  - continuity : số chỗ ngắt quãng (khoảng giữa hai nhóm > max(2 × kỳ vọng, kỳ vọng + 700 ms)) + số lần dừng lại rồi chơi lại
+ *                 (mỗi lần trừ như một chỗ ngắt; chơi thêm sau khi đã hết bài không tính).
  *  - sync       : hai tay cùng phách (≤ 80 ms, như chế độ Biểu diễn) / các nốt một hợp âm (≤ 60 ms).
- * Thời gian tạm dừng bằng nút đã bị bỏ khỏi trục thời gian từ trước (không thành chỗ ngắt).
+ * Thời gian tạm dừng bằng nút đã bị bỏ khỏi trục thời gian từ trước (không thành chỗ ngắt). Chỗ chơi lại cắt đoạn: tempo / lệch thời điểm
+ * không vắt qua hai lượt, và khoảng thời gian chơi lại không thành "ngắt quãng".
  */
 import type { Hand } from '../../lessons/types';
 import { timingQuality } from '../../practice/PerformanceTracker';
 import { beatsPerMeasure } from '../reference/fromLesson';
 import type { HandSummary, ScoringResult } from '../types';
-import { clamp01, combineSubScores, formatNumber, mean, notePosition, noteName, std, type AnalysisContext, type CriterionOutcome, type IssueDraft } from './context';
+import type { RestartInfo } from './align';
+import { clamp01, combineSubScores, formatNumber, mean, measureLabel, notePosition, noteName, std, type AnalysisContext, type CriterionOutcome, type IssueDraft } from './context';
 import { CHORD_SYNC_MS, HANDS_SYNC_MS, HESITATION_EXTRA_MS, HESITATION_PENALTY, HESITATION_RATIO } from './modes';
 import { linearFit, median, quadraticAt } from './tempoMap';
 
@@ -36,6 +39,8 @@ interface Pt {
   t: number;
   notes: number[];
   seg: number;
+  /** Lượt chấm nhóm này (chơi lại → lượt sau). */
+  pass: number;
 }
 
 /** Độ lệch xa (× dung sai) bị loại khỏi điểm láng giềng ở lượt hai. */
@@ -70,19 +75,20 @@ export function analyzeRhythm(ctx: AnalysisContext): RhythmOutcome {
   for (const g of ref.groups) {
     const rs = g.notes.filter((r) => ctx.perfOf[r] !== null && ctx.status[r] !== 'order');
     if (!rs.length) continue;
-    pts.push({ g: g.index, beat: g.onsetBeat, t: mean(rs.map((r) => perf.notes[ctx.perfOf[r]!].onMs)), notes: rs, seg: 0 });
+    pts.push({ g: g.index, beat: g.onsetBeat, t: mean(rs.map((r) => perf.notes[ctx.perfOf[r]!].onMs)), notes: rs, seg: 0, pass: ctx.aligned.refPass[rs[0]] ?? 0 });
   }
 
-  // Độ dài phách của cả bài: trung vị độ dốc giữa hai nhóm liền nhau (bền với vài chỗ ngắt).
-  const consecutive = pts.slice(1).map((p, k) => (p.t - pts[k].t) / (p.beat - pts[k].beat)).filter((s) => s > 0 && Number.isFinite(s));
+  // Độ dài phách của cả bài: trung vị độ dốc giữa hai nhóm liền nhau cùng lượt (bền với vài chỗ ngắt).
+  const consecutive = pts.slice(1).map((p, k) => (p.pass === pts[k].pass ? (p.t - pts[k].t) / (p.beat - pts[k].beat) : NaN)).filter((s) => s > 0 && Number.isFinite(s));
   const mpb = consecutive.length ? median(consecutive) : ctx.aligned.targetMsPerBeat;
   ctx.msPerBeat = mpb;
 
-  // Ngắt quãng → cắt đoạn.
+  // Ngắt quãng → cắt đoạn. Sang lượt khác (chỗ chơi lại) cũng cắt đoạn nhưng không phải ngắt quãng (đã có lỗi "chơi lại").
   const hesitations: { k: number; extraMs: number }[] = [];
   let seg = 0;
   pts.forEach((p, k) => {
-    if (k > 0) {
+    if (k > 0 && p.pass !== pts[k - 1].pass) seg++;
+    else if (k > 0) {
       const expected = (p.beat - pts[k - 1].beat) * mpb;
       const actual = p.t - pts[k - 1].t;
       if (actual > Math.max(HESITATION_RATIO * expected, expected + HESITATION_EXTRA_MS)) {
@@ -92,6 +98,7 @@ export function analyzeRhythm(ctx: AnalysisContext): RhythmOutcome {
     }
     p.seg = seg;
   });
+  const restarts = ctx.aligned.restarts.filter((r) => !r.afterEnd);
 
   const windowBeats = Math.max(2, P.localWindowMeasures * beatsPerMeasure(ref));
   const tolOf = (slope: number) => Math.min(P.timingTolMaxMs, Math.max(P.timingTolMinMs, P.timingTolRatio * slope));
@@ -213,7 +220,7 @@ export function analyzeRhythm(ctx: AnalysisContext): RhythmOutcome {
     }
   }
 
-  const contQ = pts.length >= 2 ? Math.max(0, 1 - HESITATION_PENALTY * hesitations.length) : null;
+  const contQ = pts.length >= 2 ? Math.max(0, 1 - HESITATION_PENALTY * (hesitations.length + restarts.length)) : null;
   const subScores = [
     { key: 'timing', label: 'Đúng thời điểm', value: measured.length ? mean(measured.map((m) => m.q)) : null, weight: P.rhythm.timing, ...(measured.length ? {} : { reason: 'Chưa đủ nốt đúng để đo' }) },
     { key: 'tempo', label: 'Tempo so mục tiêu', value: tempoQ, weight: P.rhythm.tempo, ...(tempoQ === null ? { reason: 'Chưa đủ nốt để ước lượng tempo' } : {}) },
@@ -280,25 +287,33 @@ export function analyzeRhythm(ctx: AnalysisContext): RhythmOutcome {
       message: `Tempo chưa đều giữa các ô (dao động ${Math.round(cv * 100)}%): ô ${slow.measure} ♩≈${Math.round(slow.bpm)}, ô ${fast.measure} ♩≈${Math.round(fast.bpm)}.`,
     });
   }
+  // Chỗ ngắt + chỗ chơi lại theo thời gian; mỗi chỗ trừ tối đa HESITATION_PENALTY điểm con "liên tục" (tới khi hết).
+  type BreakIssue = Omit<IssueDraft, 'criterionDeduction'>;
+  const breaks: { t: number; issue: BreakIssue }[] = [
+    ...hesitations.map((h) => {
+      const p = pts[h.k];
+      const n = ref.notes[p.notes[0]];
+      const issue: BreakIssue = {
+        criterion: 'rhythm',
+        type: 'hesitation',
+        severity: 'major',
+        measure: n.measure,
+        beat: n.beatInMeasure,
+        refNoteIds: p.notes.map((r) => ref.notes[r].id),
+        perfNoteIds: p.notes.map((r) => ctx.perfOf[r]!),
+        value: Math.round(h.extraMs),
+        confidence: 'high',
+        message: `${notePosition(ref, n)}: ngừng thêm ${formatNumber(Math.round(h.extraMs / 100) / 10)} giây trước ${names(p.notes)} (ngắt quãng).`,
+      };
+      return { t: p.t, issue };
+    }),
+    ...restarts.map((r) => ({ t: r.atMs, issue: restartIssue(ctx, r) })),
+  ].sort((a, b) => a.t - b.t);
   let remaining = contQ === null ? 0 : 1 - contQ;
-  for (const h of hesitations) {
-    const p = pts[h.k];
-    const n = ref.notes[p.notes[0]];
+  for (const b of breaks) {
     const d = Math.min(HESITATION_PENALTY, remaining);
     remaining -= d;
-    issues.push({
-      criterion: 'rhythm',
-      type: 'hesitation',
-      severity: 'major',
-      measure: n.measure,
-      beat: n.beatInMeasure,
-      refNoteIds: p.notes.map((r) => ref.notes[r].id),
-      perfNoteIds: p.notes.map((r) => ctx.perfOf[r]!),
-      value: Math.round(h.extraMs),
-      criterionDeduction: d * (share.get('continuity') ?? 0),
-      confidence: 'high',
-      message: `${notePosition(ref, n)}: ngừng thêm ${formatNumber(Math.round(h.extraMs / 100) / 10)} giây trước ${names(p.notes)} (ngắt quãng).`,
-    });
+    issues.push({ ...b.issue, criterionDeduction: d * (share.get('continuity') ?? 0) });
   }
   const sShare = share.get('sync') ?? 0;
   for (const s of sync) {
@@ -367,5 +382,31 @@ export function analyzeRhythm(ctx: AnalysisContext): RhythmOutcome {
     tempo: { targetBpm: target, actualBpm: actualBpm === null ? null : Math.round(actualBpm * 10) / 10, perMeasure: perMeasure.map((m) => ({ measure: m.measure, bpm: Math.round(m.bpm) })), drift: drift === null ? null : Math.round(drift * 1000) / 1000 },
     hands,
     timing,
+  };
+}
+
+/** "Ô 2, phách 4: đánh D5 (cần C5) rồi dừng lại, chơi lại từ đầu ô 2." — vị trí = chỗ dừng (nốt vấp / nốt chưa chơi tới). */
+function restartIssue(ctx: AnalysisContext, r: RestartInfo): Omit<IssueDraft, 'criterionDeduction'> {
+  const { ref, perf } = ctx;
+  const stop = ref.groups[r.stopGroup];
+  const at = ref.notes[stop.notes[0]];
+  const back = ref.notes[(ref.groups[r.restartGroup] ?? ref.groups[0]).notes[0]];
+  const expected = stop.notes
+    .slice(0, 3)
+    .map((i) => noteName(ref.notes[i].midi))
+    .join(' + ');
+  const slip = r.slip.slice(0, 3).map((p) => noteName(perf.notes[p].midi));
+  const from = r.restartGroup <= 0 ? 'từ đầu bài' : back.beatInMeasure < 1e-6 ? `từ đầu ${measureLabel(back.measure).toLowerCase()}` : `từ ${notePosition(ref, back).toLowerCase()}`;
+  const what = slip.length ? `đánh ${slip.join(', ')} (cần ${expected}) rồi dừng lại` : `dừng lại trước ${expected}`;
+  return {
+    criterion: 'rhythm',
+    type: 'restart',
+    severity: 'major',
+    measure: at.measure,
+    beat: at.beatInMeasure,
+    refNoteIds: stop.notes.map((i) => ref.notes[i].id),
+    perfNoteIds: r.slip,
+    confidence: 'medium',
+    message: `${notePosition(ref, at)}: ${what}, chơi lại ${from}.`,
   };
 }

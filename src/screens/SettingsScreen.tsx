@@ -21,7 +21,7 @@ import { AutoCalibration } from '../components/AutoCalibration';
 import { MidiSettings } from '../components/MidiPanel';
 import { CalibrationCheckView } from '../components/CalibrationCheckView';
 import { AppVersion } from '../components/AppVersion';
-import { AUTO_OLLAMA_URL, normalizeOllamaUrl, OllamaError, resolveOllama } from '../core/feedback/OllamaClient';
+import { AUTO_OLLAMA_URL, normalizeOllamaUrl, OllamaError, ollamaConnectHint, resolveOllama } from '../core/feedback/OllamaClient';
 import { ollamaCandidatesForPage, ollamaUrlLabel } from '../components/AiCoachCard';
 import { voiceSpeaker, voiceTeacher } from '../core/voice/teacher';
 import { phrases } from '../core/voice/phrases';
@@ -387,7 +387,7 @@ function AiCoachSettings() {
         text:
           e instanceof OllamaError && e.kind === 'http'
             ? `Ollama báo lỗi: ${e.message}`
-            : `Không kết nối được ${ollamaUrlLabel(u)}. Kiểm tra Ollama đang chạy; iPad/máy khác thì mở app từ máy cài Ollama (npm run serve:lan).`,
+            : `Không kết nối được ${ollamaUrlLabel(u)}. ${ollamaConnectHint(location.origin)}`,
       });
     } finally {
       setChecking(false);

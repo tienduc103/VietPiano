@@ -316,8 +316,9 @@ describe('scorePerformance — toàn bộ thư viện bài (bản chơi đúng k
     if (!ref.notes.length) return;
     const pedal = ref.pedal.graded ? ref.pedal.ranges.map((p) => ({ downBeat: p.startBeat + 0.2, upBeat: p.endBeat - 0.08 })) : [];
     const r = run(ref, { pedal, jitterMs: 10, velocity: (n) => n.velocityTarget });
-    const bad = r.issues.filter((i) => i.criterion === 'notes' || i.type === 'early' || i.type === 'late' || i.type === 'hesitation' || i.criterion === 'duration' || i.criterion === 'pedal');
+    const bad = r.issues.filter((i) => i.criterion === 'notes' || i.type === 'early' || i.type === 'late' || i.type === 'hesitation' || i.type === 'restart' || i.criterion === 'duration' || i.criterion === 'pedal');
     expect(bad.map((i) => i.message)).toEqual([]);
+    expect(r.counts).toMatchObject({ restarts: 0, replayed: 0 });
     expect(r.total).toBeGreaterThanOrEqual(95);
   });
 });

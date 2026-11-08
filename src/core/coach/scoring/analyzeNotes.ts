@@ -3,8 +3,10 @@
  *   sai nốt / thiếu nốt 1/N · sai quãng tám 0.5/N · sai thứ tự 0.5/N mỗi nốt · thừa / cùng lúc 0.5/N · đánh lặp 0.25/N.
  * Sai thứ tự: hai nốt đơn liền nhau đánh tráo cao độ, hoặc đúng phím nhưng đảo thời gian.
  * Nốt thừa không gán tay (không suy tay từ cao độ).
+ * Nốt đánh khi chơi lại đoạn đã chấm (`aligned.replayed`) không chấm, không trừ điểm — chỉ ghi vào bảng ghép ('replayed').
  */
 import type { NoteAlignment } from '../types';
+import { mapAtMs } from './align';
 import { createContext, handLabel, measureAtMs, measureLabel, notePosition, noteName, type AnalysisContext, type CriterionOutcome, type IssueDraft } from './context';
 import { REPEAT_BEAT_FRACTION, REPEAT_MIN_MS, SIMULTANEOUS_MS } from './modes';
 
@@ -14,6 +16,8 @@ export type ExtraKind = 'extra' | 'repeated' | 'simultaneous';
 
 export interface NotesOutcome extends CriterionOutcome {
   extras: { perf: number; kind: ExtraKind; measure: number }[];
+  /** Nốt chơi lại đoạn đã chấm (không trừ điểm). */
+  replayed: { perf: number; measure: number }[];
 }
 
 export function analyzeNotes(ctx: AnalysisContext): NotesOutcome {
@@ -45,7 +49,8 @@ export function analyzeNotes(ctx: AnalysisContext): NotesOutcome {
   }
 
   const issues: IssueDraft[] = [];
-  if (N === 0) return { value: null, subScores: [], issues, reason: 'Bản nhạc không có nốt cần chấm', extras: [] };
+  const replayed = aligned.replayed.map((p) => ({ perf: p, measure: measureAtMs(ctx, perf.notes[p].onMs).measure }));
+  if (N === 0) return { value: null, subScores: [], issues, reason: 'Bản nhạc không có nốt cần chấm', extras: [], replayed };
   const unit = 1 / N;
 
   ref.notes.forEach((n, i) => {
@@ -104,7 +109,7 @@ export function analyzeNotes(ctx: AnalysisContext): NotesOutcome {
   for (const p of aligned.extras) {
     const x = perf.notes[p];
     const pos = measureAtMs(ctx, x.onMs);
-    const repeatWindow = Math.max(REPEAT_MIN_MS, REPEAT_BEAT_FRACTION * aligned.map.msPerBeatAt(pos.beat));
+    const repeatWindow = Math.max(REPEAT_MIN_MS, REPEAT_BEAT_FRACTION * mapAtMs(aligned, x.onMs).msPerBeatAt(pos.beat));
     const repeated = [...aligned.perfToRef.keys()].some((q) => perf.notes[q].midi === x.midi && perf.notes[q].onMs < x.onMs && x.onMs - perf.notes[q].onMs <= repeatWindow);
     const simultaneous = !repeated && groupOnsets.some((ts) => ts !== null && ts.some((t) => Math.abs(t - x.onMs) <= SIMULTANEOUS_MS));
     const kind: ExtraKind = repeated ? 'repeated' : simultaneous ? 'simultaneous' : 'extra';
@@ -135,11 +140,11 @@ export function analyzeNotes(ctx: AnalysisContext): NotesOutcome {
   const lost = issues.reduce((a, i) => a + i.criterionDeduction, 0);
   // Kẹp ở 0: phần khấu trừ vượt 1 được thu nhỏ đều để tổng khấu trừ = 1 − giá trị.
   if (lost > 1) for (const i of issues) i.criterionDeduction /= lost;
-  return { value: Math.max(0, 1 - lost), subScores: [], issues, extras };
+  return { value: Math.max(0, 1 - lost), subScores: [], issues, extras, replayed };
 }
 
 /** Bảng ghép từng nốt (cho tô khuông / chi tiết nốt) — trường thời gian / trường độ được bổ sung sau. */
-export function baseAlignment(ctx: AnalysisContext, extras: NotesOutcome['extras']): NoteAlignment[] {
+export function baseAlignment(ctx: AnalysisContext, extras: NotesOutcome['extras'], replayed: NotesOutcome['replayed'] = []): NoteAlignment[] {
   const out: NoteAlignment[] = ctx.ref.notes.map((n, i) => {
     const p = ctx.perfOf[i];
     return {
@@ -155,6 +160,10 @@ export function baseAlignment(ctx: AnalysisContext, extras: NotesOutcome['extras
   for (const x of extras) {
     const pn = ctx.perf.notes[x.perf];
     out.push({ refId: null, perfId: x.perf, status: x.kind, perfMidi: pn.midi, hand: 'unknown', measure: x.measure, actualMs: pn.onMs, velocity: pn.velocity });
+  }
+  for (const x of replayed) {
+    const pn = ctx.perf.notes[x.perf];
+    out.push({ refId: null, perfId: x.perf, status: 'replayed', perfMidi: pn.midi, hand: 'unknown', measure: x.measure, actualMs: pn.onMs, velocity: pn.velocity });
   }
   return out;
 }

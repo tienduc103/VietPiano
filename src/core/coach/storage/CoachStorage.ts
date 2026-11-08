@@ -24,13 +24,23 @@ const ALL_STORES = [S_SESSIONS, S_EVENTS, S_RESULTS, S_FEEDBACK, S_PLANS];
 
 export interface CoachExport {
   format: 'vietpiano-coach-export';
-  version: 1;
+  /** 2: thêm log gốc từng phiên (`events`) → chấm lại được bằng phiên bản engine mới / gửi kèm khi báo lỗi chấm. */
+  version: 2;
   exportedAt: number;
   profileKey: ProfileKey;
   sessions: PerformanceSession[];
+  /** Log gốc theo id phiên (mốc thời gian nguyên bản, không làm tròn). */
+  events: Record<string, PerformanceEvent[]>;
   results: ScoringResult[];
   feedback: AIFeedback[];
   plans: PracticePlan[];
+}
+
+/** Log gốc của các phiên (cho file xuất). */
+async function eventsOf(storage: Pick<CoachStorage, 'getRecorded'>, sessions: readonly PerformanceSession[]): Promise<Record<string, PerformanceEvent[]>> {
+  const out: Record<string, PerformanceEvent[]> = {};
+  for (const s of sessions) out[s.id] = (await storage.getRecorded(s.id))?.events ?? [];
+  return out;
 }
 
 export interface CoachStorage {
@@ -246,7 +256,7 @@ export class IndexedDbCoachStorage implements CoachStorage {
   async exportProfile(profileKey: ProfileKey, now = Date.now()): Promise<CoachExport> {
     const [sessions, results, plans] = await Promise.all([this.listSessions(profileKey), this.listResults(profileKey), this.listPlans(profileKey)]);
     const feedback = (await this.getAllBy<AIFeedback>(S_FEEDBACK, 'profileKey', profileKey)).sort(byCreated);
-    return { format: 'vietpiano-coach-export', version: 1, exportedAt: now, profileKey, sessions, results, feedback, plans };
+    return { format: 'vietpiano-coach-export', version: 2, exportedAt: now, profileKey, sessions, events: await eventsOf(this, sessions), results, feedback, plans };
   }
 }
 
@@ -316,12 +326,14 @@ export class MemoryCoachStorage implements CoachStorage {
     for (const map of [this.results, this.feedback, this.plans] as Map<string, { profileKey: string }>[]) for (const [k, v] of map) if (v.profileKey === profileKey) map.delete(k);
   }
   async exportProfile(profileKey: ProfileKey, now = Date.now()): Promise<CoachExport> {
+    const sessions = await this.listSessions(profileKey);
     return {
       format: 'vietpiano-coach-export',
-      version: 1,
+      version: 2,
       exportedAt: now,
       profileKey,
-      sessions: await this.listSessions(profileKey),
+      sessions,
+      events: await eventsOf(this, sessions),
       results: await this.listResults(profileKey),
       feedback: [...this.feedback.values()].filter((f) => f.profileKey === profileKey).map((f) => structuredClone(f)).sort(byCreated),
       plans: await this.listPlans(profileKey),

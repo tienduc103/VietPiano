@@ -47,6 +47,12 @@ export interface SynthOptions {
   /** Đánh tráo thứ tự hai nốt (theo id). */
   swaps?: [string, string][];
   latencyMs?: number;
+  /**
+   * Chơi lại (M2-T11): chơi tới trước phách `stopBeat` (đánh thêm các nốt vấp `slip` ở phách đó nếu có), dừng `gapMs` (mặc định
+   * 1000 ms; 0 = chơi lại ngay), rồi chơi lại từ phách `fromBeat`; nhiều lần theo thứ tự. Lỗi cài sẵn theo id / phách (mods, extras,
+   * pedal theo phách) áp cho mọi lượt chơi tới chỗ đó; pedal đang đạp lúc dừng được nhả ở chỗ dừng, lượt sau đạp lại từ chỗ chơi lại.
+   */
+  restarts?: { stopBeat: number; fromBeat: number; gapMs?: number; slip?: number[] }[];
 }
 
 function rng(seed: number): () => number {
@@ -65,7 +71,47 @@ export function synthTimeMap(ref: ScoreReference, opts: SynthOptions): (beat: nu
   return (beat: number) => base(beat) + gaps.filter((g) => beat >= g.beat - 1e-9).reduce((a, g) => a + g.ms, 0);
 }
 
+/** Bản chơi có chơi lại: mỗi lượt sinh như một bản chơi riêng (chỉ các nốt trong đoạn phách của lượt) rồi nối theo thời gian. */
+function synthWithRestarts(ref: ScoreReference, opts: SynthOptions): RecordedSession {
+  const at = synthTimeMap(ref, opts);
+  const segs: { from: number; to: number; slip: number[]; gap: number }[] = [];
+  let from = -Infinity;
+  for (const r of opts.restarts ?? []) {
+    segs.push({ from, to: r.stopBeat, slip: r.slip ?? [], gap: r.gapMs ?? 1000 });
+    from = r.fromBeat;
+  }
+  segs.push({ from, to: Infinity, slip: [], gap: 0 });
+  const msPerBeat = 60000 / (opts.bpm ?? ref.targetBpm);
+  const events: PerformanceEvent[] = [];
+  let shift = 0;
+  let pedals = false;
+  let session: RecordedSession['session'] | null = null;
+  segs.forEach((s, k) => {
+    const inSeg = (b: number) => b >= s.from - 1e-9 && b < s.to - 1e-9;
+    const mods: Record<string, SynthNoteMod> = { ...opts.mods };
+    for (const n of ref.notes) if (!inSeg(n.onsetBeat)) mods[n.id] = { skip: true };
+    const extras = [...(opts.extras ?? []).filter((x) => inSeg(x.beat)), ...s.slip.map((midi, i) => ({ midi, beat: s.to, offsetMs: i * 0.25 * msPerBeat }))];
+    const pedal = (opts.pedal ?? [])
+      .filter((p) => (p.upBeat === null || p.upBeat > s.from) && p.downBeat < s.to)
+      .map((p) => ({ downBeat: Math.max(p.downBeat, s.from), upBeat: p.upBeat === null ? (Number.isFinite(s.to) ? s.to : null) : Math.min(p.upBeat, s.to) }));
+    pedals ||= pedal.length > 0;
+    const sub = synthRecorded(ref, { ...opts, restarts: undefined, mods, extras, pedal, pedalMs: k === 0 ? opts.pedalMs : undefined, seed: (opts.seed ?? 7) + k });
+    session ??= sub.session;
+    for (const e of sub.events) if (e.k !== 'mark') events.push({ ...e, t: e.t + shift, rt: e.rt + shift });
+    if (k + 1 < segs.length) {
+      const stopAt = at(s.to) + shift + s.slip.length * 0.25 * msPerBeat;
+      shift = stopAt + s.gap - at(segs[k + 1].from);
+    }
+  });
+  events.sort((a, b) => a.t - b.t || (a.k === 'off' ? -1 : 0) - (b.k === 'off' ? -1 : 0));
+  const end = (events.length ? events[events.length - 1].t : 0) + 500;
+  const all: PerformanceEvent[] = [{ k: 'mark', t: 0, rt: 0, m: 'start' }, ...events, { k: 'mark', t: end, rt: end, m: 'stop' }];
+  const base = session!;
+  return { session: { ...base, eventCount: all.length, input: { ...base.input, capabilities: { ...base.input.capabilities, pedal: pedals || base.input.capabilities.pedal } } }, events: all };
+}
+
 export function synthRecorded(ref: ScoreReference, opts: SynthOptions = {}): RecordedSession {
+  if (opts.restarts?.length) return synthWithRestarts(ref, opts);
   const at = synthTimeMap(ref, opts);
   const rand = rng(opts.seed ?? 7);
   const jitter = opts.jitterMs ?? 0;

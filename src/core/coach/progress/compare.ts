@@ -22,7 +22,7 @@ export const FAMILY_LABEL: Record<IssueFamily, string> = {
 
 export function issueFamily(type: IssueType): IssueFamily {
   if (type === 'early' || type === 'late' || type.startsWith('tempo')) return 'timing';
-  if (type === 'hesitation' || type === 'repeated-note') return 'continuity';
+  if (type === 'hesitation' || type === 'restart' || type === 'repeated-note') return 'continuity';
   if (type === 'hands-async' || type === 'chord-async') return 'hands';
   if (type === 'short' || type === 'long') return 'duration';
   if (type.startsWith('pedal')) return 'pedal';

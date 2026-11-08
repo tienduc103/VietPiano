@@ -65,6 +65,7 @@ const STATUS_TEXT: Record<NoteAlignment['status'], string> = {
   repeated: 'Đánh lặp',
   simultaneous: 'Thừa (cùng lúc)',
   order: 'Sai thứ tự',
+  replayed: 'Chơi lại (không chấm)',
 };
 
 export function CoachResults({ data, audience, labelStyle, cfg, onRetry, onPracticeSection, onRecommendation, onContinuePlan }: Props) {
@@ -137,6 +138,11 @@ export function CoachResults({ data, audience, labelStyle, cfg, onRetry, onPract
             <Tile label="Thiếu" value={c.missing} tone={c.missing ? 'bad' : 'default'} testId="coach-count-missing" />
             <Tile label="Thừa" value={c.extra + c.repeated + c.simultaneous} tone={c.extra + c.repeated + c.simultaneous ? 'bad' : 'default'} testId="coach-count-extra" />
           </div>
+          {!!c.restarts && (
+            <p className="mt-2 text-sm text-amber-800 dark:text-amber-200" data-testid="coach-restarts">
+              ↺ Dừng lại rồi chơi lại {c.restarts} lần — {c.replayed ?? 0} nốt chơi lại đoạn đã qua không chấm, không tính là nốt thừa.
+            </p>
+          )}
           {result.confidence.overall === 'low' && (
             <p className="mt-3 rounded-xl bg-rose-50 p-2 text-sm text-rose-800 ring-1 ring-rose-200 dark:bg-rose-900/30 dark:text-rose-200 dark:ring-rose-800" role="alert" data-testid="coach-low-confidence">
               Chỉ đối chiếu được {Math.round(result.confidence.alignment * 100)}% bản nhạc — có thể đã chọn sai bài, chơi sai quãng tám cả bài hoặc chơi rất ít nốt. Điểm chỉ để tham khảo.
@@ -194,6 +200,11 @@ export function CoachResults({ data, audience, labelStyle, cfg, onRetry, onPract
             <span className="coach-legend-swatch bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">⏱</span>lệch thời điểm
             <span className="coach-legend-swatch bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">⌛</span>trường độ
             <span className="coach-legend-swatch bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">⏸</span>ngắt quãng
+            {!!c.restarts && (
+              <>
+                <span className="coach-legend-swatch bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">↺</span>dừng, chơi lại
+              </>
+            )}
             <span className="coach-legend-swatch bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300">✗</span>sai
             <span className="coach-legend-swatch bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300">○</span>thiếu
             <span className="coach-legend-swatch bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300">+</span>thừa
@@ -367,7 +378,9 @@ function SelectionDetail({
       : selection.kind === 'measure'
         ? ref.notes.filter((n) => n.measure === selection.measure).map((n) => ({ n, a: result.alignment.find((x) => x.refId === n.id) }))
         : [];
-  const extras = result.alignment.filter((a) => a.refId === null && (selection.kind === 'extra' ? a.perfId === selection.perfId : selection.kind === 'measure' && a.measure === selection.measure));
+  const inSelection = (a: NoteAlignment) => a.refId === null && (selection.kind === 'extra' ? a.perfId === selection.perfId : selection.kind === 'measure' && a.measure === selection.measure);
+  const extras = result.alignment.filter((a) => a.status !== 'replayed' && inSelection(a));
+  const replayed = result.alignment.filter((a) => a.status === 'replayed' && inSelection(a));
   const issues = result.issues.filter((i) =>
     selection.kind === 'measure' ? i.measure === selection.measure : selection.kind === 'extra' ? i.perfNoteIds.includes(selection.perfId) && i.refNoteIds.length === 0 : i.refNoteIds.some((id) => entries.some((e) => e.n.id === id)),
   );
@@ -425,6 +438,11 @@ function SelectionDetail({
       {extras.length > 0 && (
         <p className="mt-2 text-sm">
           Nốt thừa: {extras.map((x) => `${x.perfMidi !== undefined ? name(x.perfMidi) : '?'} lúc ${x.actualMs !== undefined ? sec(x.actualMs) : '—'}`).join(', ')}
+        </p>
+      )}
+      {replayed.length > 0 && (
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300" data-testid="coach-detail-replayed">
+          ↺ {replayed.length} nốt ở đây là lần chơi lại — không chấm (mỗi nốt chỉ chấm lần đầu chơi tới).
         </p>
       )}
       {issues.length > 0 ? (

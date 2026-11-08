@@ -6,7 +6,7 @@
 import { midiToName } from '../../music/notes';
 import { measureAtBeat } from '../reference/fromLesson';
 import type { BuiltPerformance, CoachMode, InputCapabilities, RefNote, ScoreReference, ScoringIssue, SubScore } from '../types';
-import type { AlignedNotes } from './align';
+import { mapAtMs, type AlignedNotes } from './align';
 import type { ModeParams } from './modes';
 
 export type IssueDraft = Omit<ScoringIssue, 'id' | 'deduction'>;
@@ -84,9 +84,9 @@ export function notePosition(ref: ScoreReference, n: Pick<RefNote, 'measure' | '
   return `${measureLabel(n.measure)}, phách ${formatNumber(beatNumber(ref, n.beatInMeasure), 2)}`;
 }
 
-/** Số ô in ứng với thời điểm biểu diễn (nốt thừa), kẹp trong bài. */
+/** Số ô in ứng với thời điểm biểu diễn (nốt thừa / nốt chơi lại — theo bản đồ tempo của lượt chứa nó), kẹp trong bài. */
 export function measureAtMs(ctx: AnalysisContext, ms: number): { measure: number; beat: number } {
-  const beat = Math.min(ctx.ref.totalBeats - 1e-6, Math.max(0, ctx.aligned.map.beatAt(ms)));
+  const beat = Math.min(ctx.ref.totalBeats - 1e-6, Math.max(0, mapAtMs(ctx.aligned, ms).beatAt(ms)));
   return { measure: measureAtBeat(ctx.ref, beat), beat };
 }
 

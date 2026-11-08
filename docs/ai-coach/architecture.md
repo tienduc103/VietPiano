@@ -44,6 +44,7 @@ Theo quy ước của dự án, chỗ đặc tả lệch quy tắc cũ thì theo
 | D9 | Mặc định KHÔNG gửi tên học viên cho AI (chỉ nhóm tuổi + trình độ); có công tắc. Không bao giờ gửi âm thanh / log MIDI thô | Bảo vệ dữ liệu trẻ em |
 | D10 | Ký hiệu legato / staccato / dấu nối / dấu ngắt câu: dữ liệu bài chưa có → báo "bài không có ký hiệu, không chấm"; `RefNote.articulation` để sẵn cho nguồn MusicXML sau này | Không suy đoán |
 | D11 | Xác thực AI qua LAN: proxy `/ollama` chỉ mở 2 API, chỉ trong mạng LAN của máy chạy server; mã truy cập (token) cho proxy để ở backlog (M4-T9, chờ duyệt vì đổi cấu hình server) | Không tự đổi cấu hình bảo mật |
+| D12 | Chơi lại (M2-T11): mỗi nốt chấm theo LẦN ĐẦU chơi tới nó — nốt sai ngay trước khi dừng vẫn tính sai dù lần chơi lại đã đúng; đoạn chơi lại phần đã qua không chấm, không tính nốt thừa; mỗi lần chơi lại trừ như một chỗ ngắt quãng (−0.34 điểm con "liên tục"); lùi đúng MỘT nốt để sửa không coi là chơi lại (chấm như trước); chơi thêm sau khi đã hết bài không trừ. Phương án khác (chờ duyệt): chấm theo lần chơi lại cuối | Như Chờ nốt (sửa sau khi sai vẫn tính lần sai) + quy tắc ngắt quãng cũ; chơi lại không bao giờ được điểm cao hơn chơi tiếp |
 
 ## 3. Bốn thành phần
 
@@ -122,7 +123,7 @@ Migration: `upgradeCoachDb(db, oldVersion)` chạy tuần tự từng phiên b�
 Khôi phục: trong lúc ghi, log được lưu nháp mỗi 3 giây (`status` recording / paused). Mở lại Coach thấy phiên dở dang → "Chấm phần đã ghi"
 (đánh dấu `interrupted`) hoặc "Bỏ phiên này" (người dùng bấm mới xoá).
 
-## 7. Thuật toán chấm (Scoring Engine `1.0.0`)
+## 7. Thuật toán chấm (Scoring Engine `1.1.0`)
 
 **Chuẩn hoá biểu diễn.** Ghép On/Off theo (nguồn, cổng, kênh, phím); Note On lặp khi phím chưa thả → đóng nốt cũ (`retrigger`); Note Off mồ côi
 bị bỏ (log vẫn giữ). Mốc thời gian: dùng mốc của nguồn + độ lệch ước lượng so với lúc nhận (trung vị `rt − t`; dao động > 30 ms → dùng `rt`).
@@ -143,13 +144,25 @@ sostenuto giữ các nốt đang giữ phím lúc đạp. Đạp sẵn trước 
 5. Nốt thừa: lặp phím vừa đánh (≤ max(250 ms, ½ phách)) → `repeated`; trùng cụm của nhóm đã khớp → `simultaneous`; còn lại `extra`.
    Hai nốt đơn liền nhau bị đảo thời gian / đánh tráo → `order`.
 6. Ngắt quãng: khoảng giữa hai nhóm > max(2 × kỳ vọng, kỳ vọng + 700 ms) → cắt đoạn, issue `hesitation`; tempo map không vắt qua chỗ ngắt.
+7. Chơi lại (engine 1.1.0, quyết định D12): DTW ở bước 2 có thêm BƯỚC NHẢY LÙI (phạt 1.2; lượt mới phải bắt đầu bằng một phím đúng
+   của chỗ quay lại; có bước nhảy thì kết thúc mở — lượt cuối dừng giữa bài được) → cắt đường đi thành các LƯỢT đơn điệu. Không
+   nhảy thì mỗi nốt chơi lại tốn 0.3–1.3 → chỉ đoạn chơi lại ≥ 2 nhóm mới đáng nhảy; một nốt thừa không bao giờ thành "chơi lại".
+   Mỗi lượt chạy riêng bước 3–5 (chỉ nốt của lượt, nhóm trong tầm lượt) → nốt chơi lại không bị ghép chéo sang lượt khác. Lượt < 2
+   nốt đúng phím hoặc không lùi thật → gộp lại (không có lần chơi lại nào → đúng thuật toán một lượt cũ). Ghép theo chỗ đã chơi tới
+   F: lượt k chấm các nhóm (F, nhóm xa nhất lượt k khớp]; nốt lượt k khớp nhóm ≤ F, hoặc thừa trước khi lượt k vượt F → `replayed`.
+   Nốt được chấm vẫn tăng theo cả phách lẫn thời gian → bản đồ tempo chung đơn điệu; mỗi lượt giữ bản đồ riêng. Nhịp: chỗ chuyển
+   lượt cắt đoạn (không thành `hesitation`), mỗi lần chơi lại = issue `restart` ở ô chỗ dừng ("đánh D5 (cần C5) rồi dừng lại, chơi
+   lại từ đầu ô 2"), trừ như một chỗ ngắt; chơi thêm sau khi đã hết bài không trừ. Trường độ kỳ vọng theo bản đồ của lượt chấm nốt
+   đó; nốt ngay trước chỗ dừng không chấm trường độ. Pedal đổi sang phách theo lượt (chỉ lúc lượt chơi đoạn được chấm); khoảng ký
+   hiệu vắt qua chỗ chuyển lượt không chấm. Kết quả có `counts.replayed / restarts` + `passes` (bản đồ từng lượt → con trỏ phát
+   lại nhảy lùi theo đúng lần chơi). Con trỏ lúc ghi (`follower`): hai phím vừa đánh khớp hai nhóm liền nhau phía trước → quay về đó.
 
 **Tiêu chí** (giá trị 0..1 = 1 − Σ khấu trừ; mỗi khấu trừ gắn một issue → truy vết được):
 
 | Tiêu chí | Công thức |
 | --- | --- |
 | Chính xác nốt | mỗi nốt bản nhạc 1/N: sai / thiếu 1, sai quãng tám 0.5, sai thứ tự 0.5; nốt thừa 0.5/N, đánh lặp 0.25/N |
-| Nhịp điệu | điểm con: thời điểm (lệch so với tempo cục bộ bỏ-một-ra trong ±1 ô — hồi quy bậc hai khi có ≥ 2 láng giềng mỗi phía để bám tempo đổi dần, tuyến tính 3 láng giềng gần nhất + dung sai ×1.5 ở đầu / cuối đoạn; lượt hai bỏ điểm lệch > 2.5× dung sai; `timingQuality` trọn điểm ≤ 10% phách (50–120 ms), 0 ở 3×) · tempo so mục tiêu (±8%, 0 ở ±40%) · ổn định tempo giữa các ô (CV ≤ 6% trọn, 0 ở 30%) · liên tục (mỗi chỗ ngắt −0.34) · đồng bộ hợp âm (≤ 60 ms) / hai tay (≤ 80 ms). Mode A 0.5/0.15/0.15/0.1/0.1 |
+| Nhịp điệu | điểm con: thời điểm (lệch so với tempo cục bộ bỏ-một-ra trong ±1 ô — hồi quy bậc hai khi có ≥ 2 láng giềng mỗi phía để bám tempo đổi dần, tuyến tính 3 láng giềng gần nhất + dung sai ×1.5 ở đầu / cuối đoạn; lượt hai bỏ điểm lệch > 2.5× dung sai; `timingQuality` trọn điểm ≤ 10% phách (50–120 ms), 0 ở 3×) · tempo so mục tiêu (±8%, 0 ở ±40%) · ổn định tempo giữa các ô (CV ≤ 6% trọn, 0 ở 30%) · liên tục (mỗi chỗ ngắt / mỗi lần chơi lại −0.34) · đồng bộ hợp âm (≤ 60 ms) / hai tay (≤ 80 ms). Mode A 0.5/0.15/0.15/0.1/0.1 |
 | Trường độ | `durationQuality(giữ / kỳ vọng)` (0.6–1.25 trọn điểm); thả lúc đạp pedal → tỉ lệ ≥ 1; chỉ nốt có Note Off |
 | Pedal | `pedalQuality` trên trục phách (qua tempo map) + issue: thiếu, đạp sớm / muộn, nhả sớm / muộn, không thay pedal khi đổi hợp âm, đạp thừa, giữ liên tục |
 | Sắc thái | tương phản giữa các đoạn p / f (`dynamicsQuality`, 3 dB) 0.4 · cresc./dim. (xu hướng ≥ 3 dB) 0.15 · đều lực trong đoạn (độ lệch chuẩn ≤ 2.5 dB trọn, 0 ở 7 dB) 0.3 · giai điệu nổi hơn đệm (≥ +1 dB trọn, 0 ở −3 dB) 0.15 |

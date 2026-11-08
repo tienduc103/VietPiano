@@ -5,9 +5,12 @@
  *  - Note Off không phải lúc tiếng tắt: `soundingMs` (tới lúc nhả pedal / sostenuto) được ghi riêng để hiển thị.
  *  - Còn giữ lúc dừng ghi: ≥ 60% trường độ thì trọn điểm, chưa đủ thì không đo; rút đàn giữa chừng → không đo.
  *  - Nguồn không báo thả phím (micro) → tiêu chí "không đo".
+ *  - Chơi lại: trường độ kỳ vọng theo tempo của chính lượt chấm nốt đó (không vắt qua chỗ chơi lại); nốt ngay trước chỗ dừng để
+ *    chơi lại không chấm (người chơi dừng tay — đã có lỗi "chơi lại").
  * Bài không có ký hiệu legato / staccato / dấu nối / ngắt câu → không chấm các ý đó (không suy đoán).
  */
 import { durationQuality } from '../../practice/PerformanceTracker';
+import { mapOfRef } from './align';
 import { formatNumber, notePosition, noteName, type AnalysisContext, type CriterionOutcome, type IssueDraft } from './context';
 
 export interface NoteDuration {
@@ -30,12 +33,19 @@ export function analyzeDuration(ctx: AnalysisContext): DurationOutcome {
   const durations = new Map<number, NoteDuration>();
   if (!ctx.capabilities.noteOff) return { value: null, subScores: [], issues: [], durations, reason: 'Nguồn vào không báo lúc thả phím (micro) — không đo trường độ' };
 
+  // Nhóm cuối mỗi lượt được chấm mà sau đó dừng lại để chơi lại.
+  const stopped = new Set<number>();
+  for (const s of aligned.restarts) {
+    const graded = aligned.passes[s.pass]?.graded;
+    if (!s.afterEnd && graded) stopped.add(graded[1]);
+  }
   const scored: { r: number; q: number; ratio: number }[] = [];
   ref.notes.forEach((n, r) => {
     const p = ctx.perfOf[r];
-    if (p === null || ctx.status[r] === 'order') return;
+    if (p === null || ctx.status[r] === 'order' || stopped.has(n.group)) return;
     const pn = perf.notes[p];
-    const expectedMs = aligned.map.msAt(n.onsetBeat + n.durationBeats) - aligned.map.msAt(n.onsetBeat);
+    const map = mapOfRef(aligned, r);
+    const expectedMs = map.msAt(n.onsetBeat + n.durationBeats) - map.msAt(n.onsetBeat);
     if (!(expectedMs > 0)) return;
     const soundingMs = pn.soundingEndMs === null ? null : pn.soundingEndMs - pn.onMs;
     if (pn.heldMs === null) {

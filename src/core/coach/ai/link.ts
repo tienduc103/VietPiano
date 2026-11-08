@@ -270,7 +270,7 @@ export const AI_LINK_PRIVACY =
 const RULES = 'nhận xét theo quy tắc';
 
 /** Chữ hiển thị cho một trạng thái (thuần, có test). */
-export function aiLinkView(s: AiLinkSnapshot, opts: { formatTime?: (ms: number) => string; retryIntervalMs?: number } = {}): AiLinkView {
+export function aiLinkView(s: AiLinkSnapshot, opts: { formatTime?: (ms: number) => string; retryIntervalMs?: number; /** Cách sửa khi không kết nối được (`ollamaConnectHint` theo nơi mở app). */ hint?: string } = {}): AiLinkView {
   const time = (ms: number | undefined) => (ms === undefined ? '' : (opts.formatTime ?? ((x: number) => new Date(x).toLocaleTimeString('vi-VN')))(ms));
   const retrySec = Math.round((opts.retryIntervalMs ?? AI_LINK_RETRY_INTERVAL_MS) / 1000);
   const checked = s.checkedAt !== undefined ? ` (kiểm tra lúc ${time(s.checkedAt)})` : '';
@@ -301,7 +301,7 @@ export function aiLinkView(s: AiLinkSnapshot, opts: { formatTime?: (ms: number) 
         icon: '✕',
         label: s.lastConnectedAt !== undefined ? 'AI cục bộ: mất kết nối' : 'AI cục bộ: chưa kết nối',
         sub: RULES,
-        detail: `${s.error ?? 'Không kết nối được Ollama'}${checked}. Sau khi chấm sẽ dùng nhận xét theo quy tắc; app tự kiểm tra lại mỗi ${retrySec} giây. Kiểm tra Ollama đang chạy; iPad / máy khác thì mở app từ máy cài Ollama (npm run serve:lan).`,
+        detail: `${s.error ?? 'Không kết nối được Ollama'}${checked}. Sau khi chấm sẽ dùng nhận xét theo quy tắc; app tự kiểm tra lại mỗi ${retrySec} giây. ${opts.hint ?? 'Kiểm tra Ollama đang chạy; iPad / máy khác thì mở app từ máy cài Ollama (npm run serve:lan).'}`,
       };
   }
 }

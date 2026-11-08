@@ -194,7 +194,9 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              docs/ai-coach/). Bốn thành phần, thuần + có test: `recorder/` log GỐC (on/off/cc 64·66·67/mark, mốc nguồn + mốc nhận,
                              không làm tròn) → `buildPerformance` (ghép nốt, retrigger, Off mồ côi, ngân pedal / sostenuto, bỏ khoảng tạm dừng, lệch đồng hồ
                              driver); `reference/fromLesson` (`ScoreReference` từ `Lesson`, id nốt `m:i`/`h:i:k`/`a:i:k`); `scoring/` (`align` DTW nhóm nốt +
-                             khớp từng nốt QH động đơn điệu theo phím, `ScoringEngine` 5 tiêu chí — dùng lại `timingQuality` / `durationQuality` / `pedalQuality` /
+                             khớp từng nốt QH động đơn điệu theo phím; DTW có BƯỚC NHẢY LÙI = chơi lại (M2-T11, `restart.test.ts`): cắt thành lượt, mỗi nốt chấm theo
+                             LẦN ĐẦU chơi tới, đoạn chơi lại `replayed` không tính thừa, mỗi lần chơi lại = issue `restart` trừ như một chỗ ngắt; lùi đúng 1 nốt
+                             không tính là chơi lại; `ScoringEngine` 5 tiêu chí — dùng lại `timingQuality` / `durationQuality` / `pedalQuality` /
                              `dynamicsQuality`; Mode A 40/25/15/10/10, B 30/30/10/10/20, C = A + `progress/compare`; tiêu chí thiếu tín hiệu → null + chia lại
                              trọng số; mỗi issue có `deduction` /100 ⇒ tổng = 100 − Σ; có `SCORING_ENGINE_VERSION`); `ai/` (payload tóm tắt có mã I…/R…,
                              Ollama JSON schema + timeout / retry, `verify` bỏ câu sai ô / số / tên nốt, `fallback` nhận xét theo quy tắc, `link` trạng thái kết nối AI
@@ -306,7 +308,9 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   `ollamaUrl` mặc định `"auto"` (giá trị cũ localhost tự đổi sang auto): thử `<base>ollama` trên server của app rồi tới
   `http://localhost:11434` (`resolveOllama`). `vite.config.ts` cho dev + preview proxy CHỈ `/ollama/api/{tags,chat}` → Ollama
   máy chạy server (bỏ header Origin; `OLLAMA_PROXY_TARGET`, `OLLAMA_PROXY=0`) → iPad trong LAN dùng chung AI của máy đó.
-  GitHub Pages không có proxy → chỉ dùng được Ollama trên chính máy mở app. Prompt yêu cầu model chỉ dựa
+  GitHub Pages không có proxy → chỉ dùng được Ollama trên chính máy mở app, và cần mở khoá 2 chỗ (thiếu chỗ nào trình duyệt cũng chỉ
+  thấy "lỗi mạng"): Chrome cho phép trang truy cập mạng cục bộ (Chrome ≥ 142 chặn trang công khai gọi localhost) + Ollama đặt
+  `OLLAMA_ORIGINS=https://<user>.github.io` (không thì 403). App nói đúng cách sửa theo nơi mở (`ollamaConnectHint`). Prompt yêu cầu model chỉ dựa
   vào số liệu được cung cấp; e2e giả lập Ollama bằng `page.route` (`e2e/ai-coach.spec.ts`).
   AI Piano Coach (`core/coach/ai`): AI không bao giờ tạo / sửa điểm; mặc định không gửi tên học viên (`aiShareName`, cài đặt riêng
   `vietpiano.coach.settings.v1`); không gửi log MIDI; câu trả lời coi là dữ liệu không tin cậy (schema + `verifyFeedback`) — `e2e/coach.spec.ts`.

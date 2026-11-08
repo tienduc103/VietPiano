@@ -14,8 +14,9 @@ import type { Hand } from '../lessons/types';
 
 // ── Phiên bản thuật toán (lưu cùng mọi kết quả → chấm lại được bằng bản mới, không mất bản cũ) ──
 export const RECORDER_VERSION = '1.0.0';
-export const SCORING_ENGINE_VERSION = '1.0.0';
-export const ALIGNMENT_VERSION = 'dtw-groups-1';
+/** 1.1.0: nhận biết chơi lại (DTW có bước nhảy lùi) — đoạn chơi lại không còn bị tính nốt thừa. */
+export const SCORING_ENGINE_VERSION = '1.1.0';
+export const ALIGNMENT_VERSION = 'dtw-jumps-2';
 export const WEIGHTS_VERSION = 'coach-weights-1';
 
 /** Chế độ chấm: A kỹ thuật · B biểu diễn · C tiến bộ (= A + so với lịch sử của chính người học). */
@@ -261,7 +262,8 @@ export interface ScoreReference {
 
 // ════════════════════════════ Kết quả chấm ════════════════════════════
 
-export type AlignmentStatus = 'correct' | 'octave' | 'wrong' | 'missing' | 'extra' | 'repeated' | 'simultaneous' | 'order';
+/** `replayed` = nốt đánh khi chơi lại đoạn đã chấm (sau khi dừng, quay lại đầu câu / đầu ô…) — không chấm, không tính thừa. */
+export type AlignmentStatus = 'correct' | 'octave' | 'wrong' | 'missing' | 'extra' | 'repeated' | 'simultaneous' | 'order' | 'replayed';
 
 export interface NoteAlignment {
   refId: string | null;
@@ -313,6 +315,8 @@ export type IssueType =
   | 'tempo-slow'
   | 'tempo-unstable'
   | 'hesitation'
+  /** Dừng lại rồi chơi lại từ một chỗ phía trước (tính như một chỗ ngắt quãng). */
+  | 'restart'
   | 'chord-async'
   | 'hands-async'
   // trường độ
@@ -442,6 +446,10 @@ export interface ScoringResult {
     simultaneous: number;
     order: number;
     performed: number;
+    /** Nốt đánh khi chơi lại đoạn đã chấm (không chấm) — kết quả engine < 1.1.0 không có. */
+    replayed?: number;
+    /** Số lần dừng lại rồi chơi lại giữa bài (không tính chơi thêm sau khi đã hết bài). */
+    restarts?: number;
   };
   alignment: NoteAlignment[];
   issues: ScoringIssue[];
@@ -463,6 +471,11 @@ export interface ScoringResult {
   explanation: string[];
   /** Bản đồ phách → ms (để phát lại / con trỏ); mỗi mốc [phách, ms]. */
   tempoMap: [number, number][];
+  /**
+   * Chỉ khi có chơi lại: các lượt chơi liền theo thời gian (`toMs` null = tới hết) + bản đồ tempo riêng từng lượt → con trỏ phát
+   * lại "bản của bạn" đi đúng chỗ đang chơi lại (nhảy lùi về chỗ chơi lại).
+   */
+  passes?: { fromMs: number; toMs: number | null; tempoMap: [number, number][] }[];
 }
 
 // ════════════════════════════ C. Dạy học ════════════════════════════

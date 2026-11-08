@@ -28,6 +28,7 @@ const FAMILY: Partial<Record<IssueType, RecommendationKind>> = {
   'tempo-slow': 'slow-metronome',
   'tempo-unstable': 'slow-metronome',
   hesitation: 'continuity',
+  restart: 'continuity',
   short: 'duration',
   long: 'duration',
   'pedal-missing': 'pedal',
@@ -129,7 +130,7 @@ export function recommendPractice(result: ScoringResult, ref: ScoreReference, op
         candidates.push({
           kind,
           title: 'Chơi liền mạch, không dừng giữa chừng',
-          reason: `${n} chỗ ngắt quãng / đánh lặp làm mất ${pts(lost)} điểm, ở ${range(span)}.`,
+          reason: `${n} chỗ ngắt quãng / chơi lại / đánh lặp làm mất ${pts(lost)} điểm, ở ${range(span)}.`,
           issueIds: ids,
           lost,
           measures: span,

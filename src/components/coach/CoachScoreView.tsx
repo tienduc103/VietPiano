@@ -29,6 +29,7 @@ const RANK: Record<Level, number> = { ok: 0, warn: 1, err: 2 };
 export function issueLevel(i: ScoringIssue): { level: Level; mark: string } | null {
   if (i.criterion === 'notes') return { level: 'err', mark: '✗' };
   if (i.type === 'hesitation') return { level: 'warn', mark: '⏸' };
+  if (i.type === 'restart') return { level: 'warn', mark: '↺' };
   if (i.criterion === 'rhythm') return { level: 'warn', mark: '⏱' };
   if (i.criterion === 'duration') return { level: 'warn', mark: '⌛' };
   return null;
@@ -194,7 +195,8 @@ export function CoachScoreView({ lesson, reference, result, labelStyle, showName
         return best;
       };
       for (const a of result.alignment) {
-        if (a.refId !== null || a.actualMs === undefined || a.perfId === null) continue;
+        // Nốt chơi lại đoạn đã chấm không phải nốt thừa (chỗ dừng đã có ký hiệu ↺ trên nốt).
+        if (a.refId !== null || a.status === 'replayed' || a.actualMs === undefined || a.perfId === null) continue;
         const pid = a.perfId;
         const issue = result.issues.find((i) => i.perfNoteIds.includes(pid) && i.criterion === 'notes');
         const t = text(xAtBeat(map.beatAt(a.actualMs)) + 16, topY - 18, '+', 'is-extra', issue?.message ?? 'Nốt thừa');

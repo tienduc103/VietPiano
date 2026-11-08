@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildCoachMessages, type CoachReport } from '../core/feedback/coachPrompt';
-import { AUTO_OLLAMA_URL, OllamaError, ollamaCandidates, ollamaProxyUrl, resolveOllama, streamChat } from '../core/feedback/OllamaClient';
+import { AUTO_OLLAMA_URL, OllamaError, ollamaCandidates, ollamaConnectHint, ollamaProxyUrl, resolveOllama, streamChat } from '../core/feedback/OllamaClient';
 import type { UiMode } from '../core/curriculum/types';
 import { activeProfile, useProfiles } from '../store/profileStore';
 import { useSettings } from '../store/settingsStore';
@@ -76,7 +76,7 @@ export function AiCoachCard({ report, mode, onDone }: { report: CoachReport; mod
           <p>{error.kind === 'network' ? `Không kết nối được Ollama ở ${ollamaUrlLabel(ollamaUrl)}.` : `Ollama báo lỗi: ${error.message}`}</p>
           <p className="mt-1 text-slate-500 dark:text-slate-400">
             {error.kind === 'network'
-              ? 'Kiểm tra Ollama đang chạy (biểu tượng ở khay hệ thống, hoặc lệnh "ollama serve"). iPad/máy khác: mở app từ máy cài Ollama (npm run serve:lan). Mở từ tên miền khác localhost: đặt biến môi trường OLLAMA_ORIGINS.'
+              ? ollamaConnectHint(location.origin)
               : `Tải model bằng lệnh "ollama pull ${ollamaModel}" hoặc chọn model khác ở Cài đặt.`}
           </p>
         </div>

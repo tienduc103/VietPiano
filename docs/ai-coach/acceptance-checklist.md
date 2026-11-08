@@ -25,7 +25,7 @@ Mở **Trang chủ → "AI Piano Coach — chấm bài đàn"** (hoặc `?screen
 | 14 | Tô màu đúng trên khuông | Chạm / bấm từng nốt màu | Chi tiết khớp màu + ký hiệu; có chú giải; rê chuột hiện chú thích | ☐ |
 | 15 | Phát lại phần biểu diễn | "Bản của bạn", tốc độ 75% / 50% | Nghe đúng thứ tự, con trỏ chạy theo; ghi rõ "không phải âm thanh gốc" | ☐ |
 | 16 | So sánh bản chuẩn / bản người học | "Bản chuẩn", "A/B ô …", "Nghe lại ô N" ở chi tiết | A (chuẩn) rồi B (bạn), đúng đoạn | ☐ |
-| 17 | AI cục bộ nhận xét đúng dữ liệu | Bật AI ở Cài đặt (Ollama chạy), chấm một bài | Nhận xét tiếng Việt; mọi ô / số / tên nốt trùng với kết quả chấm | ☐ |
+| 17 | AI cục bộ nhận xét đúng dữ liệu | Bật AI ở Cài đặt (Ollama chạy), chấm một bài. Mở app từ GitHub Pages: Chrome hỏi quyền truy cập mạng cục bộ → Cho phép, và Ollama cần `OLLAMA_ORIGINS=https://tienduc103.github.io` (máy dev đã đặt 2026-11-07) | Nhận xét tiếng Việt; mọi ô / số / tên nốt trùng với kết quả chấm. Chưa mở khoá → chip "chưa kết nối" kèm đúng 2 cách sửa trên | ☐ |
 | 18 | AI không bịa lỗi | Dùng model nhỏ hay bịa; xem trạng thái thẻ | Câu sai số liệu bị lọc ("đã lọc câu không khớp số liệu"); tắt Ollama → vẫn có nhận xét theo quy tắc | ☐ |
 | 19 | Tạo bài luyện sửa lỗi | "Luyện theo kế hoạch 7 bước" ở gợi ý | Màn chuẩn bị tự đặt đoạn + tempo của bước 1; chấm xong tự sang bước sau khi đạt | ☐ |
 | 20 | Lưu lịch sử + tiến bộ | Ghi cùng bài 3 lần | Lịch sử: so 3/5/10 lần, lỗi lặp lại, tempo cao nhất, sparkline | ☐ |
@@ -36,6 +36,8 @@ Mở **Trang chủ → "AI Piano Coach — chấm bài đàn"** (hoặc `?screen
 | 25 | Khôi phục khi app tắt giữa chừng | Đang ghi thì tải lại trang | Mở lại Coach thấy "Có phiên ghi chưa kết thúc" → "Chấm phần đã ghi" | ☐ |
 | 26 | Đàn rút giữa chừng | Rút cáp MIDI lúc đang ghi rồi cắm lại | Phiên vẫn ghi; "Cách tính điểm" ghi đàn mất kết nối, nốt bị ngắt không tính trường độ | ☐ |
 | 27 | Trạng thái AI cục bộ khi đang đánh | Bật AI, Ollama chạy → mở Coach, bấm "Bắt đầu ghi"; giữa bài tắt Ollama, lát sau bật lại (iPad: mở app qua `npm run serve:lan`) | Chip "AI cục bộ: đã kết nối · <model>" ở màn chuẩn bị và trên thanh ghi; tắt Ollama → trong ≤ 30 s (hoặc bấm chip) thành "mất kết nối"; bật lại → ≤ 15 s "đã kết nối"; nốt vẫn ghi đủ, không giật, khuông không nhảy | ☐ |
+| 32 | Chơi lại từ đầu câu (M2-T11) | Gam Đô: đánh sai nốt C5 ở ô 2, dừng 1–2 giây, chơi lại từ đầu ô 2 tới hết; thử thêm: dừng không đánh sai, chơi lại từ đầu bài, chơi lại hai lần, bài hai tay có pedal | "↺ Dừng lại rồi chơi lại 1 lần — … nốt chơi lại không chấm"; Thừa = 0, không có "+" đỏ cho đoạn chơi lại; nốt sai lần đầu vẫn ✗ "cần C5, bạn đánh …"; lỗi "rồi dừng lại, chơi lại từ đầu ô 2"; lúc ghi con trỏ quay về chỗ chơi lại; "Bản của bạn" con trỏ nhảy lùi đúng lúc chơi lại | ☐ |
+| 33 | Lùi một nốt để sửa / chơi thêm sau khi xong | Đánh sai rồi đánh lại đúng nốt trước đó + đi tiếp; chơi hết bài rồi chơi thêm ô 1 | Lùi một nốt: chấm như trước (sai / thừa, không phải "chơi lại"); chơi thêm sau khi xong: không trừ, "Cách tính điểm" ghi "chơi thêm … nốt — không chấm" | ☐ |
 
 Ghi chú khi thử thật (giúp chỉnh thuật toán): nếu thấy báo sai, mở **Lịch sử → Dữ liệu JSON** và gửi kèm file — log gốc giữ nguyên
 mốc thời gian, chấm lại được bằng phiên bản engine mới.

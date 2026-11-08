@@ -80,6 +80,35 @@ export function ollamaProxyUrl(origin: string, base: string): string {
   return new URL(`${base.replace(/\/*$/, '/')}ollama`, origin).href;
 }
 
+/** Nơi đang mở app: chính máy (localhost), máy chủ trong mạng LAN, hay tên miền công khai (GitHub Pages…). */
+export function pageOriginKind(origin: string): 'local' | 'lan' | 'public' {
+  let host = '';
+  try {
+    host = new URL(origin).hostname.toLowerCase();
+  } catch {
+    return 'public';
+  }
+  if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1') return 'local';
+  if (/^10\./.test(host) || /^192\.168\./.test(host) || /^172\.(1[6-9]|2\d|3[01])\./.test(host) || host.endsWith('.local')) return 'lan';
+  return 'public';
+}
+
+/**
+ * Cách sửa khi trình duyệt không kết nối được Ollama, theo nơi mở app. Trình duyệt không phân biệt được "Ollama chưa chạy" với
+ * "bị chặn" (cả hai là lỗi mạng) nên mở từ tên miền công khai thì nêu cả hai chỗ chặn: quyền truy cập mạng cục bộ của Chrome
+ * (trang công khai gọi vào máy) và OLLAMA_ORIGINS (Ollama trả 403 cho origin lạ, trình duyệt thấy như lỗi CORS).
+ */
+export function ollamaConnectHint(origin: string): string {
+  switch (pageOriginKind(origin)) {
+    case 'local':
+      return 'Kiểm tra Ollama đang chạy (biểu tượng ở khay hệ thống, hoặc lệnh "ollama serve"). iPad / máy khác: mở app từ máy cài Ollama (npm run serve:lan).';
+    case 'lan':
+      return 'App mở từ máy chủ trong mạng LAN: kiểm tra máy chủ của app (npm run serve:lan) và Ollama trên máy đó đang chạy.';
+    case 'public':
+      return `App đang mở từ ${origin} nên cần mở khoá hai chỗ trên máy cài Ollama: (1) Chrome hỏi quyền truy cập mạng cục bộ / thiết bị này → chọn Cho phép (lỡ chặn: bấm biểu tượng bên trái thanh địa chỉ → Cài đặt trang web → cho phép); (2) Ollama chỉ nhận trang được phép: đặt biến môi trường OLLAMA_ORIGINS=${origin} rồi thoát hẳn và mở lại Ollama. Kiểm tra cả Ollama đang chạy. iPad: mở app từ máy cài Ollama (npm run serve:lan).`;
+  }
+}
+
 /** Các địa chỉ sẽ thử theo thứ tự: "auto" → [proxy của app, localhost]; địa chỉ tự nhập → chỉ địa chỉ đó. */
 export function ollamaCandidates(setting: string, proxyUrl: string): string[] {
   return setting === AUTO_OLLAMA_URL ? [proxyUrl, LOCAL_OLLAMA_URL] : [setting];

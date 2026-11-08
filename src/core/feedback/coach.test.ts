@@ -8,7 +8,7 @@ import type { TempoState } from '../practice/TempoFollower';
 import { IndexedDbAiNoteStorage, MemoryAiNoteStorage } from '../storage/AiNoteStorage';
 import { MAX_AI_NOTES, sanitizeAiNotes } from './aiNotes';
 import { buildCoachMessages, lessonReport, practiceReport, tempoReport } from './coachPrompt';
-import { listModels, normalizeOllamaUrl, ollamaCandidates, ollamaProxyUrl, OllamaError, resolveOllama, streamChat } from './OllamaClient';
+import { listModels, normalizeOllamaUrl, ollamaCandidates, ollamaConnectHint, ollamaProxyUrl, OllamaError, pageOriginKind, resolveOllama, streamChat } from './OllamaClient';
 
 const ex = (id: string, title: string): Exercise => ({ kind: 'choice-quiz', id, title, questions: [], pass: { minScore: 70 } });
 
@@ -141,6 +141,20 @@ describe('OllamaClient', () => {
     expect(normalizeOllamaUrl('')).toBeNull();
     expect(normalizeOllamaUrl('ftp://x')).toBeNull();
     expect(normalizeOllamaUrl(' Auto ')).toBe('auto');
+  });
+
+  it('gợi ý khi không kết nối được: theo nơi mở app (máy này / LAN / tên miền công khai)', () => {
+    expect(pageOriginKind('http://localhost:5173')).toBe('local');
+    expect(pageOriginKind('http://127.0.0.1:4173')).toBe('local');
+    expect(pageOriginKind('https://192.168.1.16:5173')).toBe('lan');
+    expect(pageOriginKind('https://pc.local:4173')).toBe('lan');
+    expect(pageOriginKind('https://tienduc103.github.io')).toBe('public');
+    expect(ollamaConnectHint('http://localhost:5173')).toContain('Kiểm tra Ollama đang chạy');
+    expect(ollamaConnectHint('https://192.168.1.16:5173')).toContain('npm run serve:lan');
+    // GitHub Pages: trình duyệt chỉ thấy "lỗi mạng" dù Ollama đang chạy → nêu cả quyền mạng cục bộ lẫn OLLAMA_ORIGINS đúng origin.
+    const pub = ollamaConnectHint('https://tienduc103.github.io');
+    expect(pub).toContain('OLLAMA_ORIGINS=https://tienduc103.github.io');
+    expect(pub).toContain('mạng cục bộ');
   });
 
   it('auto: thử proxy của app trước rồi tới localhost; địa chỉ tự nhập chỉ thử chính nó', () => {

@@ -7,6 +7,7 @@ import { requestCoachFeedback } from '../../core/coach/ai/teacher';
 import { newId } from '../../core/coach/storage/CoachStorage';
 import type { AIFeedback, ScoringResult } from '../../core/coach/types';
 import { useSettings } from '../../store/settingsStore';
+import { ollamaConnectHint } from '../../core/feedback/OllamaClient';
 import { ollamaCandidatesForPage } from '../AiCoachCard';
 import { Button, Icon } from '../ui';
 
@@ -70,7 +71,7 @@ export function CoachFeedbackCard({ result, payload, audience, timeoutSec, retri
       </div>
       {phase === 'error' && fb?.error && (
         <p className="mt-1 text-sm text-amber-700 dark:text-amber-300" role="alert" data-testid="coach-feedback-error">
-          {fb.error}. Kiểm tra Ollama đang chạy hoặc chọn model khác ở Cài đặt → AI.
+          {fb.error}. {/kết nối/i.test(fb.error) ? ollamaConnectHint(location.origin) : 'Kiểm tra Ollama đang chạy hoặc chọn model khác ở Cài đặt → AI.'}
         </p>
       )}
       <p className={`mt-2 ${kids ? 'text-lg' : ''}`} data-testid="coach-feedback-summary" aria-live="polite">

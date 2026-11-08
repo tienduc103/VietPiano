@@ -131,9 +131,13 @@ function suite(name: string, make: () => CoachStorage) {
       await s.saveSession(recorded('s3', 'p2', 'lesson-a'));
       await s.saveResult(result('s1', 'p1', 'lesson-a'));
       const out = await s.exportProfile('p1', 42);
-      expect(out).toMatchObject({ format: 'vietpiano-coach-export', version: 1, exportedAt: 42, profileKey: 'p1' });
+      expect(out).toMatchObject({ format: 'vietpiano-coach-export', version: 2, exportedAt: 42, profileKey: 'p1' });
       expect(out.sessions.map((x) => x.id)).toEqual(['s1']);
       expect(out.results).toHaveLength(1);
+      // Log gốc đi kèm (chấm lại được bằng engine mới), chỉ của hồ sơ được xuất.
+      expect(Object.keys(out.events)).toEqual(['s1']);
+      expect(out.events.s1).toEqual((await s.getRecorded('s1'))!.events);
+      expect(out.events.s1.length).toBeGreaterThan(0);
     });
   });
 }

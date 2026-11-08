@@ -5,10 +5,13 @@
  * Chỉ chấm khi: bài có ký hiệu pedal (không phải pedal gợi ý) — hoặc người dùng chọn "bài này không dùng pedal" — VÀ phiên có
  * tín hiệu pedal (đàn đã gửi CC 64 / bước kiểm tra pedal đã nhận). Thiếu một trong hai → "chưa đủ điều kiện chấm", không đoán.
  * Half-pedal: giá trị 0–127 được ghi nhận, chỉ chấm đạp / nhả theo ngưỡng 64. Sostenuto / pedal mềm: ghi nhận, không chấm.
+ * Chơi lại: pedal đổi sang phách theo từng lượt, chỉ phần lúc lượt đó chơi đoạn được chấm (`pedalBeats`); khoảng ký hiệu vắt qua chỗ
+ * chuyển sang lượt chơi lại (bị ngắt giữa chừng) không chấm.
  */
 import { PEDAL_BLIP, PEDAL_DOWN_EARLY, PEDAL_DOWN_LATE, PEDAL_UP_TOLERANCE, pedalQuality, type PedalEvent } from '../../music/pedal';
 import { measureAtBeat } from '../reference/fromLesson';
 import type { ScoringResult } from '../types';
+import { passBreakBeats, pedalBeats } from './align';
 import { beatNumber, formatNumber, measureLabel, type AnalysisContext, type CriterionOutcome, type IssueDraft } from './context';
 
 export type PedalRule = 'auto' | 'none-expected';
@@ -23,24 +26,33 @@ const CONTINUOUS_MEASURES = 2;
 
 export function analyzePedal(ctx: AnalysisContext, rule: PedalRule = 'auto'): PedalOutcome {
   const { ref, perf, aligned } = ctx;
-  const map = aligned.map;
-  const marks = ref.pedal.graded ? ref.pedal.ranges : [];
+  const allMarks = ref.pedal.graded ? ref.pedal.ranges : [];
+  // Khoảng ký hiệu chứa chỗ chuyển sang lượt chơi lại: người chơi bị ngắt giữa chừng → không chấm.
+  const breaks = passBreakBeats(aligned, ref);
+  const marks = allMarks.filter((r) => !breaks.some((b) => b > r.startBeat + EPS && b < r.endBeat - EPS));
   const info = {
-    ranges: marks.length,
+    ranges: allMarks.length,
     intervals: perf.sustain.intervals.length,
     continuous: perf.sustain.continuous,
     sostenutoUsed: perf.sostenuto.intervals.length > 0,
     softUsed: perf.soft.intervals.length > 0,
   };
   if (!marks.length && rule !== 'none-expected') {
-    return { value: null, subScores: [], issues: [], info, reason: ref.pedal.ranges.length ? 'Bài chỉ gợi ý pedal (bản cơ bản) — không chấm pedal' : 'Bài không có ký hiệu pedal — không chấm pedal' };
+    const reason = allMarks.length
+      ? 'Mọi khoảng ký hiệu pedal đều bị ngắt bởi lần chơi lại — không chấm pedal'
+      : ref.pedal.ranges.length
+        ? 'Bài chỉ gợi ý pedal (bản cơ bản) — không chấm pedal'
+        : 'Bài không có ký hiệu pedal — không chấm pedal';
+    return { value: null, subScores: [], issues: [], info, reason };
   }
   if (!ctx.capabilities.pedal && !perf.sustainSeen) {
     return { value: null, subScores: [], issues: [], info, reason: 'Chưa nhận được tín hiệu pedal (CC 64) từ đàn trong phiên này — chưa đủ điều kiện chấm pedal' };
   }
 
   const endBeat = ref.totalBeats;
-  const iv = perf.sustain.intervals.map((x) => ({ down: map.beatAt(x.down), up: x.up === null ? Infinity : map.beatAt(x.up) }));
+  // Lần đạp dành cho khoảng ký hiệu bị bỏ (đạp trong cửa sổ đầu khoảng đó) cũng bỏ — không thành "đạp thừa".
+  const skipped = allMarks.filter((r) => !marks.includes(r));
+  const iv = pedalBeats(aligned, ref, perf.sustain.intervals).filter((x) => !skipped.some((r) => x.down >= r.startBeat - PEDAL_DOWN_EARLY - EPS && x.down < r.endBeat - EPS));
   const events: PedalEvent[] = iv.flatMap((x) => [{ beat: x.down, down: true }, ...(Number.isFinite(x.up) ? [{ beat: x.up, down: false }] : [])]);
   const value = pedalQuality(marks, events, endBeat);
 

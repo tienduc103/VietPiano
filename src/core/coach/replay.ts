@@ -21,14 +21,35 @@ export interface ReplayRange {
   toMs: number;
 }
 
-/** Bản đồ tempo của lần chấm (phách ↔ ms của bản người học). */
-export function resultMap(result: Pick<ScoringResult, 'tempoMap' | 'tempo'>): TempoMap {
+export type ResultMap = Pick<TempoMap, 'msAt' | 'beatAt' | 'msPerBeatAt'>;
+
+/**
+ * Bản đồ tempo của lần chấm (phách ↔ ms của bản người học). Phách → ms theo các nốt được chấm; có chơi lại (`passes`): ms → phách
+ * theo lượt chứa thời điểm đó → con trỏ "bản của bạn" đi theo cả lần chơi bỏ dở rồi nhảy lùi về chỗ chơi lại.
+ */
+export function resultMap(result: Pick<ScoringResult, 'tempoMap' | 'tempo' | 'passes'>): ResultMap {
   const mpb = 60000 / (result.tempo.actualBpm ?? result.tempo.targetBpm);
-  return new TempoMap(result.tempoMap, mpb, result.tempoMap[0] ?? [0, 0]);
+  const main = new TempoMap(result.tempoMap, mpb, result.tempoMap[0] ?? [0, 0]);
+  const passes = result.passes;
+  if (!passes || passes.length < 2) return main;
+  const maps = passes.map((p) => (p.tempoMap.length ? new TempoMap(p.tempoMap, mpb, p.tempoMap[0]) : main));
+  return {
+    msAt: (beat) => main.msAt(beat),
+    msPerBeatAt: (beat) => main.msPerBeatAt(beat),
+    beatAt: (ms) => {
+      let k = 0;
+      for (let i = passes.length - 1; i > 0; i--)
+        if (ms >= passes[i].fromMs) {
+          k = i;
+          break;
+        }
+      return maps[k].beatAt(ms);
+    },
+  };
 }
 
 /** Đoạn ô [a, b] (số in) → phách + thời gian trong bản người học; không có `measures` → cả bài. */
-export function replayRange(ref: ScoreReference, result: Pick<ScoringResult, 'tempoMap' | 'tempo'>, measures?: [number, number] | null): ReplayRange {
+export function replayRange(ref: ScoreReference, result: Pick<ScoringResult, 'tempoMap' | 'tempo' | 'passes'>, measures?: [number, number] | null): ReplayRange {
   const map = resultMap(result);
   const a = measures ? ref.printedMeasures.indexOf(measures[0]) : 0;
   const b = measures ? ref.printedMeasures.indexOf(measures[1]) : ref.printedMeasures.length - 1;

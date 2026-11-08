@@ -1,7 +1,9 @@
 /**
  * Bám vị trí khi đang ghi (con trỏ khuông nhạc + "ô hiện tại") — nhẹ, chạy trên từng Note On, KHÔNG phải bộ chấm:
  * con trỏ nhảy tới nhóm nốt kế tiếp (trong `lookahead` nhóm) có chứa phím vừa đánh; đánh đủ các phím của nhóm → sang nhóm sau.
- * Phím không khớp nhóm nào gần đó → đứng yên (người chơi đánh sai / thừa). Kết quả chấm cuối cùng do Scoring Engine căn chỉnh lại toàn bộ.
+ * Phím không khớp nhóm nào gần đó → đứng yên (người chơi đánh sai / thừa). Chơi lại: hai phím vừa đánh không phải nốt đang chờ mà khớp
+ * hai nhóm liền nhau phía trước (gần nhất) → con trỏ quay về đó (không nhảy nhầm lên trước vì nốt chơi lại trùng một nốt phía sau).
+ * Kết quả chấm cuối cùng do Scoring Engine căn chỉnh lại toàn bộ.
  */
 import type { ScoreReference } from './types';
 
@@ -9,6 +11,8 @@ export class ScoreFollower {
   private pointer = 0;
   private hits = new Map<number, Set<number>>();
   private readonly pitches: number[][];
+  /** Hai phím đánh gần nhất (nhận ra chơi lại). */
+  private recent: number[] = [];
 
   constructor(
     private readonly ref: ScoreReference,
@@ -20,6 +24,7 @@ export class ScoreFollower {
   reset(): void {
     this.pointer = 0;
     this.hits.clear();
+    this.recent = [];
   }
 
   /** Nhóm đang chờ (đã hết bài → nhóm cuối). */
@@ -36,6 +41,16 @@ export class ScoreFollower {
   }
 
   handle(midi: number): number {
+    this.recent = [...this.recent, midi].slice(-2);
+    if (!this.pitches[this.pointer]?.includes(midi)) {
+      const back = this.restartAt();
+      if (back !== null) {
+        this.pointer = back;
+        this.hits.clear();
+        this.recent = [];
+        return this.group;
+      }
+    }
     const last = Math.min(this.ref.groups.length - 1, this.pointer + this.lookahead);
     for (let g = this.pointer; g <= last; g++) {
       if (!this.pitches[g].includes(midi)) continue;
@@ -47,6 +62,14 @@ export class ScoreFollower {
       break;
     }
     return this.group;
+  }
+
+  /** Hai phím gần nhất khớp hai nhóm liền nhau phía trước con trỏ (tìm từ gần tới xa) → nhóm chờ tiếp theo; không thì null. */
+  private restartAt(): number | null {
+    if (this.recent.length < 2) return null;
+    const [a, b] = this.recent;
+    for (let h = Math.min(this.pointer, this.pitches.length) - 2; h >= 0; h--) if (this.pitches[h].includes(a) && this.pitches[h + 1].includes(b)) return h + 2;
+    return null;
   }
 
   /** Chỉ số nốt trên khuông cho con trỏ của ScoreView (`staff`: giai điệu nếu bài có, không thì phần đệm). */

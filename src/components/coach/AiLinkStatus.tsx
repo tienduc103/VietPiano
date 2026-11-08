@@ -1,4 +1,5 @@
 import { AI_LINK_PRIVACY, aiLinkView, type AiLinkMonitor, type AiLinkTone } from '../../core/coach/ai/link';
+import { ollamaConnectHint } from '../../core/feedback/OllamaClient';
 import { useAiLink } from '../../hooks/useCoachAiLink';
 
 /** Màu theo trạng thái — luôn đi kèm ký hiệu + chữ, không dùng riêng màu. */
@@ -16,7 +17,7 @@ export const AI_LINK_TONE: Record<AiLinkTone, string> = {
  */
 export function AiLinkChip({ monitor, className = '' }: { monitor: AiLinkMonitor; className?: string }) {
   const s = useAiLink(monitor);
-  const v = aiLinkView(s);
+  const v = aiLinkView(s, { hint: ollamaConnectHint(location.origin) });
   const busy = s.state === 'checking' || s.refreshing;
   const cls = `inline-flex min-h-12 max-w-full items-center gap-1.5 rounded-full px-3 text-sm ring-1 ${AI_LINK_TONE[v.tone]} ${className}`;
   const body = (
@@ -59,7 +60,7 @@ export function AiLinkChip({ monitor, className = '' }: { monitor: AiLinkMonitor
 export function AiLinkDetail({ monitor }: { monitor: AiLinkMonitor }) {
   const s = useAiLink(monitor);
   if (s.state === 'off') return null;
-  const v = aiLinkView(s);
+  const v = aiLinkView(s, { hint: ollamaConnectHint(location.origin) });
   return (
     <p className={`mt-2 rounded-xl px-3 py-2 text-sm ring-1 ${AI_LINK_TONE[v.tone]}`} data-testid="coach-ai-status" data-state={s.state}>
       <span aria-hidden className={`mr-1 font-bold ${s.refreshing ? 'animate-pulse' : ''}`}>
