@@ -308,8 +308,10 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   `ollamaUrl` mặc định `"auto"` (giá trị cũ localhost tự đổi sang auto): thử `<base>ollama` trên server của app rồi tới
   `http://localhost:11434` (`resolveOllama`). `vite.config.ts` cho dev + preview proxy CHỈ `/ollama/api/{tags,chat}` → Ollama
   máy chạy server (bỏ header Origin; `OLLAMA_PROXY_TARGET`, `OLLAMA_PROXY=0`) → iPad trong LAN dùng chung AI của máy đó.
-  GitHub Pages không có proxy → chỉ dùng được Ollama trên chính máy mở app, và cần mở khoá 2 chỗ (thiếu chỗ nào trình duyệt cũng chỉ
-  thấy "lỗi mạng"): Chrome cho phép trang truy cập mạng cục bộ (Chrome ≥ 142 chặn trang công khai gọi localhost) + Ollama đặt
+  GitHub Pages không có proxy → "auto" chỉ tìm Ollama trên chính máy mở app; Ollama ở máy khác trong LAN thì nhập `http://<IP>:11434`
+  ở Cài đặt → AI (máy đó mở Ollama ra mạng: `OLLAMA_HOST=0.0.0.0` / "Expose Ollama to the network"; trang https gọi http IP LAN chạy được
+  khi đã cấp quyền mạng cục bộ — thử Chrome 156). Cần mở khoá 2 chỗ (thiếu chỗ nào trình duyệt cũng chỉ thấy "lỗi mạng"): Chrome trên máy
+  mở app cho phép truy cập mạng cục bộ (Chrome ≥ 142 chặn trang công khai gọi localhost / LAN) + Ollama trên máy cài đặt
   `OLLAMA_ORIGINS=https://<user>.github.io` (không thì 403). App nói đúng cách sửa theo nơi mở (`ollamaConnectHint`). Prompt yêu cầu model chỉ dựa
   vào số liệu được cung cấp; e2e giả lập Ollama bằng `page.route` (`e2e/ai-coach.spec.ts`).
   AI Piano Coach (`core/coach/ai`): AI không bao giờ tạo / sửa điểm; mặc định không gửi tên học viên (`aiShareName`, cài đặt riêng

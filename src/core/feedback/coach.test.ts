@@ -154,7 +154,12 @@ describe('OllamaClient', () => {
     // GitHub Pages: trình duyệt chỉ thấy "lỗi mạng" dù Ollama đang chạy → nêu cả quyền mạng cục bộ lẫn OLLAMA_ORIGINS đúng origin.
     const pub = ollamaConnectHint('https://tienduc103.github.io');
     expect(pub).toContain('OLLAMA_ORIGINS=https://tienduc103.github.io');
-    expect(pub).toContain('mạng cục bộ');
+    expect(pub).toContain('Chrome trên máy này hỏi quyền truy cập mạng cục bộ');
+    // Laptop mở GitHub Pages, Ollama ở PC: "auto" chỉ tìm trên chính laptop → phải nói cách nhập địa chỉ PC + mở Ollama ra mạng.
+    for (const hint of [pub, ollamaConnectHint('http://localhost:5173')]) {
+      expect(hint).toContain('Cài đặt → AI → Địa chỉ Ollama');
+      expect(hint).toContain('Expose Ollama to the network');
+    }
   });
 
   it('auto: thử proxy của app trước rồi tới localhost; địa chỉ tự nhập chỉ thử chính nó', () => {

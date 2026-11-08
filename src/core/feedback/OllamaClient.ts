@@ -94,18 +94,27 @@ export function pageOriginKind(origin: string): 'local' | 'lan' | 'public' {
 }
 
 /**
+ * Ollama ở máy KHÁC trong mạng (vd. laptop dùng AI của PC): "auto" chỉ thử proxy của app và localhost của chính máy đang mở app,
+ * nên phải nhập địa chỉ máy đó; Ollama mặc định chỉ nghe 127.0.0.1 → máy đó phải mở ra mạng.
+ * Đã thử trên Chrome 156 (2026-11-08): trang GitHub Pages (https) gọi http://<IP LAN>:11434 chạy được khi đã cấp quyền mạng cục bộ.
+ */
+const OTHER_MACHINE_HINT =
+  'Ollama cài ở máy khác trong mạng (vd. laptop dùng AI của PC): nhập địa chỉ máy đó ở Cài đặt → AI → Địa chỉ Ollama (vd. http://192.168.1.10:11434), và trên máy đó bật "Expose Ollama to the network" trong Settings của Ollama (hoặc đặt OLLAMA_HOST=0.0.0.0).';
+
+/**
  * Cách sửa khi trình duyệt không kết nối được Ollama, theo nơi mở app. Trình duyệt không phân biệt được "Ollama chưa chạy" với
  * "bị chặn" (cả hai là lỗi mạng) nên mở từ tên miền công khai thì nêu cả hai chỗ chặn: quyền truy cập mạng cục bộ của Chrome
- * (trang công khai gọi vào máy) và OLLAMA_ORIGINS (Ollama trả 403 cho origin lạ, trình duyệt thấy như lỗi CORS).
+ * TRÊN MÁY ĐANG MỞ APP (trang công khai gọi vào mạng cục bộ) và OLLAMA_ORIGINS TRÊN MÁY CÀI OLLAMA (Ollama trả 403 cho origin lạ,
+ * trình duyệt thấy như lỗi CORS) — hai máy này có thể khác nhau.
  */
 export function ollamaConnectHint(origin: string): string {
   switch (pageOriginKind(origin)) {
     case 'local':
-      return 'Kiểm tra Ollama đang chạy (biểu tượng ở khay hệ thống, hoặc lệnh "ollama serve"). iPad / máy khác: mở app từ máy cài Ollama (npm run serve:lan).';
+      return `Kiểm tra Ollama đang chạy (biểu tượng ở khay hệ thống, hoặc lệnh "ollama serve"). ${OTHER_MACHINE_HINT} iPad: mở app từ máy cài Ollama (npm run serve:lan).`;
     case 'lan':
       return 'App mở từ máy chủ trong mạng LAN: kiểm tra máy chủ của app (npm run serve:lan) và Ollama trên máy đó đang chạy.';
     case 'public':
-      return `App đang mở từ ${origin} nên cần mở khoá hai chỗ trên máy cài Ollama: (1) Chrome hỏi quyền truy cập mạng cục bộ / thiết bị này → chọn Cho phép (lỡ chặn: bấm biểu tượng bên trái thanh địa chỉ → Cài đặt trang web → cho phép); (2) Ollama chỉ nhận trang được phép: đặt biến môi trường OLLAMA_ORIGINS=${origin} rồi thoát hẳn và mở lại Ollama. Kiểm tra cả Ollama đang chạy. iPad: mở app từ máy cài Ollama (npm run serve:lan).`;
+      return `App đang mở từ ${origin} nên cần mở khoá hai chỗ: (1) Chrome trên máy này hỏi quyền truy cập mạng cục bộ / thiết bị → chọn Cho phép (lỡ chặn: bấm biểu tượng bên trái thanh địa chỉ → Cài đặt trang web → cho phép); (2) trên máy cài Ollama: đặt biến môi trường OLLAMA_ORIGINS=${origin} rồi thoát hẳn và mở lại Ollama. Kiểm tra cả Ollama đang chạy. ${OTHER_MACHINE_HINT} iPad: mở app từ máy cài Ollama (npm run serve:lan).`;
   }
 }
 
