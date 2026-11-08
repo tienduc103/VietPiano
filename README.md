@@ -149,7 +149,7 @@ AudioWorklet ─▶ AudioInput ─▶ PitchDetector (YIN) ─▶ NoteRecognizer 
 (âm lượng tăng đột ngột khi gõ phím) và bỏ qua hoạ âm; `PracticeEngine` chỉ tiến một nốt mỗi sự kiện và bỏ qua
 sự kiện đến quá sát lần chuyển nốt trước.
 
-Chi tiết cho người phát triển: xem [CLAUDE.md](CLAUDE.md).
+Chi tiết cho người phát triển: xem [CLAUDE.md](CLAUDE.md) (lệnh, nguyên tắc, quy ước) và [docs/architecture.md](docs/architecture.md) (bản đồ từng module).
 
 ## 7. Giới hạn hiện tại
 
