@@ -15,12 +15,14 @@ import {
   type ArcadeRecords,
   type ArcadeVariant,
 } from '../core/games/arcade';
-import { curriculumGameIndex, GAME_INFO, GAME_ORDER, lessonLabel, lessonsWithGame, specSummary, type LessonGames } from '../core/games/catalog';
+import { curriculumGameIndex, GAME_INFO, GAME_ORDER, lessonLabel, lessonsWithGame, specSummary, STANDALONE_GAMES, type LessonGames, type StandaloneGameId } from '../core/games/catalog';
 import { GAME_ICON, GAME_TITLE, type GameKind } from '../core/games/gameForLesson';
 import { GamePlayer, GameStage } from '../components/games/GameStage';
 import { Button, FullscreenButton, Icon } from '../components/ui';
 import { useUiMode } from '../hooks/useUiMode';
-import { useApp } from '../store/appStore';
+import { useApp, type GamesOpen } from '../store/appStore';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
+import type { ShortcutTarget } from '../core/shortcuts/types';
 import { useCurriculum } from '../store/curriculumStore';
 import { useSettings } from '../store/settingsStore';
 
@@ -38,13 +40,41 @@ const loadTab = (): Tab => {
 
 const starsText = (r: GameRecord | undefined) => (r && r.plays > 0 ? `${'★'.repeat(r.bestStars)}${'☆'.repeat(3 - r.bestStars)} · kỷ lục ${r.bestScore}` : 'Chưa chơi');
 
+/** Màu thẻ của trò có màn riêng (nội dung thẻ ở `STANDALONE_GAMES`). */
+const STANDALONE_CARD: Record<StandaloneGameId, string> = {
+  'note-hunter': 'bg-gradient-to-r from-violet-600 to-fuchsia-500 shadow-fuchsia-500/30',
+  'flappy-note': 'bg-gradient-to-r from-sky-500 to-amber-400 shadow-sky-500/30',
+  'balloon-pop': 'bg-gradient-to-r from-pink-500 to-orange-400 shadow-pink-500/30',
+  'tomato-harvest': 'bg-gradient-to-r from-emerald-600 via-lime-500 to-amber-400 shadow-emerald-500/30',
+  'f1-racing': 'bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 shadow-red-500/30',
+};
+
+/** Trò mở thẳng từ lối tắt (route `games.open`); không còn trò / mức đó → danh sách như thường. */
+function initialPlaying(open: GamesOpen | undefined): Playing | null {
+  if (!open) return null;
+  if (open.type === 'arcade') {
+    const variant = isArcadeKind(open.kind) ? ARCADE_VARIANTS[open.kind].find((v) => v.id === open.variant) : undefined;
+    return variant ? { type: 'arcade', kind: open.kind, variant } : null;
+  }
+  const entry = curriculumGameIndex().find((e) => e.lesson.lessonId === open.lessonId);
+  return entry && entry.specs.some((s) => s.kind === open.kind) ? { type: 'lesson', entry, kind: open.kind } : null;
+}
+
+/** Đích lối tắt của màn đang xem (danh sách, hoặc trò đang chơi). */
+function pinTarget(playing: Playing | null): ShortcutTarget {
+  if (!playing) return { type: 'page', id: 'games' };
+  return playing.type === 'arcade'
+    ? { type: 'arcade', id: `${playing.kind}:${playing.variant.id}` }
+    : { type: 'lesson-game', id: `${playing.entry.lesson.lessonId}:${playing.kind}` };
+}
+
 /**
  * Mục Trò chơi: tab "Theo trò chơi" (Trò chơi mới — Săn nốt, Flappy Note, Bóng bay, trò tự do — ở trên, trò theo bài học ở dưới;
  * chọn trò → chọn buổi học / mức chơi) và tab "Theo buổi học"
  * (chọn cấp → các buổi, mỗi buổi liệt kê trò của nó). Mọi buổi đều mở (mở khoá chỉ là gợi ý), buổi chưa học có nhãn.
  * Kỷ lục trò của buổi học dùng chung với trò sau buổi (`LessonRecord.games`); trò tự do lưu riêng (`arcade.ts`).
  */
-export function GamesScreen() {
+export function GamesScreen({ open }: { open?: GamesOpen } = {}) {
   const navigate = useApp((s) => s.navigate);
   const records = useCurriculum((s) => s.records);
   const profileKey = useCurriculum((s) => s.profileKey);
@@ -64,14 +94,14 @@ export function GamesScreen() {
   };
   const [kind, setKind] = useState<GameKind | null>(null);
   const [levelId, setLevelId] = useState(() => currentLevel(CURRICULUM, records)?.levelId ?? levels[0]?.levelId);
-  const [playing, setPlaying] = useState<Playing | null>(null);
+  const [playing, setPlaying] = useState<Playing | null>(() => initialPlaying(open));
   const [arcade, setArcade] = useState<ArcadeRecords>(() => loadArcadeRecords(profileKey));
   useEffect(() => {
     setArcade(loadArcadeRecords(profileKey));
   }, [profileKey]);
 
-  /** Thời gian chơi tính từ lúc mở trò / ván trước (cộng vào thời gian học của buổi). */
-  const since = useRef(0);
+  /** Thời gian chơi tính từ lúc mở trò / ván trước (cộng vào thời gian học của buổi). Mở thẳng từ lối tắt → tính từ lúc vào màn. */
+  const since = useRef(performance.now());
   const play = (p: Playing) => {
     since.current = performance.now();
     setPlaying(p);
@@ -101,6 +131,7 @@ export function GamesScreen() {
             <p className="flex-1 truncate text-lg font-semibold text-slate-600 dark:text-slate-300" data-testid="games-playing-title">
               {title}
             </p>
+            <PinShortcutButton target={pinTarget(playing)} />
             <FullscreenButton />
           </header>
           {playing.type === 'lesson' ? (
@@ -196,6 +227,7 @@ export function GamesScreen() {
               </button>
             ))}
           </div>
+          <PinShortcutButton target={pinTarget(null)} />
           <FullscreenButton />
         </header>
 
@@ -213,72 +245,23 @@ export function GamesScreen() {
                 </div>
                 {source === 'arcade' && (
                   <div className="grid gap-3 lg:grid-cols-2">
-                    <button
-                      type="button"
-                      onClick={() => navigate({ name: 'note-hunter' })}
-                      data-testid="open-note-hunter"
-                      className="flex min-h-16 items-center gap-4 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-4 text-left text-white shadow-md shadow-fuchsia-500/30 hover:brightness-110"
-                    >
-                      <span className="text-4xl" aria-hidden>
-                        🎯
-                      </span>
-                      <span className="flex-1">
-                        <span className="block text-xl font-bold">Săn nốt (Note Hunter)</span>
-                        <span className="block text-sm opacity-90">Chọn nốt cần săn — bản nhạc tự chạy và dừng ở mỗi nốt đó chờ bạn đánh đúng. Đọc nốt trên khuông · MIDI, micro, piano ảo.</span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate({ name: 'flappy-note' })}
-                      data-testid="open-flappy-note"
-                      className="flex min-h-16 items-center gap-4 rounded-2xl bg-gradient-to-r from-sky-500 to-amber-400 px-5 py-4 text-left text-white shadow-md shadow-sky-500/30 hover:brightness-110"
-                    >
-                      <span className="text-4xl" aria-hidden>
-                        🐤
-                      </span>
-                      <span className="flex-1">
-                        <span className="block text-xl font-bold">Flappy Note</span>
-                        <span className="block text-sm opacity-90">Mỗi nốt đánh đúng là một lần chú chim vỗ cánh — bay qua các ống! Đọc nốt, số ngón 1–5, phản xạ · MIDI, bàn phím máy tính, piano ảo.</span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate({ name: 'balloon-pop' })}
-                      data-testid="open-balloon-pop"
-                      className="flex min-h-16 items-center gap-4 rounded-2xl bg-gradient-to-r from-pink-500 to-orange-400 px-5 py-4 text-left text-white shadow-md shadow-pink-500/30 hover:brightness-110"
-                    >
-                      <span className="text-4xl" aria-hidden>
-                        🎈
-                      </span>
-                      <span className="flex-1">
-                        <span className="block text-xl font-bold">Bóng bay nốt nhạc</span>
-                        <span className="block text-sm opacity-90">Bóng bay lên trên phím đàn — đánh đúng nốt để nổ bóng! 1 tay, 2 tay, 7 nốt, full phím · Dễ / Trung bình / Khó · MIDI, micro, piano ảo.</span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate({ name: 'tomato-harvest' })}
-                      data-testid="open-tomato-harvest"
-                      className="flex min-h-16 items-center gap-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-lime-500 to-amber-400 px-5 py-4 text-left text-white shadow-md shadow-emerald-500/30 hover:brightness-110"
-                    >
-                      <span className="text-4xl" aria-hidden>🐰🍅</span>
-                      <span className="flex-1">
-                        <span className="block text-xl font-bold">Thu hoạch cà chua</span>
-                        <span className="block text-sm opacity-90">Đọc nốt giúp thỏ hái 50 quả · 3 cấp độ · cà chua vàng, mưa, bướm, sâu và cúp gia đình · không giới hạn thời gian.</span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate({ name: 'f1-racing' })}
-                      data-testid="open-f1-racing"
-                      className="flex min-h-16 items-center gap-4 rounded-2xl bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 px-5 py-4 text-left text-white shadow-md shadow-red-500/30 hover:brightness-110"
-                    >
-                      <span className="text-4xl" aria-hidden>🏎️</span>
-                      <span className="flex-1">
-                        <span className="block text-xl font-bold">VietPiano F1 Racing</span>
-                        <span className="block text-sm opacity-90">Đọc nốt để giữ tốc độ, hai phím đàn để đổi làn né chướng ngại · 5 xe · 3 chặng đua · cúp và bảng xếp hạng gia đình · MIDI, micro, piano ảo.</span>
-                      </span>
-                    </button>
+                    {STANDALONE_GAMES.map((g) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => navigate({ name: g.id })}
+                        data-testid={`open-${g.id}`}
+                        className={`flex min-h-16 items-center gap-4 rounded-2xl px-5 py-4 text-left text-white shadow-md hover:brightness-110 ${STANDALONE_CARD[g.id]}`}
+                      >
+                        <span className="text-4xl" aria-hidden>
+                          {g.icon}
+                        </span>
+                        <span className="flex-1">
+                          <span className="block text-xl font-bold">{g.title}</span>
+                          <span className="block text-sm opacity-90">{g.description}</span>
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 )}
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

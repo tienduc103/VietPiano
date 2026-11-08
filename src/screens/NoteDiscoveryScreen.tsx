@@ -3,6 +3,7 @@ import { DISCOVERY, DISCOVERY_NOTE } from '../core/curriculum/content/discovery'
 import { text } from '../core/curriculum/types';
 import { levelProgress, lessonStatus, orderedLessons } from '../core/curriculum/unlock';
 import { useApp } from '../store/appStore';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 import { useCurriculum } from '../store/curriculumStore';
 import { useUiMode } from '../hooks/useUiMode';
 import { Button, FullscreenButton, Icon } from '../components/ui';
@@ -47,6 +48,7 @@ export function NoteDiscoveryScreen() {
           <span className="rounded-full bg-violet-100 px-3 py-1 text-sm font-bold text-violet-800 dark:bg-violet-950 dark:text-violet-200" data-testid="discovery-progress">
             Đã đạt {progress.completed}/{progress.total}
           </span>
+          <PinShortcutButton target={{ type: 'page', id: 'note-discovery' }} />
           <FullscreenButton />
         </header>
         <p className={`mt-3 ${kids ? 'text-xl' : 'text-lg'} text-slate-600 dark:text-slate-300`}>

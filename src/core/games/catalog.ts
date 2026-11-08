@@ -31,6 +31,64 @@ export const GAME_INFO: Record<GameKind, GameInfo> = {
   'steady-beat': { skill: 'Giữ nhịp đều', description: 'Gõ theo metronome, rồi metronome tắt — tự giữ nhịp thật đều. Không xét cao độ.', source: 'arcade' },
 };
 
+/** Trò chơi có màn riêng (id = tên route) — thẻ đầu mục Trò chơi, đích lối tắt. */
+export type StandaloneGameId = 'note-hunter' | 'flappy-note' | 'balloon-pop' | 'tomato-harvest' | 'f1-racing';
+
+export interface StandaloneGameInfo {
+  id: StandaloneGameId;
+  title: string;
+  /** Tên gọn (tên mặc định của lối tắt). */
+  shortTitle: string;
+  /** Biểu tượng trên thẻ mục Trò chơi. */
+  icon: string;
+  /** Một emoji cho nút lối tắt. */
+  shortcutIcon: string;
+  description: string;
+}
+
+export const STANDALONE_GAMES: readonly StandaloneGameInfo[] = [
+  {
+    id: 'note-hunter',
+    title: 'Săn nốt (Note Hunter)',
+    shortTitle: 'Săn nốt',
+    icon: '🎯',
+    shortcutIcon: '🎯',
+    description: 'Chọn nốt cần săn — bản nhạc tự chạy và dừng ở mỗi nốt đó chờ bạn đánh đúng. Đọc nốt trên khuông · MIDI, micro, piano ảo.',
+  },
+  {
+    id: 'flappy-note',
+    title: 'Flappy Note',
+    shortTitle: 'Flappy Note',
+    icon: '🐤',
+    shortcutIcon: '🐤',
+    description: 'Mỗi nốt đánh đúng là một lần chú chim vỗ cánh — bay qua các ống! Đọc nốt, số ngón 1–5, phản xạ · MIDI, bàn phím máy tính, piano ảo.',
+  },
+  {
+    id: 'balloon-pop',
+    title: 'Bóng bay nốt nhạc',
+    shortTitle: 'Bóng bay',
+    icon: '🎈',
+    shortcutIcon: '🎈',
+    description: 'Bóng bay lên trên phím đàn — đánh đúng nốt để nổ bóng! 1 tay, 2 tay, 7 nốt, full phím · Dễ / Trung bình / Khó · MIDI, micro, piano ảo.',
+  },
+  {
+    id: 'tomato-harvest',
+    title: 'Thu hoạch cà chua',
+    shortTitle: 'Thu hoạch cà chua',
+    icon: '🐰🍅',
+    shortcutIcon: '🍅',
+    description: 'Đọc nốt giúp thỏ hái 50 quả · 3 cấp độ · cà chua vàng, mưa, bướm, sâu và cúp gia đình · không giới hạn thời gian.',
+  },
+  {
+    id: 'f1-racing',
+    title: 'VietPiano F1 Racing',
+    shortTitle: 'F1 Racing',
+    icon: '🏎️',
+    shortcutIcon: '🏎️',
+    description: 'Đọc nốt để giữ tốc độ, hai phím đàn để đổi làn né chướng ngại · 5 xe · 3 chặng đua · cúp và bảng xếp hạng gia đình · MIDI, micro, piano ảo.',
+  },
+];
+
 /** Thứ tự hiển thị: trò của buổi học trước, trò mới sau. */
 export const GAME_ORDER: readonly GameKind[] = [
   'note-catch',

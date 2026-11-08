@@ -26,6 +26,7 @@ import { adviseDifficulty, handAccuracy, handReactionMs, troubleNotes, weakMovem
 import { clearFiveFingerStats, loadFiveFingerSettings, loadFiveFingerStats, recordFiveFingerChain, saveFiveFingerSettings } from '../core/fiveFinger/storage';
 import { useNoteInput } from '../hooks/useNoteInput';
 import { useApp } from '../store/appStore';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 import { useMic } from '../store/micStore';
 import { useMidi } from '../store/midiStore';
 import { usePlayingNow } from '../store/playingStore';
@@ -491,6 +492,7 @@ function SettingsModal({ settings, onChange, onClose, micOnly }: { settings: Ses
   return (
     <ModalShell title="⚙ Cài đặt 5 ngón" onClose={onClose}>
       <p className="text-sm text-slate-600 dark:text-slate-300">Đổi cài đặt sẽ bắt đầu buổi tập mới.</p>
+      <PinShortcutButton variant="row" target={{ type: 'page', id: 'five-finger' }} />
       <Row label="Tay">
         <Segmented value={settings.handMode} onChange={(handMode: HandMode) => onChange({ handMode })} options={(Object.keys(HAND_MODE_LABEL) as HandMode[]).map((v) => ({ value: v, label: HAND_MODE_LABEL[v] }))} />
       </Row>

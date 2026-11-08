@@ -130,6 +130,10 @@ const ICONS = {
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
   /** Luyện theo đoạn (ô nhịp). */
   brackets: 'M8 4H4v16h4M16 4h4v16h-4',
+  /** Ghim lối tắt. */
+  pin: 'M12 17v5M9 10.8a2 2 0 0 1-1.1 1.8l-1.8.9A2 2 0 0 0 5 15.2V17h14v-1.8a2 2 0 0 0-1.1-1.8l-1.8-.9a2 2 0 0 1-1.1-1.8V7h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z',
+  /** Kéo để đổi thứ tự. */
+  grip: 'M9 5h.01M15 5h.01M9 12h.01M15 12h.01M9 19h.01M15 19h.01',
 } as const;
 
 export type IconName = keyof typeof ICONS;

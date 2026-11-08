@@ -3,6 +3,7 @@ import { SUPPLEMENT, SUPPLEMENT_NOTE, SUPPLEMENT_UPCOMING } from '../core/curric
 import { text } from '../core/curriculum/types';
 import { lessonStatus, orderedLessons } from '../core/curriculum/unlock';
 import { useApp } from '../store/appStore';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 import { useCurriculum } from '../store/curriculumStore';
 import { useUiMode } from '../hooks/useUiMode';
 import { Button, FullscreenButton, Icon } from '../components/ui';
@@ -48,6 +49,7 @@ export function SupplementScreen() {
             <div className="text-sm text-slate-500 dark:text-slate-400">{text(SUPPLEMENT.title)}</div>
             <h1 className="text-2xl font-extrabold">{text(level.title)}</h1>
           </div>
+          <PinShortcutButton target={{ type: 'page', id: 'supplement' }} />
           <FullscreenButton />
         </header>
         <p className={`mt-3 ${kids ? 'text-xl' : 'text-lg'} text-slate-600 dark:text-slate-300`}>

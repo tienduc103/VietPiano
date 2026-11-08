@@ -19,6 +19,7 @@ import { virtualInput } from '../core/input/VirtualInputProvider';
 import { midiToLabel, midiToName } from '../core/music/notes';
 import { useNoteInput } from '../hooks/useNoteInput';
 import { useApp } from '../store/appStore';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 import { useMic } from '../store/micStore';
 import { usePlayingNow } from '../store/playingStore';
 import { useGameTimeNow } from '../store/gameTimeStore';
@@ -620,6 +621,7 @@ function SettingsModal({ settings, difficulty, update, onClose }: { settings: F1
   );
   return (
     <ModalShell title="⚙ Cài đặt F1 Racing" onClose={onClose} testId="f1-settings-panel">
+      <PinShortcutButton variant="row" target={{ type: 'game', id: 'f1-racing' }} />
       <div className="grid gap-2">
         <h3 className="font-black">🎹 Nguồn nốt</h3>
         <InputSourceBar />

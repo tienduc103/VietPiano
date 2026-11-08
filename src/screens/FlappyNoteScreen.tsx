@@ -32,6 +32,7 @@ import { Button, FullscreenButton, Icon, Segmented } from '../components/ui';
 import { useNoteInput } from '../hooks/useNoteInput';
 import { useUiMode } from '../hooks/useUiMode';
 import { useApp } from '../store/appStore';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 import { useCurriculum } from '../store/curriculumStore';
 import { useMic } from '../store/micStore';
 import { useSettings } from '../store/settingsStore';
@@ -109,6 +110,7 @@ function SettingsPanel({ settings, records, update, onClose }: { settings: Flapp
             ✓ Xong
           </Button>
         </header>
+        <PinShortcutButton variant="row" target={{ type: 'game', id: 'flappy-note' }} />
 
         <div className="grid gap-2">
           <h3 className="text-lg font-bold">Màn chơi</h3>

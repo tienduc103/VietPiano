@@ -26,6 +26,7 @@ import { PianoKeyboard } from '../components/PianoKeyboard';
 import { Button, Card, FullscreenButton, Icon, Segmented, Toggle } from '../components/ui';
 import { useNoteInput } from '../hooks/useNoteInput';
 import { useApp } from '../store/appStore';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 import { useMic } from '../store/micStore';
 import { useMidi } from '../store/midiStore';
 import { useProfiles } from '../store/profileStore';
@@ -177,6 +178,7 @@ function SettingsPanel({
             ✓ Xong
           </Button>
         </header>
+        <PinShortcutButton variant="row" target={{ type: 'game', id: 'note-hunter' }} />
 
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>

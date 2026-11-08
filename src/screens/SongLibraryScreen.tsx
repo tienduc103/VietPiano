@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { lessonManager } from '../core/lessons/LessonManager';
 import type { Lesson } from '../core/lessons/types';
 import { useApp } from '../store/appStore';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 import { useSettings } from '../store/settingsStore';
 import { activeProfile, useProfiles } from '../store/profileStore';
 import { sessionsForProfile } from '../core/profile/LearnerProfile';
@@ -56,6 +57,7 @@ export function SongLibraryScreen() {
             <h1 className="text-2xl font-extrabold">Thư viện bài hát</h1>
             <p className="text-slate-500 dark:text-slate-400">{songs.length} bài · bài khuông đôi chọn được Hai tay / Tay phải / Tay trái, đàn MIDI chấm cả pedal.</p>
           </div>
+          <PinShortcutButton target={{ type: 'page', id: 'song-library' }} />
           <FullscreenButton />
         </header>
 

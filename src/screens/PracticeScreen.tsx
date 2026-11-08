@@ -20,6 +20,7 @@ import { Button, FullscreenButton, Icon, formatDuration, type IconName } from '.
 import { AppVersion } from '../components/AppVersion';
 import { useSettings } from '../store/settingsStore';
 import { useApp, type Route } from '../store/appStore';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 import { useMic } from '../store/micStore';
 import { useMidi } from '../store/midiStore';
 import { useWakeLock } from '../hooks/useAppLifecycle';
@@ -629,6 +630,7 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
           <Icon name="keyboard" />
           <span className="whitespace-nowrap">{KEYBOARD_MODE_LABEL[keyboardMode]}</span>
         </Button>
+        <PinShortcutButton target={{ type: 'practice', id: base.id, ...(lesson.slice ? { params: { measures: [lesson.slice.from, lesson.slice.to] } } : {}) }} />
         <FullscreenButton />
       </header>
 

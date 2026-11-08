@@ -25,13 +25,18 @@ import { AUTO_OLLAMA_URL, normalizeOllamaUrl, OllamaError, resolveOllama } from 
 import { ollamaCandidatesForPage, ollamaUrlLabel } from '../components/AiCoachCard';
 import { voiceSpeaker, voiceTeacher } from '../core/voice/teacher';
 import { phrases } from '../core/voice/phrases';
+import { ShortcutManager } from '../components/shortcuts/ShortcutManager';
 
 const CALIBRATION_MS = 2500;
 
-export function SettingsScreen() {
+/** `section`: cuộn thẳng tới một mục (vd "Quản lý" trong menu lối tắt ở trang chủ). */
+export function SettingsScreen({ section }: { section?: 'shortcuts' } = {}) {
   const back = useApp((s) => s.back);
   const settings = useSettings((s) => s.settings);
   const update = useSettings((s) => s.update);
+  useEffect(() => {
+    if (section === 'shortcuts') document.getElementById('shortcuts')?.scrollIntoView({ block: 'start' });
+  }, [section]);
 
   return (
     <div className="h-full overflow-y-auto">
@@ -235,6 +240,8 @@ export function SettingsScreen() {
               </Row>
             </div>
           </Card>
+
+          <ShortcutManager />
 
           <DataCard />
         </div>

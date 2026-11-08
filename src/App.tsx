@@ -23,6 +23,7 @@ import { AppVersionSide } from './components/AppVersion';
 import { FloatingMicNote } from './components/MicPanel';
 import { FloatingReloadButton } from './components/FloatingReloadButton';
 import { GameTimeController, TimedGameRoute } from './components/GameTimeLimit';
+import { ShortcutOverlays } from './components/shortcuts/ShortcutOverlays';
 
 /** AI Piano Coach tải riêng (chunk khác, vẫn được service worker cache để chạy offline). */
 const CoachScreen = lazy(() => import('./screens/CoachScreen').then((m) => ({ default: m.CoachScreen })));
@@ -52,7 +53,7 @@ export function App() {
       {route.name === 'lesson' && <LessonPlayerScreen lessonId={route.lessonId} stage={route.stage} />}
       {route.name === 'library' && <DashboardScreen focus="library" />}
       {route.name === 'song-library' && <SongLibraryScreen />}
-      {route.name === 'games' && <GamesScreen />}
+      {route.name === 'games' && <GamesScreen key={route.open ? JSON.stringify(route.open) : 'list'} open={route.open} />}
       {route.name === 'note-hunter' && <TimedGameRoute><NoteHunterScreen /></TimedGameRoute>}
       {route.name === 'flappy-note' && <TimedGameRoute><FlappyNoteScreen /></TimedGameRoute>}
       {route.name === 'balloon-pop' && <TimedGameRoute><BalloonPopScreen key={route.preset ? JSON.stringify(route.preset) : 'free'} preset={route.preset} returnTo={route.returnTo} /></TimedGameRoute>}
@@ -67,13 +68,15 @@ export function App() {
           <CoachScreen key={`${route.lessonId ?? ''}|${route.measures?.join('-') ?? ''}`} lessonId={route.lessonId} measures={route.measures} />
         </Suspense>
       )}
-      {route.name === 'settings' && <SettingsScreen />}
+      {route.name === 'settings' && <SettingsScreen section={route.section} />}
       {/* Màn hình Luyện tập tự đặt nút trong khung khuông nhạc (góc phải dưới có bàn phím ảo + nút điều khiển). */}
       {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && route.name !== 'flappy-note' && route.name !== 'balloon-pop' && route.name !== 'tomato-harvest' && route.name !== 'f1-racing' && route.name !== 'five-finger' && (
         <FloatingMicNote className="fixed right-[calc(12px+env(safe-area-inset-right,0px))] bottom-[calc(12px+env(safe-area-inset-bottom,0px))]" />
       )}
       <FloatingReloadButton />
       <GameTimeController />
+      {/* Hộp thoại tạo / sửa / ghim lối tắt, thanh Hoàn tác, thông báo lối tắt hỏng — dùng chung mọi màn. */}
+      <ShortcutOverlays />
       {/* TẠM THỜI trong giai đoạn xây dựng site — xoá khi không cần */}
       <AppVersionSide />
     </div>

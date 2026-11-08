@@ -8,6 +8,7 @@ import { useCurriculum } from '../store/curriculumStore';
 import { Button, FullscreenButton, Icon } from '../components/ui';
 import { AppVersion } from '../components/AppVersion';
 import { ProfileSwitcher } from '../components/ProfileSwitcher';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 
 const STATUS: Record<LessonStatus, { label: string; tone: string }> = {
   completed: { label: '✓ Hoàn thành', tone: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' },
@@ -41,6 +42,7 @@ export function CurriculumScreen({ levelId }: { levelId?: string }) {
             <span aria-hidden>🖐</span>
             <span>5 ngón · 8 nốt</span>
           </Button>
+          <PinShortcutButton target={{ type: 'level', id: level.levelId }} />
           <FullscreenButton />
         </header>
 

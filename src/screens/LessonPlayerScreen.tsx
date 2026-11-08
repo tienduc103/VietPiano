@@ -6,6 +6,7 @@ import { formatMistake, scoreLesson, starsFor, type ExerciseScore } from '../cor
 import { text, type Activity, type CurriculumLesson, type Exercise, type UiMode } from '../core/curriculum/types';
 import { findLesson, missingPrerequisites, nextLessonAfter } from '../core/curriculum/unlock';
 import { useApp, type LessonStage, type Route } from '../store/appStore';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 import { useCurriculum } from '../store/curriculumStore';
 import { useSettings } from '../store/settingsStore';
 import { useUiMode } from '../hooks/useUiMode';
@@ -219,6 +220,7 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
             </button>
           ))}
         </nav>
+        <PinShortcutButton target={{ type: 'lesson', id: lesson.lessonId, ...(phase === 'review' || phase === 'game' ? { params: { stage: phase } } : {}) }} />
         <FullscreenButton />
       </header>
 

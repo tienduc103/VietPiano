@@ -54,6 +54,8 @@ import { PianoKeyboard } from '../components/PianoKeyboard';
 import { Button, FullscreenButton, Icon, Segmented } from '../components/ui';
 import { useNoteInput } from '../hooks/useNoteInput';
 import { useApp, type Route } from '../store/appStore';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
+import { routeToTarget } from '../store/shortcutRoutes';
 import { useCurriculum } from '../store/curriculumStore';
 import { useMic } from '../store/micStore';
 import { useSettings } from '../store/settingsStore';
@@ -111,6 +113,9 @@ export function BalloonPopScreen({ preset, returnTo }: { preset?: Partial<Balloo
 /** Bảng cài đặt mở trên màn chơi: chế độ, tay, độ khó, tốc độ, nguồn nốt, gợi ý. Đổi chế độ / độ khó / tốc độ → ván mới. */
 function SettingsPanel({ settings, records, update, onClose }: { settings: BalloonSettings; records: ArcadeRecords; update: Update; onClose: () => void }) {
   const hands = MODE_INFO[settings.mode].hands;
+  // Mở từ bài học (vd Tìm nốt Đô) → ghim kèm cấu hình mở sẵn đó; mở thường → ghim trò.
+  const route = useApp((s) => s.route);
+  const pinTarget = useMemo(() => routeToTarget(route), [route]);
   return (
     <div className="absolute inset-0 z-20 overflow-y-auto bg-slate-900/40 p-3" data-testid="balloon-settings-panel" onClick={onClose}>
       <section
@@ -127,6 +132,7 @@ function SettingsPanel({ settings, records, update, onClose }: { settings: Ballo
             ✓ Xong
           </Button>
         </header>
+        <PinShortcutButton variant="row" target={pinTarget} />
 
         <div className="grid gap-2">
           <h3 className="text-lg font-bold">Kiểu chơi</h3>

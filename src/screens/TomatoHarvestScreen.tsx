@@ -16,6 +16,7 @@ import { suggestedTomatoDifficulty } from '../core/curriculum/learnedNotes';
 import { useCurriculum } from '../store/curriculumStore';
 import { useNoteInput } from '../hooks/useNoteInput';
 import { useApp } from '../store/appStore';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 import { useMic } from '../store/micStore';
 import { activeProfile, useProfiles } from '../store/profileStore';
 import { useSettings } from '../store/settingsStore';
@@ -252,7 +253,7 @@ function Victory({ state, difficulty, midiNav, onAgain, onTrophies, onLeaderboar
 }
 
 function SettingsModal({ audio, updateAudio, onClose }: { audio: TomatoAudioSettings; updateAudio: (p: Partial<TomatoAudioSettings>) => void; onClose: () => void }) {
-  return <ModalShell title="⚙ Cài đặt nông trại" onClose={onClose}><InputSourceBar /><Toggle checked={audio.music} onChange={(music) => updateAudio({ music })} label="🎵 Nhạc nền vui nhộn" /><Toggle checked={audio.nature} onChange={(nature) => updateAudio({ nature })} label="🐦 Âm thanh thiên nhiên" /><p className="rounded-xl bg-emerald-50 p-3 text-sm dark:bg-emerald-950/40">Không có giới hạn thời gian. Mở bảng này cũng tạm dừng cây mọc lại.</p></ModalShell>;
+  return <ModalShell title="⚙ Cài đặt nông trại" onClose={onClose}><PinShortcutButton variant="row" target={{ type: 'game', id: 'tomato-harvest' }} /><InputSourceBar /><Toggle checked={audio.music} onChange={(music) => updateAudio({ music })} label="🎵 Nhạc nền vui nhộn" /><Toggle checked={audio.nature} onChange={(nature) => updateAudio({ nature })} label="🐦 Âm thanh thiên nhiên" /><p className="rounded-xl bg-emerald-50 p-3 text-sm dark:bg-emerald-950/40">Không có giới hạn thời gian. Mở bảng này cũng tạm dừng cây mọc lại.</p></ModalShell>;
 }
 
 function TrophyModal({ progress, profileId, onClose }: { progress: TomatoProgress; profileId: string | null; onClose: () => void }) {

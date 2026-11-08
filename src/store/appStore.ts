@@ -7,8 +7,13 @@ import {
   type PracticeSession,
 } from '../core/storage/ProgressStorage';
 import type { BalloonSettings } from '../core/balloonPop/storage';
+import type { ArcadeKind } from '../core/games/arcade';
+import type { GameKind } from '../core/games/gameForLesson';
 
 export type LessonStage = 'review' | 'game';
+
+/** Mở thẳng một trò trong mục Trò chơi (lối tắt): trò tự do theo mức chơi, hoặc trò của một buổi học. */
+export type GamesOpen = { type: 'arcade'; kind: ArcadeKind; variant: string } | { type: 'lesson'; lessonId: string; kind: GameKind };
 
 export type Route =
   | { name: 'dashboard' }
@@ -22,8 +27,8 @@ export type Route =
   | { name: 'library' }
   /** Thư viện bài hát: trang riêng gồm mọi bài hát, có tuyển tập khuông đôi. */
   | { name: 'song-library' }
-  /** Mục Trò chơi: mọi trò của các buổi học + trò chơi tự do. */
-  | { name: 'games' }
+  /** Mục Trò chơi: mọi trò của các buổi học + trò chơi tự do. `open`: vào thẳng một trò (lối tắt). */
+  | { name: 'games'; open?: GamesOpen }
   /** Săn nốt (Note Hunter): bản nhạc tự chạy, dừng ở nốt mục tiêu chờ người chơi đánh đúng. */
   | { name: 'note-hunter' }
   /** Flappy Note: chim bay qua ống, mỗi nốt đánh đúng là một lần vỗ cánh. */
@@ -47,7 +52,8 @@ export type Route =
   | { name: 'practice'; lessonId: string; fromSongs?: boolean; measures?: [number, number] }
   /** AI Piano Coach: ghi bài đàn → chấm theo bản nhạc → lỗi trên khuông, nhận xét, bài luyện sửa lỗi (docs/ai-coach). */
   | { name: 'coach'; lessonId?: string; measures?: [number, number] }
-  | { name: 'settings' };
+  /** `section`: cuộn tới một mục (vd "Quản lý lối tắt" từ menu lối tắt ở trang chủ). */
+  | { name: 'settings'; section?: 'shortcuts' };
 
 /** Màn hình mở đầu: Dashboard giáo trình; "?screen=library" / "?screen=curriculum" / "?screen=games" mở thẳng màn đó (đường tắt, dùng cả trong e2e). */
 export function initialRoute(search = typeof location === 'undefined' ? '' : location.search): Route {
@@ -78,8 +84,8 @@ interface AppStore {
   recent: string[];
   navigate: (route: Route) => void;
   back: () => void;
-  /** `measures`: mở để luyện riêng đoạn ô nhịp [từ, tới]. */
-  openLesson: (lessonId: string, measures?: [number, number]) => void;
+  /** `measures`: mở để luyện riêng đoạn ô nhịp [từ, tới]. `fromSongs`: nút quay lại về Thư viện bài hát (mặc định theo màn đang mở). */
+  openLesson: (lessonId: string, measures?: [number, number], fromSongs?: boolean) => void;
   loadProgress: () => Promise<void>;
   recordSession: (session: PracticeSession) => Promise<void>;
   clearProgress: () => Promise<void>;
@@ -93,10 +99,10 @@ export const useApp = create<AppStore>((set, get) => ({
   recent: loadRecentLessons(),
   navigate: (route) => set({ route, previous: get().route }),
   back: () => set({ route: get().previous ?? { name: 'dashboard' }, previous: null }),
-  openLesson: (lessonId, measures) => {
+  openLesson: (lessonId, measures, songs) => {
     const from = get().route;
     // "Bài tiếp theo" trong màn Luyện tập giữ nguyên trang thư viện đã mở bài.
-    const fromSongs = from.name === 'song-library' || (from.name === 'practice' && from.fromSongs);
+    const fromSongs = songs ?? (from.name === 'song-library' || (from.name === 'practice' && from.fromSongs));
     set({
       route: { name: 'practice', lessonId, ...(fromSongs ? { fromSongs } : {}), ...(measures ? { measures } : {}) },
       previous: from,
