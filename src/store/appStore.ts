@@ -81,6 +81,8 @@ interface AppStore {
   progress: Record<string, LessonProgress>;
   /** Toàn bộ lịch sử phiên — để đánh giá và gợi ý bài theo từng hồ sơ người học. */
   sessions: PracticeSession[];
+  /** Đã đọc xong tiến độ + lịch sử phiên từ bộ nhớ (kể cả khi đọc lỗi) — Lối tắt thông minh chờ cờ này. */
+  progressLoaded: boolean;
   recent: string[];
   navigate: (route: Route) => void;
   back: () => void;
@@ -96,6 +98,7 @@ export const useApp = create<AppStore>((set, get) => ({
   previous: null,
   progress: {},
   sessions: [],
+  progressLoaded: false,
   recent: loadRecentLessons(),
   navigate: (route) => set({ route, previous: get().route }),
   back: () => set({ route: get().previous ?? { name: 'dashboard' }, previous: null }),
@@ -112,9 +115,10 @@ export const useApp = create<AppStore>((set, get) => ({
   loadProgress: async () => {
     try {
       const [progress, sessions] = await Promise.all([progressStorage.getAllProgress(), progressStorage.getAllSessions()]);
-      set({ progress, sessions });
+      set({ progress, sessions, progressLoaded: true });
     } catch (err) {
       console.warn('[VietPiano] Không đọc được tiến độ', err);
+      set({ progressLoaded: true });
     }
   },
   recordSession: async (session) => {

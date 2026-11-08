@@ -26,6 +26,7 @@ import { ollamaCandidatesForPage, ollamaUrlLabel } from '../components/AiCoachCa
 import { voiceSpeaker, voiceTeacher } from '../core/voice/teacher';
 import { phrases } from '../core/voice/phrases';
 import { ShortcutManager } from '../components/shortcuts/ShortcutManager';
+import { SmartShortcutSettings } from '../components/shortcuts/SmartShortcutSettings';
 
 const CALIBRATION_MS = 2500;
 
@@ -241,7 +242,7 @@ export function SettingsScreen({ section }: { section?: 'shortcuts' } = {}) {
             </div>
           </Card>
 
-          <ShortcutManager />
+          <ShortcutManager extra={<SmartShortcutSettings />} />
 
           <DataCard />
         </div>

@@ -12,7 +12,7 @@ import { AppVersion } from '../components/AppVersion';
 import { MicError } from '../components/MicPanel';
 import { ProfileSwitcher } from '../components/ProfileSwitcher';
 import { LessonLibrary } from '../components/LessonLibrary';
-import { ShortcutBar } from '../components/shortcuts/ShortcutBar';
+import { SmartShortcutBar } from '../components/shortcuts/SmartShortcutBar';
 
 const scrollToLibrary = (behavior: ScrollBehavior) => document.getElementById('library')?.scrollIntoView({ behavior, block: 'start' });
 
@@ -113,7 +113,7 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
         {/* Thanh hồ sơ + lối tắt cùng một hàng: lối tắt lấp phần trống bên phải, tự dồn vào menu ⋯ khi hẹp. */}
         <div className="mt-6 flex flex-wrap items-center gap-2" data-testid="profile-row">
           <ProfileSwitcher className="" hint="Lưu tiến độ giáo trình riêng cho từng người và tự chọn giao diện Trẻ em / Người lớn theo tuổi. Dữ liệu chỉ lưu trên máy này." />
-          <ShortcutBar />
+          <SmartShortcutBar />
         </div>
 
         {level && progress && (
