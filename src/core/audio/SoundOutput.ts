@@ -81,6 +81,19 @@ class SoundOutputImpl {
     return this.playingUntil;
   }
 
+  /**
+   * Độ trễ đầu ra trình duyệt báo (ms, `baseLatency` + `outputLatency`); null khi chưa có AudioContext hoặc trình duyệt không báo.
+   * Chỉ để chẩn đoán (vd đổi sang tai nghe Bluetooth → số này tăng) — không dùng để bù trễ.
+   */
+  outputLatencyMs(): number | null {
+    const ctx = this.ctx;
+    if (!ctx) return null;
+    const out = (ctx as AudioContext & { outputLatency?: number }).outputLatency;
+    if (typeof out !== 'number' || !Number.isFinite(out)) return null;
+    const base = typeof ctx.baseLatency === 'number' && Number.isFinite(ctx.baseLatency) ? ctx.baseLatency : 0;
+    return Math.round((out + base) * 1000);
+  }
+
   private ensure(): AudioContext | null {
     if (this.ctx) {
       if (this.ctx.state === 'suspended') void this.ctx.resume();

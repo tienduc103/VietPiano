@@ -32,6 +32,22 @@ async function fakeMidi(page: Page) {
 }
 const midiSend = (page: Page, data: number[]) => page.evaluate((d) => (window as unknown as { __midi: { send(d: number[]): void } }).__midi.send(d), data);
 
+/** Lên lịch phím đàn MIDI giả NGAY TRONG TRANG theo performance.now() (mốc chính xác, không qua độ trễ của Playwright). */
+async function scheduleMidi(page: Page, notes: { at: number; midi: number; len?: number }[]) {
+  await page.evaluate((list) => {
+    const midi = (window as unknown as { __midi: { send(d: number[]): void } }).__midi;
+    for (const n of list) {
+      setTimeout(
+        () => {
+          midi.send([0x90, n.midi, 80]);
+          setTimeout(() => midi.send([0x80, n.midi, 0]), n.len ?? 120);
+        },
+        Math.max(0, n.at - performance.now()),
+      );
+    }
+  }, notes);
+}
+
 /** Gam Đô trưởng lên xuống bằng bàn phím máy tính; `wrongAt` = chỉ số phím đánh sai (thay bằng phím đen). */
 async function playScaleKeys(page: Page, gapMs = 260, wrongAt = -1) {
   const keys = 'asdfghjkkjhgfdsa'.split('');
@@ -239,6 +255,57 @@ test('trạng thái AI cục bộ trong lúc đánh: chưa kết nối → bật
   await expect(page.getByTestId('coach-total')).toBeVisible();
   await expect(page.getByTestId('coach-feedback')).toHaveAttribute('data-source', 'rules');
   await expect(page.getByTestId('coach-feedback-summary')).not.toBeEmpty();
+});
+
+test('đo độ trễ (đàn MIDI giả trễ 90 ms) → lưu theo đàn → ghi có metronome → biết đánh sau tiếng click', async ({ page }) => {
+  test.setTimeout(120_000);
+  await fakeMidi(page);
+  await coachSettings(page, { input: 'midi', metronome: true, countIn: false, tempoPercent: 150 }, { midiEnabled: true });
+  await page.goto('/?screen=coach');
+  await expect(page.getByTestId('coach-input')).toContainText('Đàn MIDI');
+  const row = page.getByTestId('coach-latency');
+  await expect(row).toHaveAttribute('data-calibrated', 'false');
+  await expect(row).toContainText('chưa đo — dùng mặc định 0 ms');
+  await page.getByTestId('coach-latency-open').click();
+  const dlg = page.getByTestId('coach-latency-dialog');
+  await page.getByTestId('coach-latency-start').click();
+  await expect(dlg).toHaveAttribute('data-phase', 'running');
+  const origin = Number(await dlg.getAttribute('data-origin'));
+  const beat = Number(await dlg.getAttribute('data-beat-ms'));
+  // Gõ phím đàn sau mỗi tiếng click được đo 90 ms (độ trễ giả của "máy").
+  await scheduleMidi(page, Array.from({ length: 16 }, (_, k) => ({ at: origin + k * beat + 90, midi: 60 })));
+  const result = page.getByTestId('coach-latency-result');
+  await expect(result).toBeVisible({ timeout: 30_000 });
+  const measured = Number(await result.getAttribute('data-offset'));
+  expect(measured).toBeGreaterThanOrEqual(85);
+  expect(measured).toBeLessThanOrEqual(105);
+  await page.getByTestId('coach-latency-save').click();
+  await expect(dlg).toBeHidden();
+  await expect(row).toHaveAttribute('data-calibrated', 'true');
+  await expect(page.getByTestId('coach-latency-value')).toHaveText(`${measured} ms`);
+  // Số đo lưu theo đàn trên máy này: tải lại trang vẫn còn.
+  await page.reload();
+  await expect(page.getByTestId('coach-latency')).toHaveAttribute('data-calibrated', 'true');
+
+  // Ghi có metronome: người chơi đánh sau tiếng click 150 ms (log gốc = click + 150 + độ trễ máy 90).
+  await page.getByTestId('coach-start').click();
+  const recEl = page.getByTestId('coach-recording');
+  await expect(recEl).toContainText(`bù trễ ${measured} ms (đã đo)`);
+  const o2 = Number(await recEl.getAttribute('data-click-origin'));
+  const b2 = Number(await recEl.getAttribute('data-beat-ms'));
+  const scale = [60, 62, 64, 65, 67, 69, 71, 72, 72, 71, 69, 67, 65, 64, 62, 60];
+  // Vào bài ở tiếng click thứ 3 (bỏ qua 2 phách đầu): so với lưới tiếng click nên không cần vào đúng phách 0.
+  await scheduleMidi(page, scale.map((midi, k) => ({ at: o2 + (k + 2) * b2 + 90 + 150, midi, len: b2 * 0.8 })));
+  await expect(page.getByTestId('coach-rec-notes')).toHaveText('16 nốt đã ghi', { timeout: 30_000 });
+  await page.waitForTimeout(b2);
+  await page.getByTestId('coach-stop').click();
+  await expect(page.getByTestId('coach-results')).toBeVisible();
+  await expect(page.getByTestId('coach-count-correct')).toContainText('16/16');
+  const met = page.getByTestId('coach-metronome');
+  await expect(met).toHaveAttribute('data-verdict', 'behind');
+  await expect(met).toContainText('SAU tiếng metronome');
+  await expect(met).toContainText('không trừ điểm');
+  await expect(page.getByTestId('coach-feedback-summary')).toContainText('sau tiếng click');
 });
 
 test('kế hoạch luyện 7 bước: lỗi dồn ở ô 3 → luyện đoạn đó chậm → đạt thì sang bước 2', async ({ page }) => {

@@ -77,8 +77,15 @@ export interface PerformanceSession {
   updatedAt: number;
   endedAt?: number;
   input: SessionInput;
-  /** Bù trễ của nguồn khi PHÂN TÍCH (micro 60 ms) — log gốc không bị sửa. */
+  /**
+   * Bù trễ khi PHÂN TÍCH (trừ khỏi mọi sự kiện của người chơi: nốt, thả phím, pedal) — log gốc không bị sửa.
+   * Đã đo độ trễ thiết bị (M1-T7) → số đo; chưa đo → mặc định (MIDI / bàn phím 0, micro 60).
+   */
   latencyMs: number;
+  /** Số đo độ trễ của thiết bị dùng lúc ghi (không có = dùng mặc định). */
+  latencyCalibration?: LatencyCalibration;
+  /** Độ trễ đầu ra trình duyệt báo lúc bắt đầu ghi (ms) — so với lúc đo để biết đã đổi loa / tai nghe. */
+  outputLatencyMs?: number | null;
   recorderVersion: string;
   eventCount: number;
   /** Quy tắc pedal lúc ghi ('none-expected' = người dùng chọn "bài này không dùng pedal") — chấm lại dùng đúng quy tắc này. */
@@ -88,7 +95,32 @@ export interface PerformanceSession {
   planStepId?: string;
 }
 
-export type MarkKind = 'start' | 'pause' | 'resume' | 'stop' | 'abort' | 'disconnect' | 'reconnect' | 'pedal-initial';
+/** `click` = một tiếng metronome / đếm vào ĐÃ PHÁT (mốc lên lịch của tiếng click, `info` 'a' = phách mạnh). */
+export type MarkKind = 'start' | 'pause' | 'resume' | 'stop' | 'abort' | 'disconnect' | 'reconnect' | 'pedal-initial' | 'click';
+
+/**
+ * Độ trễ đo bằng cách gõ theo tiếng click của app (M1-T7): sự kiện của người chơi đến SAU tiếng click bấy nhiêu ms
+ * (gồm độ trễ loa / tai nghe, đàn / micro, trình duyệt và thói quen gõ của người chơi). Lưu theo thiết bị trên máy này.
+ */
+export interface LatencyCalibration {
+  /** `midi:<tên đàn>` · `virtual` · `microphone`. */
+  deviceKey: string;
+  source: InputSource;
+  deviceName?: string;
+  /** Trung vị (ms, có thể âm = gõ trước tiếng click). */
+  offsetMs: number;
+  /** Độ dao động (ms, độ lệch chuẩn ước lượng bền). */
+  jitterMs: number;
+  /** Số lần gõ hợp lệ / số tiếng click được đo. */
+  taps: number;
+  clicks: number;
+  bpm: number;
+  method: 'tap';
+  /** Epoch ms. */
+  measuredAt: number;
+  /** Độ trễ đầu ra trình duyệt báo lúc đo (ms; null = trình duyệt không báo). */
+  outputLatencyMs: number | null;
+}
 
 /**
  * Một sự kiện trong log gốc. `t` = mốc thời gian của NGUỒN − t0 (ms, số thực, không làm tròn); `rt` = lúc app nhận − t0.
@@ -192,6 +224,8 @@ export interface BuiltPerformance {
   disconnects: number;
   /** Có ít nhất một sự kiện CC 64 trong phiên. */
   sustainSeen: boolean;
+  /** Tiếng click metronome / đếm vào đã phát (thời gian hoạt động, KHÔNG bù trễ — là mốc chuẩn). */
+  clicks: number[];
 }
 
 // ════════════════════════════ B. Bản nhạc tham chiếu ════════════════════════════
@@ -420,6 +454,27 @@ export interface HandSummary {
   independentTiming: number | null;
 }
 
+/**
+ * So nốt với tiếng metronome (M1-T7): chỉ khi máy đã đo độ trễ (không thì độ trễ loa / đàn làm sai kết luận),
+ * đủ nhóm nốt đúng để so.
+ */
+export type MetronomeCheck = ({ status: 'ok' } & MetronomeAlignment) | { status: 'not-calibrated' } | { status: 'too-few'; groups: number };
+
+/** Độ lệch so với tiếng metronome sau khi bù độ trễ máy (M1-T7). */
+export interface MetronomeAlignment {
+  /** Trung vị (ms): dương = đánh SAU tiếng click, âm = trước. */
+  offsetMs: number;
+  /** Độ dao động (ms). */
+  spreadMs: number;
+  /** Số nhóm nốt đã so. */
+  groups: number;
+  verdict: 'with' | 'behind' | 'ahead' | 'unsteady';
+  /** Độ trễ máy đã bù (ms). */
+  latencyMs: number;
+  /** Loa / tai nghe lúc ghi khác lúc đo (độ trễ đầu ra trình duyệt báo lệch nhiều). */
+  outputChanged?: boolean;
+}
+
 export interface ScoringResult {
   id: string;
   sessionId: string;
@@ -460,6 +515,8 @@ export interface ScoringResult {
     perMeasure: { measure: number; bpm: number }[];
     /** Tempo phần cuối / phần đầu − 1 (dương = nhanh dần). */
     drift: number | null;
+    /** So với tiếng metronome (chỉ khi lúc ghi có bật metronome) — THÔNG TIN, không trừ điểm. */
+    metronome?: MetronomeCheck;
   };
   hands: Partial<Record<Hand, HandSummary>> & { syncRate?: number | null; meanOffsetMs?: number | null };
   pedalInfo?: { ranges: number; intervals: number; continuous: boolean; sostenutoUsed: boolean; softUsed: boolean };

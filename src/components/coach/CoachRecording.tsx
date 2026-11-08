@@ -29,6 +29,10 @@ interface Props {
   busy: boolean;
   /** Trạng thái kết nối AI cục bộ (chỉ hiển thị; trong lúc đánh không gửi gì cho AI). */
   aiLink: AiLinkMonitor;
+  /** Lưới tiếng click hiện tại (e2e / chẩn đoán). */
+  clickGrid: { originMs: number; beatMs: number } | null;
+  /** Độ trễ đã đo của thiết bị (null = chưa đo, dùng mặc định). */
+  latencyMs: number | null;
 }
 
 /**
@@ -47,7 +51,13 @@ export function CoachRecording(p: Props) {
   const paused = p.state.status === 'paused';
   const last = p.reference.printedMeasures[p.reference.printedMeasures.length - 1];
   return (
-    <div className="mt-5 grid grid-cols-1 gap-4" data-testid="coach-recording" data-status={p.state.status}>
+    <div
+      className="mt-5 grid grid-cols-1 gap-4"
+      data-testid="coach-recording"
+      data-status={p.state.status}
+      data-click-origin={p.clickGrid?.originMs}
+      data-beat-ms={p.clickGrid?.beatMs}
+    >
       {/* Hai hàng cố định: chữ trạng thái AI / pedal đổi độ dài không làm thanh xuống dòng → khuông không nhảy lúc đang đánh. */}
       <div className="grid gap-2 rounded-2xl bg-white/80 p-3 ring-1 ring-violet-100 dark:bg-slate-800/80 dark:ring-violet-900">
         <div className="flex flex-wrap items-center gap-3">
@@ -85,6 +95,7 @@ export function CoachRecording(p: Props) {
           <span className="text-sm text-slate-500 dark:text-slate-400" data-testid="coach-rec-input">
             {p.inputLabel}
             {p.pedalAvailable ? ` · pedal ${p.state.sustainDown ? 'đang đạp' : 'nhả'}` : ''}
+            {p.latencyMs !== null ? ` · bù trễ ${p.latencyMs} ms (đã đo)` : ''}
           </span>
           <span className="flex-1" />
           <AiLinkChip monitor={p.aiLink} />

@@ -118,6 +118,34 @@ const off = (t: number, n: number, extra: Partial<Extract<PerformanceEvent, { k:
 const cc = (t: number, c: number, v: number): PerformanceEvent => ({ k: 'cc', t, rt: t, c, v, ch: 0, port: 'p', src: 'midi' });
 const mark = (t: number, m: Extract<PerformanceEvent, { k: 'mark' }>['m'], info?: string): PerformanceEvent => ({ k: 'mark', t, rt: t, m, ...(info ? { info } : {}) });
 
+describe('PerformanceRecorder — tiếng click metronome (M1-T7)', () => {
+  it('chỉ ghi lúc đang ghi; phách mạnh có info "a"; không báo giao diện, vẫn cần lưu nháp', () => {
+    const { rec } = makeRecorder({ metronome: true });
+    rec.click(900, true);
+    rec.start(1000);
+    rec.takeDirty();
+    let notified = 0;
+    rec.subscribe(() => notified++);
+    notified = 0;
+    rec.click(1250, true);
+    rec.click(1750.5, false);
+    expect(notified).toBe(0);
+    expect(rec.takeDirty()).toBe(true);
+    rec.pause(2000);
+    rec.click(2250, true);
+    rec.resume(3000);
+    rec.click(3100, false);
+    rec.stop(3500);
+    rec.click(3600, true);
+    const clicks = rec.snapshot().events.filter((e) => e.k === 'mark' && e.m === 'click');
+    expect(clicks).toEqual([
+      { k: 'mark', t: 250, rt: 250, m: 'click', info: 'a' },
+      { k: 'mark', t: 750.5, rt: 750.5, m: 'click' },
+      { k: 'mark', t: 2100, rt: 2100, m: 'click' },
+    ]);
+  });
+});
+
 describe('buildPerformance', () => {
   it('ghép On/Off: hợp âm nhả lệch thứ tự vẫn đúng từng phím', () => {
     const b = buildPerformance(session([mark(0, 'start'), on(100, 60), on(103, 64), on(105, 67), off(600, 67), off(650, 60), off(700, 64), mark(1000, 'stop')]));
@@ -248,6 +276,23 @@ describe('buildPerformance', () => {
       { from: 500, to: 600 },
     ]);
     expect([50, 150, 250, 550, 700].map(f)).toEqual([50, 100, 150, 400, 500]);
+  });
+
+  it('độ trễ máy (M1-T7) trừ cho MỌI sự kiện người chơi: nốt, thả phím và pedal — nốt và pedal không lệch nhau', () => {
+    const b = buildPerformance(session([mark(0, 'start'), on(1100, 60), cc(1150, 64, 127), off(1400, 60), cc(1900, 64, 0), mark(3000, 'stop')], { latencyMs: 100 }));
+    expect(b.notes[0]).toMatchObject({ onMs: 1000, offMs: 1300, releasedUnderPedal: true, soundingEndMs: 1800 });
+    expect(b.sustain.intervals).toEqual([{ down: 1050, up: 1800 }]);
+  });
+
+  it('tiếng click: mốc chuẩn (không bù trễ), bỏ khoảng tạm dừng, không kéo dài phiên dở dang', () => {
+    const b = buildPerformance(
+      session([mark(0, 'start'), mark(500, 'click', 'a'), on(560, 60), off(800, 60), mark(1000, 'click'), mark(1200, 'pause'), mark(2200, 'resume'), mark(2500, 'click', 'a'), on(2600, 62), off(2700, 62), mark(3000, 'click')], { latencyMs: 60 }),
+    );
+    // Không có mốc dừng (app tắt giữa chừng): hết phiên = sự kiện cuối của NGƯỜI CHƠI (2700), không phải tiếng click 3000
+    // → tiếng click sau đó không dùng.
+    expect(b.clicks).toEqual([500, 1000, 1500]);
+    expect(b.notes.map((n) => n.onMs)).toEqual([500, 1540]);
+    expect(b.endMs).toBe(1700);
   });
 
   it('round-trip: bộ ghi → log → ghép lại đúng chuỗi nốt đã phát', () => {

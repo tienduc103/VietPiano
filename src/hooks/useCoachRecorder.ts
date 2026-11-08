@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { soundOutput } from '../core/audio/SoundOutput';
+import { MetronomeClock } from '../core/coach/metronome';
 import { PerformanceRecorder, type RecorderState, type SessionMeta } from '../core/coach/recorder/PerformanceRecorder';
 import { coachStorage } from '../core/coach/storage/CoachStorage';
 import type { RecordedSession } from '../core/coach/types';
@@ -33,6 +34,8 @@ export interface CoachRecorderApi {
   state: RecorderState | null;
   /** Số phách đếm vào còn lại (null = không đếm). */
   countIn: number | null;
+  /** Lưới tiếng click hiện tại (mốc performance.now của phách 0 + độ dài phách) — hiện ra DOM cho e2e / chẩn đoán. */
+  clickGrid: { originMs: number; beatMs: number } | null;
   start: (setup: RecordingSetup) => void;
   pause: () => void;
   resume: () => void;
@@ -56,8 +59,24 @@ export function useCoachRecorder(): CoachRecorderApi {
   const [state, setState] = useState<RecorderState | null>(null);
   const [countIn, setCountIn] = useState<number | null>(null);
   const pedalDown = useRef(false);
-  /** Mốc bắt đầu metronome (performance.now() của phách 0 sau khi đếm vào), đặt lại khi tiếp tục. */
-  const clickOrigin = useRef(0);
+  /** Lịch metronome hiện tại (đặt lại khi tiếp tục sau tạm dừng). */
+  const clockRef = useRef<MetronomeClock | null>(null);
+  const [clickGrid, setClickGrid] = useState<{ originMs: number; beatMs: number } | null>(null);
+  /** Tiếng click đã lên lịch nhưng chưa tới giờ phát: tới giờ → ghi vào log; tạm dừng / dừng → huỷ, không ghi. */
+  const pendingClicks = useRef<{ beat: number; atMs: number; accent: boolean; handle: { cancel: () => void } }[]>([]);
+  const flushClicks = useCallback((t: number, cancelRest: boolean) => {
+    const q = pendingClicks.current;
+    while (q.length && q[0].atMs <= t) {
+      const c = q.shift()!;
+      recRef.current?.click(c.atMs, c.accent);
+    }
+    if (cancelRest && q.length) {
+      for (const c of q) c.handle.cancel();
+      // Hiệu ứng chạy lại với cùng lịch (StrictMode) → phát lại các phách vừa huỷ; tạm dừng / dừng thì lịch bị thay / bỏ.
+      clockRef.current?.rewind(Math.min(...q.map((c) => c.beat)));
+      q.length = 0;
+    }
+  }, []);
 
   const save = useCallback(async (force = false) => {
     const rec = recRef.current;
@@ -168,7 +187,11 @@ export function useCoachRecorder(): CoachRecorderApi {
     const onHide = () => {
       if (document.visibilityState !== 'hidden') return;
       const rec = recRef.current;
-      if (rec?.status === 'recording') rec.pause(now());
+      if (rec?.status === 'recording') {
+        const t = now();
+        flushClicks(t, true);
+        rec.pause(t);
+      }
       void save(true);
     };
     const onPageHide = () => void save(true);
@@ -180,35 +203,43 @@ export function useCoachRecorder(): CoachRecorderApi {
       window.removeEventListener('pagehide', onPageHide);
       // Rời màn giữa lúc ghi → tạm dừng + lưu nháp (mở lại Coach sẽ thấy phiên dở dang để chấm tiếp).
       const rec = recRef.current;
-      if (rec?.status === 'recording') rec.pause(now());
+      if (rec?.status === 'recording') {
+        const t = now();
+        flushClicks(t, true);
+        rec.pause(t);
+      }
       if (rec?.isOpen) void save(true);
     };
-  }, [save]);
+  }, [save, flushClicks]);
 
-  // Metronome + đếm vào (đồng hồ khung hình; tiếng click không qua bộ ghi).
+  // Metronome + đếm vào: tiếng click LÊN LỊCH TRƯỚC theo đồng hồ âm thanh (không lệch theo khung hình), mỗi tiếng đã phát
+  // được ghi vào log (`mark` 'click') làm mốc so nốt với metronome. Vòng khung hình chỉ lên lịch + cập nhật lớp phủ đếm vào.
   useEffect(() => {
     if (!state || state.status !== 'recording') return;
     const setup = setupRef.current;
-    if (!setup) return;
-    const beatMs = 60000 / setup.bpm;
+    const clock = clockRef.current;
+    if (!setup || !clock) return;
     let raf = 0;
-    let last = Math.floor((now() - clickOrigin.current) / beatMs) - 1;
+    let shown: number | null | undefined;
     const loop = () => {
-      const b = Math.floor((now() - clickOrigin.current) / beatMs);
-      if (b !== last) {
-        last = b;
-        const countBeat = b + setup.countInBeats;
-        if (countBeat >= 0 && b < 0) setCountIn(-b);
-        else if (b >= 0) setCountIn(null);
-        if (setup.metronome || b < 0) {
-          const inMeasure = (((b - setup.pickup) % setup.beatsPerMeasure) + setup.beatsPerMeasure) % setup.beatsPerMeasure;
-          if (countBeat >= 0) soundOutput.click(inMeasure === 0);
-        }
+      const t = now();
+      for (const c of clock.due(t)) {
+        if (!setup.metronome && !c.countIn) continue;
+        pendingClicks.current.push({ beat: c.beat, atMs: c.atMs, accent: c.accent, handle: soundOutput.click(c.accent, Math.max(0, (c.atMs - t) / 1000)) });
+      }
+      flushClicks(t, false);
+      const left = clock.countInLeft(t);
+      if (left !== shown) {
+        shown = left;
+        setCountIn(left);
       }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      flushClicks(now(), true);
+    };
   }, [state?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const start = useCallback((setup: RecordingSetup) => {
@@ -220,44 +251,60 @@ export function useCoachRecorder(): CoachRecorderApi {
     rec.subscribe(setState);
     const t = now();
     rec.start(t, { pedalDown: pedalDown.current && setup.sources.has('midi') });
-    clickOrigin.current = t + setup.countInBeats * (60000 / setup.bpm);
-    setCountIn(setup.countInBeats > 0 ? setup.countInBeats : null);
+    const beatMs = 60000 / setup.bpm;
+    const clock = new MetronomeClock({ originMs: t + setup.countInBeats * beatMs, beatMs, beatsPerMeasure: setup.beatsPerMeasure, pickup: setup.pickup, countInBeats: setup.countInBeats });
+    clockRef.current = clock;
+    pendingClicks.current = [];
+    setClickGrid({ originMs: clock.cfg.originMs, beatMs });
+    setCountIn(clock.countInLeft(t));
     setState(rec.state);
     void save(true);
   }, [save]);
 
   const pause = useCallback(() => {
-    recRef.current?.pause(now());
+    const t = now();
+    flushClicks(t, true);
+    recRef.current?.pause(t);
     void save(true);
-  }, [save]);
+  }, [save, flushClicks]);
 
   const resume = useCallback(() => {
     const rec = recRef.current;
     const setup = setupRef.current;
     if (!rec || !setup) return;
-    rec.resume(now());
+    const t = now();
+    rec.resume(t);
     // Metronome bắt đầu lại từ lúc tiếp tục (đếm vào một ô nếu có đếm vào).
-    clickOrigin.current = now() + Math.min(setup.countInBeats, setup.beatsPerMeasure) * (60000 / setup.bpm);
+    const beatMs = 60000 / setup.bpm;
+    const countInBeats = Math.min(setup.countInBeats, setup.beatsPerMeasure);
+    const clock = new MetronomeClock({ originMs: t + countInBeats * beatMs, beatMs, beatsPerMeasure: setup.beatsPerMeasure, pickup: setup.pickup, countInBeats });
+    clockRef.current = clock;
+    setClickGrid({ originMs: clock.cfg.originMs, beatMs });
   }, []);
 
   const stop = useCallback(async () => {
     const rec = recRef.current;
     if (!rec) return null;
-    rec.stop(now());
+    const t = now();
+    flushClicks(t, true);
+    // Độ trễ đầu ra lúc ghi (chẩn đoán: so với lúc đo độ trễ để biết đã đổi loa / tai nghe chưa).
+    rec.updateMeta({ outputLatencyMs: soundOutput.outputLatencyMs() });
+    rec.stop(t);
     setCountIn(null);
     await save(true);
     return rec.snapshot();
-  }, [save]);
+  }, [save, flushClicks]);
 
   const abort = useCallback(async () => {
     const rec = recRef.current;
     if (!rec) return;
+    flushClicks(now(), true);
     rec.abort(now(), 'Người dùng huỷ');
     setCountIn(null);
     await save(true);
     recRef.current = null;
     setState(null);
-  }, [save]);
+  }, [save, flushClicks]);
 
-  return { state, countIn, start, pause, resume, stop, abort, press: (m) => virtualInput.press(m), release: (m) => virtualInput.release(m) };
+  return { state, countIn, clickGrid, start, pause, resume, stop, abort, press: (m) => virtualInput.press(m), release: (m) => virtualInput.release(m) };
 }

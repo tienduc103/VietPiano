@@ -45,6 +45,7 @@ Theo quy ước của dự án, chỗ đặc tả lệch quy tắc cũ thì theo
 | D10 | Ký hiệu legato / staccato / dấu nối / dấu ngắt câu: dữ liệu bài chưa có → báo "bài không có ký hiệu, không chấm"; `RefNote.articulation` để sẵn cho nguồn MusicXML sau này | Không suy đoán |
 | D11 | Xác thực AI qua LAN: proxy `/ollama` chỉ mở 2 API, chỉ trong mạng LAN của máy chạy server; mã truy cập (token) cho proxy để ở backlog (M4-T9, chờ duyệt vì đổi cấu hình server) | Không tự đổi cấu hình bảo mật |
 | D12 | Chơi lại (M2-T11): mỗi nốt chấm theo LẦN ĐẦU chơi tới nó — nốt sai ngay trước khi dừng vẫn tính sai dù lần chơi lại đã đúng; đoạn chơi lại phần đã qua không chấm, không tính nốt thừa; mỗi lần chơi lại trừ như một chỗ ngắt quãng (−0.34 điểm con "liên tục"); lùi đúng MỘT nốt để sửa không coi là chơi lại (chấm như trước); chơi thêm sau khi đã hết bài không trừ. Phương án khác (chờ duyệt): chấm theo lần chơi lại cuối | Như Chờ nốt (sửa sau khi sai vẫn tính lần sai) + quy tắc ngắt quãng cũ; chơi lại không bao giờ được điểm cao hơn chơi tiếp |
+| D13 | Số đo độ trễ từng máy (M1-T7) CHỈ dùng trong Coach. Các màn khác chấm theo đồng hồ cố định (giáo trình Biểu diễn / Tiết tấu, Luyện tập Theo nhịp / Biểu diễn, trò "Đèn giao thông tiết tấu", "Giữ nhịp tim" — `MIC_LATENCY_MS`) giữ bù trễ cố định như cũ: micro 60 ms, đàn MIDI / bàn phím 0. Người dùng chọn 2026-11-08 | Không đổi hành vi tính năng ổn định (ở các màn đó độ trễ đổi điểm trực tiếp) |
 
 ## 3. Bốn thành phần
 
@@ -127,7 +128,7 @@ Khôi phục: trong lúc ghi, log được lưu nháp mỗi 3 giây (`status` re
 
 **Chuẩn hoá biểu diễn.** Ghép On/Off theo (nguồn, cổng, kênh, phím); Note On lặp khi phím chưa thả → đóng nốt cũ (`retrigger`); Note Off mồ côi
 bị bỏ (log vẫn giữ). Mốc thời gian: dùng mốc của nguồn + độ lệch ước lượng so với lúc nhận (trung vị `rt − t`; dao động > 30 ms → dùng `rt`).
-Bỏ khoảng tạm dừng khỏi trục thời gian. Trừ `latencyMs` (micro 60 ms). Ngân: thả phím lúc pedal vang đạp → ngân tới lúc nhả pedal;
+Bỏ khoảng tạm dừng khỏi trục thời gian. Trừ `latencyMs` (số đo độ trễ của thiết bị — §7a; chưa đo → micro 60 ms, MIDI / bàn phím 0) cho MỌI sự kiện người chơi (nốt, thả phím, pedal); tiếng click metronome là mốc chuẩn, không bù. Ngân: thả phím lúc pedal vang đạp → ngân tới lúc nhả pedal;
 sostenuto giữ các nốt đang giữ phím lúc đạp. Đạp sẵn trước khi ghi: lấy trạng thái pedal của app lúc bấm Bắt đầu, hoặc suy ra khi tín hiệu pedal đầu tiên là "nhả".
 
 **Căn chỉnh (không so theo thứ tự).**
@@ -170,6 +171,29 @@ sostenuto giữ các nốt đang giữ phím lúc đạp. Đạp sẵn trước 
 Mode B: dung sai thời điểm ×1.5, tempo ±20% (0 ở ±60%), cửa sổ tempo cục bộ ±2 ô, điểm con nhịp 0.3/0.1/0.25/0.2/0.15.
 Tiêu chí không đo được (thiếu Note Off, velocity, pedal, ký hiệu) → `null`, trọng số chia lại theo tỉ lệ, ghi lý do. Tổng = Σ trọng số hiệu dụng × giá trị.
 Độ tin cậy: tỉ lệ nhóm neo được < 40% → kết quả đánh dấu "không đối chiếu được (có thể chơi bài khác)".
+
+## 7a. Độ trễ từng máy và so với metronome (M1-T7)
+
+- **Vì sao**: đàn MIDI, micro, loa / tai nghe (Bluetooth có thể 150–300 ms) và trình duyệt làm tiếng click đến tai và nốt đến app muộn khác nhau
+  trên mỗi máy. Chấm nhịp của Coach là TƯƠNG ĐỐI (tempo cục bộ của chính người chơi) nên độ trễ cố định không đổi điểm — nhưng muốn biết người chơi
+  đánh trước / sau tiếng metronome thì phải trừ đúng độ trễ của máy.
+- **Đo** (`latency/calibration.ts`, `hooks/useLatencyCalibration.ts`, hộp thoại ở màn chuẩn bị): 4 tiếng click bắt nhịp + 16 tiếng được đo ở ♩=90,
+  người chơi gõ bằng ĐÚNG nguồn sẽ ghi (phím đàn MIDI / phím máy tính hoặc nút chạm / một nốt cho micro), nghe chứ không nhìn (không có nhịp bằng hình).
+  Mỗi lần gõ ghép tiếng click gần nhất (± 45% phách), gõ đúp giữ lần gần trung vị, bỏ lần lệch > max(60 ms, 3,5σ); kết quả = trung vị,
+  độ dao động = 1,4826 × MAD. Không lưu khi < 8 lần gõ, dao động > 35 ms hoặc lệch > 350 ms / 40% phách (gõ lệch phách). Mốc MIDI qua cùng
+  `estimateClock` với bộ ghi → cùng cơ sở thời gian khi phân tích. Số đo gồm cả thói quen gõ của người chơi (thường gõ hơi sớm) — đúng thứ cần trừ.
+- **Lưu** (`latency/store.ts`): localStorage `vietpiano.coach.latency.v1`, theo thiết bị trên máy này: `midi:<tên đàn>`, `virtual`, `microphone`
+  (tối đa 30 số đo). Kèm độ trễ đầu ra trình duyệt báo (`AudioContext.outputLatency + baseLatency`, chỉ khi AudioContext đang chạy) → lúc chuẩn bị /
+  lúc chấm cảnh báo "loa / tai nghe có vẻ đã đổi" khi lệch > 30 ms. Không gửi đi đâu.
+- **Ghi**: phiên lưu `latencyMs` = số đo (hoặc mặc định), `latencyCalibration`, `outputLatencyMs` lúc dừng. Metronome / đếm vào LÊN LỊCH TRƯỚC
+  (`metronome.ts`, nhìn trước 120 ms, `soundOutput.click(…, delay)`) thay vì phát ở khung hình vượt mốc (lệch tới ±16 ms); mỗi tiếng click đã phát
+  ghi vào log (`mark` 'click', mốc lên lịch). Tạm dừng / dừng huỷ tiếng click chưa phát.
+- **So với metronome** (`scoring/analyzeMetronome.ts`, chỉ khi lúc ghi có bật metronome): chưa đo độ trễ → "chưa so" (không đoán). Có số đo:
+  mỗi nhóm nốt khớp đúng (nốt sớm nhất) so với mốc kỳ vọng gần nhất trên lưới click = click + phần lẻ phách × độ dài phách (đúng cả khi tạm dừng rồi
+  metronome bắt đầu lại lệch pha); ≥ 8 nhóm → trung vị + dao động: |trung vị| ≤ 35 ms "khớp", dương "sau", âm "trước", dao động > max(60 ms, 15% phách)
+  "không bám". THÔNG TIN — không trừ điểm, rubric giữ nguyên; có trong "Cách tính điểm", dữ liệu gửi AI (`tempo.metronome`, độ lệch luôn dương +
+  hướng → câu "sau / trước … ms" qua được xác minh) và nhận xét theo quy tắc.
+- **Phạm vi** (D13, người dùng chọn): số đo chỉ dùng trong Coach; các màn khác của app giữ bù trễ cố định micro 60 ms / MIDI 0.
 
 ## 8. AI Teaching Engine
 
@@ -215,7 +239,7 @@ không giả vờ đa âm; MIDI scoring không bị ảnh hưởng (micro là m�
 | Bước | Hiện có / đã nối | Việc còn lại |
 | --- | --- | --- |
 | Thu âm + cao độ + onset | `AudioInput` → `PitchDetector` (YIN) + `AttackAnalyzer` (FFT) → `NoteRecognizer` (nốt đơn, chống âm ngân / hoạ âm) | — |
-| Ghi | `useCoachRecorder` nghe `microphoneInput` (nguồn "Micro" ở màn chuẩn bị): Note On + RMS (`lv`), bỏ nốt lúc app đang phát; bù trễ 60 ms khi phân tích | Đo độ trễ thật của từng máy (căn chỉnh) thay cho 60 ms cố định |
+| Ghi | `useCoachRecorder` nghe `microphoneInput` (nguồn "Micro" ở màn chuẩn bị): Note On + RMS (`lv`), bỏ nốt lúc app đang phát; bù trễ 60 ms khi phân tích — hoặc số đo của máy (M1-T7, §7a) | Đã có: đo độ trễ từng máy (M1-T7). Còn: độ trễ nhận diện micro khác theo cao độ (nốt trầm cần cửa sổ dài hơn) |
 | Bản nhạc | `referenceFromLesson(..., { singleNotesOnly: true })`: hai tay → chỉ giai điệu; tay trái → chỉ nốt đệm đơn | — |
 | Chấm | Cùng Scoring Engine: nốt + nhịp; trường độ / pedal "không đo"; lực đánh chỉ tương phản p ↔ f (RMS tương đối); độ tin cậy tối đa "trung bình" | Ước lượng độ tin cậy từng nốt từ `confidence` của YIN |
 | Phân biệt độ chính xác | Kết quả ghi `input.source` + `confidence.overall`; UI ghi "Micro (thử nghiệm — chỉ nốt đơn)" | Báo cáo tách điểm MIDI / micro khi so tiến bộ |

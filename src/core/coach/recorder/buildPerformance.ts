@@ -5,7 +5,9 @@
  *  1. Đồng hồ: mốc của driver MIDI có thể lệch performance.now() (Windows, Bluetooth) → độ lệch = trung vị (rt − t) của sự kiện
  *     MIDI; mốc dao động mạnh (> 30 ms) → dùng mốc nhận. Bàn phím ảo / micro: mốc đã là performance.now().
  *  2. Tạm dừng: bỏ khoảng [pause, resume] khỏi trục thời gian ("thời gian hoạt động") → không thành chỗ ngắt nhịp giả.
- *  3. Bù trễ nguồn (`latencyMs`, micro 60 ms).
+ *  3. Bù trễ (`latencyMs`: số đo độ trễ thiết bị, chưa đo → MIDI / bàn phím 0, micro 60) cho MỌI sự kiện của người chơi
+ *     (nốt, thả phím, pedal) — cùng một độ trễ nên nốt và pedal không lệch nhau. Tiếng click metronome (`mark` 'click')
+ *     là mốc chuẩn, không bù.
  *
  * Ghép nốt theo (nguồn, cổng, kênh, phím):
  *  - Note On lặp khi phím chưa thả (đánh chồng cùng nốt) → đóng nốt cũ tại onset mới (`retrigger`), nốt mới `retriggered`.
@@ -120,12 +122,17 @@ export function buildPerformance(rec: RecordedSession, opts: BuildOptions = {}):
       pauseFrom = null;
     } else if ((e.m === 'stop' || e.m === 'abort') && stopAt === null) stopAt = e.t;
   }
-  const lastTime = ordered.length ? ordered[ordered.length - 1].time : 0;
+  // Tiếng click không phải hành động của người chơi → không kéo dài phiên dở dang (không có mốc dừng).
+  const played = ordered.filter((o) => !(o.e.k === 'mark' && o.e.m === 'click'));
+  const lastTime = played.length ? played[played.length - 1].time : 0;
   const rawEnd = stopAt ?? lastTime;
   if (pauseFrom !== null) pausedIntervals.push({ from: pauseFrom, to: Math.max(pauseFrom, rawEnd) });
   const active = activeTimeMapper(pausedIntervals);
   const endMs = active(rawEnd);
   const disconnectMarks = ordered.filter((o) => o.e.k === 'mark' && o.e.m === 'disconnect').map((o) => o.time);
+  const clicks = ordered
+    .filter((o) => o.e.k === 'mark' && o.e.m === 'click' && o.time <= rawEnd + 1e-6 && !pausedIntervals.some((p) => o.time > p.from && o.time < p.to))
+    .map((o) => active(o.time));
 
   const sustain = emptyTrack(64);
   const sostenuto = emptyTrack(66);
@@ -157,7 +164,7 @@ export function buildPerformance(rec: RecordedSession, opts: BuildOptions = {}):
         if (e.c === 64) sustainSeen = true;
         const track = tracks[e.c];
         if (track) {
-          track.changes.push({ t: active(time), value: e.v } satisfies PedalChange);
+          track.changes.push({ t: active(time) - latency, value: e.v } satisfies PedalChange);
         } else if (e.c === 120 || e.c === 123) {
           for (const [key, o] of [...open]) if (o.note.channel === e.ch && o.note.source === e.src) close(key, time, 'release');
         }
@@ -241,6 +248,7 @@ export function buildPerformance(rec: RecordedSession, opts: BuildOptions = {}):
     orphanOffs,
     disconnects: disconnectMarks.length,
     sustainSeen,
+    clicks,
   };
 }
 

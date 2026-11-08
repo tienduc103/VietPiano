@@ -4,6 +4,9 @@ import { CoachSetup, type InterruptedItem } from '../components/coach/CoachSetup
 import { CoachRecording } from '../components/coach/CoachRecording';
 import { CoachResults, type ResultData } from '../components/coach/CoachResults';
 import { CoachHistory } from '../components/coach/CoachHistory';
+import { LatencyCalibrationDialog } from '../components/coach/LatencyCalibrationDialog';
+import { soundOutput } from '../core/audio/SoundOutput';
+import { effectiveLatency, loadLatencyStore, saveLatencyStore, withCalibration, withoutCalibration, type LatencyStore } from '../core/coach/latency/store';
 import { buildAiPayload } from '../core/coach/ai/payload';
 import { ScoreFollower } from '../core/coach/follower';
 import { applyAttempt, createPlan } from '../core/coach/practice/plan';
@@ -26,7 +29,7 @@ import { useCoachRecorder } from '../hooks/useCoachRecorder';
 import { usePedalSeen } from '../hooks/usePedalSeen';
 import { useUiMode } from '../hooks/useUiMode';
 import { useApp } from '../store/appStore';
-import { useMic } from '../store/micStore';
+import { toggleMicrophone, useMic } from '../store/micStore';
 import { useMidi } from '../store/midiStore';
 import { activeProfile, useProfiles } from '../store/profileStore';
 import { useSettings } from '../store/settingsStore';
@@ -36,7 +39,6 @@ type Phase = { name: 'setup' } | { name: 'recording' } | { name: 'results'; data
 /** Phiên dở dang cũ hơn chừng này (lâu hơn chu kỳ lưu nháp — không phải phiên đang ghi ở tab khác) mới đề nghị khôi phục. */
 const STALE_MS = 4_000;
 /** Độ trễ micro (cùng giá trị chế độ Biểu diễn). */
-const MIC_LATENCY_MS = 60;
 
 function safeSlice(lesson: Lesson, m: [number, number] | null): Lesson {
   if (!m) return lesson;
@@ -82,8 +84,16 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Điều hướng bằng đàn MIDI nhận phím trước bộ ghi; lúc đang ghi phím là nốt.
-  useMidiNavListening(phase.name === 'recording');
+  // Độ trễ theo thiết bị trên máy này (M1-T7).
+  const [latencyStore, setLatencyStore] = useState<LatencyStore>(() => loadLatencyStore());
+  const [calibrating, setCalibrating] = useState(false);
+  const updateLatencyStore = useCallback((next: LatencyStore) => {
+    setLatencyStore(next);
+    saveLatencyStore(next);
+  }, []);
+
+  // Điều hướng bằng đàn MIDI nhận phím trước bộ ghi; lúc đang ghi / đang đo độ trễ phím là nốt / lần gõ.
+  useMidiNavListening(phase.name === 'recording' || calibrating);
   const recorder = useCoachRecorder();
   // Kết nối AI cục bộ: kiểm tra khi mở màn + định kỳ, hiện ở màn chuẩn bị và trong lúc đánh.
   const aiLink = useCoachAiLink();
@@ -94,6 +104,9 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
   const effectiveHand = twoHands ? hand : 'both';
   const midiReady = midiStatus === 'ready' && midiDevices.length > 0;
   const input = resolveInput(cfg.input, midiReady, micStatus === 'running', pedalSeen);
+  const deviceName = input.primary === 'midi' ? midiDevices[0]?.name : undefined;
+  const outputLatencyNow = soundOutput.outputLatencyMs();
+  const latency = effectiveLatency(input.primary, deviceName, latencyStore, outputLatencyNow);
   const bpm = Math.max(20, Math.round((lessonTempo(baseLesson) * cfg.tempoPercent) / 100));
   const reference = useMemo(
     () => referenceFromLesson(lesson, { hand: effectiveHand, singleNotesOnly: input.primary === 'microphone', targetBpm: bpm }),
@@ -150,6 +163,8 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
     setCursor(follower.cursor());
     setMeasureNow(follower.measure);
     const beats = measureLength(lesson.timeSignature);
+    soundOutput.unlock();
+    const lat = effectiveLatency(input.primary, deviceName, latencyStore, soundOutput.outputLatencyMs());
     const meta: Omit<PerformanceSession, 'status' | 'startedAt' | 'updatedAt' | 'endedAt' | 'eventCount' | 'recorderVersion'> = {
       id: newId('cs'),
       profileKey,
@@ -166,7 +181,9 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
         ...(input.primary === 'midi' && midiInput.backendKind ? { backend: midiInput.backendKind } : {}),
         capabilities: input.capabilities,
       },
-      latencyMs: input.primary === 'microphone' ? MIC_LATENCY_MS : 0,
+      // Độ trễ đo của thiết bị (M1-T7); chưa đo → mặc định (micro 60, đàn MIDI / bàn phím 0) như trước.
+      latencyMs: lat.latencyMs,
+      ...(lat.calibration ? { latencyCalibration: lat.calibration } : {}),
       pedalRule: cfg.pedalRule,
       ...(planCtx ? { planId: planCtx.plan.id, planStepId: planCtx.stepId } : {}),
     };
@@ -188,7 +205,7 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
       },
     });
     setPhase({ name: 'recording' });
-  }, [reference, lesson, baseLesson, profileKey, effectiveHand, cfg.mode, cfg.metronome, cfg.countIn, cfg.pedalRule, bpm, input, midiDevices, planCtx, recorder]);
+  }, [reference, lesson, baseLesson, profileKey, effectiveHand, cfg.mode, cfg.metronome, cfg.countIn, cfg.pedalRule, bpm, input, midiDevices, deviceName, latencyStore, planCtx, recorder]);
 
   const stop = useCallback(async () => {
     setBusy(true);
@@ -349,6 +366,22 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
             onStart={start}
             labelStyle={labelStyle}
             aiLink={aiLink}
+            latency={latency}
+            deviceName={deviceName}
+            outputLatencyNow={outputLatencyNow}
+            onCalibrate={() => setCalibrating(true)}
+            onClearCalibration={() => latency.calibration && updateLatencyStore(withoutCalibration(latencyStore, latency.calibration.deviceKey))}
+          />
+        )}
+        {phase.name === 'setup' && calibrating && (
+          <LatencyCalibrationDialog
+            source={input.primary}
+            deviceName={deviceName}
+            current={latency.calibration}
+            micRunning={micStatus === 'running'}
+            onEnableMic={() => void toggleMicrophone()}
+            onSave={(cal) => updateLatencyStore(withCalibration(latencyStore, cal))}
+            onClose={() => setCalibrating(false)}
           />
         )}
         {phase.name === 'recording' && recorder.state && (
@@ -370,6 +403,8 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
             onRelease={recorder.release}
             busy={busy}
             aiLink={aiLink}
+            clickGrid={recorder.clickGrid}
+            latencyMs={latency.calibration ? latency.latencyMs : null}
           />
         )}
         {phase.name === 'results' && (

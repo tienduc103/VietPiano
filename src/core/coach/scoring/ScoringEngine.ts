@@ -5,20 +5,23 @@
  * Mỗi issue mang `deduction` = điểm /100 nó làm mất ⇒ total = 100 − Σ deduction (sai khác chỉ do làm tròn).
  * Kết quả ghi phiên bản engine / thuật toán / trọng số → chấm lại phiên cũ bằng bản mới mà vẫn giữ kết quả cũ.
  */
-import { ALIGNMENT_VERSION, CRITERION_LABEL, SCORING_ENGINE_VERSION, WEIGHTS_VERSION, type BuiltPerformance, type CoachMode, type CriterionKey, type CriterionScore, type InputCapabilities, type MeasureSummary, type NoteAlignment, type ScoreReference, type ScoringIssue, type ScoringResult } from '../types';
+import { ALIGNMENT_VERSION, CRITERION_LABEL, SCORING_ENGINE_VERSION, WEIGHTS_VERSION, type BuiltPerformance, type CoachMode, type CriterionKey, type CriterionScore, type InputCapabilities, type MeasureSummary, type NoteAlignment, type PerformanceSession, type ScoreReference, type ScoringIssue, type ScoringResult } from '../types';
 import { alignPerformance, mapOfRef } from './align';
 import { analyzeDuration } from './analyzeDuration';
 import { analyzeDynamics } from './analyzeDynamics';
+import { analyzeMetronome, metronomeText } from './analyzeMetronome';
 import { analyzeNotes, baseAlignment } from './analyzeNotes';
 import { analyzePedal, type PedalRule } from './analyzePedal';
 import { analyzeRhythm } from './analyzeRhythm';
 import { createContext, type CriterionOutcome, type IssueDraft } from './context';
 import { modeParams } from './modes';
+import { OUTPUT_CHANGE_MS, sanitizeCalibration } from '../latency/store';
 
 export interface ScoreInput {
   reference: ScoreReference;
   performance: BuiltPerformance;
-  session: { id: string; profileKey: string; lessonId: string };
+  /** Phiên đã ghi (truyền cả `PerformanceSession` → có metronome / độ trễ máy để so nốt với tiếng click). */
+  session: { id: string; profileKey: string; lessonId: string } & Partial<Pick<PerformanceSession, 'metronome' | 'latencyMs' | 'latencyCalibration' | 'outputLatencyMs'>>;
   capabilities: InputCapabilities;
   mode?: CoachMode;
   pedalRule?: PedalRule;
@@ -44,6 +47,12 @@ export function scorePerformance(input: ScoreInput): ScoringResult {
   const duration = analyzeDuration(ctx);
   const pedal = analyzePedal(ctx, input.pedalRule ?? 'auto');
   const dynamics = analyzeDynamics(ctx);
+  // So với tiếng metronome: thông tin, không vào điểm.
+  // Phiên đọc từ bộ nhớ là dữ liệu không tin cậy → kiểm số đo trước khi dùng.
+  const cal = input.session.latencyCalibration ? sanitizeCalibration(input.session.latencyCalibration) : null;
+  const outputNow = input.session.outputLatencyMs ?? null;
+  const outputChanged = !!cal && cal.outputLatencyMs !== null && outputNow !== null && Math.abs(outputNow - cal.outputLatencyMs) > OUTPUT_CHANGE_MS;
+  const metronome = analyzeMetronome(ctx, { metronome: input.session.metronome ?? false, latencyMs: input.session.latencyMs ?? 0, calibration: cal, outputChanged });
   const outcomes: Record<CriterionKey, CriterionOutcome> = { notes, rhythm, duration, pedal, dynamics };
 
   // ── trọng số hiệu dụng ──
@@ -145,6 +154,9 @@ export function scorePerformance(input: ScoreInput): ScoringResult {
   if (perf.orphanOffs) explanation.push(`${perf.orphanOffs} lần thả phím không có lần nhấn tương ứng (vd phím dùng để bấm nút) — đã bỏ qua.`);
   if (perf.disconnects) explanation.push(`Đàn mất kết nối ${perf.disconnects} lần trong lúc ghi — nốt bị ngắt khi đó không tính trường độ.`);
   if (input.performance.notes.some((x) => x.source === 'microphone')) explanation.push('Nghe bằng micro: chỉ chấm nốt đơn, độ chính xác thấp hơn đàn MIDI; không đo trường độ và pedal.');
+  if (cal) explanation.push(`Đã bù độ trễ đo của máy: ${cal.offsetMs} ms (±${cal.jitterMs} ms, ${cal.taps}/${cal.clicks} lần gõ) cho mọi nốt và pedal — chỉ dời mốc thời gian, không đổi điểm nhịp (nhịp chấm theo tương quan giữa các nốt).`);
+  if (metronome) explanation.push(metronome.status === 'ok' ? `${metronomeText(metronome)} Chỉ là thông tin, không trừ điểm.` : metronomeText(metronome));
+  if (outputChanged && cal) explanation.push(`Độ trễ loa / tai nghe trình duyệt báo lúc ghi (${outputNow} ms) khác lúc đo (${cal.outputLatencyMs} ms) — có thể đã đổi loa / tai nghe; nên đo lại độ trễ.`);
   explanation.push('Bài không có ký hiệu legato / staccato / dấu nối / ngắt câu nên các ý đó không được chấm.');
   const micro = input.performance.notes.some((x) => x.source === 'microphone');
   const overall: ScoringResult['confidence']['overall'] = lowAlign ? 'low' : micro || anchored < 0.75 ? 'medium' : 'high';
@@ -166,7 +178,7 @@ export function scorePerformance(input: ScoreInput): ScoringResult {
     alignment,
     issues,
     measures: [...byMeasure.values()].sort((a, b) => a.measure - b.measure),
-    tempo: rhythm.tempo,
+    tempo: metronome ? { ...rhythm.tempo, metronome } : rhythm.tempo,
     hands: rhythm.hands,
     pedalInfo: pedal.info,
     ...(dynamics.info.sections.length ? { dynamicsInfo: dynamics.info } : {}),

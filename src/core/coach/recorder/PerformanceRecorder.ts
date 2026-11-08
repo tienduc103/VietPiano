@@ -194,6 +194,16 @@ export class PerformanceRecorder {
     this.touch();
   }
 
+  /**
+   * Một tiếng click metronome / đếm vào vừa phát (mốc LÊN LỊCH theo performance.now()) — mốc chuẩn để so nốt với metronome
+   * (M1-T7). Chỉ ghi lúc đang ghi; không báo giao diện (tránh vẽ lại mỗi phách) nhưng vẫn đánh dấu cần lưu nháp.
+   */
+  click(time: number, accent: boolean): void {
+    if (this.statusValue !== 'recording') return;
+    this.mark('click', time, accent ? 'a' : undefined);
+    this.dirty = true;
+  }
+
   noteOn(e: RecorderNoteOn): boolean {
     if (!this.isOpen) return false;
     const paused = this.statusValue === 'paused';

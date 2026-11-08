@@ -5,6 +5,7 @@ import { cursorAt } from '../../core/coach/follower';
 import { activeStep, planProgress } from '../../core/coach/practice/plan';
 import type { ProgressReport } from '../../core/coach/progress/compare';
 import { abSchedule, performanceSchedule, referenceSchedule, REPLAY_NOTICE, replayRange, resultMap } from '../../core/coach/replay';
+import { metronomeText } from '../../core/coach/scoring/analyzeMetronome';
 import { formatNumber, notePosition } from '../../core/coach/scoring/context';
 import { weakestMeasures } from '../../core/coach/scoring/ScoringEngine';
 import type { CoachSettings } from '../../core/coach/settings';
@@ -152,6 +153,7 @@ export function CoachResults({ data, audience, labelStyle, cfg, onRetry, onPract
             Tempo ♩≈{result.tempo.actualBpm === null ? '—' : Math.round(result.tempo.actualBpm)} (mục tiêu ♩={Math.round(result.tempo.targetBpm)})
             {result.tempo.drift !== null && Math.abs(result.tempo.drift) >= 0.1 ? ` · ${result.tempo.drift > 0 ? 'nhanh dần' : 'chậm dần'} ${Math.round(Math.abs(result.tempo.drift) * 100)}%` : ''}
           </p>
+          {result.tempo.metronome && <MetronomeLine check={result.tempo.metronome} />}
           {(result.hands.right || result.hands.left) && ref.twoHands && (
             <p className="mt-1 text-sm" data-testid="coach-hands">
               {result.hands.right ? `Tay phải ${Math.round(result.hands.right.accuracy * 100)}% đúng` : ''}
@@ -458,5 +460,22 @@ function SelectionDetail({
       )}
       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Thời điểm tính từ nốt đầu tiên; "chuẩn" = vị trí theo nhịp của chính bạn sau khi căn chỉnh tempo.</p>
     </div>
+  );
+}
+
+/** So với tiếng metronome (M1-T7): ký hiệu + chữ, không chỉ màu; chỉ là thông tin, không trừ điểm. */
+function MetronomeLine({ check }: { check: NonNullable<ScoringResult['tempo']['metronome']> }) {
+  const ok = check.status === 'ok';
+  const icon = !ok ? 'ⓘ' : check.verdict === 'with' ? '✓' : check.verdict === 'unsteady' ? '≈' : check.verdict === 'behind' ? '→' : '←';
+  const tone = !ok || check.verdict === 'with' ? 'text-slate-600 dark:text-slate-300' : 'text-amber-800 dark:text-amber-200';
+  return (
+    <p className={`mt-1 text-sm ${tone}`} data-testid="coach-metronome" data-status={check.status} data-verdict={ok ? check.verdict : undefined}>
+      <span aria-hidden className="mr-1 font-bold">
+        {icon}
+      </span>
+      {metronomeText(check)}
+      {ok && check.outputChanged ? ' Loa / tai nghe có vẻ đã đổi so với lúc đo — nên đo lại độ trễ.' : ''}
+      {ok ? <span className="text-slate-500 dark:text-slate-400"> (thông tin, không trừ điểm)</span> : null}
+    </p>
   );
 }

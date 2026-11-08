@@ -50,6 +50,7 @@ export function buildAiMessages(payload: CoachAiPayload, audience: CoachAudience
     'Chỉ nhắc tới lỗi, ô nhịp, tên nốt và con số CÓ TRONG dữ liệu. Không bịa thêm lỗi, vị trí, số liệu hay lịch sử.',
     'Tiêu chí có percent = null là "không đo" — không nhận xét về tiêu chí đó.',
     'Không nhận xét ngón tay, âm sắc hay cảm xúc: app không đo được các thứ đó.',
+    'tempo.metronome (nếu có) = so với tiếng click đã bù độ trễ máy: verdict "behind" = đánh SAU tiếng click, "ahead" = TRƯỚC, "with" = khớp, "unsteady" = không bám; deviationMs = độ lệch (ms). Chỉ là thông tin, không phải lỗi bị trừ điểm. Không có trường này thì không nói về việc bám metronome.',
     'Trả về DUY NHẤT một đối tượng JSON đúng schema:',
     '- summary: 2–3 câu nhận xét tổng quan.',
     '- strengths: 1–3 điểm làm tốt (dựa vào tiêu chí có phần trăm cao).',

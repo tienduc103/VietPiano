@@ -16,7 +16,11 @@ export interface CoachAiPayload {
   input: string;
   score: { total: number; criteria: { key: string; label: string; percent: number | null; points: number; weight: number; reason?: string }[] };
   counts: { notes: number; correct: number; wrong: number; missing: number; extra: number; octave: number; order: number };
-  tempo: { target: number; actual: number | null; driftPercent: number | null };
+  /**
+   * `metronome`: so với tiếng click sau khi bù độ trễ máy (chỉ khi đo được) — thông tin, không trừ điểm. Hướng nằm ở `verdict`
+   * (behind = sau tiếng click), `deviationMs` luôn dương → AI viết "sau / trước … ms" vẫn khớp số liệu khi xác minh.
+   */
+  tempo: { target: number; actual: number | null; driftPercent: number | null; metronome?: { verdict: 'with' | 'behind' | 'ahead' | 'unsteady'; deviationMs: number; spreadMs: number } };
   issues: { ref: string; type: string; measure: number | null; hand?: string; lostPoints: number; message: string }[];
   measuresToReview: { measure: number; lostPoints: number }[];
   hands?: { rightAccuracy?: number; leftAccuracy?: number; syncPercent?: number | null };
@@ -70,7 +74,14 @@ export function buildAiPayload(result: ScoringResult, ref: ScoreReference, ctx: 
       criteria: result.criteria.map((c) => ({ key: c.key, label: c.label, percent: pct(c.value), points: Math.round(c.points * 10) / 10, weight: Math.round(c.effectiveWeight), ...(c.reason ? { reason: c.reason } : {}) })),
     },
     counts: { notes: result.counts.refNotes, correct: result.counts.correct, wrong: result.counts.wrong, missing: result.counts.missing, extra: result.counts.extra + result.counts.repeated + result.counts.simultaneous, octave: result.counts.octave, order: result.counts.order },
-    tempo: { target: Math.round(result.tempo.targetBpm), actual: result.tempo.actualBpm === null ? null : Math.round(result.tempo.actualBpm), driftPercent: result.tempo.drift === null ? null : Math.round(result.tempo.drift * 100) },
+    tempo: {
+      target: Math.round(result.tempo.targetBpm),
+      actual: result.tempo.actualBpm === null ? null : Math.round(result.tempo.actualBpm),
+      driftPercent: result.tempo.drift === null ? null : Math.round(result.tempo.drift * 100),
+      ...(result.tempo.metronome?.status === 'ok'
+        ? { metronome: { verdict: result.tempo.metronome.verdict, deviationMs: Math.abs(result.tempo.metronome.offsetMs), spreadMs: result.tempo.metronome.spreadMs } }
+        : {}),
+    },
     issues: issues.map((i) => ({ ref: i.id, type: i.type, measure: i.measure, ...(i.hand && i.hand !== 'unknown' ? { hand: i.hand === 'left' ? 'tay trái' : 'tay phải' } : {}), lostPoints: Math.round(i.deduction * 10) / 10, message: i.message })),
     measuresToReview: measures.map((m) => ({ measure: m.measure, lostPoints: Math.round(m.lost * 10) / 10 })),
     recommendations: ctx.recommendations.map((r) => ({ ref: r.id, title: r.title, reason: r.reason, ...(r.measures ? { measures: r.measures } : {}), ...(r.tempoPercent ? { tempoPercent: r.tempoPercent } : {}) })),

@@ -86,7 +86,17 @@ export function ruleBasedFeedback(result: ScoringResult, payload: CoachAiPayload
   const measured = result.criteria.filter((c) => c.value !== null);
   const c = payload.counts;
   const tempo = payload.tempo.actual !== null ? ` Tempo ♩≈${payload.tempo.actual} (mục tiêu ♩=${payload.tempo.target}).` : '';
-  const summary = `${you} đạt ${result.total}/100 (${payload.mode.toLowerCase()}). Đúng ${c.correct}/${c.notes} nốt${c.wrong + c.missing ? `, sai ${c.wrong}, thiếu ${c.missing}` : ''}${c.extra ? `, thừa ${c.extra}` : ''}.${tempo}`;
+  const met = payload.tempo.metronome;
+  const metronome = !met
+    ? ''
+    : met.verdict === 'behind'
+      ? ` So với metronome, ${you.toLowerCase()} thường đánh sau tiếng click khoảng ${met.deviationMs} ms — nghe trước tiếng click và đánh cùng lúc với nó.`
+      : met.verdict === 'ahead'
+        ? ` So với metronome, ${you.toLowerCase()} thường đánh trước tiếng click khoảng ${met.deviationMs} ms — đợi tiếng click rồi đánh cùng lúc.`
+        : met.verdict === 'unsteady'
+          ? ` ${you} chưa bám theo tiếng metronome — đếm thầm theo tiếng click và giữ tempo đều.`
+          : '';
+  const summary = `${you} đạt ${result.total}/100 (${payload.mode.toLowerCase()}). Đúng ${c.correct}/${c.notes} nốt${c.wrong + c.missing ? `, sai ${c.wrong}, thiếu ${c.missing}` : ''}${c.extra ? `, thừa ${c.extra}` : ''}.${tempo}${metronome}`;
 
   const good = measured.filter((x) => (x.value as number) >= 0.9).sort((a, b) => (b.value as number) - (a.value as number));
   const best = [...measured].sort((a, b) => (b.value as number) - (a.value as number))[0];
@@ -95,6 +105,7 @@ export function ruleBasedFeedback(result: ScoringResult, payload: CoachAiPayload
     : best
       ? [`Phần làm tốt nhất: ${best.label.toLowerCase()} (${Math.round((best.value as number) * 100)}%).`]
       : [];
+  if (met?.verdict === 'with') strengths.push(`Bám tiếng metronome tốt (lệch trung bình ${met.deviationMs} ms).`);
 
   // Ưu tiên: mỗi loại lỗi một mục, lỗi mất nhiều điểm nhất trước.
   const seen = new Set<string>();

@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
 import type { AiLinkMonitor } from '../../core/coach/ai/link';
+import { DEFAULT_LATENCY_MS, deviceLabel, type EffectiveLatency } from '../../core/coach/latency/store';
 import { useAiLink } from '../../hooks/useCoachAiLink';
 import { useApp } from '../../store/appStore';
 import { useSettings } from '../../store/settingsStore';
 import { ollamaUrlLabel } from '../AiCoachCard';
 import { AiLinkChip, AiLinkDetail } from './AiLinkStatus';
+import { formatCalibrationDate } from './LatencyCalibrationDialog';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '../../core/lessons/LessonManager';
 import { measureRange } from '../../core/lessons/slice';
 import { lessonTempo, type Lesson } from '../../core/lessons/types';
@@ -53,6 +55,14 @@ interface Props {
   labelStyle: NoteLabelStyle;
   /** Trạng thái kết nối AI cục bộ (dùng chung với màn đang ghi). */
   aiLink: AiLinkMonitor;
+  /** Độ trễ của thiết bị đang chọn (M1-T7): số đo hoặc mặc định. */
+  latency: EffectiveLatency;
+  /** Tên đàn MIDI đang dùng (khoá số đo theo từng đàn). */
+  deviceName?: string;
+  /** Độ trễ đầu ra trình duyệt báo bây giờ (null = chưa biết) — cảnh báo khi khác lúc đo. */
+  outputLatencyNow: number | null;
+  onCalibrate: () => void;
+  onClearCalibration: () => void;
 }
 
 function Can({ ok, label, why }: { ok: boolean; label: string; why?: string }) {
@@ -241,6 +251,7 @@ export function CoachSetup(p: Props) {
                 {p.pedalSeen ? '✓ Đã nhận tín hiệu pedal (CC 64).' : '🦶 Đạp thử pedal một lần để kiểm tra đàn có gửi tín hiệu pedal.'}
               </p>
             )}
+            <LatencyRow p={p} />
             <ul className="mt-3 grid gap-1" aria-label="Tiêu chí chấm được với nguồn này">
               <Can ok label="Chính xác nốt" />
               <Can ok label="Nhịp điệu" />
@@ -348,5 +359,50 @@ function AiCard({ cfg, setCfg, aiLink }: { cfg: CoachSettings; setCfg: (patch: P
         </div>
       )}
     </Card>
+  );
+}
+
+/** Độ trễ của thiết bị đang chọn (M1-T7): số đo / mặc định + nút đo. */
+function LatencyRow({ p }: { p: Props }) {
+  const cal = p.latency.calibration;
+  const source = p.input.primary;
+  const label = deviceLabel(source, source === 'midi' ? p.deviceName : undefined);
+  return (
+    <div className="mt-3 rounded-xl bg-violet-50/70 p-2 text-sm ring-1 ring-violet-100 dark:bg-slate-700/40 dark:ring-slate-600" data-testid="coach-latency" data-calibrated={!!cal}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span aria-hidden>⏱</span>
+        <span className="min-w-0 flex-1">
+          Độ trễ {label}:{' '}
+          {cal ? (
+            <>
+              <strong className="tabular-nums" data-testid="coach-latency-value">
+                {cal.offsetMs} ms
+              </strong>{' '}
+              (±{cal.jitterMs} ms, đo {formatCalibrationDate(cal.measuredAt)})
+            </>
+          ) : (
+            <>chưa đo — dùng mặc định {DEFAULT_LATENCY_MS[source]} ms</>
+          )}
+        </span>
+        <Button className="min-h-10 text-sm" onClick={p.onCalibrate} data-testid="coach-latency-open">
+          {cal ? 'Đo lại' : 'Đo độ trễ'}
+        </Button>
+        {cal && (
+          <Button variant="ghost" className="min-h-10 text-sm" onClick={p.onClearCalibration} data-testid="coach-latency-clear">
+            Bỏ số đo
+          </Button>
+        )}
+      </div>
+      {p.latency.outputChanged && cal && (
+        <p className="mt-1 text-amber-800 dark:text-amber-200" role="alert" data-testid="coach-latency-stale">
+          ⚠ Loa / tai nghe có vẻ đã đổi so với lúc đo (trình duyệt báo {cal.outputLatencyMs} → {p.outputLatencyNow} ms) — nên đo lại.
+        </p>
+      )}
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        {source === 'microphone'
+          ? 'Micro: Coach không bật metronome (micro nghe nhầm tiếng click) nên số đo chỉ dùng để bù trễ, không đổi điểm.'
+          : 'Đã đo thì khi bật metronome, kết quả cho biết bạn đánh trước hay sau tiếng click (thông tin, không trừ điểm). Mỗi đàn / máy một số đo.'}
+      </p>
+    </div>
   );
 }
