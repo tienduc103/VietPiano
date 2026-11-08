@@ -52,6 +52,7 @@ import {
   type TrackStep,
 } from '../core/practice/handPractice';
 import { ScoreDisplayMenu } from '../components/practice/ScoreDisplayMenu';
+import { NoteCounter } from '../components/practice/NoteCounter';
 import { ArrangementBar, usePracticePlan } from '../components/practice/ArrangementBar';
 import { MeasureRangeMenu } from '../components/practice/MeasureRangeMenu';
 import { PerformFinishDialog, PerformPanel, ResultBreakdown } from '../components/practice/PerformPanel';
@@ -76,6 +77,11 @@ const FEEDBACK_MS = 900;
  */
 const MIC_LATENCY_MS = 60;
 const TEMPO_STEP_PERCENT = 5;
+
+/** Màu con số của bộ đếm đầu màn. */
+const COUNTER_GOOD = 'text-emerald-600 dark:text-emerald-400';
+const COUNTER_BAD = 'text-rose-600 dark:text-rose-400';
+const COUNTER_MUTED = 'text-slate-500 dark:text-slate-400';
 
 /** Bàn phím ảo: luôn hiện / tự ẩn lúc đang đánh (vẫn giữ chỗ) / ẩn hẳn. */
 type KeyboardMode = 'on' | 'auto' | 'off';
@@ -516,6 +522,9 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
       ? { midi: state.lastPlayedMidi, kind: state.status }
       : null;
   const done = (performMode ? perf.state.results : tempoMode ? tempo.results : state.results).filter((r) => r !== 'pending').length;
+  // Bộ đếm Biểu diễn: ✗ gồm cả nốt bị lỡ (tổng kết tách riêng Sai / Lỡ).
+  const performCorrect = perf.state.results.filter((r) => r === 'correct').length;
+  const performWrong = perf.state.results.filter((r) => r === 'wrong' || r === 'skipped').length;
   // Biểu diễn hai tay: tô cả nốt / hợp âm tay trái đúng – sai trên khuông Fa.
   const accSize = lesson.accompaniment?.length ?? 0;
   const performAccResults = useMemo(
@@ -564,34 +573,26 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
             </span>
           </div>
         </div>
-        {performMode ? (
-          <div className="flex items-center gap-4 text-lg font-semibold tabular-nums">
-            <span className="text-emerald-600 dark:text-emerald-400" title="Số nốt đúng" data-testid="perform-correct">
-              ✓ {perf.state.results.filter((r) => r === 'correct').length}
-            </span>
-            <span className="text-rose-600 dark:text-rose-400" title="Số nốt sai hoặc bị lỡ" data-testid="perform-wrong">
-              ✗ {perf.state.results.filter((r) => r === 'wrong' || r === 'skipped').length}
-            </span>
-          </div>
-        ) : tempoMode ? (
-          <div className="flex items-center gap-4 text-lg font-semibold tabular-nums">
-            <span className="text-emerald-600 dark:text-emerald-400" title="Số nốt đã đánh" data-testid="tempo-hits">
-              ♪ {tempo.hits}
-            </span>
-            <span className="text-slate-500 dark:text-slate-400" title="Số nốt bị lỡ" data-testid="tempo-missed">
-              lỡ {tempo.missed}
-            </span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-4 text-lg font-semibold tabular-nums">
-            <span className="text-emerald-600 dark:text-emerald-400" title="Số nốt đúng">
-              ✓ {state.correct}
-            </span>
-            <span className="text-rose-600 dark:text-rose-400" title="Số lần sai">
-              ✗ {state.wrong}
-            </span>
-          </div>
-        )}
+        {/* Bộ đếm: bấm để ẩn / hiện (chỉ đổi hiển thị — vẫn chấm, hết bài hộp thoại kết quả luôn hiện đủ). */}
+        <NoteCounter
+          hiddenGlyph={tempoMode ? '♪' : '✓ ✗'}
+          items={
+            performMode
+              ? [
+                  { text: `✓ ${performCorrect}`, spoken: `${performCorrect} nốt đúng`, title: 'Số nốt đúng', tone: COUNTER_GOOD, testId: 'perform-correct' },
+                  { text: `✗ ${performWrong}`, spoken: `${performWrong} nốt sai hoặc bị lỡ`, title: 'Số nốt sai hoặc bị lỡ', tone: COUNTER_BAD, testId: 'perform-wrong' },
+                ]
+              : tempoMode
+                ? [
+                    { text: `♪ ${tempo.hits}`, spoken: `${tempo.hits} nốt đã đánh`, title: 'Số nốt đã đánh', tone: COUNTER_GOOD, testId: 'tempo-hits' },
+                    { text: `lỡ ${tempo.missed}`, spoken: `${tempo.missed} nốt bị lỡ`, title: 'Số nốt bị lỡ', tone: COUNTER_MUTED, testId: 'tempo-missed' },
+                  ]
+                : [
+                    { text: `✓ ${state.correct}`, spoken: `${state.correct} nốt đúng`, title: 'Số nốt đúng', tone: COUNTER_GOOD, testId: 'wait-correct' },
+                    { text: `✗ ${state.wrong}`, spoken: `${state.wrong} lần sai`, title: 'Số lần sai', tone: COUNTER_BAD, testId: 'wait-wrong' },
+                  ]
+          }
+        />
         {aiNotes.notes.length > 0 && (
           <Button variant="ghost" onClick={() => setShowAiNotes(true)} aria-label="Nhận xét AI các lần trước" title="Nhận xét AI các lần trước" className="px-2" data-testid="open-ai-notes">
             🤖 <span className="tabular-nums">{aiNotes.notes.length}</span>
@@ -826,6 +827,7 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
         <PerformFinishDialog
           title={handTitle(lesson, hand)}
           breakdown={perf.breakdown}
+          counts={perf.breakdown.result}
           onRetry={perf.restart}
           onLibrary={() => navigate(libraryRoute)}
           extra={
@@ -1342,11 +1344,14 @@ function FinishDialog({
           <span className="text-slate-300 dark:text-slate-600">{'★'.repeat(3 - stars)}</span>
         </div>
         <h2 className="mt-3 bg-gradient-to-r from-violet-600 to-fuchsia-500 bg-clip-text text-2xl font-extrabold text-transparent dark:from-violet-300 dark:to-fuchsia-300">Hoàn thành bài!</h2>
-        <dl className="mt-6 grid grid-cols-2 gap-3 text-left">
-          <Stat label="Độ chính xác" value={`${accuracy}%`} />
+        {/* Luôn hiện đủ, kể cả khi bộ đếm đầu màn đang ẩn. Tổng nốt đã đánh = đúng + sai (mẫu số của độ chính xác). */}
+        <dl className="mt-6 grid grid-cols-2 gap-3 text-left" data-testid="result-stats">
+          <Stat label="Tổng nốt đã đánh" value={String(state.correct + state.wrong)} testId="result-played" />
+          <Stat label="Độ chính xác" value={`${accuracy}%`} testId="result-accuracy" />
+          <Stat label="Đúng" value={String(state.correct)} testId="result-correct" />
+          <Stat label="Sai" value={String(state.wrong)} testId="result-wrong" />
+          <Stat label="Bỏ qua" value={String(state.skipped)} testId="result-skipped" />
           <Stat label="Thời gian" value={formatDuration(elapsed)} />
-          <Stat label="Đúng" value={String(state.correct)} />
-          <Stat label="Sai / Bỏ qua" value={`${state.wrong} / ${state.skipped}`} />
           <PedalStat score={pedalScore} reason={pedalReason} />
         </dl>
         {breakdown}
@@ -1404,9 +1409,9 @@ function PedalStat({ score, reason = 'cần đàn MIDI' }: { score?: number | nu
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, testId }: { label: string; value: string; testId?: string }) {
   return (
-    <div className="rounded-xl bg-violet-50 px-4 py-3 ring-1 ring-violet-100 dark:bg-slate-700/60 dark:ring-violet-900">
+    <div className="rounded-xl bg-violet-50 px-4 py-3 ring-1 ring-violet-100 dark:bg-slate-700/60 dark:ring-violet-900" data-testid={testId}>
       <dt className="text-xs text-slate-500 dark:text-slate-400">{label}</dt>
       <dd className="text-xl font-bold tabular-nums">{value}</dd>
     </div>

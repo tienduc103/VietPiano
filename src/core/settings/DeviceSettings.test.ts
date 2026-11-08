@@ -71,6 +71,19 @@ describe('DeviceSettings', () => {
     expect(loadSettings(st).hideKeyboardWhilePlaying).toBe(true);
   });
 
+  it('ẩn bộ đếm đúng/sai: mặc định hiện (cài đặt cũ chưa có khoá này cũng vậy), chỉ ẩn khi đúng true, lưu lại được', () => {
+    const st = memoryStorage();
+    expect(loadSettings(st).hideNoteCounter).toBe(false);
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ a4: 442, showKeyboard: true }));
+    expect(loadSettings(st).hideNoteCounter).toBe(false);
+    st.setItem('vietpiano.settings.v1', JSON.stringify({ hideNoteCounter: 'yes' }));
+    expect(loadSettings(st).hideNoteCounter).toBe(false);
+    saveSettings({ ...DEFAULT_SETTINGS, hideNoteCounter: true }, st);
+    expect(loadSettings(st).hideNoteCounter).toBe(true);
+    // Ẩn bộ đếm không kéo theo cài đặt khác (chế độ, tay, tốc độ giữ nguyên).
+    expect(loadSettings(st)).toMatchObject({ practiceMode: 'wait', practiceHand: 'both', tempoPercent: 100 });
+  });
+
   it('giao diện giáo trình và nguồn nốt: giá trị lạ → auto', () => {
     const st = memoryStorage();
     expect(loadSettings(st)).toMatchObject({ uiMode: 'auto', inputSource: 'auto', metronomeWithMic: false });

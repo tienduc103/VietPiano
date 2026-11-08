@@ -50,6 +50,9 @@ export interface DeviceSettings {
   /** Màn Luyện tập (bài Thư viện): tự ẩn bàn phím ảo trong lúc đang đánh bài, hết bài / chơi lại → hiện lại.
    *  Chỉ ẩn khi đang nghe bằng micro hoặc đàn MIDI (bàn phím ảo là nguồn nốt thì vẫn hiện). */
   hideKeyboardWhilePlaying: boolean;
+  /** Màn Luyện tập: ẩn bộ đếm đúng/sai ở đầu màn (bấm vào bộ đếm hoặc Cài đặt → Hiển thị). Chỉ ẩn con số trên màn —
+   *  vẫn chấm, vẫn ghi phiên như cũ; hết bài hộp thoại kết quả luôn hiện đủ. Nhớ cho mọi bài (Chơi lại, bài khác giữ nguyên). */
+  hideNoteCounter: boolean;
   /** Nút micro nổi ở mọi màn hình: bấm bật/tắt micro, hiện nốt đang nghe khi micro bật. */
   showFloatingNote: boolean;
   /** Vị trí nút nổi "Tải lại bản mới nhất" do người dùng kéo tới; null = góc trên bên trái. */
@@ -107,6 +110,7 @@ export const DEFAULT_SETTINGS: DeviceSettings = {
   theme: 'system',
   showKeyboard: true,
   hideKeyboardWhilePlaying: false,
+  hideNoteCounter: false,
   showFloatingNote: true,
   reloadButtonPos: null,
   practiceMode: 'wait',
@@ -209,6 +213,7 @@ function sanitize(s: DeviceSettings): DeviceSettings {
     theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : 'system',
     showKeyboard: Boolean(s.showKeyboard),
     hideKeyboardWhilePlaying: s.hideKeyboardWhilePlaying === true,
+    hideNoteCounter: s.hideNoteCounter === true,
     showFloatingNote: Boolean(s.showFloatingNote),
     reloadButtonPos: sanitizePosition(s.reloadButtonPos),
     practiceMode: sanitizeMode(s),

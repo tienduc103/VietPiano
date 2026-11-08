@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { starsFor } from '../../core/curriculum/scoring';
-import type { PerformanceState } from '../../core/practice/PerformanceTracker';
+import type { PerformanceResult, PerformanceState } from '../../core/practice/PerformanceTracker';
 import { weakestSpan, type PerformBreakdown } from '../../core/practice/performPlan';
 import { TEMPO_PERCENT_MAX, TEMPO_PERCENT_MIN } from '../../core/settings/DeviceSettings';
 import { Button, Icon } from '../ui';
@@ -161,10 +161,21 @@ export function ResultBreakdown({
   );
 }
 
+/** Một ô số nốt ở tổng kết Biểu diễn. */
+function Count({ label, value, tone = '', testId }: { label: string; value: string; tone?: string; testId: string }) {
+  return (
+    <div className="rounded-lg bg-violet-50 px-2 py-1.5 ring-1 ring-violet-100 dark:bg-slate-700/60 dark:ring-violet-900" data-testid={testId}>
+      <dt className="text-xs text-slate-600 dark:text-slate-300">{label}</dt>
+      <dd className={`text-lg font-bold tabular-nums ${tone}`}>{value}</dd>
+    </div>
+  );
+}
+
 /** Hộp thoại tổng kết lượt Biểu diễn. */
 export function PerformFinishDialog({
   title,
   breakdown,
+  counts,
   durationMs,
   children,
   onRetry,
@@ -173,6 +184,11 @@ export function PerformFinishDialog({
 }: {
   title: string;
   breakdown: PerformBreakdown;
+  /**
+   * Số nốt của lượt (`PerformanceTracker.result()`; bộ đếm đầu màn ✗ = sai + bị lỡ) — luôn hiện, kể cả khi bộ đếm đang ẩn.
+   * Nốt đã đánh = đúng + sai, cùng định nghĩa với tiêu chí "Hoàn thành bài".
+   */
+  counts: Pick<PerformanceResult, 'notes' | 'correct' | 'wrong' | 'missed'>;
   durationMs?: number;
   /** Nhận xét AI. */
   children?: ReactNode;
@@ -197,7 +213,13 @@ export function PerformFinishDialog({
           {breakdown.score}
           <span className="text-lg font-semibold text-slate-400">/100</span>
         </div>
-        <dl className="mt-3 grid grid-cols-2 gap-2 text-left">
+        <dl className="mt-3 grid grid-cols-4 gap-2" data-testid="perform-counts">
+          <Count label="Nốt đã đánh" value={`${counts.correct + counts.wrong}/${counts.notes}`} testId="perform-played" />
+          <Count label="Đúng" value={String(counts.correct)} tone="text-emerald-600 dark:text-emerald-400" testId="perform-result-correct" />
+          <Count label="Sai" value={String(counts.wrong)} tone="text-rose-600 dark:text-rose-400" testId="perform-result-wrong" />
+          <Count label="Bị lỡ" value={String(counts.missed)} testId="perform-result-missed" />
+        </dl>
+        <dl className="mt-2 grid grid-cols-2 gap-2 text-left">
           {breakdown.criteria.map((c) => (
             <Row key={c.key} label={c.label} value={pct(c.value)} testId={`criterion-${c.key}`} />
           ))}

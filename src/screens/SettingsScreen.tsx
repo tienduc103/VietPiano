@@ -209,6 +209,11 @@ export function SettingsScreen({ section }: { section?: 'shortcuts' } = {}) {
                 onChange={(v) => update({ hideKeyboardWhilePlaying: v })}
               />
               <Toggle
+                label="Ẩn bộ đếm đúng/sai khi luyện bài (Luyện tập — vẫn chấm, hết bài hiện đủ kết quả; bấm vào bộ đếm để ẩn / hiện ngay)"
+                checked={settings.hideNoteCounter}
+                onChange={(v) => update({ hideNoteCounter: v })}
+              />
+              <Toggle
                 label="Hiện nút micro nổi (bật/tắt micro, xem nốt đang nghe)"
                 checked={settings.showFloatingNote}
                 onChange={(v) => update({ showFloatingNote: v })}
