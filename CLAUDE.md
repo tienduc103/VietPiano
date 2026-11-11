@@ -17,6 +17,7 @@ Không backend, không gửi âm thanh lên mạng, chạy offline. Tuỳ chọn
 | `npm run icons` | Sinh lại icon PNG từ `public/favicon.svg` |
 | `npm run release` | Phát hành: tăng `VERSION`, commit riêng file đó + tag (`-- --dry-run`, `-- --no-git`) |
 | `npm run voice` | Tạo mp3 giọng cô giáo còn thiếu (cần `pip install edge-tts`; `-- --dry-run`, `-- --prune`) — chạy lại sau khi sửa câu / nội dung bài |
+| `npm run perflog` | TẠM THỜI: máy ghi Nhật ký Biểu diễn chạy riêng (cổng 8790) cho máy mở app từ GitHub Pages; server dev / preview đã có sẵn `<base>__vplog` → `logs/perform-log/` (docs/perform-log.md) |
 
 Kiểm tra trước khi báo xong việc:
 1. `npm test && npm run build`.
@@ -45,6 +46,7 @@ Thêm / đổi module → cập nhật `docs/architecture.md`; ở đây chỉ g
 | `core/technique/`, `core/smartPractice/` | Luyện kỹ thuật ngón tay (67 bài, 5 cấp) + AI Smart Practice dùng chung: đoạn khó qua nhiều phiên, bài bổ trợ 3–5 nốt, Adaptive Tempo, bài hôm nay — chạy / chấm trong Coach, không lưu tiến độ trùng (docs/finger-coach/) |
 | `core/shortcuts/` | Lối tắt cá nhân (Quick Access): registry đích đến suy từ dữ liệu, lưu theo hồ sơ, mở qua router sẵn có — không URL (docs/shortcuts.md); `smart/` Lối tắt thông minh: đề xuất theo quy tắc, không lưu như lối tắt, không đụng lối tắt thủ công (docs/smart-shortcuts.md) |
 | `core/score/` | VexFlow → SVG; khuông KHÔNG được nhảy khi đổi nốt (`scoreFit`) |
+| `core/performLog/` | TẠM THỜI — Nhật ký Biểu diễn: ghi từng lượt Biểu diễn + máy truy cập, chẩn đoán chấm sai, gửi máy ghi của người dùng (docs/perform-log.md) |
 | `core/voice/` | cô giáo giọng nói (mp3 thu sẵn → TTS của máy → chỉ chữ) |
 | `core/feedback/` | nhận xét AI qua Ollama cục bộ, lưu nhận xét |
 | `core/storage/`, `settings/`, `calibration/`, `profile/` | IndexedDB / localStorage, cài đặt thiết bị, tự căn chỉnh micro, hồ sơ + đánh giá + gợi ý bài |
@@ -98,7 +100,7 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   của bé; phát qua `speechSynthesis` / `<audio>`, không qua AudioContext của tiếng đàn. Chưa kiểm thử trên iPad thật
   (e2e giả `speechSynthesis`: `e2e/voice-teacher.spec.ts`).
 - Không gửi âm thanh hay dữ liệu ra ngoài; không thêm backend hay AI API trên mạng (dịch vụ đám mây).
-  Ngoại lệ duy nhất: **AI cục bộ qua Ollama** (`aiCoachEnabled`, mặc định TẮT).
+  Ngoại lệ: **AI cục bộ qua Ollama** (`aiCoachEnabled`, mặc định TẮT) và Nhật ký Biểu diễn TẠM THỜI (cuối mục này).
   Chỉ gửi số liệu tóm tắt dạng chữ (điểm, tiêu chí, lỗi, tên/tuổi/trình độ hồ sơ), KHÔNG gửi âm thanh.
   App phải chạy đầy đủ khi tắt hoặc không có Ollama; lỗi kết nối chỉ hiện trong thẻ nhận xét, không chặn luồng học.
   `ollamaUrl` mặc định `"auto"` (giá trị cũ localhost tự đổi sang auto): thử `<base>ollama` trên server của app rồi tới
@@ -112,6 +114,10 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   vào số liệu được cung cấp; e2e giả lập Ollama bằng `page.route` (`e2e/ai-coach.spec.ts`).
   AI Piano Coach (`core/coach/ai`): AI không bao giờ tạo / sửa điểm; mặc định không gửi tên học viên (`aiShareName`, cài đặt riêng
   `vietpiano.coach.settings.v1`); không gửi log MIDI; câu trả lời coi là dữ liệu không tin cậy (schema + `verifyFeedback`) — `e2e/coach.spec.ts`.
+  Nhật ký Biểu diễn (`core/performLog`, người dùng yêu cầu 08/11/2026 để điều tra Biểu diễn chấm sai nhiều; TẠM THỜI, cách gỡ ở
+  docs/perform-log.md): chỉ gửi tới máy ghi của chính người dùng (`<base>__vplog` của server app, hoặc `npm run perflog` trong LAN nhập ở
+  Cài đặt), KHÔNG gửi âm thanh; "auto" trên GitHub Pages / trình duyệt tự động không gửi (log nằm trên máy, tải file ở Cài đặt).
+  Log có tên / tuổi hồ sơ + IP máy gửi (người dùng cần biết "người chơi nào, máy nào"); không đổi cách chấm — `e2e/perform-log.spec.ts`.
 - Bài hát mới phải là giai điệu tự biên soạn hoặc thuộc phạm vi công cộng; ghi `source`.
   Test `lessons.test.ts` kiểm tra mọi ô nhịp đủ phách và nốt nằm trong tầm micro (MIDI 36–84).
 - VexFlow dùng entry `vexflow/bravura` (font nhúng → offline). Màu khuông nhạc qua `currentColor` + CSS

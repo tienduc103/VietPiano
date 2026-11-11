@@ -228,6 +228,17 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              tách khỏi lối tắt thủ công); `ai.ts` điểm mở rộng AI cục bộ (chỉ sắp xếp lại / viết lại lý do có kiểm tra; lỗi → quy tắc; chưa nối).
                              Glue: `store/smartShortcutStore.ts`, `hooks/useSmartShortcuts.ts` (chỉ tính khi thanh trang chủ hiện, sau `progressLoaded`),
                              UI `SmartShortcutBar` (bọc `ShortcutBar`), `SmartShortcutSettings` (Cài đặt → Lối tắt). Engine chỉ ĐỌC khoá lối tắt thủ công
+  performLog/              TẠM THỜI — "Nhật ký Biểu diễn" (docs/perform-log.md, cách gỡ ở đó): điều tra Biểu diễn chấm sai / lỡ nhiều trên mọi máy.
+                             `session.ts` ghi MỘT lượt (nốt cần đánh + kết quả, MỌI sự kiện nốt kể cả bị màn bỏ — lý do, `lag` = lúc nhận − mốc sự kiện
+                             để lộ đồng hồ driver MIDI lệch, cao độ micro khi đổi, pedal, mốc bắt đầu / tạm dừng / đổi nhịp); `diagnose.ts` thống kê +
+                             mã nghi vấn (clock-skew, late / early, misaligned = nốt "sai" là nốt kề, octave, dropped, ignored, no-input, extras-near)
+                             + `summarize` một dòng tiếng Việt; `queue.ts` IndexedDB riêng "vietpiano-perform-log" (giới hạn theo loại); `client.ts` gửi
+                             NDJSON (text/plain, không preflight) tới `<base>__vplog` của server app ("auto"; GitHub Pages / `navigator.webdriver` → không gửi)
+                             hoặc máy ghi nhập ở Cài đặt; `settings.ts` localStorage `vietpiano.performLog.v1` (bật, nơi gửi, mã + tên máy). Glue
+                             `hooks/usePerformLog.ts` (lượt theo trạng thái PerformanceTracker; gắn ở `usePracticePerformance` + `TimedRunner` bài Biểu diễn
+                             giáo trình; `PracticeScreen` báo lý do bỏ nốt; `usePerformLogVisits` ở App = máy truy cập), UI `components/PerformLogSettings`.
+                             Máy ghi: `scripts/performLog/collector.ts` (plugin vite dev + preview, `npm run perflog` cổng 8790) → `logs/perform-log/`
+                             (`<ngày>.jsonl` + IP, `summary.log`, `machines.json`). Không đổi cách chấm
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt. Chùm nốt tay phải: số ngón xếp chồng trên chùm
                              (`noteFingerRows`, nốt đơn vẫn hàng cố định), ký hiệu hợp âm (`.score-chord`), hình nêm (`.score-hairpin`), pedal giữa ô; tuỳ chọn
                              `showFingers / showChords / showPedal` (nút Hiển thị màn Luyện tập + cỡ khuông `scoreZoom`); vượt mép trên → mở rộng viewBox lên trên

@@ -24,6 +24,7 @@ import { FloatingMicNote } from './components/MicPanel';
 import { FloatingReloadButton } from './components/FloatingReloadButton';
 import { GameTimeController, TimedGameRoute } from './components/GameTimeLimit';
 import { ShortcutOverlays } from './components/shortcuts/ShortcutOverlays';
+import { usePerformLogVisits } from './hooks/usePerformLog';
 
 /** AI Piano Coach tải riêng (chunk khác, vẫn được service worker cache để chạy offline). */
 const CoachScreen = lazy(() => import('./screens/CoachScreen').then((m) => ({ default: m.CoachScreen })));
@@ -36,6 +37,8 @@ export function App() {
   useMidiConnection();
   useTheme();
   useVoiceTeacherLifecycle();
+  // TẠM THỜI: Nhật ký Biểu diễn — ghi máy truy cập + gửi log còn chờ (docs/perform-log.md).
+  usePerformLogVisits();
 
   useEffect(() => {
     void loadProgress();

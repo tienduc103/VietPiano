@@ -8,3 +8,5 @@ playwright-report
 .vscode/*
 !.vscode/extensions.json
 e2e/.fixtures
+# Nhật ký Biểu diễn (tạm thời, docs/perform-log.md): log của người chơi — không đưa lên git
+logs/

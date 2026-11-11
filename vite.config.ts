@@ -6,6 +6,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import { existsSync, readFileSync } from 'node:fs';
 import { parseVersion } from './scripts/version.ts';
+// TẠM THỜI: máy ghi Nhật ký Biểu diễn (docs/perform-log.md).
+import { performLogPlugin } from './scripts/performLog/vitePlugin.ts';
 
 // GitHub Pages phục vụ dưới /<tên-repo>/ → workflow deploy đặt BASE_PATH.
 const base = process.env.BASE_PATH ?? '/';
@@ -51,6 +53,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     ...(https ? [basicSsl()] : []),
+    performLogPlugin(base),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false,

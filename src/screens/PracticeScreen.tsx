@@ -299,13 +299,15 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
   useEffect(() => {
     microphoneInput.resetRecognizer();
     const handle = (e: NoteInputEvent) => {
+      // TẠM THỜI: Nhật ký Biểu diễn ghi lý do bỏ nốt (chỉ khi đang có lượt Biểu diễn; chế độ khác không làm gì).
+      const drop = (reason: string) => perfRef.current.logDropped(e, reason);
       // Đàn MIDI đã nối thì micro cũng nghe chính tiếng đàn đó → bỏ để một phím không thành hai sự kiện.
-      if (e.source === 'microphone' && midiInput.hasDevice()) return;
-      if (listeningRef.current) return;
+      if (e.source === 'microphone' && midiInput.hasDevice()) return drop('mic-while-midi');
+      if (listeningRef.current) return drop('listening');
       // Bài có phần đệm, chỉ chấm tay phải: nốt tay trái đánh kèm không bị tính là sai (tập tay trái: ngược lại).
       if (handRef.current !== 'both') {
-        if (isOtherHandMidi(lesson, handRef.current, e.midi)) return;
-      } else if (!twoHandsRef.current && isAccompanimentMidi(lesson, e.midi)) return;
+        if (isOtherHandMidi(lesson, handRef.current, e.midi)) return drop('other-hand');
+      } else if (!twoHandsRef.current && isAccompanimentMidi(lesson, e.midi)) return drop('accompaniment');
       // Không chấm nốt phụ (micro / Theo nhịp): nốt hoà âm của chùm nốt đang tập (hoặc vừa qua) không tính sai.
       if (!extrasGradedRef.current && handRef.current !== 'left') {
         const steps = trackRef.current.steps;
@@ -314,7 +316,7 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
           : performModeRef.current
             ? stepIndexAtBeat(steps, Math.max(0, perfRef.current.tracker.getState().beat))
             : engine.getState().index;
-        if ([at, at - 1].some((k) => steps[k] && isUngradedHarmonyMidi(lesson, steps[k].scoreIndex, e.midi))) return;
+        if ([at, at - 1].some((k) => steps[k] && isUngradedHarmonyMidi(lesson, steps[k].scoreIndex, e.midi))) return drop('harmony');
       }
       if (performModeRef.current) return perfRef.current.handleNoteOn(e);
       if (tempoModeRef.current) return void follower.handleOnset(e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time);

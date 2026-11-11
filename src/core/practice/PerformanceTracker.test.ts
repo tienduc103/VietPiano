@@ -132,6 +132,15 @@ describe('PerformanceTracker', () => {
     expect(t.getState().offsetsMs[2]).toBeCloseTo(0);
   });
 
+  it('beatAt / getConfig (nhật ký Biểu diễn): vị trí đồng hồ ở một thời điểm, theo cả nhịp độ mới', () => {
+    const t = started(quarters([60, 62, 64, 65]), { onTimeMs: 120 });
+    expect(t.beatAt(0)).toBeCloseTo(-4);
+    expect(t.beatAt(at(1.5))).toBeCloseTo(1.5);
+    t.setBpm(120, at(1));
+    expect(t.beatAt(at(1) + 500)).toBeCloseTo(2);
+    expect(t.getConfig()).toMatchObject({ bpm: 120, countInBeats: 4, onTimeMs: 120, checkPitch: true });
+  });
+
   it('restart xoá hết kết quả', () => {
     const t = started(quarters([60]));
     t.handleNoteOn(60, at(0));
