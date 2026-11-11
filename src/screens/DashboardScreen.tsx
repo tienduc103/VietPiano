@@ -23,6 +23,11 @@ const HEADER_BUTTON = 'shrink-0 px-2! text-sm! whitespace-nowrap';
 const ICON_ONLY_BELOW_XL = 'min-w-12 justify-center';
 const LABEL_BELOW_XL = 'sr-only xl:not-sr-only';
 
+type UiModeSetting = 'auto' | 'kids' | 'adult';
+const UI_MODE_LABEL: Record<UiModeSetting, string> = { auto: 'Tự động', kids: 'Trẻ em', adult: 'Người lớn' };
+/** Nút giao diện xoay vòng Tự động → Trẻ em → Người lớn → Tự động. */
+const UI_MODE_NEXT: Record<UiModeSetting, UiModeSetting> = { auto: 'kids', kids: 'adult', adult: 'auto' };
+
 /**
  * Trang chủ: phía trên là giáo trình (cấp đang học, tiến độ, buổi tiếp theo, thành tích),
  * phía dưới là Thư viện bài. `focus="library"` (route `library`) cuộn thẳng xuống thư viện.
@@ -64,26 +69,18 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
               {profile ? `${profile.avatar} Chào ${profile.name}!` : 'Học piano từng bước — nghe đàn của bạn qua micro hoặc MIDI.'}
             </p>
           </div>
-          <div className="inline-flex shrink-0 rounded-xl bg-violet-100 p-1 dark:bg-slate-700" role="radiogroup" aria-label="Giao diện">
-            {(
-              [
-                ['auto', 'Tự động'],
-                ['kids', 'Trẻ em'],
-                ['adult', 'Người lớn'],
-              ] as const
-            ).map(([v, label]) => (
-              <button
-                key={v}
-                type="button"
-                role="radio"
-                aria-checked={uiMode === v}
-                onClick={() => update({ uiMode: v })}
-                className={`min-h-10 rounded-lg px-2 text-sm font-semibold whitespace-nowrap ${uiMode === v ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          {/* Một nút xoay vòng Tự động → Trẻ em → Người lớn; bề rộng cố định để header không nhảy khi đổi chữ. */}
+          <button
+            type="button"
+            data-testid="ui-mode-toggle"
+            data-value={uiMode}
+            aria-label={`Giao diện: ${UI_MODE_LABEL[uiMode]} — bấm để đổi`}
+            title="Đổi giao diện: Tự động → Trẻ em → Người lớn"
+            onClick={() => update({ uiMode: UI_MODE_NEXT[uiMode] })}
+            className="min-h-12 w-28 shrink-0 rounded-xl bg-violet-100 px-2 text-sm font-semibold whitespace-nowrap text-fuchsia-700 hover:bg-violet-200 dark:bg-slate-700 dark:text-fuchsia-300 dark:hover:bg-slate-600"
+          >
+            {UI_MODE_LABEL[uiMode]}
+          </button>
           <FullscreenButton className="shrink-0" />
           <Button className={HEADER_BUTTON} onClick={() => navigate({ name: 'note-discovery' })} data-testid="open-note-discovery">
             <span aria-hidden>🎹</span>

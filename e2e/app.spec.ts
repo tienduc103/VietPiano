@@ -956,7 +956,17 @@ test('buổi 1: giới thiệu → luyện tập → kiểm tra 5 lượt → k�
 
 test('buổi chưa đủ điều kiện vẫn mở được (chỉ gợi ý); Kids Mode đổi lời giới thiệu', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('radio', { name: 'Trẻ em' }).click();
+  // Nút giao diện xoay vòng: Tự động → Trẻ em → Người lớn → Tự động.
+  const uiToggle = page.getByTestId('ui-mode-toggle');
+  await expect(uiToggle).toHaveText('Tự động');
+  await uiToggle.click();
+  await expect(uiToggle).toHaveText('Trẻ em');
+  await uiToggle.click();
+  await expect(uiToggle).toHaveText('Người lớn');
+  await expect(page.getByTestId('dashboard')).toHaveAttribute('data-ui-mode', 'adult');
+  await uiToggle.click();
+  await expect(uiToggle).toHaveText('Tự động');
+  await uiToggle.click();
   await expect(page.getByTestId('dashboard')).toHaveAttribute('data-ui-mode', 'kids');
   await page.getByTestId('open-curriculum').click();
   await page.getByTestId('cur-lesson-l1-06-staff').click();
