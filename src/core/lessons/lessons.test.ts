@@ -118,7 +118,8 @@ describe('thư viện bài học', () => {
       // Màn Luyện tập (PracticeEngine) chờ từng nốt — dấu lặng chỉ dùng ở bài tiết tấu của giáo trình.
       expect(n.rest).toBeUndefined();
       expect(n.midi).toBeGreaterThanOrEqual(36);
-      expect(n.midi).toBeLessThanOrEqual(84);
+      // NoteRecognizer nhận tới C8 (108); thư viện cho giai điệu tới Mi6 (88) để giữ đúng quãng bản in (Canon in D lên Rê6).
+      expect(n.midi).toBeLessThanOrEqual(88);
     }
   });
 
@@ -269,6 +270,15 @@ describe('thư viện bài học', () => {
       ['D5', 'mp'],
       ['G5', 'mf'],
     ]);
+    // Quãng ba ô 5–8, hai bè ô 9–16, nốt cao đúng quãng như bản in (Đô#6, Rê6), cresc. ô 13.
+    expect(lesson.notes[8]).toMatchObject({ pitch: 'F#5', harmony: [{ pitch: 'D5' }] });
+    expect(lesson.notes.slice(-4).map((n) => [n.pitch, n.duration])).toEqual([
+      ['D6', 'q'],
+      ['D6', 'qd'],
+      ['C#6', '8'],
+      ['D6', 'w'],
+    ]);
+    expect(lesson.hairpins).toEqual([{ from: 32, to: 35, type: 'cresc' }]);
   });
 
   it.each(pedalSongs)('%s: hai tay, pedal thay mỗi ô có tay trái (ô lấy đà không đạp)', (id) => {

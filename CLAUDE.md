@@ -119,7 +119,7 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   Cài đặt), KHÔNG gửi âm thanh; "auto" trên GitHub Pages / trình duyệt tự động không gửi (log nằm trên máy, tải file ở Cài đặt).
   Log có tên / tuổi hồ sơ + IP máy gửi (người dùng cần biết "người chơi nào, máy nào"); không đổi cách chấm — `e2e/perform-log.spec.ts`.
 - Bài hát mới phải là giai điệu tự biên soạn hoặc thuộc phạm vi công cộng; ghi `source`.
-  Test `lessons.test.ts` kiểm tra mọi ô nhịp đủ phách và nốt nằm trong tầm micro (MIDI 36–84).
+  Test `lessons.test.ts` kiểm tra mọi ô nhịp đủ phách và giai điệu MIDI 36–88 (nhận diện tới C8; Canon in D lên Rê6 như bản in).
 - VexFlow dùng entry `vexflow/bravura` (font nhúng → offline). Màu khuông nhạc qua `currentColor` + CSS
   (`.score-note.is-current` …) — không vẽ lại khi chuyển nốt.
 - Màn Luyện tập: MỘT nút bàn phím xoay vòng Hiện → Tự ẩn → Ẩn (`keyboard-mode`, bề rộng cố định; = `showKeyboard` + `hideKeyboardWhilePlaying`,
