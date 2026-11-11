@@ -123,6 +123,73 @@ test('ẩn/hiện tên nốt', async ({ page }) => {
   await expect(page.locator('.score-label')).toHaveCount(14);
 });
 
+test('tắt tên nốt / số ngón trên khuông: khối "Cần đánh" và bàn phím ảo tắt theo, vẫn chấm như cũ', async ({ page }) => {
+  await openLesson(page, 'kid-rh-five');
+  await page.keyboard.press('a'); // C4 → sang D4 (phím Đô luôn ghi tên nên kiểm tra bằng nốt khác)
+  const keyD4 = page.locator('button[data-midi="62"]');
+  await expect(page.getByTestId('expected-note')).toHaveText('D4');
+  await expect(keyD4).toContainText('D4');
+
+  // Tắt tên nốt: số ngón vẫn còn; phím Đô vẫn ghi tên để định hướng.
+  await page.getByRole('button', { name: 'Ẩn tên nốt' }).click();
+  await expect(page.getByTestId('status')).not.toContainText('Cần đánh');
+  await expect(page.getByTestId('expected-note')).toHaveCount(0);
+  await expect(page.getByTestId('expected-finger')).toHaveText('ngón 2');
+  await expect(keyD4).not.toContainText('D4');
+  await expect(keyD4.getByTestId('key-finger')).toHaveText('2');
+  await expect(page.locator('button[data-midi="60"]')).toContainText('C4');
+
+  // Tắt luôn số ngón: dưới khuông không còn gợi ý nào.
+  await page.getByTestId('score-display').click();
+  const fingersSwitch = page.getByTestId('score-display-panel').getByRole('switch', { name: 'Số ngón tay' });
+  await fingersSwitch.click();
+  await expect(page.getByTestId('expected-finger')).toHaveCount(0);
+  await expect(page.getByTestId('expected-hand')).toHaveCount(0);
+  await expect(page.getByTestId('key-finger')).toHaveCount(0);
+  if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
+
+  // Chỉ đổi phần hiển thị: đánh đúng vẫn sang nốt.
+  await page.keyboard.press('s'); // D4
+  await expect(page.getByTestId('progress-text')).toHaveText(/^2\//);
+
+  // Bật lại thì hiện lại đủ.
+  await fingersSwitch.click();
+  await page.getByRole('button', { name: 'Hiện tên nốt' }).click();
+  await expect(page.getByTestId('expected-note')).toBeVisible();
+  await expect(page.getByTestId('expected-finger')).toBeVisible();
+  await expect(page.getByTestId('key-finger')).toBeVisible();
+});
+
+test('bài hai tay: tắt tên nốt / số ngón → ô Tay phải / Tay trái và hợp âm tay trái tắt theo', async ({ page }) => {
+  await openLesson(page, 'song-romance-2-hands');
+  await page.getByRole('button', { name: 'Ẩn tên nốt' }).click();
+  // Chỉ còn số ngón của hai tay.
+  await expect(page.getByTestId('expected-note')).toHaveCount(0);
+  await expect(page.getByTestId('expected-finger')).toHaveText('ngón 5');
+  await expect(page.getByTestId('expected-left')).toHaveCount(0);
+  await expect(page.getByTestId('expected-left-finger')).toHaveText('ngón 5·3·1');
+
+  // Bước 2, tay trái giữ hợp âm: không lộ tên nốt đang giữ.
+  await page.locator('[data-midi="69"]').click();
+  for (const m of [50, 53, 57]) await page.locator(`[data-midi="${m}"]`).click();
+  await expect(page.getByTestId('progress-text')).toHaveText('1/92');
+  await expect(page.getByTestId('expected-left')).toHaveText('giữ');
+
+  // Tập riêng tay trái (hợp âm): vẫn còn số ngón.
+  await page.getByTestId('hand-left').click();
+  await expect(page.getByTestId('expected-note')).toHaveCount(0);
+  await expect(page.getByTestId('expected-finger')).toHaveText('ngón 5·3·1');
+
+  // Tắt luôn số ngón: không còn khối hướng dẫn nào, kể cả bản vô hình chừa chỗ.
+  await page.getByTestId('score-display').click();
+  await page.getByTestId('score-display-panel').getByRole('switch', { name: 'Số ngón tay' }).click();
+  await page.getByTestId('score-display').click();
+  await expect(page.getByTestId('status')).not.toContainText('Cần đánh');
+  await page.getByTestId('hand-both').click();
+  await expect(page.getByTestId('hands-guide')).toHaveCount(0);
+  await expect(page.getByTestId('status')).not.toContainText('Tay phải');
+});
+
 test('tự cuộn khuông nhạc theo tiến độ', async ({ page }) => {
   await openLesson(page, 'song-twinkle');
   const strip = page.locator('[data-testid="score"] > div').last();

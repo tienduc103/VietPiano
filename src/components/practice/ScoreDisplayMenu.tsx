@@ -6,6 +6,7 @@ import { Button, Icon, Toggle } from '../ui';
 
 /**
  * Tuỳ chọn hiển thị khuông nhạc ở màn Luyện tập: tên nốt, số ngón, ký hiệu hợp âm, ký hiệu pedal, cỡ khuông.
+ * Tên nốt + số ngón áp dụng cả khối "Cần đánh" và bàn phím ảo dưới khuông.
  * Chỉ đổi hình vẽ — không đổi dữ liệu bài hay cách chấm (ẩn ký hiệu pedal vẫn chấm pedal).
  */
 export function ScoreDisplayMenu({ lesson }: { lesson: Lesson }) {

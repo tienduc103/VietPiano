@@ -233,7 +233,8 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              `showFingers / showChords / showPedal` (nút Hiển thị màn Luyện tập + cỡ khuông `scoreZoom`); vượt mép trên → mở rộng viewBox lên trên
   score/scoreFit.ts        tỉ lệ + vị trí dọc của khuông một dòng (ScoreView, Săn nốt): vùng nhìn co giãn ít (≤ 8%) theo từng nốt
                              → giữ nguyên, khuông không nhảy lên xuống; ô hướng dẫn dưới khuông cũng phải cao cố định, và hàng điều khiển
-                             không được đổi bề rộng theo từng nốt / pedal (xuống dòng → vùng nhìn đổi quá 8%): khối "Cần đánh" chừa chỗ bằng bước rộng nhất của bài (`distinctStepGuides`)
+                             không được đổi bề rộng theo từng nốt / pedal (xuống dòng → vùng nhìn đổi quá 8%): khối "Cần đánh" chừa chỗ bằng bước rộng nhất của bài (`distinctStepGuides`);
+                             màn Luyện tập: khối này + số ngón / tên phím cần đánh trên bàn phím ảo tắt theo `showNoteNames` / `showFingers` (bản chừa chỗ theo cùng công tắc)
   score/ScoreSheet.ts      ảnh khuông nhạc nhiều dòng kiểu bản in (canvas → PNG, `components/ScoreExportDialog`, nút xuất ở Thư viện bài / bài hát).
                              VexFlow vẽ glyph bằng `fillText` tại MÉP TRÁI và không tự đặt `textAlign` → chữ của tờ nhạc vẽ trong save/restore, VexFlow
                              luôn vẽ canh trái (lọt canh giữa → đuôi nốt mọc giữa đầu nốt, khoá đè vạch nhịp; `e2e/score-sheet.spec.ts`). Hai bước: dựng
