@@ -9,6 +9,7 @@ import { useSettings } from '../store/settingsStore';
 import { useUiMode } from '../hooks/useUiMode';
 import { Button, FullscreenButton, Icon, formatDuration } from '../components/ui';
 import { AppVersion } from '../components/AppVersion';
+import { UpdateBanner } from '../components/UpdateBanner';
 import { MicError } from '../components/MicPanel';
 import { ProfileSwitcher } from '../components/ProfileSwitcher';
 import { LessonLibrary } from '../components/LessonLibrary';
@@ -105,6 +106,8 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
             <span className={LABEL_BELOW_XL}>Cài đặt</span>
           </Button>
         </header>
+
+        <UpdateBanner />
 
         <div className="mt-4 empty:hidden">
           <MicError />

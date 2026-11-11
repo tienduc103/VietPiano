@@ -502,6 +502,30 @@ test('nút nổi tạm tắt; nút Cập nhật bản mới nhất: đã mới n
   expect(await page.evaluate(() => caches.has('test-cache'))).toBe(false);
 });
 
+test('trang chủ báo có phiên bản mới: không có bản mới thì không hiện; Để sau ẩn; Cập nhật ngay xoá cache + tải lại', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.waitForTimeout(500);
+  await expect(page.getByTestId('update-banner')).toHaveCount(0);
+
+  await page.route('**/version.json*', (route) => route.fulfill({ contentType: 'application/json', body: '{"version":"9.99.999999.999999"}' }));
+  await page.reload();
+  const banner = page.getByTestId('update-banner');
+  await expect(banner).toContainText('Đã có phiên bản mới 9.99.999999.999999');
+  await banner.getByRole('button', { name: 'Để sau' }).click();
+  await expect(banner).toHaveCount(0);
+
+  await page.reload();
+  await page.evaluate(async () => {
+    (window as unknown as { __marker: boolean }).__marker = true;
+    await caches.open('test-cache');
+  });
+  await page.getByTestId('update-banner-apply').click();
+  await page.waitForFunction(() => !(window as unknown as { __marker?: boolean }).__marker);
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  expect(await page.evaluate(() => caches.has('test-cache'))).toBe(false);
+});
+
 test.skip('nút nổi tải lại cứng: có trên mọi màn hình, gỡ service worker, xoá cache, tải lại trang', async ({ page }) => {
   await page.goto('/?screen=library');
   await expect(page.getByTestId('floating-reload')).toBeVisible();
