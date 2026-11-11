@@ -21,7 +21,8 @@ import { useCurriculum } from './store/curriculumStore';
 import { useProfiles } from './store/profileStore';
 import { AppVersionSide } from './components/AppVersion';
 import { FloatingMicNote } from './components/MicPanel';
-import { FloatingReloadButton } from './components/FloatingReloadButton';
+// TẠM THỜI tắt nút nổi tải lại cứng — xem chỗ dùng bên dưới.
+// import { FloatingReloadButton } from './components/FloatingReloadButton';
 import { GameTimeController, TimedGameRoute } from './components/GameTimeLimit';
 import { ShortcutOverlays } from './components/shortcuts/ShortcutOverlays';
 import { usePerformLogVisits } from './hooks/usePerformLog';
@@ -89,7 +90,9 @@ export function App() {
       {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && route.name !== 'flappy-note' && route.name !== 'balloon-pop' && route.name !== 'tomato-harvest' && route.name !== 'f1-racing' && route.name !== 'five-finger' && (
         <FloatingMicNote className="fixed right-[calc(12px+env(safe-area-inset-right,0px))] bottom-[calc(12px+env(safe-area-inset-bottom,0px))]" />
       )}
-      <FloatingReloadButton />
+      {/* TẠM THỜI tắt nút nổi tải lại cứng (Ctrl+F5) — thay bằng nút Cập nhật bản mới nhất ở dòng phiên bản (AppVersion).
+          Bật lại: bỏ comment dòng dưới + hàng "Đưa về góc trên trái" ở Cài đặt + test.skip trong e2e/app.spec.ts. */}
+      {/* <FloatingReloadButton /> */}
       <GameTimeController />
       {/* Hộp thoại tạo / sửa / ghim lối tắt, thanh Hoàn tác, thông báo lối tắt hỏng — dùng chung mọi màn. */}
       <ShortcutOverlays />

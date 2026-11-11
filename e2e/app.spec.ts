@@ -279,18 +279,15 @@ test('nút micro nổi: luôn hiển thị, bấm để bật/tắt micro, hiệ
   // Luyện tập: nút nằm trong khung khuông nhạc, cùng trạng thái với nút micro chính.
   await page.getByTestId('lesson-scale-c-major').click();
   await expect(page.locator('main [data-testid="floating-mic"]')).toBeVisible();
-  await expect(page.getByTestId('floating-reload')).toBeVisible();
   await page.getByTestId('floating-mic').click();
   await expect(page.getByTestId('mic-button')).toHaveText(/Micro đang bật/);
   // Micro giả phát gam Đô → bài bắt đầu (đang chơi) → ẩn mọi nút nổi; chơi lại từ đầu → hiện lại.
   await expect(page.getByTestId('progress-text')).not.toHaveText(/^0\//, { timeout: 10_000 });
   await expect(page.getByTestId('floating-mic')).toHaveCount(0);
-  await expect(page.getByTestId('floating-reload')).toHaveCount(0);
   await page.getByTestId('mic-button').click();
   await expect(page.getByTestId('mic-button')).toHaveText(/Bật micro/);
   await page.getByRole('button', { name: 'Chơi lại từ đầu' }).click();
   await expect(page.getByTestId('floating-mic')).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.getByTestId('floating-reload')).toBeVisible();
 
   await page.getByRole('button', { name: 'Về thư viện' }).first().click();
   await page.getByRole('button', { name: 'Cài đặt' }).click();
@@ -482,7 +479,30 @@ test('đánh thử 15 giây: tự bật micro, mỗi nốt hiện một lần, b
   for (let i = 1; i < labels.length; i++) expect(labels[i]).not.toBe(labels[i - 1]);
 });
 
-test('nút nổi tải lại cứng: có trên mọi màn hình, gỡ service worker, xoá cache, tải lại trang', async ({ page }) => {
+// TẠM THỜI tắt nút nổi tải lại cứng (thay bằng nút Cập nhật bản mới nhất) — bật lại nút thì bỏ .skip.
+test('nút nổi tạm tắt; nút Cập nhật bản mới nhất: đã mới nhất thì không tải lại, có bản mới thì xoá cache + tải lại', async ({ page }) => {
+  await page.goto('/?screen=library');
+  await expect(page.getByTestId('floating-reload')).toHaveCount(0);
+  const btn = page.getByTestId('update-app');
+  await expect(btn).toBeVisible();
+  await page.evaluate(() => ((window as unknown as { __marker: boolean }).__marker = true));
+  // version.json của server trùng phiên bản đang chạy → báo, không tải lại.
+  await btn.click();
+  await expect(btn).toHaveText(/Đã là bản mới nhất/);
+  expect(await page.evaluate(() => (window as unknown as { __marker?: boolean }).__marker)).toBe(true);
+  // Giả server có bản mới.
+  await page.route('**/version.json*', (route) => route.fulfill({ contentType: 'application/json', body: '{"version":"9.99.999999.999999"}' }));
+  await page.getByRole('button', { name: 'Cài đặt' }).click();
+  await page.evaluate(async () => {
+    await caches.open('test-cache');
+  });
+  await page.getByTestId('update-app').click();
+  await page.waitForFunction(() => !(window as unknown as { __marker?: boolean }).__marker);
+  await expect(page.getByTestId('app-version')).toBeVisible();
+  expect(await page.evaluate(() => caches.has('test-cache'))).toBe(false);
+});
+
+test.skip('nút nổi tải lại cứng: có trên mọi màn hình, gỡ service worker, xoá cache, tải lại trang', async ({ page }) => {
   await page.goto('/?screen=library');
   await expect(page.getByTestId('floating-reload')).toBeVisible();
   await openLesson(page, 'scale-c-major');
@@ -500,7 +520,7 @@ test('nút nổi tải lại cứng: có trên mọi màn hình, gỡ service wo
   expect(await page.evaluate(() => caches.has('test-cache'))).toBe(false);
 });
 
-test('nút nổi tải lại kéo được: kéo không tải lại trang, vị trí được nhớ, đặt lại trong Cài đặt', async ({ page }) => {
+test.skip('nút nổi tải lại kéo được: kéo không tải lại trang, vị trí được nhớ, đặt lại trong Cài đặt', async ({ page }) => {
   await page.goto('/?screen=library');
   const fab = page.getByTestId('floating-reload');
   await page.evaluate(() => ((window as unknown as { __marker: boolean }).__marker = true));

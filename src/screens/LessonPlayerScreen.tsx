@@ -324,7 +324,7 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
           )}
         </div>
       </main>
-      <AppVersion className="shrink-0 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] leading-none" />
+      <AppVersion withUpdate={false} className="shrink-0 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] leading-none" />
     </div>
   );
 }
