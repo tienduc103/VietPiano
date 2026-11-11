@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import type { CoachAiPayload } from '../../core/coach/ai/payload';
 import type { CoachAudience } from '../../core/coach/ai/prompt';
 import { cursorAt } from '../../core/coach/follower';
@@ -41,6 +41,8 @@ interface Props {
   cfg: CoachSettings;
   onRetry: () => void;
   onPracticeSection: (m: [number, number], bpm: number | null) => void;
+  /** Khối thêm ngay sau nhận xét (panel "Luyện đoạn khó" của Smart Practice). */
+  extra?: ReactNode;
   onRecommendation: (rec: PracticeRecommendation, asPlan: boolean) => void;
   onContinuePlan: (plan: PracticePlan) => void;
 }
@@ -69,7 +71,7 @@ const STATUS_TEXT: Record<NoteAlignment['status'], string> = {
   replayed: 'Chơi lại (không chấm)',
 };
 
-export function CoachResults({ data, audience, labelStyle, cfg, onRetry, onPracticeSection, onRecommendation, onContinuePlan }: Props) {
+export function CoachResults({ data, audience, labelStyle, cfg, onRetry, onPracticeSection, onRecommendation, onContinuePlan, extra }: Props) {
   const { result, reference: ref } = data;
   const [selection, setSelection] = useState<CoachSelection | null>(null);
   const [speed, setSpeed] = useState<(typeof SPEEDS)[number]>(1);
@@ -280,6 +282,8 @@ export function CoachResults({ data, audience, labelStyle, cfg, onRetry, onPract
         onFeedback={(fb) => void coachStorage.saveFeedback(fb).catch(() => {})}
         onPractice={onPracticeSection}
       />
+
+      {extra}
 
       {plan && (
         <Card className="ring-2 ring-fuchsia-200 dark:ring-fuchsia-800">

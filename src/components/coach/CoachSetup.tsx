@@ -32,6 +32,8 @@ const MODE_HINT: Record<CoachMode, string> = {
 
 interface Props {
   lessons: readonly Lesson[];
+  /** Nhóm bài thêm ngoài Thư viện (bài kỹ thuật ngón tay, bài luyện đoạn khó tự tạo). */
+  extraGroups?: readonly { key: string; label: string; list: readonly Lesson[] }[];
   baseLesson: Lesson;
   lesson: Lesson;
   reference: ScoreReference;
@@ -156,6 +158,15 @@ export function CoachSetup(p: Props) {
             >
               {grouped.map((g) => (
                 <optgroup key={g.c} label={CATEGORY_LABELS[g.c]}>
+                  {g.list.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.title}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+              {(p.extraGroups ?? []).map((g) => (
+                <optgroup key={g.key} label={g.label}>
                   {g.list.map((l) => (
                     <option key={l.id} value={l.id}>
                       {l.title}

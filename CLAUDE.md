@@ -42,6 +42,7 @@ Thêm / đổi module → cập nhật `docs/architecture.md`; ở đây chỉ g
 | `core/games/` | trò chơi sau buổi, mục Trò chơi, trò tự do |
 | `core/noteHunter/`, `flappyNote/`, `balloonPop/`, `f1Racing/`, `fiveFinger/` | Săn nốt, Flappy Note, Bóng bay nốt nhạc, F1 Racing, 5 ngón · 8 nốt (docs/five-finger.md) — máy trạng thái thuần |
 | `core/coach/` | AI Piano Coach: log MIDI gốc, chấm theo bản nhạc, nhận xét AI có xác minh, đo độ trễ (docs/ai-coach/) |
+| `core/technique/`, `core/smartPractice/` | Luyện kỹ thuật ngón tay (67 bài, 5 cấp) + AI Smart Practice dùng chung: đoạn khó qua nhiều phiên, bài bổ trợ 3–5 nốt, Adaptive Tempo, bài hôm nay — chạy / chấm trong Coach, không lưu tiến độ trùng (docs/finger-coach/) |
 | `core/shortcuts/` | Lối tắt cá nhân (Quick Access): registry đích đến suy từ dữ liệu, lưu theo hồ sơ, mở qua router sẵn có — không URL (docs/shortcuts.md); `smart/` Lối tắt thông minh: đề xuất theo quy tắc, không lưu như lối tắt, không đụng lối tắt thủ công (docs/smart-shortcuts.md) |
 | `core/score/` | VexFlow → SVG; khuông KHÔNG được nhảy khi đổi nốt (`scoreFit`) |
 | `core/voice/` | cô giáo giọng nói (mp3 thu sẵn → TTS của máy → chỉ chữ) |

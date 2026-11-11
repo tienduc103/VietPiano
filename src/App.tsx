@@ -27,6 +27,7 @@ import { ShortcutOverlays } from './components/shortcuts/ShortcutOverlays';
 
 /** AI Piano Coach tải riêng (chunk khác, vẫn được service worker cache để chạy offline). */
 const CoachScreen = lazy(() => import('./screens/CoachScreen').then((m) => ({ default: m.CoachScreen })));
+const TechniqueScreen = lazy(() => import('./screens/TechniqueScreen').then((m) => ({ default: m.TechniqueScreen })));
 
 export function App() {
   const route = useApp((s) => s.route);
@@ -65,7 +66,19 @@ export function App() {
       {route.name === 'practice' && <PracticeScreen lessonId={route.lessonId} />}
       {route.name === 'coach' && (
         <Suspense fallback={<div className="grid h-full place-items-center text-slate-500">Đang mở AI Piano Coach…</div>}>
-          <CoachScreen key={`${route.lessonId ?? ''}|${route.measures?.join('-') ?? ''}`} lessonId={route.lessonId} measures={route.measures} />
+          <CoachScreen
+            key={`${route.lessonId ?? ''}|${route.measures?.join('-') ?? ''}|${route.bpm ?? ''}|${route.hand ?? ''}`}
+            lessonId={route.lessonId}
+            measures={route.measures}
+            bpm={route.bpm}
+            hand={route.hand}
+            returnTo={route.returnTo}
+          />
+        </Suspense>
+      )}
+      {route.name === 'technique' && (
+        <Suspense fallback={<div className="grid h-full place-items-center text-slate-500">Đang mở Luyện kỹ thuật ngón tay…</div>}>
+          <TechniqueScreen key={route.tab ?? 'today'} tab={route.tab} />
         </Suspense>
       )}
       {route.name === 'settings' && <SettingsScreen section={route.section} />}

@@ -24,7 +24,7 @@ export type ShortcutTargetType = 'page' | 'game' | 'level' | 'lesson' | 'practic
 export const SHORTCUT_TARGET_TYPES: readonly ShortcutTargetType[] = ['page', 'game', 'level', 'lesson', 'practice', 'arcade', 'lesson-game'];
 
 /** Màn cố định tạo được lối tắt (trùng tên route). Trang chủ không có — thanh lối tắt nằm ở đó. */
-export type PageId = 'curriculum' | 'supplement' | 'note-discovery' | 'library' | 'song-library' | 'games' | 'five-finger' | 'coach' | 'settings';
+export type PageId = 'curriculum' | 'supplement' | 'note-discovery' | 'library' | 'song-library' | 'games' | 'five-finger' | 'technique' | 'coach' | 'settings';
 
 /** Phần mở thẳng của buổi học: Luyện tập sau buổi / Trò chơi sau buổi (không có = trang tổng quan buổi). */
 export type LessonStage = 'review' | 'game';

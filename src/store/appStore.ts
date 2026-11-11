@@ -51,7 +51,9 @@ export type Route =
    *  `measures`: luyện riêng đoạn ô [từ, tới] (số ô in trên bản nhạc, ô lấy đà = 0). */
   | { name: 'practice'; lessonId: string; fromSongs?: boolean; measures?: [number, number] }
   /** AI Piano Coach: ghi bài đàn → chấm theo bản nhạc → lỗi trên khuông, nhận xét, bài luyện sửa lỗi (docs/ai-coach). */
-  | { name: 'coach'; lessonId?: string; measures?: [number, number] }
+  | { name: 'coach'; lessonId?: string; measures?: [number, number]; bpm?: number; hand?: 'both' | 'right' | 'left'; returnTo?: 'technique' }
+  /** Luyện kỹ thuật ngón tay + AI Smart Practice (docs/finger-coach): giáo trình kỹ thuật, bài hôm nay, đoạn khó, tiến bộ. */
+  | { name: 'technique'; tab?: 'today' | 'library' | 'passages' | 'progress' }
   /** `section`: cuộn tới một mục (vd "Quản lý lối tắt" từ menu lối tắt ở trang chủ). */
   | { name: 'settings'; section?: 'shortcuts' };
 
@@ -71,6 +73,7 @@ export function initialRoute(search = typeof location === 'undefined' ? '' : loc
   if (screen === 'f1-racing') return { name: 'f1-racing' };
   if (screen === 'five-finger') return { name: 'five-finger' };
   if (screen === 'coach') return { name: 'coach' };
+  if (screen === 'technique') return { name: 'technique' };
   return { name: 'dashboard' };
 }
 

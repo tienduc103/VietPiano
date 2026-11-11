@@ -4,6 +4,7 @@ import { CoachSetup, type InterruptedItem } from '../components/coach/CoachSetup
 import { CoachRecording } from '../components/coach/CoachRecording';
 import { CoachResults, type ResultData } from '../components/coach/CoachResults';
 import { CoachHistory } from '../components/coach/CoachHistory';
+import { SmartPracticePanel } from '../components/coach/SmartPracticePanel';
 import { LatencyCalibrationDialog } from '../components/coach/LatencyCalibrationDialog';
 import { soundOutput } from '../core/audio/SoundOutput';
 import { effectiveLatency, loadLatencyStore, saveLatencyStore, withCalibration, withoutCalibration, type LatencyStore } from '../core/coach/latency/store';
@@ -33,6 +34,9 @@ import { toggleMicrophone, useMic } from '../store/micStore';
 import { useMidi } from '../store/midiStore';
 import { activeProfile, useProfiles } from '../store/profileStore';
 import { useSettings } from '../store/settingsStore';
+import { isRemedialId, isTechniqueLesson, resolveLesson, scoringWeightsFor, TECHNIQUE_LESSONS } from '../core/technique/lessons';
+import type { AdaptiveTempo } from '../core/smartPractice/types';
+import { smartPractice, useTechniqueSettings } from '../hooks/useSmartPractice';
 
 type Phase = { name: 'setup' } | { name: 'recording' } | { name: 'results'; data: ResultData } | { name: 'history' };
 
@@ -52,7 +56,20 @@ function safeSlice(lesson: Lesson, m: [number, number] | null): Lesson {
   }
 }
 
-export function CoachScreen({ lessonId, measures }: { lessonId?: string; measures?: [number, number] }) {
+export function CoachScreen({
+  lessonId,
+  measures,
+  bpm: routeBpm,
+  hand: routeHand,
+  returnTo,
+}: {
+  lessonId?: string;
+  measures?: [number, number];
+  /** Tempo mở sẵn (đề xuất hôm nay / Adaptive Tempo / bài bổ trợ). */
+  bpm?: number;
+  hand?: 'both' | 'right' | 'left';
+  returnTo?: 'technique';
+}) {
   const navigate = useApp((s) => s.navigate);
   const openLesson = useApp((s) => s.openLesson);
   const updateSettings = useSettings((s) => s.update);
@@ -67,7 +84,10 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
 
   const [cfg, setCfgState] = useState<CoachSettings>(() => {
     const s = loadCoachSettings();
-    return lessonId && LESSONS.some((l) => l.id === lessonId) ? { ...s, lastLessonId: lessonId } : s;
+    const l = lessonId ? resolveLesson(lessonId) : undefined;
+    if (!l) return s;
+    // Tempo mở sẵn → phần trăm so với tempo bài (Coach lưu tempo theo phần trăm).
+    return { ...s, lastLessonId: l.id, ...(routeBpm ? { tempoPercent: Math.max(20, Math.min(200, Math.round((routeBpm / lessonTempo(l)) * 100))) } : {}) };
   });
   const setCfg = useCallback((patch: Partial<CoachSettings>) => {
     setCfgState((s) => {
@@ -77,7 +97,10 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
     });
   }, []);
   const [section, setSection] = useState<[number, number] | null>(measures ?? null);
-  const [hand, setHand] = useState<'both' | 'right' | 'left'>('both');
+  const [hand, setHand] = useState<'both' | 'right' | 'left'>(routeHand ?? 'both');
+  const [techSettings] = useTechniqueSettings();
+  // Bài được mở kèm tempo cụ thể (route / "Luyện đoạn khó") → không để tempo thích ứng tự đè lên.
+  const [pinnedTempoLesson, setPinnedTempoLesson] = useState<string | null>(routeBpm && lessonId ? lessonId : null);
   const [planCtx, setPlanCtx] = useState<{ plan: PracticePlan; stepId: string } | null>(null);
   const [phase, setPhase] = useState<Phase>({ name: 'setup' });
   const [interrupted, setInterrupted] = useState<InterruptedItem[]>([]);
@@ -98,7 +121,8 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
   // Kết nối AI cục bộ: kiểm tra khi mở màn + định kỳ, hiện ở màn chuẩn bị và trong lúc đánh.
   const aiLink = useCoachAiLink();
 
-  const baseLesson = useMemo(() => LESSONS.find((l) => l.id === cfg.lastLessonId) ?? LESSONS.find((l) => l.id === 'scale-c-major') ?? LESSONS[0], [cfg.lastLessonId]);
+  // Bài Thư viện, bài kỹ thuật ngón tay hoặc bài bổ trợ (`rem:…`, sinh lại từ bài gốc) — docs/finger-coach.
+  const baseLesson = useMemo(() => resolveLesson(cfg.lastLessonId ?? '') ?? LESSONS.find((l) => l.id === 'scale-c-major') ?? LESSONS[0], [cfg.lastLessonId]);
   const lesson = useMemo(() => safeSlice(baseLesson, section), [baseLesson, section]);
   const twoHands = !!baseLesson.accompaniment?.length || baseLesson.hand === 'both';
   const effectiveHand = twoHands ? hand : 'both';
@@ -138,8 +162,11 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
       const ref = referenceFromLesson(lessonForScore, { hand: s.hand, singleNotesOnly: s.input.source === 'microphone', targetBpm: s.targetBpm });
       const perf = buildPerformance(recorded);
       const capabilities = { ...s.input.capabilities, pedal: s.input.capabilities.pedal || perf.sustainSeen };
-      const result = scorePerformance({ reference: ref, performance: perf, session: s, capabilities, mode: s.mode, pedalRule: s.pedalRule ?? 'auto' });
+      // Bài kỹ thuật: trọng số theo mục tiêu bài (tất định, cùng engine).
+      const result = scorePerformance({ reference: ref, performance: perf, session: s, capabilities, mode: s.mode, pedalRule: s.pedalRule ?? 'auto', weights: scoringWeightsFor(s.lessonId) });
       await coachStorage.saveResult(result).catch((e) => console.warn('[VietPiano] Không lưu được kết quả chấm', e));
+      // Bài bổ trợ: cập nhật trạng thái (đã chắc → "mastered"); không đổi điểm.
+      void smartPractice.savePracticeResult(result).catch(() => {});
       const all = await coachStorage.listResults(profileKey, s.lessonId).catch(() => []);
       const history = all.filter((r) => r.id !== result.id && r.referenceId === result.referenceId && r.createdAt < result.createdAt);
       const recs = recommendPractice(result, ref);
@@ -150,7 +177,7 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
         updatedPlan = applyAttempt(plan.plan, { resultId: result.id, score: result.total, at: result.createdAt });
         await coachStorage.savePlan(updatedPlan).catch(() => {});
       }
-      setPhase({ name: 'results', data: { lesson: lessonForScore, baseLesson: LESSONS.find((l) => l.id === s.lessonId) ?? lessonForScore, reference: ref, recorded, perf, result, recs, progress, history, payload, plan: updatedPlan } });
+      setPhase({ name: 'results', data: { lesson: lessonForScore, baseLesson: resolveLesson(s.lessonId) ?? lessonForScore, reference: ref, recorded, perf, result, recs, progress, history, payload, plan: updatedPlan } });
       setPlanCtx(null);
     },
     [cfg.historyWindow, cfg.aiShareName, profile, profileKey],
@@ -235,7 +262,7 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
         const rec = await coachStorage.getRecorded(s.id);
         if (!rec) return;
         await coachStorage.setSessionStatus(s.id, 'interrupted');
-        const l = LESSONS.find((x) => x.id === s.lessonId);
+        const l = resolveLesson(s.lessonId);
         if (!l) {
           setError('Bài của phiên này không còn trong thư viện.');
           return;
@@ -297,7 +324,7 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
   const continuePlan = useCallback(
     (plan: PracticePlan) => {
       const step = plan.steps.find((s) => s.status === 'active');
-      const l = LESSONS.find((x) => x.id === plan.lessonId);
+      const l = resolveLesson(plan.lessonId);
       if (!step || !l) return;
       setPlanCtx({ plan, stepId: step.id });
       setSection(step.measures);
@@ -306,6 +333,40 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
     },
     [setCfg],
   );
+
+  /** Mở một bài ở màn chuẩn bị (người học bấm Bắt đầu mới ghi) — từ "Luyện đoạn khó" / bài bổ trợ / quay lại bài gốc. */
+  const openInCoach = useCallback(
+    (id: string, b: number, h?: 'both' | 'right' | 'left') => {
+      const l = resolveLesson(id);
+      if (!l) return;
+      setPlanCtx(null);
+      setSection(null);
+      setHand(h ?? 'both');
+      setPinnedTempoLesson(l.id);
+      setCfg({ lastLessonId: l.id, tempoPercent: Math.max(20, Math.min(200, Math.round((b / lessonTempo(l)) * 100))) });
+      setPhase({ name: 'setup' });
+    },
+    [setCfg],
+  );
+  // Ô chọn bài: thêm nhóm bài kỹ thuật + bài bổ trợ đang luyện của hồ sơ (đọc lại khi đổi màn).
+  const phaseName = phase.name;
+  const remedialLessons = useMemo(() => {
+    void phaseName;
+    const ids = smartPractice.store
+      .load(profileKey)
+      .remedials.filter((r) => r.status === 'active' || r.id === baseLesson.id)
+      .map((r) => r.id);
+    if (isRemedialId(baseLesson.id) && !ids.includes(baseLesson.id)) ids.push(baseLesson.id);
+    return ids.map((id) => resolveLesson(id)).filter((l): l is Lesson => !!l);
+  }, [profileKey, baseLesson.id, phaseName]);
+  const extraGroups = useMemo(
+    () => [
+      ...(techSettings.enabled ? [{ key: 'technique', label: 'Luyện kỹ thuật ngón tay', list: TECHNIQUE_LESSONS }] : []),
+      ...(remedialLessons.length ? [{ key: 'remedial', label: 'Bài luyện đoạn khó (tự tạo)', list: remedialLessons }] : []),
+    ],
+    [techSettings.enabled, remedialLessons],
+  );
+  const historyLessons = useMemo(() => [...LESSONS, ...TECHNIQUE_LESSONS, ...remedialLessons], [remedialLessons]);
 
   const title = phase.name === 'history' ? 'Lịch sử chấm' : 'AI Piano Coach';
   return (
@@ -316,7 +377,7 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
             variant="ghost"
             className="px-2"
             aria-label={phase.name === 'setup' ? 'Về trang chủ' : 'Quay lại'}
-            onClick={() => (phase.name === 'setup' ? navigate({ name: 'dashboard' }) : phase.name === 'recording' ? void abort() : setPhase({ name: 'setup' }))}
+            onClick={() => (phase.name === 'setup' ? navigate(returnTo === 'technique' ? { name: 'technique' } : { name: 'dashboard' }) : phase.name === 'recording' ? void abort() : setPhase({ name: 'setup' }))}
             midiNav={phase.name === 'recording' ? undefined : 'back'}
           >
             <Icon name="back" />
@@ -342,8 +403,19 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
         )}
 
         {phase.name === 'setup' && (
+          <AdaptiveTempoHint
+            profileKey={profileKey}
+            lesson={baseLesson}
+            enabled={techSettings.enabled && techSettings.adaptiveTempo && !planCtx && !section}
+            autoApply={pinnedTempoLesson !== baseLesson.id && (isTechniqueLesson(baseLesson.id) || isRemedialId(baseLesson.id))}
+            bpm={bpm}
+            onUse={(b) => setCfg({ tempoPercent: Math.max(20, Math.min(200, Math.round((b / lessonTempo(baseLesson)) * 100))) })}
+          />
+        )}
+        {phase.name === 'setup' && (
           <CoachSetup
             lessons={LESSONS}
+            extraGroups={extraGroups}
             baseLesson={baseLesson}
             lesson={lesson}
             reference={reference}
@@ -421,13 +493,26 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
             }}
             onRecommendation={(rec, asPlan) => void runRecommendation(rec, phase.data, asPlan)}
             onContinuePlan={continuePlan}
+            extra={
+              techSettings.enabled ? (
+                <SmartPracticePanel
+                  profileKey={profileKey}
+                  baseLesson={phase.data.baseLesson}
+                  result={phase.data.result}
+                  labelStyle={labelStyle}
+                  adaptiveTempo={techSettings.adaptiveTempo}
+                  onOpen={openInCoach}
+                  onOpenTechnique={() => navigate({ name: 'technique' })}
+                />
+              ) : null
+            }
           />
         )}
         {phase.name === 'history' && (
           <CoachHistory
             profileKey={profileKey}
             profileName={profile?.name ?? 'Khách'}
-            lessons={LESSONS}
+            lessons={historyLessons}
             window={cfg.historyWindow}
             setWindow={(w) => setCfg({ historyWindow: w })}
             onOpen={(data) => setPhase({ name: 'results', data })}
@@ -440,5 +525,39 @@ export function CoachScreen({ lessonId, measures }: { lessonId?: string; measure
         )}
       </div>
     </div>
+  );
+}
+
+/** Gợi ý tempo thích ứng ở màn chuẩn bị (đặc tả §16): minh bạch lý do; bài kỹ thuật / bổ trợ tự áp một lần khi mở. */
+function AdaptiveTempoHint({ profileKey, lesson, enabled, autoApply, bpm, onUse }: { profileKey: string; lesson: Lesson; enabled: boolean; autoApply: boolean; bpm: number; onUse: (bpm: number) => void }) {
+  const [tempo, setTempo] = useState<AdaptiveTempo | null>(null);
+  const applied = useRef<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    setTempo(null);
+    if (enabled) void smartPractice.getAdaptiveTempo(profileKey, lesson.id).then((t) => live && setTempo(t));
+    return () => {
+      live = false;
+    };
+  }, [enabled, profileKey, lesson.id]);
+  useEffect(() => {
+    if (!tempo || !autoApply || applied.current === lesson.id) return;
+    applied.current = lesson.id;
+    if (tempo.recommendedBpm !== bpm) onUse(tempo.recommendedBpm);
+  }, [tempo, autoApply, lesson.id, bpm, onUse]);
+  if (!enabled || !tempo) return null;
+  return (
+    <p className="mt-4 flex flex-wrap items-center gap-2 rounded-xl bg-teal-50 p-3 text-sm ring-1 ring-teal-200 dark:bg-teal-900/20 dark:ring-teal-800" data-testid="coach-adaptive-tempo">
+      <span>
+        <b>Tempo thích ứng: ♩={tempo.recommendedBpm}</b> — {tempo.reason}
+        {tempo.stableBpm !== null && ` (ổn định đã xác minh: ♩=${tempo.stableBpm})`}
+        {bpm === tempo.recommendedBpm ? ' · Đang dùng.' : ''}
+      </span>
+      {bpm !== tempo.recommendedBpm && (
+        <Button className="min-h-10 text-sm" onClick={() => onUse(tempo.recommendedBpm)} data-testid="coach-use-adaptive">
+          Dùng ♩={tempo.recommendedBpm}
+        </Button>
+      )}
+    </p>
   );
 }

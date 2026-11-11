@@ -198,6 +198,16 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              sự kiện người chơi kể cả pedal; `metronome.ts` lên lịch tiếng click theo đồng hồ âm thanh + ghi từng tiếng vào log →
                              `scoring/analyzeMetronome` "so với metronome" (thông tin, KHÔNG trừ điểm; chưa đo → không so).
                              Rubric Biểu diễn cũ không đổi, điểm Coach không ghi vào tiến độ giáo trình. Thử thật: docs/ai-coach/acceptance-checklist.md
+  technique/               "Luyện kỹ thuật ngón tay" (AI Finger Coach, docs/finger-coach/): `catalog.ts` 67 bài 5 cấp × 13 nhóm (CHỈ dữ liệu, mẫu số ngón
+                             `pattern(thế tay, "1 2 3/h")` → `Lesson`; KHÔNG nằm trong `LESSONS`), `build.ts` suy chỗ chuyển ngón từ số ngón + kiểm tra không ép giãn,
+                             `lessons.ts` tra bài chung cho Coach (`resolveLesson`: Thư viện + bài kỹ thuật + bài bổ trợ `rem:…`) + trọng số chấm theo bài,
+                             `skills.ts` hồ sơ kỹ năng SUY từ kết quả Coach (không lưu), `recommend.ts` 3 bài hôm nay theo luật, `aiRank.ts` AI cục bộ chỉ sắp xếp /
+                             diễn đạt lý do (xác minh, lỗi → luật), `dashboard.ts`. UI `screens/TechniqueScreen` (route `technique`, `?screen=technique`, nút ở
+                             màn Giáo trình, trang Lối tắt), `components/technique/`. Bài chạy + chấm trong Coach (không bộ ghi / bộ chấm riêng)
+  smartPractice/           AI Smart Practice DÙNG CHUNG mọi bài có `Lesson`: `passages.ts` đoạn khó qua nhiều phiên (lỗi ở ≥ 2 phiên, độ tin cậy),
+                             `remedial.ts` bài bổ trợ 3–5 nhóm nốt (ranh giới chỉ ở phách mọi bè cùng bắt đầu; sinh lại từ id), `tempo.ts` Adaptive Tempo,
+                             `outcome.ts` hiệu quả bổ trợ, `store.ts` localStorage theo hồ sơ (bài bổ trợ, phản hồi đề xuất, báo mỏi, cờ tính năng),
+                             `service.ts` API dùng chung. Glue `hooks/useSmartPractice.ts`; panel `components/coach/SmartPracticePanel` ở kết quả Coach
   shortcuts/               "Lối tắt cá nhân" (Quick Access, docs/shortcuts.md): `registry.ts` = ShortcutRegistry, mọi đích đến SUY TỪ dữ liệu
                              (màn cố định `PAGES`, trò có màn riêng `games/catalog.STANDALONE_GAMES` — mục Trò chơi cũng vẽ từ đây, cấp / buổi giáo
                              trình chính + sup-/nd-, bài thư viện, trò tự do, trò của từng buổi): `resolveTarget` (còn tồn tại?), `targetStatus` (theo

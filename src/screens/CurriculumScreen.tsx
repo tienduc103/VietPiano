@@ -42,6 +42,10 @@ export function CurriculumScreen({ levelId }: { levelId?: string }) {
             <span aria-hidden>🖐</span>
             <span>5 ngón · 8 nốt</span>
           </Button>
+          <Button variant="secondary" onClick={() => navigate({ name: 'technique' })} className="px-3 text-sm font-bold" data-testid="open-technique">
+            <span aria-hidden>🎹</span>
+            <span>Luyện kỹ thuật ngón tay</span>
+          </Button>
           <PinShortcutButton target={{ type: 'level', id: level.levelId }} />
           <FullscreenButton />
         </header>

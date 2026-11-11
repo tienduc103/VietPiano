@@ -7,6 +7,7 @@ import { progressReport, progressText, skillProfile } from '../../core/coach/pro
 import { buildPerformance } from '../../core/coach/recorder/buildPerformance';
 import { referenceFromLesson } from '../../core/coach/reference/fromLesson';
 import { scorePerformance } from '../../core/coach/scoring/ScoringEngine';
+import { scoringWeightsFor } from '../../core/technique/lessons';
 import { coachStorage } from '../../core/coach/storage/CoachStorage';
 import { COACH_MODE_LABEL, SCORING_ENGINE_VERSION, type PerformanceSession, type PracticePlan, type ScoringResult } from '../../core/coach/types';
 import { measureRange, sliceLesson } from '../../core/lessons/slice';
@@ -97,7 +98,7 @@ export function CoachHistory(p: Props) {
       let result = r;
       if (rescore) {
         // Chấm lại log gốc bằng engine hiện tại → bản ghi MỚI (khoá có phiên bản), kết quả cũ giữ nguyên.
-        result = scorePerformance({ reference: ref, performance: perf, session: s, capabilities: { ...s.input.capabilities, pedal: s.input.capabilities.pedal || perf.sustainSeen }, mode: r.mode, pedalRule: s.pedalRule ?? 'auto' });
+        result = scorePerformance({ reference: ref, performance: perf, session: s, capabilities: { ...s.input.capabilities, pedal: s.input.capabilities.pedal || perf.sustainSeen }, mode: r.mode, pedalRule: s.pedalRule ?? 'auto', weights: scoringWeightsFor(s.lessonId) });
         await coachStorage.saveResult(result);
       }
       const history = results.filter((x) => x.referenceId === result.referenceId && x.createdAt < r.createdAt && x.id !== result.id);
