@@ -54,7 +54,7 @@ export function midiToLabel(midi: number, style: NoteLabelStyle): string {
   return `${SOLFEGE_NAMES[midiToPitchClass(midi)]}${midiToOctave(midi)}`;
 }
 
-const LETTER_TO_SOLFEGE: Record<string, string> = { C: 'Đô', D: 'Rê', E: 'Mi', F: 'Fa', G: 'Sol', A: 'La', B: 'Si' };
+export const LETTER_TO_SOLFEGE: Record<string, string> = { C: 'Đô', D: 'Rê', E: 'Mi', F: 'Fa', G: 'Sol', A: 'La', B: 'Si' };
 
 /**
  * Tên nốt theo đúng cách viết trong bài ("Bb4" → "B♭4" / "Si♭4"), không quy về dấu thăng như `midiToLabel`

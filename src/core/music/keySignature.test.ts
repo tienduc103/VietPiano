@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { keyAlterations, measureAccidentals } from './keySignature';
+import { KEY_SIGNATURES, keyAlterations, keySignatureName, measureAccidentals, type KeySignature } from './keySignature';
 
 describe('hoá biểu', () => {
+  it('tên giọng tiếng Việt', () => {
+    expect(keySignatureName('C')).toBe('Đô trưởng');
+    expect(keySignatureName('D')).toBe('Rê trưởng');
+    expect(keySignatureName('Am')).toBe('La thứ');
+    expect(keySignatureName('F#m')).toBe('Fa thăng thứ');
+    expect(keySignatureName('Bb')).toBe('Si giáng trưởng');
+    expect(keySignatureName('C#')).toBe('Đô thăng trưởng');
+    for (const key of Object.keys(KEY_SIGNATURES) as KeySignature[]) expect(keySignatureName(key)).toMatch(/^(Đô|Rê|Mi|Fa|Sol|La|Si)( thăng| giáng)? (trưởng|thứ)$/);
+  });
+
   it('liệt kê dấu hoá theo đúng thứ tự', () => {
     expect(keyAlterations('C')).toEqual({});
     expect(keyAlterations('Em')).toEqual({ F: '#' });

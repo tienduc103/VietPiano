@@ -2,6 +2,7 @@
  * Hoá biểu (key signature) và quy tắc hiển thị dấu hoá bất thường.
  * Tên giọng theo định dạng VexFlow: "C", "G", "Bb", "Em", "Dm", ...
  */
+import { LETTER_TO_SOLFEGE } from './notes';
 
 /** Số dấu hoá của mỗi giọng: dương = số dấu thăng, âm = số dấu giáng. */
 export const KEY_SIGNATURES = {
@@ -23,6 +24,13 @@ export const KEY_SIGNATURES = {
 } as const;
 
 export type KeySignature = keyof typeof KEY_SIGNATURES;
+
+/** Tên giọng tiếng Việt: "D" → "Rê trưởng", "F#m" → "Fa thăng thứ", "Bb" → "Si giáng trưởng". */
+export function keySignatureName(key: KeySignature): string {
+  const m = /^([A-G])([#b]?)(m?)$/.exec(key)!;
+  const alter = m[2] === '#' ? ' thăng' : m[2] === 'b' ? ' giáng' : '';
+  return `${LETTER_TO_SOLFEGE[m[1]]}${alter} ${m[3] ? 'thứ' : 'trưởng'}`;
+}
 
 /** Dấu hoá hiển thị cạnh nốt: thăng, giáng, hoàn, hoặc không có. */
 export type DisplayAccidental = '#' | 'b' | 'n' | null;

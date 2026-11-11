@@ -224,6 +224,15 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   score/scoreFit.ts        tỉ lệ + vị trí dọc của khuông một dòng (ScoreView, Săn nốt): vùng nhìn co giãn ít (≤ 8%) theo từng nốt
                              → giữ nguyên, khuông không nhảy lên xuống; ô hướng dẫn dưới khuông cũng phải cao cố định, và hàng điều khiển
                              không được đổi bề rộng theo từng nốt / pedal (xuống dòng → vùng nhìn đổi quá 8%): khối "Cần đánh" chừa chỗ bằng bước rộng nhất của bài (`distinctStepGuides`)
+  score/ScoreSheet.ts      ảnh khuông nhạc nhiều dòng kiểu bản in (canvas → PNG, `components/ScoreExportDialog`, nút xuất ở Thư viện bài / bài hát).
+                             VexFlow vẽ glyph bằng `fillText` tại MÉP TRÁI và không tự đặt `textAlign` → chữ của tờ nhạc vẽ trong save/restore, VexFlow
+                             luôn vẽ canh trái (lọt canh giữa → đuôi nốt mọc giữa đầu nốt, khoá đè vạch nhịp; `e2e/score-sheet.spec.ts`). Hai bước: dựng
+                             từng dòng ở toạ độ riêng + đo mép mực, rồi xếp dòng sát nhau (`translate`). Đủ ký hiệu như màn Luyện tập (sắc thái, hình nêm,
+                             pedal bằng glyph Bravura) + nhịp độ, tên giọng; riêng ảnh: sắc thái chung một hàng dưới đuôi nốt, khuông đôi tự nới khoảng
+                             cách khi nốt hai khuông chạm nhau, số ngón nâng lên khi đè móc / đuôi nốt / cờ — khuông màn hình không đổi
+  score/sheetLayout.ts     logic thuần của ảnh: chia dòng tham lam, dòng cuối cụt / giãn quá thưa → chia đều cùng số dòng nếu không dòng nào
+                             giãn quá 1,5 (Canon 3/3/3/3/3/2, Twinkle 4/4/4); bề rộng ô đủ cho hàng tên nốt (`labelNoteArea`, theo softmax trường độ
+                             của VexFlow); tỉ lệ điểm ảnh ≤ 16 MP (canvas Safari quá lớn → trắng); xuống dòng chữ; hình nêm ngắt dòng
   storage/ProgressStorage.ts  IndexedDB (phiên + tổng hợp theo bài), fallback bộ nhớ; bài gần đây ở localStorage
   storage/CurriculumStorage.ts  IndexedDB riêng "vietpiano-curriculum": tiến độ giáo trình theo hồ sơ, ghi ngay sau mỗi bài tập
   audio/SoundOutput.ts     tiếng đàn mẫu + click metronome (WebAudio tổng hợp, offline); micro bỏ nốt trong lúc phát mẫu

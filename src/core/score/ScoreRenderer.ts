@@ -93,23 +93,23 @@ export const DYNAMIC_SPACE = 22;
 export const PEDAL_OFFSET = 30;
 export const PEDAL_SPACE = 34;
 /** Chiều cao gạch đứng chỗ nhả / thay pedal. */
-const PEDAL_TICK = 10;
+export const PEDAL_TICK = 10;
 /** Nửa bề ngang khấc "^" ở chỗ thay pedal. */
-const PEDAL_NOTCH = 5;
+export const PEDAL_NOTCH = 5;
 /** Chừa chỗ cho chữ "Ped." trước đường kẻ. */
 const PEDAL_TEXT_WIDTH = 34;
 /** Chùm nốt tay phải: các số ngón xếp chồng, mỗi hàng cách nhau bấy nhiêu (nốt thấp ở dưới, nốt giai điệu trên cùng). */
 export const FINGER_ROW_STEP = 16;
 /** Chiều cao chữ số ngón (để chừa chỗ phía trên). */
-const FINGER_GLYPH = 14;
+export const FINGER_GLYPH = 14;
 /** Khoảng hở tối thiểu giữa số ngón và đầu nốt / đỉnh đuôi nốt phía dưới. */
 const HEAD_CLEAR = 7;
 const STEM_CLEAR = 6;
 /** Ký hiệu hợp âm: cách đỉnh chồng số ngón / đỉnh nốt phía dưới. */
-const CHORD_GAP = 8;
+export const CHORD_GAP = 8;
 const CHORD_GLYPH = 16;
 /** Hình nêm to dần / nhỏ dần: độ mở ở đầu rộng. */
-const HAIRPIN_OPEN = 12;
+export const HAIRPIN_OPEN = 12;
 /** Khoảng trống thêm phía trên khi bài có chữ đánh dấu đoạn (khung chữ nằm trên hàng số ngón tay). */
 export const SECTION_SPACE = 24;
 /** Khung chữ đánh dấu đoạn: cạnh vuông, khoảng cách từ đáy khung tới dòng kẻ trên cùng (trên hàng số ngón tay). */
@@ -137,10 +137,13 @@ export function scoreFontsReady(): Promise<unknown> {
   return fontsPromise;
 }
 
-/** Bề rộng tự nhiên của phần nốt trong một ô nhịp (đã gồm khoảng đệm); có phần đệm thì lấy bè dày hơn. */
-export function naturalNoteArea(items: readonly { duration: Duration }[], accompaniment: readonly { duration: Duration }[] = []): number {
+/**
+ * Bề rộng tự nhiên của phần nốt trong một ô nhịp (đã gồm khoảng đệm); có phần đệm thì lấy bè dày hơn.
+ * `spacing` < 1 dàn nốt khít hơn (tờ nhạc in).
+ */
+export function naturalNoteArea(items: readonly { duration: Duration }[], accompaniment: readonly { duration: Duration }[] = [], spacing = 1): number {
   const area = (xs: readonly { duration: Duration }[]) => xs.reduce((sum, n) => sum + NOTE_SPACE[n.duration], 0);
-  return Math.max(area(items), area(accompaniment)) + MEASURE_PADDING;
+  return Math.max(area(items), area(accompaniment)) * spacing + MEASURE_PADDING;
 }
 
 /** Các ô nhịp của phần đệm (cùng cách chia với giai điệu); không có phần đệm → undefined. */
@@ -167,7 +170,7 @@ export function accompanimentFingerRows(note: AccompanimentNote, staveNote: Stav
 }
 
 /** Đỉnh của nốt (đầu nốt cao nhất, hoặc đỉnh đuôi nốt quay lên), theo trục y SVG (nhỏ = cao). */
-function noteTop(staveNote: StaveNote): number {
+export function noteTop(staveNote: StaveNote): number {
   const { topY, baseY } = staveNote.getStemExtents();
   return Math.min(...staveNote.getYs(), staveNote.getStemDirection() > 0 ? Math.min(topY, baseY) : Infinity);
 }
@@ -327,22 +330,37 @@ export function createMeasureStaves(
   return { staves, headerWidth };
 }
 
-/** Ghép nốt vào các khuông: tạo voice, nối móc tự động và dàn nốt (thẳng hàng giữa các khuông) trong `noteArea`. */
-export function formatMeasure(lesson: Lesson, staves: Stave[], notes: StaveNote[][], noteArea: number) {
+/** Tạo voice cho từng khuông và nối móc tự động (chưa dàn nốt). */
+function joinMeasure(lesson: Lesson, notes: StaveNote[][]) {
   const [beats, beatValue] = lesson.timeSignature;
   const formatter = new Formatter();
-  const voices = staves.map((stave, si) => {
-    stave.setDefaultLedgerLineStyle(LEDGER_STYLE);
+  const voices = notes.map((ns) => {
     const voice = new Voice({ numBeats: beats, beatValue }).setStrict(false);
-    voice.addTickables(notes[si]);
+    voice.addTickables(ns);
     formatter.joinVoices([voice]);
     return voice;
   });
   // Nhịp kép (6/8, 9/8, 12/8): móc đơn nối theo nhóm ba.
   const compound = beatValue === 8 && beats > 3 && beats % 3 === 0;
   const beams = notes.flatMap((ns) => Beam.generateBeams(ns, compound ? { groups: [new Fraction(3, 8)] } : undefined));
+  return { formatter, voices, beams };
+}
+
+/** Ghép nốt vào các khuông: tạo voice, nối móc tự động và dàn nốt (thẳng hàng giữa các khuông) trong `noteArea`. */
+export function formatMeasure(lesson: Lesson, staves: Stave[], notes: StaveNote[][], noteArea: number) {
+  staves.forEach((stave) => stave.setDefaultLedgerLineStyle(LEDGER_STYLE));
+  const { formatter, voices, beams } = joinMeasure(lesson, notes);
   formatter.format(voices, noteArea - MEASURE_PADDING);
   return { voices, beams };
+}
+
+/**
+ * Bề rộng tối thiểu VexFlow cần cho phần nốt của một ô (các nốt sát nhau: đầu nốt, dấu hoá, chấm dôi, cờ móc).
+ * Phải nối móc trước khi đo như lúc vẽ — móc đơn chưa nối được tính thêm chỗ cho cờ.
+ */
+export function minNoteArea(lesson: Lesson, notes: StaveNote[][]): number {
+  const { formatter, voices } = joinMeasure(lesson, notes);
+  return formatter.preCalculateMinTotalWidth(voices);
 }
 
 /** Vẽ khuông + nốt + móc của một ô nhịp; khuông đôi có thêm vạch nhịp nối hai khuông và ngoặc nhọn ở ô đầu. */
