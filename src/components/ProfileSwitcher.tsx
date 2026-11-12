@@ -46,13 +46,13 @@ export function ProfileSwitcher({
               onClick={() => select(p.id)}
               aria-pressed={p.id === profile?.id}
               data-testid={`profile-${p.name}`}
-              className={`flex min-h-12 items-center gap-2 rounded-full py-1 pr-4 pl-1.5 font-semibold ring-1 transition-colors ${
+              className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-full py-1 pr-4 pl-1.5 font-semibold ring-1 transition-all duration-150 ${
                 p.id === profile?.id
-                  ? 'bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white ring-transparent shadow-md shadow-fuchsia-500/30'
-                  : 'bg-white text-slate-700 ring-violet-200 hover:bg-violet-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-violet-800'
+                  ? 'bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white shadow-md shadow-indigo-500/25 ring-transparent'
+                  : 'bg-white text-slate-700 shadow-xs ring-slate-200/90 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-700/80'
               }`}
             >
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-white/80 text-xl dark:bg-slate-900/60" aria-hidden>
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-white/90 text-xl shadow-xs dark:bg-slate-900/70" aria-hidden>
                 {p.avatar}
               </span>
               {p.name}

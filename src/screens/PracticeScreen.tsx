@@ -565,10 +565,10 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
         <div className="min-w-0 flex-1">
           <h1 className={`truncate text-xl font-bold ${lesson.titleColor ?? ''}`}>{lesson.title}</h1>
           <div className="mt-1 flex items-center gap-3">
-            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-violet-100 dark:bg-slate-700">
-              <div className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-orange-400 transition-[width] duration-300" style={{ width: `${(done / progressTotal) * 100}%` }} />
+            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-200/90 shadow-inner dark:bg-slate-800">
+              <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 transition-[width] duration-300" style={{ width: `${(done / progressTotal) * 100}%` }} />
             </div>
-            <span className="text-sm text-slate-500 tabular-nums dark:text-slate-400" data-testid="progress-text">
+            <span className="text-sm font-medium text-slate-500 tabular-nums dark:text-slate-400" data-testid="progress-text">
               {done}/{progressTotal}
             </span>
           </div>
@@ -656,7 +656,7 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
       )}
 
       {/* ── Giữa: khuông nhạc ── */}
-      <main className="relative mx-3 min-h-0 flex-1 rounded-2xl bg-white shadow-md shadow-violet-200/60 ring-1 ring-violet-100 dark:bg-slate-900 dark:shadow-none dark:ring-violet-900">
+      <main className="relative mx-3 min-h-0 flex-1 rounded-2xl bg-white shadow-sm shadow-slate-900/5 ring-1 ring-slate-200/90 dark:bg-slate-900 dark:shadow-none dark:ring-slate-800">
         <ScoreView
           lesson={lesson}
           index={scoreIndex}
@@ -692,14 +692,14 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
         {hasPedal &&
           (midiConnected ? (
             <span
-              className={`min-w-23 rounded-full px-3 py-1 text-center text-sm font-semibold whitespace-nowrap ${pedalState.down ? 'bg-fuchsia-500 text-white' : 'bg-violet-100 text-violet-700 dark:bg-slate-700 dark:text-slate-300'}`}
+              className={`min-w-23 rounded-full px-3 py-1 text-center text-sm font-semibold whitespace-nowrap ring-1 ${pedalState.down ? 'bg-indigo-600 text-white ring-indigo-500' : 'bg-slate-100 text-slate-700 ring-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700'}`}
               title='Đạp và nhả theo ký hiệu "Ped." dưới khuông; đạp ngay sau khi đánh nốt đầu ô là đúng kỹ thuật'
               data-testid="pedal-state"
             >
               Pedal: {pedalState.down ? 'đạp' : 'nhả'}
             </span>
           ) : (
-            <span className="rounded-full bg-amber-50 px-3 py-1 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200" title="Chỉ đàn MIDI gửi được pedal" data-testid="pedal-unmeasured">
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-sm text-amber-800 ring-1 ring-amber-200/80 dark:bg-amber-950/70 dark:text-amber-200 dark:ring-amber-800/60" title="Chỉ đàn MIDI gửi được pedal" data-testid="pedal-unmeasured">
               Pedal: không đo
             </span>
           ))}
@@ -883,17 +883,17 @@ function StatusPanel({
   listening?: boolean;
   labelStyle: 'letter' | 'solfege';
 }) {
-  let tone = 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200';
+  let tone = 'bg-sky-50 text-sky-900 ring-1 ring-sky-200/80 dark:bg-sky-950/80 dark:text-sky-200 dark:ring-sky-800/60';
   let title = listening ? 'Đang nghe mẫu' : 'Đang chờ';
   let detail = '';
   if (state.status === 'finished') {
-    tone = 'bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white';
+    tone = 'bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white shadow-sm';
     title = 'Hoàn thành!';
   } else if (showFeedback && state.status === 'correct') {
-    tone = 'bg-emerald-500 text-white shadow-md shadow-emerald-500/40';
+    tone = 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30';
     title = 'Đúng!';
   } else if (showFeedback && state.status === 'wrong') {
-    tone = 'bg-rose-500 text-white shadow-md shadow-rose-500/40';
+    tone = 'bg-rose-500 text-white shadow-md shadow-rose-500/30';
     title = 'Sai';
     detail = state.lastPlayedMidi !== null ? `bạn đánh ${midiToLabel(state.lastPlayedMidi, labelStyle)}` : '';
   }
@@ -1110,7 +1110,7 @@ const HANDS: PracticeHand[] = ['both', 'right', 'left'];
 /** Chọn tay tập: hai tay / chỉ tay phải / chỉ tay trái. */
 function HandPicker({ value, onChange }: { value: PracticeHand; onChange: (h: PracticeHand) => void }) {
   return (
-    <div className="inline-flex shrink-0 rounded-xl bg-violet-100 p-1 dark:bg-slate-700" role="radiogroup" aria-label="Tay tập">
+    <div className="inline-flex shrink-0 rounded-xl bg-slate-200/80 p-1 ring-1 ring-slate-200/60 dark:bg-slate-800 dark:ring-slate-700/80" role="radiogroup" aria-label="Tay tập">
       {HANDS.map((h) => (
         <button
           key={h}
@@ -1119,8 +1119,8 @@ function HandPicker({ value, onChange }: { value: PracticeHand; onChange: (h: Pr
           aria-checked={value === h}
           data-testid={`hand-${h}`}
           onClick={() => onChange(h)}
-          className={`min-h-12 rounded-lg px-3 text-sm font-semibold whitespace-nowrap transition-colors ${
-            value === h ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'
+          className={`min-h-12 cursor-pointer rounded-lg px-3 text-sm font-semibold whitespace-nowrap transition-all duration-150 ${
+            value === h ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5 dark:bg-slate-900 dark:text-indigo-300 dark:ring-white/10' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
           }`}
         >
           {PRACTICE_HAND_LABEL[h]}
@@ -1139,7 +1139,7 @@ const MODES: { value: PracticeMode; label: string; icon: IconName; hint: string 
 
 function ModePicker({ value, onChange }: { value: PracticeMode; onChange: (m: PracticeMode) => void }) {
   return (
-    <div className="inline-flex shrink-0 rounded-xl bg-violet-100 p-1 dark:bg-slate-700" role="radiogroup" aria-label="Chế độ luyện tập">
+    <div className="inline-flex shrink-0 rounded-xl bg-slate-200/80 p-1 ring-1 ring-slate-200/60 dark:bg-slate-800 dark:ring-slate-700/80" role="radiogroup" aria-label="Chế độ luyện tập">
       {MODES.map((m) => (
         <button
           key={m.value}
@@ -1150,8 +1150,8 @@ function ModePicker({ value, onChange }: { value: PracticeMode; onChange: (m: Pr
           title={m.hint}
           data-testid={`mode-${m.value}`}
           onClick={() => onChange(m.value)}
-          className={`flex min-h-12 min-w-12 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors ${
-            value === m.value ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'
+          className={`flex min-h-12 min-w-12 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-all duration-150 ${
+            value === m.value ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5 dark:bg-slate-900 dark:text-indigo-300 dark:ring-white/10' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
           }`}
         >
           <Icon name={m.icon} className="h-5 w-5" />
@@ -1411,8 +1411,8 @@ function PedalStat({ score, reason = 'cần đàn MIDI' }: { score?: number | nu
 
 function Stat({ label, value, testId }: { label: string; value: string; testId?: string }) {
   return (
-    <div className="rounded-xl bg-violet-50 px-4 py-3 ring-1 ring-violet-100 dark:bg-slate-700/60 dark:ring-violet-900" data-testid={testId}>
-      <dt className="text-xs text-slate-500 dark:text-slate-400">{label}</dt>
+    <div className="rounded-xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200/80 dark:bg-slate-700/60 dark:ring-slate-700" data-testid={testId}>
+      <dt className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</dt>
       <dd className="text-xl font-bold tabular-nums">{value}</dd>
     </div>
   );

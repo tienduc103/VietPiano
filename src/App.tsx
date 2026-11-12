@@ -47,7 +47,7 @@ export function App() {
   }, [activeProfileId]);
 
   return (
-    <div className="h-full bg-gradient-to-br from-sky-100 via-violet-50 to-pink-100 text-slate-900 dark:from-slate-950 dark:via-violet-950 dark:to-slate-950 dark:text-slate-100">
+    <div className="h-full bg-gradient-to-br from-slate-50 via-indigo-50/40 to-fuchsia-50/40 text-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/60 dark:text-slate-100">
       {route.name === 'dashboard' && <DashboardScreen />}
       {route.name === 'curriculum' && <CurriculumScreen levelId={route.levelId} />}
       {route.name === 'lesson' && <LessonPlayerScreen lessonId={route.lessonId} stage={route.stage} />}

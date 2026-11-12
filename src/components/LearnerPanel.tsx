@@ -57,16 +57,16 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
       type="button"
       onClick={() => openLesson(lesson.id)}
       data-testid={`rec-${lesson.id}`}
-      className="flex min-h-24 flex-col rounded-2xl bg-gradient-to-br from-white to-fuchsia-50 p-4 text-left shadow-sm ring-1 ring-fuchsia-200 transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] dark:from-slate-800 dark:to-fuchsia-950/40 dark:ring-fuchsia-900"
+      className="flex min-h-24 cursor-pointer flex-col rounded-2xl bg-gradient-to-br from-white via-white to-indigo-50/70 p-4 text-left shadow-xs ring-1 ring-indigo-200/80 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:ring-indigo-300 active:scale-[0.99] dark:from-slate-800 dark:via-slate-800 dark:to-indigo-950/50 dark:ring-indigo-800/70"
     >
       <div className="flex items-start gap-2">
         <h3 className={`flex-1 leading-snug font-semibold ${lesson.titleColor ?? ''}`}>{lesson.title}</h3>
-        <span className="text-orange-400" aria-label={`Độ khó ${lesson.difficulty}`}>
+        <span className="text-amber-500" aria-label={`Độ khó ${lesson.difficulty}`}>
           {'●'.repeat(lesson.difficulty)}
           <span className="text-slate-300 dark:text-slate-600">{'●'.repeat(3 - lesson.difficulty)}</span>
         </span>
       </div>
-      <p className="mt-1 text-sm font-medium text-fuchsia-700 dark:text-fuchsia-300">{rec.reason}</p>
+      <p className="mt-1 text-sm font-medium text-indigo-700 dark:text-indigo-300">{rec.reason}</p>
       <p className="mt-auto pt-2 text-xs text-slate-500 dark:text-slate-400">
         {CATEGORY_LABELS[lesson.category]} · {HAND_LABEL[lesson.hand]} · {lesson.notes.length} nốt
       </p>
@@ -98,8 +98,8 @@ function AssessmentCard({ profile, assessment }: { profile: LearnerProfile; asse
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl bg-sky-50 p-4 ring-1 ring-sky-200 dark:bg-sky-950/50 dark:ring-sky-800" data-testid="assess-time">
-          <div className="text-sm font-medium text-sky-800 dark:text-sky-200">Thời gian học</div>
+        <div className="rounded-2xl bg-sky-50/80 p-4 ring-1 ring-sky-200/80 dark:bg-sky-950/40 dark:ring-sky-800/70" data-testid="assess-time">
+          <div className="text-xs font-semibold tracking-wide text-sky-800 uppercase dark:text-sky-200">Thời gian học</div>
           <div className="mt-1 text-2xl font-bold tabular-nums">{formatDuration(time.totalMs)}</div>
           <div className="mt-3 flex justify-between text-sm">
             <span>7 ngày qua</span>
@@ -117,8 +117,8 @@ function AssessmentCard({ profile, assessment }: { profile: LearnerProfile; asse
           </div>
         </div>
 
-        <div className="rounded-2xl bg-violet-50 p-4 ring-1 ring-violet-200 dark:bg-violet-950/50 dark:ring-violet-800" data-testid="assess-skill">
-          <div className="text-sm font-medium text-violet-800 dark:text-violet-200">Khả năng chơi đàn</div>
+        <div className="rounded-2xl bg-indigo-50/80 p-4 ring-1 ring-indigo-200/80 dark:bg-indigo-950/40 dark:ring-indigo-800/70" data-testid="assess-skill">
+          <div className="text-xs font-semibold tracking-wide text-indigo-800 uppercase dark:text-indigo-200">Khả năng chơi đàn</div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-2xl font-bold">{skill.level}</span>
             <span className="text-slate-500 tabular-nums dark:text-slate-400">{skill.score}/100</span>

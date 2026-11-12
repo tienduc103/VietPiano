@@ -258,7 +258,7 @@ export function SettingsScreen({ section }: { section?: 'shortcuts' } = {}) {
   );
 }
 
-const inputClass = 'min-h-12 rounded-xl bg-white px-3 ring-1 ring-violet-200 dark:bg-slate-900 dark:ring-violet-800';
+const inputClass = 'min-h-12 rounded-xl bg-white px-3 shadow-xs ring-1 ring-slate-200/90 outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:ring-slate-700';
 
 const REMIND_OPTIONS = [0, 5, 10, 20, 30] as const;
 
@@ -484,12 +484,12 @@ function Slider(props: {
   return (
     <label className="mt-4 block">
       <div className="flex items-baseline justify-between">
-        <span className="font-medium">{props.label}</span>
-        <span className="text-sm font-semibold text-fuchsia-600 tabular-nums dark:text-fuchsia-300">{props.format(props.value)}</span>
+        <span className="font-medium text-slate-800 dark:text-slate-100">{props.label}</span>
+        <span className="text-sm font-semibold text-indigo-600 tabular-nums dark:text-indigo-300">{props.format(props.value)}</span>
       </div>
       <input
         type="range"
-        className="w-full"
+        className="mt-1.5 w-full accent-indigo-600"
         min={props.min}
         max={props.max}
         step={props.step}
@@ -547,8 +547,8 @@ function Calibration() {
   };
 
   return (
-    <div className="mt-5 rounded-xl bg-violet-50 p-4 ring-1 ring-violet-100 dark:bg-slate-900/60 dark:ring-violet-900">
-      <h3 className="font-semibold">Hiệu chuẩn micro</h3>
+    <div className="mt-5 rounded-2xl bg-slate-50/90 p-4 ring-1 ring-slate-200/80 dark:bg-slate-800/60 dark:ring-slate-700/80">
+      <h3 className="font-semibold text-slate-800 dark:text-slate-100">Hiệu chuẩn micro</h3>
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
         <b>Tự căn chỉnh:</b> giữ yên lặng vài giây, sau đó ứng dụng hiện lần lượt từng nốt (từ quãng trầm tới quãng cao) —
         bạn đánh nốt đó, máy nghe và đề xuất độ nhạy, độ tin cậy, thời gian ổn định, ngưỡng đánh lại và cao độ chuẩn.

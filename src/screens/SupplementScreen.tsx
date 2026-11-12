@@ -68,14 +68,14 @@ export function SupplementScreen() {
                   onClick={() => navigate({ name: 'lesson', lessonId: l.lessonId })}
                   data-testid={`supplement-lesson-${l.lessonId}`}
                   data-status={status}
-                  className="grid min-h-48 w-full content-start justify-items-center gap-2 rounded-3xl bg-gradient-to-br from-violet-600 to-fuchsia-500 p-5 text-white shadow-lg shadow-fuchsia-500/30 transition-transform active:scale-95"
+                  className="grid min-h-48 w-full cursor-pointer content-start justify-items-center gap-2 rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-5 text-white shadow-lg shadow-indigo-500/25 ring-1 ring-white/20 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xl active:scale-95"
                 >
                   {note && <NoteFigure svg={figures?.get(note.letter)} />}
                   <span className="flex items-baseline gap-2">
                     <span className="text-lg font-extrabold">{note?.name ?? text(l.title)}</span>
                     <span className="text-lg font-semibold opacity-90">{note?.letter}</span>
                   </span>
-                  <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-semibold">
+                  <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-semibold backdrop-blur-xs ring-1 ring-white/20">
                     {STATUS_LABEL[status]}
                     {rec && rec.attempts > 0 ? ` · ${rec.bestScore} điểm` : ''}
                   </span>

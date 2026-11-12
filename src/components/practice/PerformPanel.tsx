@@ -100,7 +100,7 @@ const pct = (v: number | null | undefined) => (v === null || v === undefined ? '
 
 function Row({ label, value, testId }: { label: string; value: string; testId?: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-violet-50 px-3 py-2 ring-1 ring-violet-100 dark:bg-slate-700/60 dark:ring-violet-900" data-testid={testId}>
+    <div className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 ring-1 ring-slate-200/80 dark:bg-slate-700/60 dark:ring-slate-700" data-testid={testId}>
       <dt className="text-sm text-slate-600 dark:text-slate-300">{label}</dt>
       <dd className="font-bold tabular-nums">{value}</dd>
     </div>
@@ -164,7 +164,7 @@ export function ResultBreakdown({
 /** Một ô số nốt ở tổng kết Biểu diễn. */
 function Count({ label, value, tone = '', testId }: { label: string; value: string; tone?: string; testId: string }) {
   return (
-    <div className="rounded-lg bg-violet-50 px-2 py-1.5 ring-1 ring-violet-100 dark:bg-slate-700/60 dark:ring-violet-900" data-testid={testId}>
+    <div className="rounded-xl bg-slate-50 px-2 py-1.5 ring-1 ring-slate-200/80 dark:bg-slate-700/60 dark:ring-slate-700" data-testid={testId}>
       <dt className="text-xs text-slate-600 dark:text-slate-300">{label}</dt>
       <dd className={`text-lg font-bold tabular-nums ${tone}`}>{value}</dd>
     </div>

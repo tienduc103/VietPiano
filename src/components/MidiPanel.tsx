@@ -54,7 +54,7 @@ export function MidiSettings({ labelStyle }: { labelStyle: NoteLabelStyle }) {
         onChange={(v) => update({ midiEnabled: v })}
       />
       {enabled && (
-        <div className="mt-3 rounded-xl bg-violet-50 p-4 ring-1 ring-violet-100 dark:bg-slate-900/60 dark:ring-violet-900" data-testid="midi-status">
+        <div className="mt-3 rounded-xl bg-slate-50/90 p-4 ring-1 ring-slate-200/80 dark:bg-slate-800/60 dark:ring-slate-700/80" data-testid="midi-status">
           {status === 'connecting' && <p>Đang mở MIDI… (trình duyệt có thể hỏi quyền, hãy chọn Cho phép)</p>}
           {(status === 'denied' || status === 'error') && (
             <div className="flex flex-wrap items-center gap-3">
@@ -101,10 +101,10 @@ export function MidiBadge({ small = false }: { small?: boolean }) {
   const connected = status === 'ready' && devices.length > 0;
   return (
     <div
-      className={`inline-flex items-center font-semibold ${small ? 'min-h-7 gap-1 rounded-md px-2 text-[11px]' : 'min-h-12 gap-2 rounded-xl px-3 text-sm'} ${
+      className={`inline-flex items-center font-semibold ring-1 ${small ? 'min-h-7 gap-1 rounded-lg px-2 text-[11px]' : 'min-h-12 gap-2 rounded-xl px-3 text-sm'} ${
         connected
-          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
-          : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
+          ? 'bg-emerald-50 text-emerald-800 ring-emerald-200/80 dark:bg-emerald-950/80 dark:text-emerald-200 dark:ring-emerald-800/60'
+          : 'bg-amber-50 text-amber-800 ring-amber-200/80 dark:bg-amber-950/80 dark:text-amber-200 dark:ring-amber-800/60'
       }`}
       data-testid="midi-badge"
       title={connected ? 'Đang nhận nốt từ đàn MIDI; nốt nghe qua micro bị bỏ qua' : 'Bật MIDI nhưng chưa thấy đàn'}

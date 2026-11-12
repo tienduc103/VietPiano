@@ -177,21 +177,21 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
                 }}
                 aria-current={phase === 'steps' && i === stepIndex ? 'step' : undefined}
                 title={stepLabel(s)}
-                className={`grid size-11 place-items-center rounded-full text-sm font-bold ring-2 ${
+                className={`grid size-11 cursor-pointer place-items-center rounded-full text-sm font-bold ring-1 transition-all duration-150 ${
                   phase === 'steps' && i === stepIndex
-                    ? 'bg-fuchsia-500 text-white ring-fuchsia-300'
+                    ? 'bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white shadow-sm shadow-indigo-500/25 ring-transparent'
                     : sc
                       ? sc.passed
-                        ? 'bg-emerald-500 text-white ring-emerald-300'
-                        : 'bg-amber-400 text-amber-950 ring-amber-200'
-                      : 'bg-white text-violet-700 ring-violet-200 dark:bg-slate-800 dark:text-violet-200 dark:ring-violet-800'
+                        ? 'bg-emerald-500 text-white ring-emerald-400'
+                        : 'bg-amber-400 text-amber-950 ring-amber-300'
+                      : 'bg-white text-slate-700 ring-slate-200/90 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700'
                 }`}
               >
                 {s.type === 'overview' ? 'i' : s.type === 'activity' ? '★' : i - (firstExercise - 1)}
               </button>
             );
           })}
-          <span className="mx-1 w-px self-stretch bg-violet-200 dark:bg-violet-800" aria-hidden />
+          <span className="mx-1 w-px self-stretch bg-slate-200 dark:bg-slate-700" aria-hidden />
           {(
             [
               { p: 'review', icon: '🎯', label: 'Luyện tập sau buổi', done: (record?.reviewCount ?? 0) > 0 },
@@ -208,12 +208,12 @@ function Player({ lesson, stage }: { lesson: CurriculumLesson; stage?: LessonSta
               title={x.label}
               aria-label={x.label}
               data-testid={`nav-${x.p}`}
-              className={`grid size-11 place-items-center rounded-full text-lg ring-2 ${
+              className={`grid size-11 cursor-pointer place-items-center rounded-full text-lg ring-1 transition-all duration-150 ${
                 phase === x.p
-                  ? 'bg-fuchsia-500 ring-fuchsia-300'
+                  ? 'bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white shadow-sm ring-transparent'
                   : x.done
-                    ? 'bg-emerald-100 ring-emerald-300 dark:bg-emerald-950 dark:ring-emerald-700'
-                    : 'bg-white ring-violet-200 dark:bg-slate-800 dark:ring-violet-800'
+                    ? 'bg-emerald-50 ring-emerald-300 dark:bg-emerald-950 dark:ring-emerald-700'
+                    : 'bg-white ring-slate-200/90 hover:bg-slate-50 dark:bg-slate-800 dark:ring-slate-700'
               }`}
             >
               {x.icon}
@@ -345,9 +345,9 @@ function Overview({ lesson, mode, onStart }: { lesson: CurriculumLesson; mode: U
   useVoiceCue(overrideCue(phrases.lessonStart(text(lesson.title)), lesson.voice), lesson.lessonId, mode);
   return (
     <div className="grid gap-5 lg:grid-cols-[2fr_1fr]" data-testid="lesson-overview">
-      <section className="rounded-3xl bg-white/90 p-6 shadow-sm ring-1 ring-violet-100 dark:bg-slate-800/90 dark:ring-violet-900">
-        <p className={mode === 'kids' ? 'text-xl' : 'text-lg'}>{text(variant?.description ?? lesson.description)}</p>
-        <h2 className="mt-5 font-semibold">Mục tiêu</h2>
+      <section className="rounded-3xl bg-white/95 p-6 shadow-sm shadow-slate-900/5 ring-1 ring-slate-200/80 dark:bg-slate-900/85 dark:shadow-none dark:ring-slate-800">
+        <p className={mode === 'kids' ? 'text-xl leading-relaxed' : 'text-lg leading-relaxed'}>{text(variant?.description ?? lesson.description)}</p>
+        <h2 className="mt-5 font-semibold text-slate-800 dark:text-slate-100">Mục tiêu</h2>
         <ul className="mt-2 grid gap-1.5">
           {lesson.learningObjectives.map((o, i) => (
             <li key={i} className="flex gap-2">
@@ -357,17 +357,17 @@ function Overview({ lesson, mode, onStart }: { lesson: CurriculumLesson; mode: U
           ))}
         </ul>
         {variant?.tips?.map((t, i) => (
-          <p key={i} className="mt-3 text-violet-700 dark:text-violet-300">
+          <p key={i} className="mt-3 text-indigo-700 dark:text-indigo-300">
             💡 {text(t)}
           </p>
         ))}
         {lesson.notes?.map((n, i) => (
-          <p key={i} className="mt-3 rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:bg-sky-950 dark:text-sky-200">
+          <p key={i} className="mt-3 rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900 ring-1 ring-sky-200/70 dark:bg-sky-950 dark:text-sky-200 dark:ring-sky-800/60">
             ℹ️ {text(n)}
           </p>
         ))}
         {missing.length > 0 && (
-          <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200" data-testid="suggest-before">
+          <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200/70 dark:bg-amber-950 dark:text-amber-200 dark:ring-amber-800/60" data-testid="suggest-before">
             Nên học trước: {missing.map((l) => `Buổi ${l.number} – ${text(l.title)}`).join(', ')}. Bạn vẫn có thể học buổi này.
           </p>
         )}
@@ -388,9 +388,9 @@ function Overview({ lesson, mode, onStart }: { lesson: CurriculumLesson; mode: U
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-violet-50 px-4 py-3 ring-1 ring-violet-100 dark:bg-slate-700/60 dark:ring-violet-900">
-      <div className="text-xs text-slate-500 dark:text-slate-400">{label}</div>
-      <div className="text-xl font-bold tabular-nums">{value}</div>
+    <div className="rounded-2xl bg-white/95 px-4 py-3 shadow-xs ring-1 ring-slate-200/80 dark:bg-slate-800/80 dark:ring-slate-700/80">
+      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
+      <div className="mt-0.5 text-xl font-bold tabular-nums">{value}</div>
     </div>
   );
 }

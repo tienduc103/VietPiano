@@ -11,10 +11,10 @@ import { ProfileSwitcher } from '../components/ProfileSwitcher';
 import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 
 const STATUS: Record<LessonStatus, { label: string; tone: string }> = {
-  completed: { label: '✓ Hoàn thành', tone: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' },
-  'in-progress': { label: 'Đang học', tone: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200' },
-  available: { label: 'Đã mở', tone: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-200' },
-  'suggest-later': { label: 'Nên học sau', tone: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' },
+  completed: { label: '✓ Hoàn thành', tone: 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80 dark:bg-emerald-950/80 dark:text-emerald-200 dark:ring-emerald-800/60' },
+  'in-progress': { label: 'Đang học', tone: 'bg-amber-50 text-amber-800 ring-1 ring-amber-200/80 dark:bg-amber-950/80 dark:text-amber-200 dark:ring-amber-800/60' },
+  available: { label: 'Đã mở', tone: 'bg-sky-50 text-sky-800 ring-1 ring-sky-200/80 dark:bg-sky-950/80 dark:text-sky-200 dark:ring-sky-800/60' },
+  'suggest-later': { label: 'Nên học sau', tone: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200/70 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700' },
 };
 
 /** Curriculum Browser — 6 cấp độ → tuần → buổi, kèm trạng thái từng buổi. */
@@ -58,12 +58,14 @@ export function CurriculumScreen({ levelId }: { levelId?: string }) {
                 onClick={() => setSelected(l.levelId)}
                 aria-pressed={l.levelId === level.levelId}
                 data-testid={`level-${l.number}`}
-                className={`min-h-20 rounded-2xl p-3 text-left ring-2 transition-colors ${
-                  l.levelId === level.levelId ? 'bg-fuchsia-500 text-white ring-fuchsia-300' : 'bg-white/90 ring-violet-100 dark:bg-slate-800 dark:ring-violet-900'
+                className={`min-h-20 cursor-pointer rounded-2xl p-3.5 text-left ring-1 transition-all duration-150 ${
+                  l.levelId === level.levelId
+                    ? 'bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white shadow-md shadow-indigo-500/20 ring-transparent'
+                    : 'bg-white/95 shadow-xs ring-slate-200/90 hover:bg-slate-50 hover:ring-indigo-300 dark:bg-slate-800/90 dark:ring-slate-700/80 dark:hover:bg-slate-800'
                 }`}
               >
-                <div className="text-sm font-semibold">Cấp {l.number}</div>
-                <div className="text-xs opacity-80">{p ? `${p.completed}/${p.total} buổi` : 'Sắp có'}</div>
+                <div className="text-sm font-bold">Cấp {l.number}</div>
+                <div className="mt-0.5 text-xs opacity-85">{p ? `${p.completed}/${p.total} buổi` : 'Sắp có'}</div>
               </button>
             );
           })}
@@ -92,24 +94,24 @@ export function CurriculumScreen({ levelId }: { levelId?: string }) {
                 return (
                   <div
                     key={id}
-                    className={`flex min-h-28 flex-col rounded-2xl bg-white/90 shadow-sm ring-1 ring-violet-100 transition hover:-translate-y-0.5 hover:shadow-md dark:bg-slate-800/90 dark:ring-violet-900 ${status === 'suggest-later' ? 'opacity-70' : ''}`}
+                    className={`flex min-h-28 flex-col rounded-2xl bg-white/95 shadow-xs ring-1 ring-slate-200/90 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:ring-indigo-300 dark:bg-slate-800/90 dark:ring-slate-700/80 dark:hover:ring-indigo-500/60 ${status === 'suggest-later' ? 'opacity-70' : ''}`}
                   >
                     <button
                       type="button"
                       onClick={() => navigate({ name: 'lesson', lessonId: id })}
                       data-testid={`cur-lesson-${id}`}
                       data-status={status}
-                      className="flex flex-1 flex-col rounded-t-2xl p-4 pb-2 text-left"
+                      className="flex flex-1 cursor-pointer flex-col rounded-t-2xl p-4 pb-2.5 text-left"
                     >
                       <div className="flex w-full items-start justify-between gap-2">
-                        <span className="text-sm text-slate-500 dark:text-slate-400">
+                        <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
                           Buổi {l.number}
                           {l.assessment.checkpoint ? ' · Kiểm tra' : ''}
                         </span>
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS[status].tone}`}>{STATUS[status].label}</span>
                       </div>
-                      <span className="mt-1 text-lg font-semibold">{text(l.title)}</span>
-                      <span className="mt-auto pt-2 text-sm text-slate-500 dark:text-slate-400">
+                      <span className="mt-1 text-lg font-semibold leading-snug">{text(l.title)}</span>
+                      <span className="mt-auto pt-2 text-xs text-slate-500 dark:text-slate-400">
                         ~{l.estimatedDuration} phút
                         {rec && rec.attempts > 0 ? ` · cao nhất ${rec.bestScore}` : ''}
                         {missing && status !== 'completed' ? ' · nên học buổi trước' : ''}
@@ -120,7 +122,7 @@ export function CurriculumScreen({ levelId }: { levelId?: string }) {
                         type="button"
                         onClick={() => navigate({ name: 'lesson', lessonId: id, stage: 'review' })}
                         data-testid={`cur-review-${id}`}
-                        className="min-h-12 rounded-xl bg-amber-50 px-2 text-sm font-semibold text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-900"
+                        className="min-h-12 cursor-pointer rounded-xl bg-amber-50/90 px-2 text-sm font-semibold text-amber-900 ring-1 ring-amber-200/80 transition-colors hover:bg-amber-100 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-900/70"
                       >
                         🎯 Luyện tập{rec && rec.reviewCount > 0 ? ` ×${rec.reviewCount}` : ''}
                       </button>
@@ -129,7 +131,7 @@ export function CurriculumScreen({ levelId }: { levelId?: string }) {
                         onClick={() => navigate({ name: 'lesson', lessonId: id, stage: 'game' })}
                         data-testid={`cur-game-${id}`}
                         aria-label={`Trò chơi${rec && rec.gamePlays > 0 ? ` — ${rec.gameBestStars} sao` : ''}`}
-                        className="min-h-12 rounded-xl bg-sky-50 px-2 text-sm font-semibold text-sky-900 ring-1 ring-sky-200 hover:bg-sky-100 dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-900"
+                        className="min-h-12 cursor-pointer rounded-xl bg-sky-50/90 px-2 text-sm font-semibold text-sky-900 ring-1 ring-sky-200/80 transition-colors hover:bg-sky-100 dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-900/70"
                       >
                         🎮 Trò chơi
                         {rec && rec.gamePlays > 0 && (

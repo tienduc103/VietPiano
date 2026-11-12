@@ -44,7 +44,7 @@ export function ScoreDisplayMenu({ lesson }: { lesson: Lesson }) {
         <div
           role="dialog"
           aria-label="Hiển thị khuông nhạc"
-          className="absolute top-full right-0 z-30 mt-2 w-72 rounded-2xl bg-white px-4 py-2 shadow-2xl ring-1 ring-violet-100 dark:bg-slate-800 dark:ring-violet-900"
+          className="absolute top-full right-0 z-30 mt-2 w-72 rounded-2xl bg-white/95 px-4 py-2 shadow-2xl ring-1 ring-slate-200/90 backdrop-blur-md dark:bg-slate-800/95 dark:ring-slate-700"
           data-testid="score-display-panel"
         >
           <Toggle checked={settings.showNoteNames} onChange={(v) => update({ showNoteNames: v })} label="Tên nốt" />

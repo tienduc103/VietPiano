@@ -32,11 +32,26 @@ interface Props {
 }
 
 function keyClasses(midi: number, black: boolean, p: Props): string {
-  if (p.flash?.midi === midi) return p.flash.kind === 'correct' ? 'bg-emerald-400! text-white' : 'bg-rose-500! text-white';
-  if (p.detected === midi) return black ? 'bg-cyan-500!' : 'bg-cyan-200! dark:bg-cyan-700!';
-  if (p.expected === midi) return black ? 'bg-fuchsia-500! ring-4 ring-fuchsia-300' : 'bg-fuchsia-100! ring-4 ring-inset ring-fuchsia-500 dark:bg-fuchsia-200!';
-  if (p.expectedExtra?.has(midi)) return black ? 'bg-fuchsia-400! ring-2 ring-fuchsia-200' : 'bg-fuchsia-50! ring-4 ring-inset ring-fuchsia-300 dark:bg-fuchsia-100!';
-  if (p.highlighted?.has(midi)) return black ? 'bg-amber-500! ring-2 ring-amber-300' : 'bg-amber-100! ring-4 ring-inset ring-amber-400 dark:bg-amber-200!';
+  if (p.flash?.midi === midi)
+    return p.flash.kind === 'correct'
+      ? 'from-emerald-400! via-emerald-500! to-emerald-500! bg-emerald-500! text-white! border-b-emerald-700!'
+      : 'from-rose-500! via-rose-600! to-rose-600! bg-rose-500! text-white! border-b-rose-800!';
+  if (p.detected === midi)
+    return black
+      ? 'from-cyan-500! to-cyan-600! bg-cyan-500! text-white! ring-2 ring-cyan-300'
+      : 'from-cyan-100! to-cyan-200! bg-cyan-200! dark:from-cyan-700! dark:to-cyan-800! dark:bg-cyan-700!';
+  if (p.expected === midi)
+    return black
+      ? 'from-fuchsia-500! to-fuchsia-600! bg-fuchsia-500! text-white! ring-4 ring-fuchsia-300/90'
+      : 'from-fuchsia-50! to-fuchsia-100! bg-fuchsia-100! ring-4 ring-inset ring-fuchsia-500 dark:from-fuchsia-200! dark:to-fuchsia-300! dark:bg-fuchsia-200!';
+  if (p.expectedExtra?.has(midi))
+    return black
+      ? 'from-fuchsia-400! to-fuchsia-500! bg-fuchsia-400! ring-2 ring-fuchsia-200'
+      : 'from-fuchsia-50/70! to-fuchsia-50! bg-fuchsia-50! ring-4 ring-inset ring-fuchsia-300 dark:from-fuchsia-100! dark:to-fuchsia-200! dark:bg-fuchsia-100!';
+  if (p.highlighted?.has(midi))
+    return black
+      ? 'from-amber-500! to-amber-600! bg-amber-500! ring-2 ring-amber-300'
+      : 'from-amber-50! to-amber-100! bg-amber-100! ring-4 ring-inset ring-amber-400 dark:from-amber-200! dark:to-amber-300! dark:bg-amber-200!';
   return '';
 }
 
@@ -84,15 +99,15 @@ export const PianoKeyboard = memo(function PianoKeyboard(props: Props) {
             onPointerDown={press(m)}
             onPointerUp={release(m)}
             onPointerLeave={release(m)}
-            className={`relative flex flex-1 flex-col items-center justify-end rounded-b-lg border border-slate-300 bg-white pb-1.5 text-[11px] font-semibold text-slate-500 transition-colors active:bg-slate-200 dark:border-slate-600 dark:bg-slate-200 dark:text-slate-600 ${keyClasses(m, false, props)}`}
+            className={`relative flex flex-1 flex-col items-center justify-end rounded-b-lg border-x border-t border-b-4 border-slate-300/90 border-b-slate-300 bg-gradient-to-b from-slate-50/60 via-white to-white pb-1.5 text-[11px] font-semibold text-slate-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] transition-all duration-75 active:border-b-2 active:bg-slate-200 dark:border-slate-600 dark:border-b-slate-700 dark:from-slate-200 dark:via-slate-100 dark:to-slate-200 dark:text-slate-700 ${keyClasses(m, false, props)}`}
           >
             {keyHints?.get(m) && (
-              <span className="mb-0.5 rounded bg-slate-100 px-1 font-mono text-[10px] text-slate-400 uppercase dark:bg-slate-300">
+              <span className="mb-0.5 rounded bg-slate-100 px-1 font-mono text-[10px] text-slate-400 uppercase ring-1 ring-slate-200/70 dark:bg-slate-300 dark:text-slate-600">
                 {keyHints.get(m)}
               </span>
             )}
             {fingerOf(m) && (
-              <span className="mb-1 grid size-7 place-items-center rounded-full bg-orange-500 text-base font-bold text-white" data-testid="key-finger">
+              <span className="mb-1 grid size-7 place-items-center rounded-full bg-gradient-to-b from-orange-400 to-orange-600 text-base font-bold text-white shadow-sm ring-1 ring-white/50" data-testid="key-finger">
                 {fingerOf(m)}
               </span>
             )}
@@ -112,9 +127,9 @@ export const PianoKeyboard = memo(function PianoKeyboard(props: Props) {
           onPointerUp={release(midi)}
           onPointerLeave={release(midi)}
           style={{ left: `${whiteIndex * whiteWidth - whiteWidth * 0.32}%`, width: `${whiteWidth * 0.64}%` }}
-          className={`absolute top-0 flex h-[60%] items-end justify-center rounded-b-md bg-gradient-to-b from-slate-700 to-slate-950 pb-1 text-[10px] text-slate-400 shadow-md active:bg-slate-700 dark:bg-black ${keyClasses(midi, true, props)}`}
+          className={`absolute top-0 flex h-[60%] items-end justify-center rounded-b-md border-x border-b-4 border-slate-900 border-b-slate-950 bg-gradient-to-b from-slate-700 via-slate-800 to-slate-950 pb-1 text-[10px] font-medium text-slate-300 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.15)] transition-all duration-75 active:border-b-2 active:from-slate-600 dark:from-slate-800 dark:to-black ${keyClasses(midi, true, props)}`}
         >
-          {fingerOf(midi) && <span className="mb-1 grid size-6 place-items-center rounded-full bg-orange-500 text-sm font-bold text-white">{fingerOf(midi)}</span>}
+          {fingerOf(midi) && <span className="mb-1 grid size-6 place-items-center rounded-full bg-gradient-to-b from-orange-400 to-orange-600 text-sm font-bold text-white shadow-sm ring-1 ring-white/40">{fingerOf(midi)}</span>}
           {keyHints?.get(midi) && <span className="font-mono uppercase">{keyHints.get(midi)}</span>}
         </button>
       ))}

@@ -45,7 +45,7 @@ export function NoteDiscoveryScreen() {
             <div className="text-sm text-slate-500 dark:text-slate-400">Mỗi buổi một nốt mới + ôn nốt cũ</div>
             <h1 className="text-2xl font-extrabold">{text(level.title)}</h1>
           </div>
-          <span className="rounded-full bg-violet-100 px-3 py-1 text-sm font-bold text-violet-800 dark:bg-violet-950 dark:text-violet-200" data-testid="discovery-progress">
+          <span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-bold text-indigo-800 ring-1 ring-indigo-200/80 dark:bg-indigo-950/80 dark:text-indigo-200 dark:ring-indigo-800/60" data-testid="discovery-progress">
             Đã đạt {progress.completed}/{progress.total}
           </span>
           <PinShortcutButton target={{ type: 'page', id: 'note-discovery' }} />
@@ -75,10 +75,10 @@ export function NoteDiscoveryScreen() {
                         data-testid={`discovery-lesson-${l.lessonId}`}
                         data-status={status}
                         aria-current={isNext ? 'step' : undefined}
-                        className={`grid min-h-48 w-full content-start justify-items-center gap-1.5 rounded-3xl p-5 text-white shadow-lg transition-transform active:scale-95 ${
+                        className={`grid min-h-48 w-full cursor-pointer content-start justify-items-center gap-1.5 rounded-3xl p-5 text-white shadow-lg ring-1 ring-white/20 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xl active:scale-95 ${
                           status === 'completed'
-                            ? 'bg-gradient-to-br from-emerald-600 to-teal-500 shadow-emerald-500/30'
-                            : 'bg-gradient-to-br from-violet-600 to-fuchsia-500 shadow-fuchsia-500/30'
+                            ? 'bg-gradient-to-br from-emerald-600 to-teal-500 shadow-emerald-500/25'
+                            : 'bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 shadow-indigo-500/25'
                         } ${isNext ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-white dark:ring-offset-slate-900' : ''}`}
                       >
                         <span className="text-sm font-semibold opacity-90">Buổi {l.number}</span>

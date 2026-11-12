@@ -6,11 +6,14 @@ import { useMidiNavTarget } from '../hooks/useMidiNav';
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white shadow-md shadow-fuchsia-500/30 hover:brightness-110 active:brightness-95',
+  primary:
+    'bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white shadow-md shadow-indigo-500/25 ring-1 ring-white/20 ring-inset hover:brightness-110 active:scale-[0.98] active:brightness-95',
   secondary:
-    'bg-white text-violet-900 ring-1 ring-violet-200 shadow-sm hover:bg-violet-50 active:bg-violet-100 dark:bg-slate-800 dark:text-violet-100 dark:ring-violet-800 dark:hover:bg-slate-700',
-  ghost: 'text-violet-800 hover:bg-violet-200/60 active:bg-violet-300/60 dark:text-violet-200 dark:hover:bg-violet-800/50',
-  danger: 'bg-rose-500 text-white shadow-md shadow-rose-500/30 hover:bg-rose-400 active:bg-rose-600',
+    'bg-white text-slate-800 ring-1 ring-slate-200/90 shadow-xs hover:bg-slate-50 hover:ring-violet-300 active:scale-[0.98] active:bg-slate-100 dark:bg-slate-800/95 dark:text-slate-100 dark:ring-slate-700/80 dark:hover:bg-slate-700/90 dark:hover:ring-violet-600',
+  ghost:
+    'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900 active:bg-slate-300/60 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white',
+  danger:
+    'bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-md shadow-rose-500/25 ring-1 ring-white/20 ring-inset hover:brightness-110 active:scale-[0.98] active:brightness-95',
 };
 
 export function Button({
@@ -30,7 +33,7 @@ export function Button({
     <button
       ref={ref}
       type="button"
-      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-base font-semibold transition-colors disabled:opacity-40 ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl px-4 text-base font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 dark:focus-visible:ring-offset-slate-900 ${VARIANTS[variant]} ${className}`}
       {...rest}
     >
       {children}
@@ -40,17 +43,17 @@ export function Button({
 
 export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: ReactNode }) {
   return (
-    <label className="flex min-h-12 cursor-pointer items-center justify-between gap-4">
-      <span>{label}</span>
+    <label className="flex min-h-12 cursor-pointer items-center justify-between gap-4 py-1">
+      <span className="text-slate-800 dark:text-slate-200">{label}</span>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${checked ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+        className={`relative h-8 w-14 shrink-0 cursor-pointer rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${checked ? 'bg-gradient-to-r from-indigo-600 to-fuchsia-600 shadow-inner' : 'bg-slate-300 dark:bg-slate-600'}`}
       >
         <span
-          className={`absolute top-1 left-1 h-6 w-6 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : ''}`}
+          className={`absolute top-1 left-1 h-6 w-6 rounded-full bg-white shadow-sm transition-transform duration-200 ${checked ? 'translate-x-6' : ''}`}
         />
       </button>
     </label>
@@ -67,14 +70,16 @@ export function Segmented<T extends string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="inline-flex rounded-xl bg-violet-100 p-1 dark:bg-slate-700">
+    <div className="inline-flex rounded-xl bg-slate-200/75 p-1 ring-1 ring-slate-300/60 backdrop-blur-xs dark:bg-slate-800/90 dark:ring-slate-700/70">
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
-          className={`min-h-10 rounded-lg px-4 text-sm font-semibold transition-colors ${
-            value === o.value ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'
+          className={`min-h-10 cursor-pointer rounded-lg px-4 text-sm font-semibold transition-all duration-150 ${
+            value === o.value
+              ? 'bg-white text-violet-700 shadow-xs ring-1 ring-slate-900/5 dark:bg-slate-900 dark:text-violet-300 dark:ring-white/10'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
           {o.label}
@@ -86,7 +91,7 @@ export function Segmented<T extends string>({
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl bg-white/90 p-5 shadow-sm shadow-violet-200/60 ring-1 ring-violet-100 dark:bg-slate-800/90 dark:shadow-none dark:ring-violet-900 ${className}`}>
+    <section className={`rounded-2xl bg-white/95 p-5 shadow-xs ring-1 ring-slate-200/80 backdrop-blur-sm dark:bg-slate-900/85 dark:shadow-none dark:ring-slate-800 ${className}`}>
       {children}
     </section>
   );

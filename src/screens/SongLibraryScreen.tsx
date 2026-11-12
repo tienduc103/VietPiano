@@ -62,7 +62,7 @@ export function SongLibraryScreen() {
         </header>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <div className="inline-flex rounded-xl bg-violet-100 p-1 dark:bg-slate-700" role="radiogroup" aria-label="Lọc bài hát">
+          <div className="inline-flex rounded-xl bg-slate-200/80 p-1 ring-1 ring-slate-200/60 dark:bg-slate-800 dark:ring-slate-700/80" role="radiogroup" aria-label="Lọc bài hát">
             {FILTERS.map((f) => (
               <button
                 key={f.value}
@@ -71,8 +71,8 @@ export function SongLibraryScreen() {
                 aria-checked={filter === f.value}
                 data-testid={`song-filter-${f.value}`}
                 onClick={() => setFilter(f.value)}
-                className={`min-h-12 rounded-lg px-3 text-sm font-semibold whitespace-nowrap transition-colors ${
-                  filter === f.value ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'
+                className={`min-h-12 cursor-pointer rounded-lg px-3 text-sm font-semibold whitespace-nowrap transition-all duration-150 ${
+                  filter === f.value ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5 dark:bg-slate-900 dark:text-indigo-300 dark:ring-white/10' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
                 }`}
               >
                 {f.label} ({songs.filter(f.match).length})
@@ -86,7 +86,7 @@ export function SongLibraryScreen() {
             placeholder="Tìm tên bài…"
             aria-label="Tìm tên bài"
             data-testid="song-search"
-            className="min-h-12 min-w-48 flex-1 rounded-xl bg-white px-4 ring-1 ring-violet-200 outline-none focus:ring-2 focus:ring-fuchsia-400 dark:bg-slate-800 dark:ring-violet-900"
+            className="min-h-12 min-w-48 flex-1 rounded-xl bg-white px-4 shadow-xs ring-1 ring-slate-200/90 outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:ring-slate-700"
           />
         </div>
 

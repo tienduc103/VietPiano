@@ -12,12 +12,12 @@ export function LevelMeter({ className = '' }: { className?: string }) {
   // Thang log: 0.0005 → 0%, 0.3 → 100%
   const toPct = (v: number) => Math.max(0, Math.min(100, ((Math.log10(Math.max(v, 0.0005)) + 3.3) / 2.78) * 100));
   return (
-    <div className={`relative h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700 ${className}`} aria-hidden>
+    <div className={`relative h-2.5 overflow-hidden rounded-full bg-slate-200/90 shadow-inner dark:bg-slate-800 ${className}`} aria-hidden>
       <div
-        className={`h-full rounded-full transition-[width] duration-75 ${rms >= gate ? 'bg-gradient-to-r from-emerald-400 to-lime-400' : 'bg-slate-400'}`}
+        className={`h-full rounded-full transition-[width] duration-75 ${rms >= gate ? 'bg-gradient-to-r from-emerald-500 via-teal-400 to-lime-400 shadow-xs' : 'bg-slate-400 dark:bg-slate-600'}`}
         style={{ width: `${toPct(rms)}%` }}
       />
-      <div className="absolute top-0 h-full w-0.5 bg-amber-500" style={{ left: `${toPct(gate)}%` }} title="Ngưỡng nhiễu" />
+      <div className="absolute top-0 h-full w-0.5 bg-amber-500 shadow-xs" style={{ left: `${toPct(gate)}%` }} title="Ngưỡng nhiễu" />
     </div>
   );
 }
@@ -41,12 +41,12 @@ export function MicButton({ compact = false, small = false }: { compact?: boolea
       onClick={() => void toggleMicrophone()}
       data-testid="mic-button"
       aria-pressed={on}
-      className={`inline-flex items-center gap-2 font-semibold transition-colors ${small ? 'min-h-7 rounded-md px-2 text-xs' : 'min-h-12 rounded-xl px-4'} ${
+      className={`inline-flex cursor-pointer items-center gap-2 font-semibold transition-all duration-150 active:scale-[0.98] ${small ? 'min-h-7 rounded-lg px-2.5 text-xs' : 'min-h-12 rounded-xl px-4'} ${
         on
-          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30 hover:brightness-110'
+          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/25 hover:brightness-105'
           : status === 'suspended' || paused
-            ? 'animate-pulse bg-orange-500 text-white'
-            : 'bg-white text-violet-900 ring-1 ring-violet-200 hover:bg-violet-50 dark:bg-slate-700 dark:text-slate-100 dark:ring-violet-800'
+            ? 'animate-pulse bg-orange-500 text-white shadow-sm'
+            : 'bg-white text-slate-700 shadow-xs ring-1 ring-slate-200/90 hover:bg-slate-50 hover:text-indigo-700 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-700/80'
       }`}
     >
       <Icon name={on ? 'mic' : 'micOff'} className={small ? 'h-3.5 w-3.5' : undefined} />
@@ -94,13 +94,16 @@ export function DetectedNote({ labelStyle }: { labelStyle: NoteLabelStyle }) {
   return (
     <div className="flex items-center gap-4" data-testid="detected-note">
       <div className="w-24 text-center">
-        <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Nghe thấy</div>
-        <div className="text-4xl font-bold tabular-nums">{live ? midiToLabel(live.midi, labelStyle) : status === 'running' ? '…' : '—'}</div>
+        <div className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase dark:text-slate-500">Nghe thấy</div>
+        <div className="text-4xl font-bold text-slate-800 tabular-nums dark:text-slate-100">
+          {live ? midiToLabel(live.midi, labelStyle) : status === 'running' ? '…' : '—'}
+        </div>
       </div>
       <div className="w-36">
-        <div className="relative h-3 rounded-full bg-gradient-to-r from-rose-300 via-emerald-300 to-rose-300 dark:from-rose-800 dark:via-emerald-700 dark:to-rose-800">
+        <div className="relative h-3 rounded-full bg-gradient-to-r from-rose-300 via-emerald-300 to-rose-300 shadow-inner ring-1 ring-black/5 dark:from-rose-900/80 dark:via-emerald-700/80 dark:to-rose-900/80 dark:ring-white/10">
+          <div className="absolute top-0 left-1/2 h-full w-px -translate-x-1/2 bg-emerald-700/40 dark:bg-emerald-300/40" aria-hidden />
           <div
-            className={`absolute top-1/2 h-5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full ${live ? (inTune ? 'bg-emerald-700 dark:bg-emerald-300' : 'bg-slate-800 dark:bg-white') : 'hidden'}`}
+            className={`absolute top-1/2 h-5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-xs transition-[left] duration-75 ${live ? (inTune ? 'bg-emerald-700 dark:bg-emerald-300' : 'bg-slate-800 dark:bg-white') : 'hidden'}`}
             style={{ left: `${50 + cents}%` }}
           />
         </div>

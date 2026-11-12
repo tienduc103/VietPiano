@@ -54,16 +54,16 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
     <div className="h-full overflow-y-auto" data-testid="dashboard" data-ui-mode={mode}>
       <div className="mx-auto max-w-6xl px-6 pt-[calc(1.5rem+env(safe-area-inset-top,0px)+var(--fullscreen-top-gap))] pb-10">
         <header className="flex flex-wrap items-center gap-2 pl-10 lg:flex-nowrap" data-testid="dashboard-header">
-          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-10 w-10 shrink-0" />
+          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-10 w-10 shrink-0 drop-shadow-sm" />
           <div className="min-w-32 flex-1">
-            <h1 className="bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-400 bg-clip-text text-2xl font-extrabold tracking-tight text-transparent dark:from-violet-300 dark:via-fuchsia-300 dark:to-orange-300">
+            <h1 className="bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-500 bg-clip-text text-2xl font-extrabold tracking-tight text-transparent dark:from-indigo-300 dark:via-violet-300 dark:to-fuchsia-300">
               VietPiano
             </h1>
             <p className="truncate text-sm text-slate-500 dark:text-slate-400">
               {profile ? `${profile.avatar} Chào ${profile.name}!` : 'Học piano từng bước — nghe đàn của bạn qua micro hoặc MIDI.'}
             </p>
           </div>
-          <div className="inline-flex shrink-0 rounded-xl bg-violet-100 p-1 dark:bg-slate-700" role="radiogroup" aria-label="Giao diện">
+          <div className="inline-flex shrink-0 rounded-xl bg-slate-200/80 p-1 ring-1 ring-slate-200/60 dark:bg-slate-800 dark:ring-slate-700/80" role="radiogroup" aria-label="Giao diện">
             {(
               [
                 ['auto', 'Tự động'],
@@ -77,7 +77,7 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
                 role="radio"
                 aria-checked={uiMode === v}
                 onClick={() => update({ uiMode: v })}
-                className={`min-h-10 rounded-lg px-2 text-sm font-semibold whitespace-nowrap ${uiMode === v ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'}`}
+                className={`min-h-10 cursor-pointer rounded-lg px-2 text-sm font-semibold whitespace-nowrap transition-all duration-150 ${uiMode === v ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5 dark:bg-slate-900 dark:text-indigo-300 dark:ring-white/10' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}
               >
                 {label}
               </button>
@@ -118,25 +118,27 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
 
         {level && progress && (
           <section className="mt-6 grid gap-4 lg:grid-cols-[3fr_2fr]">
-            <div className="rounded-3xl bg-gradient-to-br from-violet-600 to-fuchsia-500 p-6 text-white shadow-lg shadow-fuchsia-500/30">
-              <div className="text-sm opacity-90">Đang học</div>
-              <h2 className="text-2xl font-extrabold" data-testid="current-level">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-6 text-white shadow-xl shadow-indigo-500/20 ring-1 ring-white/20">
+              <div className="text-xs font-semibold tracking-wider uppercase opacity-85">Đang học</div>
+              <h2 className="mt-0.5 text-2xl font-extrabold tracking-tight" data-testid="current-level">
                 {text(level.title)}
               </h2>
-              <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/30">
-                <div className="h-full rounded-full bg-white transition-[width] duration-500" style={{ width: `${pct}%` }} />
+              <div className="mt-4 h-3 overflow-hidden rounded-full bg-black/20 p-0.5 ring-1 ring-white/20">
+                <div className="h-full rounded-full bg-white shadow-xs transition-[width] duration-500" style={{ width: `${pct}%` }} />
               </div>
-              <div className="mt-1 text-sm tabular-nums" data-testid="level-progress">
+              <div className="mt-1.5 text-sm font-medium tabular-nums opacity-95" data-testid="level-progress">
                 {progress.completed}/{progress.total} buổi · {pct}%
               </div>
               {next ? (
-                <div className="mt-5 rounded-2xl bg-white/15 p-4">
-                  <div className="text-sm opacity-90">{nextStatus === 'in-progress' ? 'Đang học dở' : 'Buổi tiếp theo'}</div>
-                  <div className="text-xl font-bold" data-testid="next-lesson">
+                <div className="mt-5 rounded-2xl bg-white/15 p-4 backdrop-blur-md ring-1 ring-white/25">
+                  <div className="text-xs font-semibold tracking-wider uppercase opacity-85">
+                    {nextStatus === 'in-progress' ? 'Đang học dở' : 'Buổi tiếp theo'}
+                  </div>
+                  <div className="mt-0.5 text-xl font-bold tracking-tight" data-testid="next-lesson">
                     Buổi {next.number}: {text(next.title)}
                   </div>
-                  <p className="mt-1 text-sm opacity-90">{text(next.ageVariants[mode]?.description ?? next.description)}</p>
-                  <Button variant="secondary" className="mt-4 min-w-48 text-lg" onClick={() => navigate({ name: 'lesson', lessonId: next.lessonId })} data-testid="continue-learning">
+                  <p className="mt-1 text-sm leading-relaxed opacity-90">{text(next.ageVariants[mode]?.description ?? next.description)}</p>
+                  <Button variant="secondary" className="mt-4 min-w-48 text-lg shadow-md" onClick={() => navigate({ name: 'lesson', lessonId: next.lessonId })} data-testid="continue-learning">
                     <Icon name="play" />
                     {kids ? 'Học thôi!' : nextStatus === 'in-progress' ? 'Tiếp tục học' : 'Bắt đầu'}
                   </Button>
@@ -160,9 +162,9 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
         )}
 
         <section className="mt-6 flex items-center gap-3">
-          <h2 className="shrink-0 text-base font-semibold">
+          <h2 className="shrink-0 text-base font-semibold text-slate-800 dark:text-slate-100">
             Thành tích{' '}
-            <span className="text-sm font-normal text-slate-500 dark:text-slate-400">
+            <span className="text-sm font-normal text-slate-500 tabular-nums dark:text-slate-400">
               {badges.filter((b) => b.earned).length}/{badges.length}
             </span>
           </h2>
@@ -172,7 +174,7 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
               <span
                 key={b.id}
                 title={b.title}
-                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${b.earned ? 'bg-amber-100 text-amber-900 ring-2 ring-amber-300 dark:bg-amber-900/50 dark:text-amber-100' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500'}`}
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition-colors ${b.earned ? 'bg-amber-100/90 text-amber-900 ring-1 ring-amber-300 dark:bg-amber-900/50 dark:text-amber-100 dark:ring-amber-700' : 'bg-slate-100 text-slate-400 ring-1 ring-slate-200/70 dark:bg-slate-800/80 dark:text-slate-500 dark:ring-slate-700/70'}`}
                 data-earned={b.earned}
               >
                 {b.earned ? '🏅 ' : '○ '}
@@ -193,9 +195,9 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-violet-100 dark:bg-slate-800/80 dark:ring-violet-900">
-      <div className="text-xs text-slate-500 dark:text-slate-400">{label}</div>
-      <div className="text-2xl font-bold tabular-nums">{value}</div>
+    <div className="rounded-2xl bg-white/95 px-4 py-3.5 shadow-sm shadow-slate-900/5 ring-1 ring-slate-200/80 backdrop-blur-md dark:bg-slate-900/85 dark:shadow-none dark:ring-slate-800">
+      <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
+      <div className="mt-0.5 text-2xl font-bold text-slate-800 tabular-nums dark:text-slate-100">{value}</div>
     </div>
   );
 }

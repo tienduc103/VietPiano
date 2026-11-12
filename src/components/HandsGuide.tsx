@@ -102,11 +102,11 @@ export function HandsGuide({
 function HandBox({ label, done, children }: { label: string; done: boolean; children: ReactNode }) {
   return (
     <div
-      className={`flex min-h-23 min-w-28 flex-col items-center justify-center rounded-xl px-3 py-1 ring-1 ${done ? 'bg-emerald-50 ring-emerald-300 dark:bg-emerald-950 dark:ring-emerald-700' : 'ring-violet-100 dark:ring-violet-900'}`}
+      className={`flex min-h-23 min-w-28 flex-col items-center justify-center rounded-xl px-3 py-1 transition-colors ring-1 ${done ? 'bg-emerald-50/90 ring-emerald-300 dark:bg-emerald-950/70 dark:ring-emerald-700' : 'bg-slate-50/70 ring-slate-200/80 dark:bg-slate-800/50 dark:ring-slate-700/80'}`}
     >
-      <span className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">
+      <span className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase dark:text-slate-500">
         {label}
-        {done && ' ✓'}
+        {done && <span className="text-emerald-600 dark:text-emerald-400">{' ✓'}</span>}
       </span>
       {children}
     </div>

@@ -33,7 +33,7 @@ export function NoteCounter({ items, hiddenGlyph }: { items: readonly CounterIte
           ? 'Bộ đếm đang ẩn: app vẫn chấm, hết bài hiện đủ kết quả. Bấm để hiện số liệu tới lúc này.'
           : 'Bấm để ẩn bộ đếm đúng/sai trong lúc luyện (app vẫn chấm, hết bài hiện đủ kết quả)'
       }
-      className="flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-4 rounded-xl px-2 text-lg font-semibold tabular-nums transition-colors hover:bg-violet-200/60 active:bg-violet-300/60 dark:hover:bg-violet-800/50"
+      className="flex min-h-12 min-w-12 shrink-0 cursor-pointer items-center justify-center gap-4 rounded-xl px-2 text-lg font-semibold tabular-nums transition-colors hover:bg-slate-200/60 active:bg-slate-300/60 dark:hover:bg-slate-800/60"
       data-testid="note-counter"
       data-hidden={hidden || undefined}
     >

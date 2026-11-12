@@ -204,7 +204,7 @@ export function GamesScreen({ open }: { open?: GamesOpen } = {}) {
             <Icon name="back" />
           </Button>
           <h1 className="flex-1 text-3xl font-bold">🎮 Trò chơi</h1>
-          <div className="inline-flex rounded-xl bg-violet-100 p-1 dark:bg-slate-700" role="tablist" aria-label="Cách xem">
+          <div className="inline-flex rounded-xl bg-slate-200/80 p-1 ring-1 ring-slate-200/60 dark:bg-slate-800 dark:ring-slate-700/80" role="tablist" aria-label="Cách xem">
             {(
               [
                 ['games', 'Theo trò chơi'],
@@ -221,7 +221,7 @@ export function GamesScreen({ open }: { open?: GamesOpen } = {}) {
                   setKind(null);
                 }}
                 data-testid={`games-tab-${t}`}
-                className={`min-h-12 rounded-lg px-4 font-semibold ${tab === t ? 'bg-white text-fuchsia-700 shadow dark:bg-slate-900 dark:text-fuchsia-300' : 'text-violet-700 dark:text-slate-300'}`}
+                className={`min-h-12 cursor-pointer rounded-lg px-4 font-semibold transition-all duration-150 ${tab === t ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5 dark:bg-slate-900 dark:text-indigo-300 dark:ring-white/10' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}
               >
                 {label}
               </button>
@@ -274,7 +274,7 @@ export function GamesScreen({ open }: { open?: GamesOpen } = {}) {
                         type="button"
                         onClick={() => setKind(k)}
                         data-testid={`game-card-${k}`}
-                        className="grid min-h-36 grid-cols-[auto_1fr] items-start gap-x-4 gap-y-1 rounded-3xl bg-white/90 p-4 text-left shadow-sm ring-1 ring-violet-100 transition hover:ring-2 hover:ring-fuchsia-300 dark:bg-slate-800/90 dark:ring-violet-900"
+                        className="grid min-h-36 cursor-pointer grid-cols-[auto_1fr] items-start gap-x-4 gap-y-1 rounded-3xl bg-white/95 p-4 text-left shadow-xs ring-1 ring-slate-200/90 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-md hover:ring-indigo-300 dark:bg-slate-800/90 dark:ring-slate-700/80 dark:hover:ring-indigo-500/70"
                       >
                         <span className="row-span-3 text-5xl" aria-hidden>
                           {GAME_ICON[k]}
@@ -283,7 +283,7 @@ export function GamesScreen({ open }: { open?: GamesOpen } = {}) {
                           {GAME_TITLE[k]}
                           {source === 'arcade' && <Tag tone="new">Mới</Tag>}
                         </span>
-                        <span className="text-sm font-semibold text-fuchsia-700 dark:text-fuchsia-300">{GAME_INFO[k].skill}</span>
+                        <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">{GAME_INFO[k].skill}</span>
                         <span className="text-sm text-slate-600 dark:text-slate-300">
                           {GAME_INFO[k].description}
                           <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
