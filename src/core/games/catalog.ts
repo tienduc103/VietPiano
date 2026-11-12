@@ -32,7 +32,7 @@ export const GAME_INFO: Record<GameKind, GameInfo> = {
 };
 
 /** Trò chơi có màn riêng (id = tên route) — thẻ đầu mục Trò chơi, đích lối tắt. */
-export type StandaloneGameId = 'note-hunter' | 'flappy-note' | 'balloon-pop' | 'tomato-harvest' | 'f1-racing';
+export type StandaloneGameId = 'note-hunter' | 'flappy-note' | 'balloon-pop' | 'tomato-harvest' | 'f1-racing' | 'note-quiz';
 
 export interface StandaloneGameInfo {
   id: StandaloneGameId;
@@ -86,6 +86,14 @@ export const STANDALONE_GAMES: readonly StandaloneGameInfo[] = [
     icon: '🏎️',
     shortcutIcon: '🏎️',
     description: 'Đọc nốt để giữ tốc độ, hai phím đàn để đổi làn né chướng ngại · 5 xe · 3 chặng đua · cúp và bảng xếp hạng gia đình · MIDI, micro, piano ảo.',
+  },
+  {
+    id: 'note-quiz',
+    title: 'Đố bé nốt gì?',
+    shortTitle: 'Đố bé nốt gì?',
+    icon: '👩‍🏫🎵',
+    shortcutIcon: '🎵',
+    description: 'Cô giáo đố — bé chạm vào hình nốt đúng trên khuông · cao độ, trường độ · khoá Sol, Fa, Đô · từ 4 tuổi, không cần đàn, không giới hạn thời gian.',
   },
 ];
 

@@ -13,8 +13,10 @@ import { FlappyNoteScreen } from './screens/FlappyNoteScreen';
 import { BalloonPopScreen } from './screens/BalloonPopScreen';
 import { TomatoHarvestScreen } from './screens/TomatoHarvestScreen';
 import { F1RacingScreen } from './screens/F1RacingScreen';
+import { NoteQuizScreen } from './screens/NoteQuizScreen';
 import { SupplementScreen } from './screens/SupplementScreen';
 import { NoteDiscoveryScreen } from './screens/NoteDiscoveryScreen';
+import { SoundExploreScreen } from './screens/SoundExploreScreen';
 import { SongLibraryScreen } from './screens/SongLibraryScreen';
 import { FiveFingerScreen } from './screens/FiveFingerScreen';
 import { useCurriculum } from './store/curriculumStore';
@@ -64,9 +66,11 @@ export function App() {
       {route.name === 'balloon-pop' && <TimedGameRoute><BalloonPopScreen key={route.preset ? JSON.stringify(route.preset) : 'free'} preset={route.preset} returnTo={route.returnTo} /></TimedGameRoute>}
       {route.name === 'tomato-harvest' && <TimedGameRoute><TomatoHarvestScreen /></TimedGameRoute>}
       {route.name === 'f1-racing' && <TimedGameRoute><F1RacingScreen /></TimedGameRoute>}
+      {route.name === 'note-quiz' && <TimedGameRoute><NoteQuizScreen /></TimedGameRoute>}
       {route.name === 'supplement' && <SupplementScreen />}
       {route.name === 'five-finger' && <FiveFingerScreen />}
       {route.name === 'note-discovery' && <NoteDiscoveryScreen />}
+      {route.name === 'sound-explore' && <SoundExploreScreen />}
       {route.name === 'practice' && <PracticeScreen lessonId={route.lessonId} />}
       {route.name === 'coach' && (
         <Suspense fallback={<div className="grid h-full place-items-center text-slate-500">Đang mở AI Piano Coach…</div>}>
@@ -87,7 +91,7 @@ export function App() {
       )}
       {route.name === 'settings' && <SettingsScreen section={route.section} />}
       {/* Màn hình Luyện tập tự đặt nút trong khung khuông nhạc (góc phải dưới có bàn phím ảo + nút điều khiển). */}
-      {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && route.name !== 'flappy-note' && route.name !== 'balloon-pop' && route.name !== 'tomato-harvest' && route.name !== 'f1-racing' && route.name !== 'five-finger' && (
+      {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && route.name !== 'flappy-note' && route.name !== 'balloon-pop' && route.name !== 'tomato-harvest' && route.name !== 'f1-racing' && route.name !== 'note-quiz' && route.name !== 'five-finger' && route.name !== 'sound-explore' && (
         <FloatingMicNote className="fixed right-[calc(12px+env(safe-area-inset-right,0px))] bottom-[calc(12px+env(safe-area-inset-bottom,0px))]" />
       )}
       {/* TẠM THỜI tắt nút nổi tải lại cứng (Ctrl+F5) — thay bằng nút Cập nhật bản mới nhất ở dòng phiên bản (AppVersion).

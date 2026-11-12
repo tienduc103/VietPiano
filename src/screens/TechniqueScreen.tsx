@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FullscreenButton, Button, Card, Icon } from '../components/ui';
 import { ollamaCandidatesForPage } from '../components/AiCoachCard';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 import { TechniqueLibrary } from '../components/technique/TechniqueLibrary';
 import { PassagesTab } from '../components/technique/PassagesTab';
 import { ProgressTab } from '../components/technique/ProgressTab';
@@ -66,6 +67,7 @@ export function TechniqueScreen({ tab: initialTab }: { tab?: Tab }) {
           <Button variant="secondary" className="shrink-0 text-sm" onClick={() => navigate({ name: 'five-finger' })} data-testid="technique-open-five-finger">
             🖐 5 ngón · 8 nốt (chờ nốt)
           </Button>
+          <PinShortcutButton target={{ type: 'page', id: 'technique' }} />
           <FullscreenButton className="shrink-0" />
         </header>
 

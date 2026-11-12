@@ -180,6 +180,27 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              muộn → `late-sync` không tính sai nốt), `FiveFingerSession` buổi liên tục (xong chuỗi → ăn mừng 1,5 s → chuỗi mới; 5/10/20/∞;
                              luyện từng tay trước), `stats.ts` thống kê theo hồ sơ (ngón chỉ là ngón ĐƯỢC HƯỚNG DẪN — không kết luận sai ngón) + gợi ý độ khó.
                              Micro không chấm được hai tay cùng lúc → khoá Bắt đầu
+  noteQuiz/                "Đố bé nốt gì?" (bé từ 4 tuổi; `screens/NoteQuizScreen`, route `note-quiz`, `?screen=note-quiz`; chi tiết: docs/note-quiz.md):
+                             cô giáo hoạt hình (`components/noteQuiz/TeacherAvatar`) hỏi bằng giọng + chữ, đáp án là HÌNH khuông + khoá + nốt (không chữ,
+                             `components/noteQuiz/useQuizTiles` VexFlow, mọi ô chung khung dọc), bé chạm ô đúng. `staff.ts` vị trí nốt theo khoá Sol / Fa /
+                             Đô Alto / Đô Tenor (`staffStep`, e2e so với VexFlow), dải 1–2 quãng tám; `questions.ts` Cao độ / Trường độ / Kết hợp, đúng MỘT ô khớp,
+                             đáp án nhiễu ưu tiên nốt đang học rồi nốt gần, trọng số theo lỗi; `NoteQuizRound` máy trạng thái (sai → chọn lại, sai 2 lần → ô đúng sáng,
+                             điểm 10/5 không trừ, luôn ≥ 1 sao, câu tương tự sau khi cô chỉ đáp án); `hints.ts` cô gợi ý thông minh 4 bậc (lời → khuông minh hoạ
+                             tô dòng / khe theo khoá + hình mẫu trường độ `components/noteQuiz/HintVisuals` → cất bớt ô sai → chỉ đáp án), theo nguyên nhân sai;
+                             `tracker.ts` theo dõi lỗi theo quy tắc (cặp hay nhầm, loại lỗi, mức hỗ trợ, `supportFor` / `preferFor`, bài luyện riêng `practiceFor`);
+                             `voice.ts` câu cố định → `npm run voice`; `storage.ts` localStorage `vietpiano.note-quiz.v1` theo hồ sơ. Không nghe nốt (chỉ chạm)
+  soundExplore/            "Khám phá âm thanh — Cao độ và Trường độ" (bé 4–6 tuổi, bài nhập môn của "Làm quen từng nốt"; `screens/SoundExploreScreen`,
+                             route `sound-explore`, `?screen=sound-explore`, thẻ đầu màn `supplement`; chi tiết + nghiệm thu: docs/sound-explore.md).
+                             `config.ts` ngưỡng trò chơi (ngắn 150–700 ms, dài ≥ 1500 ms, vùng thấp ≤ La3 / cao ≥ Đô5) + 3 mức, cấu hình theo hồ sơ;
+                             `classify.ts` cao / thấp / lên / xuống CHỈ theo số MIDI (không theo lực gõ), ngắn / dài / chưa rõ, nội suy chuyển động;
+                             `PressTracker` thời gian giữ phím VẬT LÝ (nhiều phím, velocity 0 = off, pedal không kéo dài, `releaseAll` khi rút đàn / rời màn);
+                             `tasks.ts` sinh câu theo mức + chấm TỪNG THÀNH PHẦN (không có "Sai" chung), `PathFollower`, `buildAdventure` 5–7 nhiệm vụ;
+                             `progress.ts` + `storage.ts` (localStorage `vietpiano.sound-explore.v1` theo hồ sơ: kỹ năng, phiên, sao, hình dán, bản ghi nốt);
+                             `assessment.ts` chưa đủ dữ liệu / cần luyện thêm / tốt (≥ 6 lần thử), đề xuất theo quy tắc, gợi ý lên mức cần phụ huynh duyệt;
+                             `ai.ts` Ollama chỉ viết lời (tóm tắt số liệu + tuổi, không tên), lọc suy diễn trí tuệ / sức khoẻ → về quy tắc;
+                             `lesson.ts` LessonDefinition + mọi câu cô giáo (chuỗi cố định → `npm run voice`). UI: `components/soundExplore/`
+                             (`missions.tsx` nhiệm vụ dùng chung, `activities.tsx` A–F + tổng kết, `ParentPanel.tsx` góc phụ huynh giữ 1,2 s mới mở).
+                             Micro: chỉ cao độ (không có Note Off) → hoạt động trường độ hướng dẫn dùng bàn phím trên màn hình / đàn MIDI
   coach/                   "AI Piano Coach" (`screens/CoachScreen`, route `coach`, `?screen=coach`, nút ở trang chủ; tài liệu + backlog + checklist:
                              docs/ai-coach/). Bốn thành phần, thuần + có test: `recorder/` log GỐC (on/off/cc 64·66·67/mark, mốc nguồn + mốc nhận,
                              không làm tròn) → `buildPerformance` (ghép nốt, retrigger, Off mồ côi, ngân pedal / sostenuto, bỏ khoảng tạm dừng, lệch đồng hồ

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FullscreenButton, Icon, Button } from '../components/ui';
+import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 import { CoachSetup, type InterruptedItem } from '../components/coach/CoachSetup';
 import { CoachRecording } from '../components/coach/CoachRecording';
 import { CoachResults, type ResultData } from '../components/coach/CoachResults';
@@ -30,6 +31,7 @@ import { useCoachRecorder } from '../hooks/useCoachRecorder';
 import { usePedalSeen } from '../hooks/usePedalSeen';
 import { useUiMode } from '../hooks/useUiMode';
 import { useApp } from '../store/appStore';
+import { usePlayingNow } from '../store/playingStore';
 import { toggleMicrophone, useMic } from '../store/micStore';
 import { useMidi } from '../store/midiStore';
 import { activeProfile, useProfiles } from '../store/profileStore';
@@ -117,6 +119,8 @@ export function CoachScreen({
 
   // Điều hướng bằng đàn MIDI nhận phím trước bộ ghi; lúc đang ghi / đang đo độ trễ phím là nốt / lần gõ.
   useMidiNavListening(phase.name === 'recording' || calibrating);
+  // Đang ghi bài: ẩn các nút nổi (micro…) như mọi màn đang chơi đàn.
+  usePlayingNow(phase.name === 'recording');
   const recorder = useCoachRecorder();
   // Kết nối AI cục bộ: kiểm tra khi mở màn + định kỳ, hiện ở màn chuẩn bị và trong lúc đánh.
   const aiLink = useCoachAiLink();
@@ -393,6 +397,8 @@ export function CoachScreen({
               <Icon name="list" className="h-5 w-5" /> Lịch sử
             </Button>
           )}
+          {/* Ghim màn Coach (chưa ghim riêng bài / đoạn đang chấm — docs/shortcuts.md); không hiện lúc đang ghi. */}
+          {phase.name !== 'recording' && <PinShortcutButton target={{ type: 'page', id: 'coach' }} />}
           <FullscreenButton className="shrink-0" />
         </header>
 

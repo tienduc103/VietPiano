@@ -51,6 +51,7 @@ export const PAGES: readonly PageInfo[] = [
   { id: 'curriculum', title: 'Giáo trình', icon: '📚', hint: `${CURRICULUM.levels.length} cấp độ · từng buổi học` },
   { id: 'supplement', title: text(SUPPLEMENT.levels[0].title), icon: '🎵', hint: 'Mỗi buổi một nốt' },
   { id: 'note-discovery', title: text(DISCOVERY.title), icon: '🎹', hint: 'Mỗi buổi một nốt mới + ôn nốt cũ' },
+  { id: 'sound-explore', title: 'Khám phá âm thanh', icon: '🚀', hint: 'Nhập môn 4–6 tuổi: cao – thấp, dài – ngắn' },
   { id: 'library', title: 'Thư viện bài', icon: '📖', hint: 'Luyện tự do — bài tập và bài hát' },
   { id: 'song-library', title: 'Thư viện bài hát', icon: '🎼', hint: 'Mọi bài hát, cả tuyển tập khuông đôi' },
   { id: 'games', title: 'Trò chơi', icon: '🎮', hint: 'Mọi trò chơi' },

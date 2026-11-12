@@ -42,6 +42,8 @@ Thêm / đổi module → cập nhật `docs/architecture.md`; ở đây chỉ g
 | `core/curriculum/` | giáo trình cấp 1–6 (docs/curriculum.md), "Làm quen từng nốt" (docs/supplement.md), "Khám phá nốt nhạc" (docs/note-discovery.md), validate, rubric, Luyện tập sau buổi |
 | `core/games/` | trò chơi sau buổi, mục Trò chơi, trò tự do |
 | `core/noteHunter/`, `flappyNote/`, `balloonPop/`, `f1Racing/`, `fiveFinger/` | Săn nốt, Flappy Note, Bóng bay nốt nhạc, F1 Racing, 5 ngón · 8 nốt (docs/five-finger.md) — máy trạng thái thuần |
+| `core/noteQuiz/` | "Đố bé nốt gì?" (bé từ 4 tuổi): cô giáo hỏi bằng giọng + chữ, đáp án là HÌNH nốt trên khuông (khoá Sol / Fa / Đô Alto / Đô Tenor), bé chạm ô đúng — không chữ trên ô (docs/note-quiz.md) |
+| `core/soundExplore/` | "Khám phá âm thanh — Cao độ và Trường độ" (bé 4–6 tuổi, nhập môn của "Làm quen từng nốt"): phân loại theo số MIDI + thời gian giữ phím vật lý, 6 hoạt động, góc phụ huynh, AI cục bộ chỉ viết lời (docs/sound-explore.md) |
 | `core/coach/` | AI Piano Coach: log MIDI gốc, chấm theo bản nhạc, nhận xét AI có xác minh, đo độ trễ (docs/ai-coach/) |
 | `core/technique/`, `core/smartPractice/` | Luyện kỹ thuật ngón tay (67 bài, 5 cấp) + AI Smart Practice dùng chung: đoạn khó qua nhiều phiên, bài bổ trợ 3–5 nốt, Adaptive Tempo, bài hôm nay — chạy / chấm trong Coach, không lưu tiến độ trùng (docs/finger-coach/) |
 | `core/shortcuts/` | Lối tắt cá nhân (Quick Access): registry đích đến suy từ dữ liệu, lưu theo hồ sơ, mở qua router sẵn có — không URL (docs/shortcuts.md); `smart/` Lối tắt thông minh: đề xuất theo quy tắc, không lưu như lối tắt, không đụng lối tắt thủ công (docs/smart-shortcuts.md) |
@@ -127,6 +129,10 @@ Luồng dữ liệu: `AudioWorklet → AudioInput.frames → PitchDetector.detec
   (`invisible`, không gỡ khỏi layout → khuông không co giãn / nhảy); hết bài / chơi lại / nghe mẫu → hiện lại; không micro, không đàn MIDI
   (bàn phím ảo là nguồn nốt) → không ẩn.
 - UI tiếng Việt, nút ≥ 48px cho cảm ứng, tối ưu iPad ngang, hỗ trợ dark mode (`.dark` trên `<html>`).
+- Màn mới (hay bài / mục mới có màn riêng) phải theo khuôn chung của các màn sẵn có, không tự thiết kế lại:
+  đầu trang = nút ← (`midiNav="back"`) · tiêu đề · … · 📌 `PinShortcutButton` · `FullscreenButton` (trò chơi + 5 ngón: dòng ghim trong ⚙);
+  thêm đích vào registry lối tắt (`PAGES` / `PageId`, docs/shortcuts.md); đang chơi đàn → `usePlayingNow` (ẩn nút nổi micro);
+  màn có `InputSourceBar` / bàn phím riêng thì loại khỏi `FloatingMicNote` trong `App.tsx`.
 - Trò chơi: cài đặt của game LUÔN nằm trong màn chơi — vào thẳng màn chơi, nút ⚙ Cài đặt mở bảng đè lên màn chơi
   (không có màn cài đặt / màn chọn riêng trước khi chơi). Mở giữa ván → tạm dừng và bỏ qua nốt vào; đổi thứ làm thay đổi
   ván (bài, nốt mục tiêu, chế độ, độ khó…) → ván mới; lớp phủ "Sẵn sàng" / tổng kết có nút mở bảng cài đặt.

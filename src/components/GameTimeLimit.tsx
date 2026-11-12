@@ -38,7 +38,7 @@ export function GameTimeController() {
     };
   }, [activeGames, remainingMs > 0, consume, profileKey]);
 
-  const gameArea = ['games', 'note-hunter', 'flappy-note', 'balloon-pop', 'tomato-harvest', 'f1-racing'].includes(route.name);
+  const gameArea = ['games', 'note-hunter', 'flappy-note', 'balloon-pop', 'tomato-harvest', 'f1-racing', 'note-quiz'].includes(route.name);
   if (!gameArea && activeGames <= 0 && openGames <= 0) return null;
   return (
     <div
