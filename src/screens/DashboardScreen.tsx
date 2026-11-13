@@ -9,6 +9,7 @@ import { useSettings } from '../store/settingsStore';
 import { useUiMode } from '../hooks/useUiMode';
 import { Button, FullscreenButton, Icon, formatDuration } from '../components/ui';
 import { AppVersion } from '../components/AppVersion';
+import { UpdateBanner } from '../components/UpdateBanner';
 import { MicError } from '../components/MicPanel';
 import { ProfileSwitcher } from '../components/ProfileSwitcher';
 import { LessonLibrary } from '../components/LessonLibrary';
@@ -21,6 +22,11 @@ const HEADER_BUTTON = 'shrink-0 px-2! text-sm! whitespace-nowrap';
 /** Nút có biểu tượng dễ nhận (Trò chơi, Thư viện, Cài đặt): dưới 1280px chỉ hiện biểu tượng (tên vẫn đọc được qua sr-only). */
 const ICON_ONLY_BELOW_XL = 'min-w-12 justify-center';
 const LABEL_BELOW_XL = 'sr-only xl:not-sr-only';
+
+type UiModeSetting = 'auto' | 'kids' | 'adult';
+const UI_MODE_LABEL: Record<UiModeSetting, string> = { auto: 'Tự động', kids: 'Trẻ em', adult: 'Người lớn' };
+/** Nút giao diện xoay vòng Tự động → Trẻ em → Người lớn → Tự động. */
+const UI_MODE_NEXT: Record<UiModeSetting, UiModeSetting> = { auto: 'kids', kids: 'adult', adult: 'auto' };
 
 /**
  * Trang chủ: phía trên là giáo trình (cấp đang học, tiến độ, buổi tiếp theo, thành tích),
@@ -63,26 +69,18 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
               {profile ? `${profile.avatar} Chào ${profile.name}!` : 'Học piano từng bước — nghe đàn của bạn qua micro hoặc MIDI.'}
             </p>
           </div>
-          <div className="inline-flex shrink-0 rounded-xl bg-slate-200/80 p-1 ring-1 ring-slate-200/60 dark:bg-slate-800 dark:ring-slate-700/80" role="radiogroup" aria-label="Giao diện">
-            {(
-              [
-                ['auto', 'Tự động'],
-                ['kids', 'Trẻ em'],
-                ['adult', 'Người lớn'],
-              ] as const
-            ).map(([v, label]) => (
-              <button
-                key={v}
-                type="button"
-                role="radio"
-                aria-checked={uiMode === v}
-                onClick={() => update({ uiMode: v })}
-                className={`min-h-10 cursor-pointer rounded-lg px-2 text-sm font-semibold whitespace-nowrap transition-all duration-150 ${uiMode === v ? 'bg-white text-indigo-700 shadow-xs ring-1 ring-slate-900/5 dark:bg-slate-900 dark:text-indigo-300 dark:ring-white/10' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          {/* Một nút xoay vòng Tự động → Trẻ em → Người lớn; bề rộng cố định để header không nhảy khi đổi chữ. */}
+          <button
+            type="button"
+            data-testid="ui-mode-toggle"
+            data-value={uiMode}
+            aria-label={`Giao diện: ${UI_MODE_LABEL[uiMode]} — bấm để đổi`}
+            title="Đổi giao diện: Tự động → Trẻ em → Người lớn"
+            onClick={() => update({ uiMode: UI_MODE_NEXT[uiMode] })}
+            className="min-h-12 w-28 shrink-0 cursor-pointer rounded-xl bg-white/95 px-2 text-sm font-semibold whitespace-nowrap text-indigo-700 shadow-xs ring-1 ring-slate-200/90 transition-all duration-150 hover:bg-slate-50 active:scale-[0.98] dark:bg-slate-800/90 dark:text-indigo-300 dark:ring-slate-700 dark:hover:bg-slate-700/80"
+          >
+            {UI_MODE_LABEL[uiMode]}
+          </button>
           <FullscreenButton className="shrink-0" />
           <Button className={HEADER_BUTTON} onClick={() => navigate({ name: 'note-discovery' })} data-testid="open-note-discovery">
             <span aria-hidden>🎹</span>
@@ -105,6 +103,8 @@ export function DashboardScreen({ focus }: { focus?: 'library' }) {
             <span className={LABEL_BELOW_XL}>Cài đặt</span>
           </Button>
         </header>
+
+        <UpdateBanner />
 
         <div className="mt-4 empty:hidden">
           <MicError />

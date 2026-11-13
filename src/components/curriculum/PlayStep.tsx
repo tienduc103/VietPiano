@@ -14,6 +14,7 @@ import { DEFAULT_PRACTICE_CONFIG, PracticeEngine, type NoteResult } from '../../
 import { DEFAULT_PERFORMANCE_CONFIG, PerformanceTracker } from '../../core/practice/PerformanceTracker';
 import { TEMPO_PERCENT_MAX, TEMPO_PERCENT_MIN } from '../../core/settings/DeviceSettings';
 import { useNoteInput } from '../../hooks/useNoteInput';
+import { usePerformLog } from '../../hooks/usePerformLog';
 import { useMic } from '../../store/micStore';
 import { useMidi } from '../../store/midiStore';
 import { useSettings } from '../../store/settingsStore';
@@ -441,6 +442,26 @@ function TimedRunner({ exercise, lesson, timeline, hand, kind, bpm, mode, scored
   // Đồng hồ nhịp chạy theo khung hình; click metronome ở mỗi phách.
   const metronomeRef = useRef(metronome);
   metronomeRef.current = metronome;
+
+  // TẠM THỜI: Nhật ký Biểu diễn (docs/perform-log.md) — chỉ bài Biểu diễn (chấm nốt + nhịp), không ghi bài tiết tấu.
+  const logNotes = useMemo(() => timedNotes(timeline, hand).map((n, i) => ({ ...n, pitch: timeline[i].pitch, hand: timeline[i].hand })), [timeline, hand]);
+  const log = usePerformLog({
+    tracker,
+    enabled: kind === 'performance',
+    screen: 'curriculum',
+    notes: logNotes,
+    lesson,
+    info: () => ({
+      hand: hand ?? 'both',
+      scored,
+      singleNotesOnly: usingMic,
+      micLatencyMs: MIC_LATENCY_MS,
+      metronome: metronomeRef.current,
+      pedalScored: hasPedal,
+      pedalInput,
+      tempoPercent: null,
+    }),
+  });
   useEffect(() => {
     if (!running) return;
     let id = 0;
@@ -475,8 +496,9 @@ function TimedRunner({ exercise, lesson, timeline, hand, kind, bpm, mode, scored
     {
       onNote: (e) => {
         // Bài có phần đệm: nốt tay trái đánh kèm không bị tính là thừa.
-        if (isAccompanimentMidi(lesson, e.midi)) return;
-        tracker.handleNoteOn(e.midi, e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time, loudnessDb(e));
+        if (isAccompanimentMidi(lesson, e.midi)) return log.dropped(e, 'accompaniment');
+        const time = e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time;
+        log.grade(e, time, () => tracker.handleNoteOn(e.midi, time, loudnessDb(e)));
       },
       onNoteOff: (e) => {
         if (!isAccompanimentMidi(lesson, e.midi)) tracker.handleNoteOff(e.midi, e.time);

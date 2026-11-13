@@ -22,8 +22,8 @@ và `settings.section` (cuộn tới mục Lối tắt).
 
 | `type` | `id` | Tham số | Route |
 | --- | --- | --- | --- |
-| `page` | tên route: `curriculum`, `supplement`, `note-discovery`, `library`, `song-library`, `games`, `five-finger`, `coach`, `settings` | — | `{ name: id }` (`library` khi đang ở trang chủ: chỉ cuộn xuống) |
-| `game` | `note-hunter`, `flappy-note`, `balloon-pop`, `tomato-harvest`, `f1-racing` | `preset` (chỉ Bóng bay) | `{ name: id, preset? }` |
+| `page` | tên route: `curriculum`, `supplement`, `note-discovery`, `sound-explore`, `library`, `song-library`, `games`, `five-finger`, `technique`, `coach`, `settings` | — | `{ name: id }` (`library` khi đang ở trang chủ: chỉ cuộn xuống) |
+| `game` | `note-hunter`, `flappy-note`, `balloon-pop`, `tomato-harvest`, `f1-racing`, `note-quiz` | `preset` (chỉ Bóng bay) | `{ name: id, preset? }` |
 | `level` | `levelId` (giáo trình chính) | — | `curriculum` + `levelId` |
 | `lesson` | `lessonId` (giáo trình chính, `sup-…`, `nd-…`) | `stage`: `review` (chỉ giáo trình chính) / `game` | `lesson` + `stage?` |
 | `practice` | `Lesson.id` (Thư viện bài / bài hát) | `measures: [từ, tới]` | `practice` (qua `openLesson`, ghi "bài gần đây"; bài tuyển tập → `fromSongs`) |
@@ -54,8 +54,8 @@ metadata màn; tên lấy từ dữ liệu khi có.
   tràn; nút ⋯ luôn có khi đã có lối tắt (danh sách đầy đủ, nhóm "Gợi ý", Thêm lối tắt, Quản lý). Màn hẹp → "Lối tắt ⋯".
 - **Trẻ em (Kids Mode):** thanh + menu chỉ có mở / thêm lối tắt; sửa, xoá, sắp xếp chỉ ở Cài đặt → Lối tắt.
 - **Ghim tại chỗ:** nút 📌 nhỏ cạnh nút toàn màn hình ở đầu trang (Giáo trình — ghim cấp đang xem, buổi học — ghim cả phần Luyện tập /
-  Trò chơi đang mở, màn Luyện tập — ghim cả đoạn ô đang luyện, Làm quen từng nốt, Khám phá nốt nhạc, Thư viện bài hát, Trò chơi — ghim
-  trò đang chơi); trò có màn riêng + 5 ngón: một dòng trong bảng ⚙ Cài đặt (không thêm nút lên thanh đầu màn chơi). Đã ghim → "Đã ghim",
+  Trò chơi đang mở, màn Luyện tập — ghim cả đoạn ô đang luyện, Làm quen từng nốt, Khám phá nốt nhạc, Khám phá âm thanh (trừ lúc bé đang chơi một hoạt động),
+  Luyện kỹ thuật ngón tay, AI Piano Coach (trừ lúc đang ghi), Thư viện bài hát, Trò chơi — ghim trò đang chơi); trò có màn riêng + 5 ngón: một dòng trong bảng ⚙ Cài đặt (không thêm nút lên thanh đầu màn chơi). Đã ghim → "Đã ghim",
   Sửa / Bỏ ghim (có Hoàn tác).
 
 ## Tích hợp "Lối tắt thông minh" (phiên khác làm)
@@ -82,7 +82,7 @@ metadata màn; tên lấy từ dữ liệu khi có.
 | Nội dung | Lý do |
 | --- | --- |
 | Trang chủ | Thanh lối tắt nằm ngay trên trang chủ |
-| AI Piano Coach theo bài / đoạn đang chấm | Ghim được màn Coach chính; chưa thêm nút ghim trong màn Coach vì `CoachScreen.tsx` đang được phiên khác sửa — bổ sung sau (route `coach` đã có `lessonId` / `measures`) |
+| AI Piano Coach / bài kỹ thuật theo bài / đoạn đang chấm | Nút 📌 trong Coach ghim màn Coach chính; ghim riêng bài cần loại đích mới (route `coach` đã có `lessonId` / `measures` / `bpm`) |
 | Bước cụ thể trong buổi học (bài tập thứ n) | Bước là trạng thái trong `LessonPlayer`, route không có tham số bước |
 | Một mục của trò chơi theo tab "Theo buổi học" / màn chọn buổi của một loại trò | Trạng thái trong màn Trò chơi; ghim được từng trò của từng buổi (`lesson-game`) và từng mức trò tự do |
 | Độ khó / màn của Flappy Note, Săn nốt, Cà chua, F1, 5 ngón | Không có tham số route (xem D3) |

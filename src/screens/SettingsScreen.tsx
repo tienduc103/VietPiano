@@ -27,6 +27,7 @@ import { voiceSpeaker, voiceTeacher } from '../core/voice/teacher';
 import { phrases } from '../core/voice/phrases';
 import { ShortcutManager } from '../components/shortcuts/ShortcutManager';
 import { SmartShortcutSettings } from '../components/shortcuts/SmartShortcutSettings';
+import { PerformLogSettings } from '../components/PerformLogSettings';
 
 const CALIBRATION_MS = 2500;
 
@@ -218,11 +219,8 @@ export function SettingsScreen({ section }: { section?: 'shortcuts' } = {}) {
                 checked={settings.showFloatingNote}
                 onChange={(v) => update({ showFloatingNote: v })}
               />
-              <Row label="Nút nổi tải lại bản mới nhất (kéo để di chuyển)">
-                <Button disabled={settings.reloadButtonPos === null} onClick={() => update({ reloadButtonPos: null })}>
-                  Đưa về góc trên trái
-                </Button>
-              </Row>
+              {/* TẠM THỜI tắt nút nổi tải lại cứng (thay bằng nút Cập nhật bản mới nhất ở dòng phiên bản) —
+                  bật lại: hiện lại hàng "Đưa về góc trên trái" (settings.reloadButtonPos) + <FloatingReloadButton /> trong App.tsx. */}
               <Row label="Kiểu tên nốt">
                 <Segmented
                   value={settings.labelStyle}
@@ -250,6 +248,9 @@ export function SettingsScreen({ section }: { section?: 'shortcuts' } = {}) {
           <ShortcutManager extra={<SmartShortcutSettings />} />
 
           <DataCard />
+
+          {/* TẠM THỜI: Nhật ký Biểu diễn (docs/perform-log.md) */}
+          <PerformLogSettings />
         </div>
 
         <AppVersion className="mt-8" />

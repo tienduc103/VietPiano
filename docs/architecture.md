@@ -180,6 +180,27 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              muộn → `late-sync` không tính sai nốt), `FiveFingerSession` buổi liên tục (xong chuỗi → ăn mừng 1,5 s → chuỗi mới; 5/10/20/∞;
                              luyện từng tay trước), `stats.ts` thống kê theo hồ sơ (ngón chỉ là ngón ĐƯỢC HƯỚNG DẪN — không kết luận sai ngón) + gợi ý độ khó.
                              Micro không chấm được hai tay cùng lúc → khoá Bắt đầu
+  noteQuiz/                "Đố bé nốt gì?" (bé từ 4 tuổi; `screens/NoteQuizScreen`, route `note-quiz`, `?screen=note-quiz`; chi tiết: docs/note-quiz.md):
+                             cô giáo hoạt hình (`components/noteQuiz/TeacherAvatar`) hỏi bằng giọng + chữ, đáp án là HÌNH khuông + khoá + nốt (không chữ,
+                             `components/noteQuiz/useQuizTiles` VexFlow, mọi ô chung khung dọc), bé chạm ô đúng. `staff.ts` vị trí nốt theo khoá Sol / Fa /
+                             Đô Alto / Đô Tenor (`staffStep`, e2e so với VexFlow), dải 1–2 quãng tám; `questions.ts` Cao độ / Trường độ / Kết hợp, đúng MỘT ô khớp,
+                             đáp án nhiễu ưu tiên nốt đang học rồi nốt gần, trọng số theo lỗi; `NoteQuizRound` máy trạng thái (sai → chọn lại, sai 2 lần → ô đúng sáng,
+                             điểm 10/5 không trừ, luôn ≥ 1 sao, câu tương tự sau khi cô chỉ đáp án); `hints.ts` cô gợi ý thông minh 4 bậc (lời → khuông minh hoạ
+                             tô dòng / khe theo khoá + hình mẫu trường độ `components/noteQuiz/HintVisuals` → cất bớt ô sai → chỉ đáp án), theo nguyên nhân sai;
+                             `tracker.ts` theo dõi lỗi theo quy tắc (cặp hay nhầm, loại lỗi, mức hỗ trợ, `supportFor` / `preferFor`, bài luyện riêng `practiceFor`);
+                             `voice.ts` câu cố định → `npm run voice`; `storage.ts` localStorage `vietpiano.note-quiz.v1` theo hồ sơ. Không nghe nốt (chỉ chạm)
+  soundExplore/            "Khám phá âm thanh — Cao độ và Trường độ" (bé 4–6 tuổi, bài nhập môn của "Làm quen từng nốt"; `screens/SoundExploreScreen`,
+                             route `sound-explore`, `?screen=sound-explore`, thẻ đầu màn `supplement`; chi tiết + nghiệm thu: docs/sound-explore.md).
+                             `config.ts` ngưỡng trò chơi (ngắn 150–700 ms, dài ≥ 1500 ms, vùng thấp ≤ La3 / cao ≥ Đô5) + 3 mức, cấu hình theo hồ sơ;
+                             `classify.ts` cao / thấp / lên / xuống CHỈ theo số MIDI (không theo lực gõ), ngắn / dài / chưa rõ, nội suy chuyển động;
+                             `PressTracker` thời gian giữ phím VẬT LÝ (nhiều phím, velocity 0 = off, pedal không kéo dài, `releaseAll` khi rút đàn / rời màn);
+                             `tasks.ts` sinh câu theo mức + chấm TỪNG THÀNH PHẦN (không có "Sai" chung), `PathFollower`, `buildAdventure` 5–7 nhiệm vụ;
+                             `progress.ts` + `storage.ts` (localStorage `vietpiano.sound-explore.v1` theo hồ sơ: kỹ năng, phiên, sao, hình dán, bản ghi nốt);
+                             `assessment.ts` chưa đủ dữ liệu / cần luyện thêm / tốt (≥ 6 lần thử), đề xuất theo quy tắc, gợi ý lên mức cần phụ huynh duyệt;
+                             `ai.ts` Ollama chỉ viết lời (tóm tắt số liệu + tuổi, không tên), lọc suy diễn trí tuệ / sức khoẻ → về quy tắc;
+                             `lesson.ts` LessonDefinition + mọi câu cô giáo (chuỗi cố định → `npm run voice`). UI: `components/soundExplore/`
+                             (`missions.tsx` nhiệm vụ dùng chung, `activities.tsx` A–F + tổng kết, `ParentPanel.tsx` góc phụ huynh giữ 1,2 s mới mở).
+                             Micro: chỉ cao độ (không có Note Off) → hoạt động trường độ hướng dẫn dùng bàn phím trên màn hình / đàn MIDI
   coach/                   "AI Piano Coach" (`screens/CoachScreen`, route `coach`, `?screen=coach`, nút ở trang chủ; tài liệu + backlog + checklist:
                              docs/ai-coach/). Bốn thành phần, thuần + có test: `recorder/` log GỐC (on/off/cc 64·66·67/mark, mốc nguồn + mốc nhận,
                              không làm tròn) → `buildPerformance` (ghép nốt, retrigger, Off mồ côi, ngân pedal / sostenuto, bỏ khoảng tạm dừng, lệch đồng hồ
@@ -198,6 +219,16 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              sự kiện người chơi kể cả pedal; `metronome.ts` lên lịch tiếng click theo đồng hồ âm thanh + ghi từng tiếng vào log →
                              `scoring/analyzeMetronome` "so với metronome" (thông tin, KHÔNG trừ điểm; chưa đo → không so).
                              Rubric Biểu diễn cũ không đổi, điểm Coach không ghi vào tiến độ giáo trình. Thử thật: docs/ai-coach/acceptance-checklist.md
+  technique/               "Luyện kỹ thuật ngón tay" (AI Finger Coach, docs/finger-coach/): `catalog.ts` 67 bài 5 cấp × 13 nhóm (CHỈ dữ liệu, mẫu số ngón
+                             `pattern(thế tay, "1 2 3/h")` → `Lesson`; KHÔNG nằm trong `LESSONS`), `build.ts` suy chỗ chuyển ngón từ số ngón + kiểm tra không ép giãn,
+                             `lessons.ts` tra bài chung cho Coach (`resolveLesson`: Thư viện + bài kỹ thuật + bài bổ trợ `rem:…`) + trọng số chấm theo bài,
+                             `skills.ts` hồ sơ kỹ năng SUY từ kết quả Coach (không lưu), `recommend.ts` 3 bài hôm nay theo luật, `aiRank.ts` AI cục bộ chỉ sắp xếp /
+                             diễn đạt lý do (xác minh, lỗi → luật), `dashboard.ts`. UI `screens/TechniqueScreen` (route `technique`, `?screen=technique`, nút ở
+                             màn Giáo trình, trang Lối tắt), `components/technique/`. Bài chạy + chấm trong Coach (không bộ ghi / bộ chấm riêng)
+  smartPractice/           AI Smart Practice DÙNG CHUNG mọi bài có `Lesson`: `passages.ts` đoạn khó qua nhiều phiên (lỗi ở ≥ 2 phiên, độ tin cậy),
+                             `remedial.ts` bài bổ trợ 3–5 nhóm nốt (ranh giới chỉ ở phách mọi bè cùng bắt đầu; sinh lại từ id), `tempo.ts` Adaptive Tempo,
+                             `outcome.ts` hiệu quả bổ trợ, `store.ts` localStorage theo hồ sơ (bài bổ trợ, phản hồi đề xuất, báo mỏi, cờ tính năng),
+                             `service.ts` API dùng chung. Glue `hooks/useSmartPractice.ts`; panel `components/coach/SmartPracticePanel` ở kết quả Coach
   shortcuts/               "Lối tắt cá nhân" (Quick Access, docs/shortcuts.md): `registry.ts` = ShortcutRegistry, mọi đích đến SUY TỪ dữ liệu
                              (màn cố định `PAGES`, trò có màn riêng `games/catalog.STANDALONE_GAMES` — mục Trò chơi cũng vẽ từ đây, cấp / buổi giáo
                              trình chính + sup-/nd-, bài thư viện, trò tự do, trò của từng buổi): `resolveTarget` (còn tồn tại?), `targetStatus` (theo
@@ -218,12 +249,24 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              tách khỏi lối tắt thủ công); `ai.ts` điểm mở rộng AI cục bộ (chỉ sắp xếp lại / viết lại lý do có kiểm tra; lỗi → quy tắc; chưa nối).
                              Glue: `store/smartShortcutStore.ts`, `hooks/useSmartShortcuts.ts` (chỉ tính khi thanh trang chủ hiện, sau `progressLoaded`),
                              UI `SmartShortcutBar` (bọc `ShortcutBar`), `SmartShortcutSettings` (Cài đặt → Lối tắt). Engine chỉ ĐỌC khoá lối tắt thủ công
+  performLog/              TẠM THỜI — "Nhật ký Biểu diễn" (docs/perform-log.md, cách gỡ ở đó): điều tra Biểu diễn chấm sai / lỡ nhiều trên mọi máy.
+                             `session.ts` ghi MỘT lượt (nốt cần đánh + kết quả, MỌI sự kiện nốt kể cả bị màn bỏ — lý do, `lag` = lúc nhận − mốc sự kiện
+                             để lộ đồng hồ driver MIDI lệch, cao độ micro khi đổi, pedal, mốc bắt đầu / tạm dừng / đổi nhịp); `diagnose.ts` thống kê +
+                             mã nghi vấn (clock-skew, late / early, misaligned = nốt "sai" là nốt kề, octave, dropped, ignored, no-input, extras-near)
+                             + `summarize` một dòng tiếng Việt; `queue.ts` IndexedDB riêng "vietpiano-perform-log" (giới hạn theo loại); `client.ts` gửi
+                             NDJSON (text/plain, không preflight) tới `<base>__vplog` của server app ("auto"; GitHub Pages / `navigator.webdriver` → không gửi)
+                             hoặc máy ghi nhập ở Cài đặt; `settings.ts` localStorage `vietpiano.performLog.v1` (bật, nơi gửi, mã + tên máy). Glue
+                             `hooks/usePerformLog.ts` (lượt theo trạng thái PerformanceTracker; gắn ở `usePracticePerformance` + `TimedRunner` bài Biểu diễn
+                             giáo trình; `PracticeScreen` báo lý do bỏ nốt; `usePerformLogVisits` ở App = máy truy cập), UI `components/PerformLogSettings`.
+                             Máy ghi: `scripts/performLog/collector.ts` (plugin vite dev + preview, `npm run perflog` cổng 8790) → `logs/perform-log/`
+                             (`<ngày>.jsonl` + IP, `summary.log`, `machines.json`). Không đổi cách chấm
   score/ScoreRenderer.ts   VexFlow → SVG một dòng; tô màu bằng CSS class, trả về toạ độ x từng nốt. Chùm nốt tay phải: số ngón xếp chồng trên chùm
                              (`noteFingerRows`, nốt đơn vẫn hàng cố định), ký hiệu hợp âm (`.score-chord`), hình nêm (`.score-hairpin`), pedal giữa ô; tuỳ chọn
                              `showFingers / showChords / showPedal` (nút Hiển thị màn Luyện tập + cỡ khuông `scoreZoom`); vượt mép trên → mở rộng viewBox lên trên
   score/scoreFit.ts        tỉ lệ + vị trí dọc của khuông một dòng (ScoreView, Săn nốt): vùng nhìn co giãn ít (≤ 8%) theo từng nốt
                              → giữ nguyên, khuông không nhảy lên xuống; ô hướng dẫn dưới khuông cũng phải cao cố định, và hàng điều khiển
-                             không được đổi bề rộng theo từng nốt / pedal (xuống dòng → vùng nhìn đổi quá 8%): khối "Cần đánh" chừa chỗ bằng bước rộng nhất của bài (`distinctStepGuides`)
+                             không được đổi bề rộng theo từng nốt / pedal (xuống dòng → vùng nhìn đổi quá 8%): khối "Cần đánh" chừa chỗ bằng bước rộng nhất của bài (`distinctStepGuides`);
+                             màn Luyện tập: khối này + số ngón / tên phím cần đánh trên bàn phím ảo tắt theo `showNoteNames` / `showFingers` (bản chừa chỗ theo cùng công tắc)
   score/ScoreSheet.ts      ảnh khuông nhạc nhiều dòng kiểu bản in (canvas → PNG, `components/ScoreExportDialog`, nút xuất ở Thư viện bài / bài hát).
                              VexFlow vẽ glyph bằng `fillText` tại MÉP TRÁI và không tự đặt `textAlign` → chữ của tờ nhạc vẽ trong save/restore, VexFlow
                              luôn vẽ canh trái (lọt canh giữa → đuôi nốt mọc giữa đầu nốt, khoá đè vạch nhịp; `e2e/score-sheet.spec.ts`). Hai bước: dựng

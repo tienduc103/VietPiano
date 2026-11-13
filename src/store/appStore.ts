@@ -22,6 +22,8 @@ export type Route =
   | { name: 'supplement' }
   /** "Khám phá nốt nhạc": danh sách 11 buổi (buổi học mở bằng route `lesson`, lessonId "nd-…"). */
   | { name: 'note-discovery' }
+  /** "Khám phá âm thanh — Cao độ và Trường độ": bài nhập môn của "Làm quen từng nốt" (docs/sound-explore.md). */
+  | { name: 'sound-explore' }
   /** `stage`: mở thẳng phần Luyện tập / Trò chơi sau buổi (nút trên thẻ buổi học). */
   | { name: 'lesson'; lessonId: string; stage?: LessonStage }
   | { name: 'library' }
@@ -45,13 +47,17 @@ export type Route =
   | { name: 'tomato-harvest' }
   /** VietPiano F1 Racing: đọc nốt để giữ tốc độ, hai phím đàn để đổi làn. */
   | { name: 'f1-racing' }
+  /** Đố bé nốt gì?: cô giáo hỏi, bé chạm hình nốt đúng trên khuông (cao độ / trường độ). */
+  | { name: 'note-quiz' }
   /** 5 ngón – 8 nốt liên tục: chuỗi 8 nốt sinh tự động trong vị trí 5 ngón (tay phải / trái / luân phiên / hai tay). */
   | { name: 'five-finger' }
   /** `fromSongs`: mở từ Thư viện bài hát → nút quay lại / "Về thư viện" trở về trang đó.
    *  `measures`: luyện riêng đoạn ô [từ, tới] (số ô in trên bản nhạc, ô lấy đà = 0). */
   | { name: 'practice'; lessonId: string; fromSongs?: boolean; measures?: [number, number] }
   /** AI Piano Coach: ghi bài đàn → chấm theo bản nhạc → lỗi trên khuông, nhận xét, bài luyện sửa lỗi (docs/ai-coach). */
-  | { name: 'coach'; lessonId?: string; measures?: [number, number] }
+  | { name: 'coach'; lessonId?: string; measures?: [number, number]; bpm?: number; hand?: 'both' | 'right' | 'left'; returnTo?: 'technique' }
+  /** Luyện kỹ thuật ngón tay + AI Smart Practice (docs/finger-coach): giáo trình kỹ thuật, bài hôm nay, đoạn khó, tiến bộ. */
+  | { name: 'technique'; tab?: 'today' | 'library' | 'passages' | 'progress' }
   /** `section`: cuộn tới một mục (vd "Quản lý lối tắt" từ menu lối tắt ở trang chủ). */
   | { name: 'settings'; section?: 'shortcuts' };
 
@@ -63,14 +69,17 @@ export function initialRoute(search = typeof location === 'undefined' ? '' : loc
   if (screen === 'curriculum') return { name: 'curriculum' };
   if (screen === 'supplement') return { name: 'supplement' };
   if (screen === 'note-discovery') return { name: 'note-discovery' };
+  if (screen === 'sound-explore') return { name: 'sound-explore' };
   if (screen === 'games') return { name: 'games' };
   if (screen === 'note-hunter') return { name: 'note-hunter' };
   if (screen === 'flappy-note') return { name: 'flappy-note' };
   if (screen === 'balloon-pop') return { name: 'balloon-pop' };
   if (screen === 'tomato-harvest') return { name: 'tomato-harvest' };
   if (screen === 'f1-racing') return { name: 'f1-racing' };
+  if (screen === 'note-quiz') return { name: 'note-quiz' };
   if (screen === 'five-finger') return { name: 'five-finger' };
   if (screen === 'coach') return { name: 'coach' };
+  if (screen === 'technique') return { name: 'technique' };
   return { name: 'dashboard' };
 }
 

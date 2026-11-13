@@ -1,9 +1,21 @@
-/** Dòng phiên bản cuối trang (đọc từ file VERSION lúc build; "dev" nếu chưa phát hành). */
-export function AppVersion({ className = '' }: { className?: string }) {
-  return (
-    <p className={`text-center text-xs text-slate-400 dark:text-slate-500 ${className}`} data-testid="app-version">
+import { UpdateAppButton } from './UpdateAppButton';
+
+/**
+ * Dòng phiên bản cuối trang (đọc từ file VERSION lúc build; "dev" nếu chưa phát hành).
+ * `withUpdate`: kèm nút Cập nhật bản mới nhất (tắt ở màn Luyện tập / bài giáo trình — dòng cuối ở đó phải gọn).
+ */
+export function AppVersion({ className = '', withUpdate = true }: { className?: string; withUpdate?: boolean }) {
+  const text = (
+    <p className={`text-center text-xs text-slate-400 dark:text-slate-500 ${withUpdate ? '' : className}`} data-testid="app-version">
       VietPiano · phiên bản {__APP_VERSION__}
     </p>
+  );
+  if (!withUpdate) return text;
+  return (
+    <div className={`flex flex-wrap items-center justify-center gap-x-2 ${className}`}>
+      {text}
+      <UpdateAppButton />
+    </div>
   );
 }
 

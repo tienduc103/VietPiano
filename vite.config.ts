@@ -1,11 +1,13 @@
 /// <reference types="vitest/config" />
-import { defineConfig, type ProxyOptions } from 'vite';
+import { defineConfig, type Plugin, type ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import { existsSync, readFileSync } from 'node:fs';
 import { parseVersion } from './scripts/version.ts';
+// TẠM THỜI: máy ghi Nhật ký Biểu diễn (docs/perform-log.md).
+import { performLogPlugin } from './scripts/performLog/vitePlugin.ts';
 
 // GitHub Pages phục vụ dưới /<tên-repo>/ → workflow deploy đặt BASE_PATH.
 const base = process.env.BASE_PATH ?? '/';
@@ -42,6 +44,25 @@ const ollamaProxy: Record<string, ProxyOptions> =
         },
       };
 
+// `<base>version.json`: phiên bản trên server cho nút "Cập nhật bản mới nhất" (src/appUpdate.ts).
+// Không nằm trong globPatterns của service worker → luôn đọc từ mạng.
+function versionJsonPlugin(): Plugin {
+  const body = JSON.stringify({ version: appVersion });
+  return {
+    name: 'vietpiano-version-json',
+    configureServer(server) {
+      server.middlewares.use(`${base.replace(/\/*$/, '/')}version.json`, (_req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(body);
+      });
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'version.json', source: body });
+    },
+  };
+}
+
 export default defineConfig({
   base,
   define: {
@@ -51,6 +72,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
     ...(https ? [basicSsl()] : []),
+    performLogPlugin(base),
+    versionJsonPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false,

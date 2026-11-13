@@ -210,8 +210,14 @@ export class PerformanceTracker {
     this.listeners.forEach((l) => l(this.state));
   }
 
-  private beatAt(time: number): number {
+  /** Vị trí đồng hồ (phách) ở thời điểm `time` — chỉ có nghĩa khi đã bấm bắt đầu (dùng cho nhật ký Biểu diễn). */
+  beatAt(time: number): number {
     return (time - this.originTime) / this.beatMs;
+  }
+
+  /** Cấu hình đang dùng (gồm nhịp độ hiện tại). */
+  getConfig(): Readonly<PerformanceConfig> {
+    return this.config;
   }
 
   /** Bắt đầu (đếm vào `countInBeats` phách) hoặc chạy tiếp sau tạm dừng (đếm vào lại). */

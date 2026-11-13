@@ -123,6 +123,73 @@ test('ẩn/hiện tên nốt', async ({ page }) => {
   await expect(page.locator('.score-label')).toHaveCount(14);
 });
 
+test('tắt tên nốt / số ngón trên khuông: khối "Cần đánh" và bàn phím ảo tắt theo, vẫn chấm như cũ', async ({ page }) => {
+  await openLesson(page, 'kid-rh-five');
+  await page.keyboard.press('a'); // C4 → sang D4 (phím Đô luôn ghi tên nên kiểm tra bằng nốt khác)
+  const keyD4 = page.locator('button[data-midi="62"]');
+  await expect(page.getByTestId('expected-note')).toHaveText('D4');
+  await expect(keyD4).toContainText('D4');
+
+  // Tắt tên nốt: số ngón vẫn còn; phím Đô vẫn ghi tên để định hướng.
+  await page.getByRole('button', { name: 'Ẩn tên nốt' }).click();
+  await expect(page.getByTestId('status')).not.toContainText('Cần đánh');
+  await expect(page.getByTestId('expected-note')).toHaveCount(0);
+  await expect(page.getByTestId('expected-finger')).toHaveText('ngón 2');
+  await expect(keyD4).not.toContainText('D4');
+  await expect(keyD4.getByTestId('key-finger')).toHaveText('2');
+  await expect(page.locator('button[data-midi="60"]')).toContainText('C4');
+
+  // Tắt luôn số ngón: dưới khuông không còn gợi ý nào.
+  await page.getByTestId('score-display').click();
+  const fingersSwitch = page.getByTestId('score-display-panel').getByRole('switch', { name: 'Số ngón tay' });
+  await fingersSwitch.click();
+  await expect(page.getByTestId('expected-finger')).toHaveCount(0);
+  await expect(page.getByTestId('expected-hand')).toHaveCount(0);
+  await expect(page.getByTestId('key-finger')).toHaveCount(0);
+  if (process.env.SHOT) await page.screenshot({ path: process.env.SHOT });
+
+  // Chỉ đổi phần hiển thị: đánh đúng vẫn sang nốt.
+  await page.keyboard.press('s'); // D4
+  await expect(page.getByTestId('progress-text')).toHaveText(/^2\//);
+
+  // Bật lại thì hiện lại đủ.
+  await fingersSwitch.click();
+  await page.getByRole('button', { name: 'Hiện tên nốt' }).click();
+  await expect(page.getByTestId('expected-note')).toBeVisible();
+  await expect(page.getByTestId('expected-finger')).toBeVisible();
+  await expect(page.getByTestId('key-finger')).toBeVisible();
+});
+
+test('bài hai tay: tắt tên nốt / số ngón → ô Tay phải / Tay trái và hợp âm tay trái tắt theo', async ({ page }) => {
+  await openLesson(page, 'song-romance-2-hands');
+  await page.getByRole('button', { name: 'Ẩn tên nốt' }).click();
+  // Chỉ còn số ngón của hai tay.
+  await expect(page.getByTestId('expected-note')).toHaveCount(0);
+  await expect(page.getByTestId('expected-finger')).toHaveText('ngón 5');
+  await expect(page.getByTestId('expected-left')).toHaveCount(0);
+  await expect(page.getByTestId('expected-left-finger')).toHaveText('ngón 5·3·1');
+
+  // Bước 2, tay trái giữ hợp âm: không lộ tên nốt đang giữ.
+  await page.locator('[data-midi="69"]').click();
+  for (const m of [50, 53, 57]) await page.locator(`[data-midi="${m}"]`).click();
+  await expect(page.getByTestId('progress-text')).toHaveText('1/92');
+  await expect(page.getByTestId('expected-left')).toHaveText('giữ');
+
+  // Tập riêng tay trái (hợp âm): vẫn còn số ngón.
+  await page.getByTestId('hand-left').click();
+  await expect(page.getByTestId('expected-note')).toHaveCount(0);
+  await expect(page.getByTestId('expected-finger')).toHaveText('ngón 5·3·1');
+
+  // Tắt luôn số ngón: không còn khối hướng dẫn nào, kể cả bản vô hình chừa chỗ.
+  await page.getByTestId('score-display').click();
+  await page.getByTestId('score-display-panel').getByRole('switch', { name: 'Số ngón tay' }).click();
+  await page.getByTestId('score-display').click();
+  await expect(page.getByTestId('status')).not.toContainText('Cần đánh');
+  await page.getByTestId('hand-both').click();
+  await expect(page.getByTestId('hands-guide')).toHaveCount(0);
+  await expect(page.getByTestId('status')).not.toContainText('Tay phải');
+});
+
 test('tự cuộn khuông nhạc theo tiến độ', async ({ page }) => {
   await openLesson(page, 'song-twinkle');
   const strip = page.locator('[data-testid="score"] > div').last();
@@ -212,18 +279,15 @@ test('nút micro nổi: luôn hiển thị, bấm để bật/tắt micro, hiệ
   // Luyện tập: nút nằm trong khung khuông nhạc, cùng trạng thái với nút micro chính.
   await page.getByTestId('lesson-scale-c-major').click();
   await expect(page.locator('main [data-testid="floating-mic"]')).toBeVisible();
-  await expect(page.getByTestId('floating-reload')).toBeVisible();
   await page.getByTestId('floating-mic').click();
   await expect(page.getByTestId('mic-button')).toHaveText(/Micro đang bật/);
   // Micro giả phát gam Đô → bài bắt đầu (đang chơi) → ẩn mọi nút nổi; chơi lại từ đầu → hiện lại.
   await expect(page.getByTestId('progress-text')).not.toHaveText(/^0\//, { timeout: 10_000 });
   await expect(page.getByTestId('floating-mic')).toHaveCount(0);
-  await expect(page.getByTestId('floating-reload')).toHaveCount(0);
   await page.getByTestId('mic-button').click();
   await expect(page.getByTestId('mic-button')).toHaveText(/Bật micro/);
   await page.getByRole('button', { name: 'Chơi lại từ đầu' }).click();
   await expect(page.getByTestId('floating-mic')).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.getByTestId('floating-reload')).toBeVisible();
 
   await page.getByRole('button', { name: 'Về thư viện' }).first().click();
   await page.getByRole('button', { name: 'Cài đặt' }).click();
@@ -415,7 +479,54 @@ test('đánh thử 15 giây: tự bật micro, mỗi nốt hiện một lần, b
   for (let i = 1; i < labels.length; i++) expect(labels[i]).not.toBe(labels[i - 1]);
 });
 
-test('nút nổi tải lại cứng: có trên mọi màn hình, gỡ service worker, xoá cache, tải lại trang', async ({ page }) => {
+// TẠM THỜI tắt nút nổi tải lại cứng (thay bằng nút Cập nhật bản mới nhất) — bật lại nút thì bỏ .skip.
+test('nút nổi tạm tắt; nút Cập nhật bản mới nhất: đã mới nhất thì không tải lại, có bản mới thì xoá cache + tải lại', async ({ page }) => {
+  await page.goto('/?screen=library');
+  await expect(page.getByTestId('floating-reload')).toHaveCount(0);
+  const btn = page.getByTestId('update-app');
+  await expect(btn).toBeVisible();
+  await page.evaluate(() => ((window as unknown as { __marker: boolean }).__marker = true));
+  // version.json của server trùng phiên bản đang chạy → báo, không tải lại.
+  await btn.click();
+  await expect(btn).toHaveText(/Đã là bản mới nhất/);
+  expect(await page.evaluate(() => (window as unknown as { __marker?: boolean }).__marker)).toBe(true);
+  // Giả server có bản mới.
+  await page.route('**/version.json*', (route) => route.fulfill({ contentType: 'application/json', body: '{"version":"9.99.999999.999999"}' }));
+  await page.getByRole('button', { name: 'Cài đặt' }).click();
+  await page.evaluate(async () => {
+    await caches.open('test-cache');
+  });
+  await page.getByTestId('update-app').click();
+  await page.waitForFunction(() => !(window as unknown as { __marker?: boolean }).__marker);
+  await expect(page.getByTestId('app-version')).toBeVisible();
+  expect(await page.evaluate(() => caches.has('test-cache'))).toBe(false);
+});
+
+test('trang chủ báo có phiên bản mới: không có bản mới thì không hiện; Để sau ẩn; Cập nhật ngay xoá cache + tải lại', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  await page.waitForTimeout(500);
+  await expect(page.getByTestId('update-banner')).toHaveCount(0);
+
+  await page.route('**/version.json*', (route) => route.fulfill({ contentType: 'application/json', body: '{"version":"9.99.999999.999999"}' }));
+  await page.reload();
+  const banner = page.getByTestId('update-banner');
+  await expect(banner).toContainText('Đã có phiên bản mới 9.99.999999.999999');
+  await banner.getByRole('button', { name: 'Để sau' }).click();
+  await expect(banner).toHaveCount(0);
+
+  await page.reload();
+  await page.evaluate(async () => {
+    (window as unknown as { __marker: boolean }).__marker = true;
+    await caches.open('test-cache');
+  });
+  await page.getByTestId('update-banner-apply').click();
+  await page.waitForFunction(() => !(window as unknown as { __marker?: boolean }).__marker);
+  await expect(page.getByTestId('dashboard')).toBeVisible();
+  expect(await page.evaluate(() => caches.has('test-cache'))).toBe(false);
+});
+
+test.skip('nút nổi tải lại cứng: có trên mọi màn hình, gỡ service worker, xoá cache, tải lại trang', async ({ page }) => {
   await page.goto('/?screen=library');
   await expect(page.getByTestId('floating-reload')).toBeVisible();
   await openLesson(page, 'scale-c-major');
@@ -433,7 +544,7 @@ test('nút nổi tải lại cứng: có trên mọi màn hình, gỡ service wo
   expect(await page.evaluate(() => caches.has('test-cache'))).toBe(false);
 });
 
-test('nút nổi tải lại kéo được: kéo không tải lại trang, vị trí được nhớ, đặt lại trong Cài đặt', async ({ page }) => {
+test.skip('nút nổi tải lại kéo được: kéo không tải lại trang, vị trí được nhớ, đặt lại trong Cài đặt', async ({ page }) => {
   await page.goto('/?screen=library');
   const fab = page.getByTestId('floating-reload');
   await page.evaluate(() => ((window as unknown as { __marker: boolean }).__marker = true));
@@ -845,7 +956,17 @@ test('buổi 1: giới thiệu → luyện tập → kiểm tra 5 lượt → k�
 
 test('buổi chưa đủ điều kiện vẫn mở được (chỉ gợi ý); Kids Mode đổi lời giới thiệu', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('radio', { name: 'Trẻ em' }).click();
+  // Nút giao diện xoay vòng: Tự động → Trẻ em → Người lớn → Tự động.
+  const uiToggle = page.getByTestId('ui-mode-toggle');
+  await expect(uiToggle).toHaveText('Tự động');
+  await uiToggle.click();
+  await expect(uiToggle).toHaveText('Trẻ em');
+  await uiToggle.click();
+  await expect(uiToggle).toHaveText('Người lớn');
+  await expect(page.getByTestId('dashboard')).toHaveAttribute('data-ui-mode', 'adult');
+  await uiToggle.click();
+  await expect(uiToggle).toHaveText('Tự động');
+  await uiToggle.click();
   await expect(page.getByTestId('dashboard')).toHaveAttribute('data-ui-mode', 'kids');
   await page.getByTestId('open-curriculum').click();
   await page.getByTestId('cur-lesson-l1-06-staff').click();

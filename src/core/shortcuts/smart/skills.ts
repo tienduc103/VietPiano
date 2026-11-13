@@ -50,6 +50,8 @@ export const STANDALONE_GAME_SKILLS: Record<StandaloneGameId, readonly SkillTag[
   'tomato-harvest': ['staff-reading', 'note-names'],
   // Tay phải đọc nốt để giữ tốc độ, tay trái lái bằng hai phím.
   'f1-racing': ['staff-reading', 'reading-speed', 'two-hands'],
+  // Chạm chọn hình nốt đúng (cao độ / trường độ) theo câu hỏi của cô — không đồng hồ, không cần đàn.
+  'note-quiz': ['staff-reading'],
 };
 
 /** Màn luyện có kỹ năng rõ ràng. */

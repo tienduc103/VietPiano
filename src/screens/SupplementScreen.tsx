@@ -56,6 +56,23 @@ export function SupplementScreen() {
           {kids ? 'Mỗi bài làm quen một nốt nhạc: xem hình, nghe tiếng, giải câu đố, tìm phím rồi chơi trò chơi!' : text(level.description)}
         </p>
 
+        {/* Nhập môn (trước khi học nốt / đọc khuông): nghe cao – thấp, dài – ngắn. Không cần biết chữ, không cần đàn MIDI. */}
+        <button
+          type="button"
+          onClick={() => navigate({ name: 'sound-explore' })}
+          data-testid="open-sound-explore"
+          className="mt-6 flex w-full items-center gap-5 rounded-3xl bg-gradient-to-r from-sky-500 via-indigo-500 to-fuchsia-500 p-5 text-left text-white shadow-lg shadow-indigo-500/30 transition-transform active:scale-[0.98]"
+        >
+          <span className="text-6xl" aria-hidden>
+            🚀🐰🐌
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold opacity-90">Bài nhập môn · 4–6 tuổi</span>
+            <span className="block text-2xl font-extrabold">Khám phá âm thanh</span>
+            <span className="block opacity-90">{kids ? 'Tiếng cao, tiếng thấp, tiếng dài, tiếng ngắn!' : 'Cao độ và trường độ: tên lửa, thỏ và ốc sên, khu vườn, phiêu lưu âm nhạc'}</span>
+          </span>
+        </button>
+
         <ol className="mt-6 grid gap-4 sm:grid-cols-3 lg:grid-cols-4" aria-label="Các nốt">
           {lessons.map((l) => {
             const note = SUPPLEMENT_NOTE[l.lessonId];

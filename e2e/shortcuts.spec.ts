@@ -313,3 +313,22 @@ test.describe('màn hẹp (điện thoại)', () => {
     await expect(page.getByTestId('curriculum')).toBeVisible();
   });
 });
+
+test('màn mới theo khuôn chung: Kỹ thuật ngón tay, AI Piano Coach, Khám phá âm thanh có nút 📌 ở đầu trang và ghim được', async ({ page }) => {
+  await seed(page);
+  for (const [screen, name] of [
+    ['technique', 'Luyện kỹ thuật ngón tay'],
+    ['coach', 'AI Piano Coach'],
+    ['sound-explore', 'Khám phá âm thanh'],
+  ] as const) {
+    await page.goto(`/?screen=${screen}`);
+    const pin = page.getByTestId('pin-shortcut');
+    await expect(pin).toHaveAttribute('data-pinned', 'false');
+    await pin.click();
+    await expect(page.getByTestId('shortcut-editor-destination')).toContainText(name);
+    await page.getByTestId('shortcut-save').click();
+    await expect(pin).toHaveAttribute('data-pinned', 'true');
+  }
+  // Khám phá âm thanh có nguồn nốt riêng ở đầu trang → không có nút micro nổi (giống 5 ngón).
+  await expect(page.getByTestId('floating-mic')).toHaveCount(0);
+});

@@ -14,7 +14,8 @@
     "test:e2e": "playwright test",
     "icons": "node scripts/generate-icons.mjs",
     "release": "node scripts/release.ts",
-    "voice": "node scripts/voice.ts"
+    "voice": "node scripts/voice.ts",
+    "perflog": "node scripts/perform-log-server.ts"
   },
   "author": "",
   "license": "UNLICENSED",

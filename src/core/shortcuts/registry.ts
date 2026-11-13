@@ -51,10 +51,12 @@ export const PAGES: readonly PageInfo[] = [
   { id: 'curriculum', title: 'Giáo trình', icon: '📚', hint: `${CURRICULUM.levels.length} cấp độ · từng buổi học` },
   { id: 'supplement', title: text(SUPPLEMENT.levels[0].title), icon: '🎵', hint: 'Mỗi buổi một nốt' },
   { id: 'note-discovery', title: text(DISCOVERY.title), icon: '🎹', hint: 'Mỗi buổi một nốt mới + ôn nốt cũ' },
+  { id: 'sound-explore', title: 'Khám phá âm thanh', icon: '🚀', hint: 'Nhập môn 4–6 tuổi: cao – thấp, dài – ngắn' },
   { id: 'library', title: 'Thư viện bài', icon: '📖', hint: 'Luyện tự do — bài tập và bài hát' },
   { id: 'song-library', title: 'Thư viện bài hát', icon: '🎼', hint: 'Mọi bài hát, cả tuyển tập khuông đôi' },
   { id: 'games', title: 'Trò chơi', icon: '🎮', hint: 'Mọi trò chơi' },
   { id: 'five-finger', title: '5 ngón · 8 nốt', icon: '🖐️', hint: 'Chuỗi 8 nốt tự sinh trong thế 5 ngón' },
+  { id: 'technique', title: 'Luyện kỹ thuật ngón tay', icon: '🎹', hint: '5 ngón, 8 ngón, chuyển ngón · bài hôm nay · đoạn khó' },
   { id: 'coach', title: 'AI Piano Coach', icon: '🤖', hint: 'Chấm bài đàn theo bản nhạc' },
   { id: 'settings', title: 'Cài đặt', icon: '⚙️', hint: 'Micro, đàn MIDI, hiển thị, lối tắt…' },
 ];

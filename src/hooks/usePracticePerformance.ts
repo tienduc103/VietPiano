@@ -9,6 +9,8 @@ import { loudnessDb } from '../core/music/dynamics';
 import type { PracticeHand } from '../core/practice/handPractice';
 import { PerformanceTracker } from '../core/practice/PerformanceTracker';
 import { performanceBreakdown, performancePlan } from '../core/practice/performPlan';
+import { useSettings } from '../store/settingsStore';
+import { usePerformLog } from './usePerformLog';
 
 /** Độ trễ ước lượng micro (cùng giá trị màn Luyện tập dùng cho chế độ Theo nhịp). */
 const MIC_LATENCY_MS = 60;
@@ -86,6 +88,25 @@ export function usePracticePerformance({
   const [metronome, setMetronome] = useState(metronomeDefault);
   const metronomeRef = useRef(metronome);
   metronomeRef.current = metronome;
+
+  // TẠM THỜI: Nhật ký Biểu diễn (docs/perform-log.md) — ghi từng lượt để điều tra chấm sai / lỡ nhiều.
+  const log = usePerformLog({
+    tracker: t,
+    enabled: enabled && !!tracker,
+    screen: 'practice',
+    notes: plan,
+    lesson,
+    info: () => ({
+      hand,
+      scored: true,
+      singleNotesOnly,
+      micLatencyMs: MIC_LATENCY_MS,
+      metronome: metronomeRef.current,
+      pedalScored: withPedal,
+      pedalInput,
+      tempoPercent: useSettings.getState().settings.tempoPercent,
+    }),
+  });
   // Đồng hồ nhịp theo khung hình; click metronome mỗi phách (phách đầu ô cao hơn).
   useEffect(() => {
     if (!running) return;
@@ -120,11 +141,13 @@ export function usePracticePerformance({
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [t, enabled]);
 
+  const { grade, dropped: logDropped } = log;
   const handleNoteOn = useCallback(
     (e: NoteInputEvent) => {
-      t.handleNoteOn(e.midi, e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time, loudnessDb(e));
+      const time = e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time;
+      grade(e, time, () => t.handleNoteOn(e.midi, time, loudnessDb(e)));
     },
-    [t],
+    [t, grade],
   );
 
   const toggle = useCallback(() => {
@@ -143,5 +166,5 @@ export function usePracticePerformance({
     return { result, ...performanceBreakdown(plan, state, result, 150, 0.5 * tracker.beatMs) };
   }, [finished, tracker, plan, state]);
 
-  return { plan, tracker: t, available: !!tracker, state, running, finished, breakdown, handleNoteOn, toggle, restart, metronome, setMetronome };
+  return { plan, tracker: t, available: !!tracker, state, running, finished, breakdown, handleNoteOn, logDropped, toggle, restart, metronome, setMetronome };
 }

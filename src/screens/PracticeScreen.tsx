@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { lessonManager } from '../core/lessons/LessonManager';
 import { accompanimentByNote, hasRightHarmony, isAccompanimentMidi, lessonTempo, measureLength, HAND_LABEL, type Lesson } from '../core/lessons/types';
-import { midiToLabel, midiToName, pitchToLabel } from '../core/music/notes';
+import { midiToLabel, midiToName, midiToPitchClass, pitchToLabel } from '../core/music/notes';
 import { computeAccuracy, isPerfect, PracticeEngine, DEFAULT_PRACTICE_CONFIG, type PracticeState } from '../core/practice/PracticeEngine';
 import { DEFAULT_TEMPO_CONFIG, TempoFollower, type TempoState } from '../core/practice/TempoFollower';
 import { TEMPO_PERCENT_MAX, TEMPO_PERCENT_MIN, type PracticeMode } from '../core/settings/DeviceSettings';
@@ -299,13 +299,15 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
   useEffect(() => {
     microphoneInput.resetRecognizer();
     const handle = (e: NoteInputEvent) => {
+      // TẠM THỜI: Nhật ký Biểu diễn ghi lý do bỏ nốt (chỉ khi đang có lượt Biểu diễn; chế độ khác không làm gì).
+      const drop = (reason: string) => perfRef.current.logDropped(e, reason);
       // Đàn MIDI đã nối thì micro cũng nghe chính tiếng đàn đó → bỏ để một phím không thành hai sự kiện.
-      if (e.source === 'microphone' && midiInput.hasDevice()) return;
-      if (listeningRef.current) return;
+      if (e.source === 'microphone' && midiInput.hasDevice()) return drop('mic-while-midi');
+      if (listeningRef.current) return drop('listening');
       // Bài có phần đệm, chỉ chấm tay phải: nốt tay trái đánh kèm không bị tính là sai (tập tay trái: ngược lại).
       if (handRef.current !== 'both') {
-        if (isOtherHandMidi(lesson, handRef.current, e.midi)) return;
-      } else if (!twoHandsRef.current && isAccompanimentMidi(lesson, e.midi)) return;
+        if (isOtherHandMidi(lesson, handRef.current, e.midi)) return drop('other-hand');
+      } else if (!twoHandsRef.current && isAccompanimentMidi(lesson, e.midi)) return drop('accompaniment');
       // Không chấm nốt phụ (micro / Theo nhịp): nốt hoà âm của chùm nốt đang tập (hoặc vừa qua) không tính sai.
       if (!extrasGradedRef.current && handRef.current !== 'left') {
         const steps = trackRef.current.steps;
@@ -314,7 +316,7 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
           : performModeRef.current
             ? stepIndexAtBeat(steps, Math.max(0, perfRef.current.tracker.getState().beat))
             : engine.getState().index;
-        if ([at, at - 1].some((k) => steps[k] && isUngradedHarmonyMidi(lesson, steps[k].scoreIndex, e.midi))) return;
+        if ([at, at - 1].some((k) => steps[k] && isUngradedHarmonyMidi(lesson, steps[k].scoreIndex, e.midi))) return drop('harmony');
       }
       if (performModeRef.current) return perfRef.current.handleNoteOn(e);
       if (tempoModeRef.current) return void follower.handleOnset(e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time);
@@ -507,6 +509,11 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
   const keyboardAutoHidden = keyboardMode === 'auto' && playingNow && !listen.playing && !keyboardInput;
   const keyboardExpected = leftChord || (!performMode && state.melodyDone && !listen.playing) ? null : expected;
   const stepFinger = hand === 'left' ? currentStep?.fingers[0] : expectedFinger;
+  // Tắt "Tên nốt": phím cần đánh không ghi tên nữa; phím Đô vẫn ghi để định hướng bàn phím.
+  const keyboardLabelFor = useMemo(
+    () => (settings.showNoteNames ? undefined : (m: number) => (midiToPitchClass(m) === 0 ? midiToLabel(m, settings.labelStyle) : '')),
+    [settings.showNoteNames, settings.labelStyle],
+  );
   const rawResults = tempoMode ? tempo.results : state.results;
   const scoreSize = track.staff === 'melody' ? lesson.notes.length : (lesson.accompaniment?.length ?? 0);
   const scoreResults = useMemo(
@@ -731,6 +738,8 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
             showFeedback={showFeedback && !listen.playing}
             listening={listen.playing}
             labelStyle={settings.labelStyle}
+            showNames={settings.showNoteNames}
+            showFingers={settings.showFingers}
           />
         )}
         <div className="ml-auto flex gap-2">
@@ -770,19 +779,20 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
             from={range.from}
             to={range.to}
             expected={keyboardExpected}
-            expectedFinger={stepFinger}
+            expectedFinger={settings.showFingers ? stepFinger : undefined}
             expectedExtra={extraKeys}
             highlighted={tempoMode && !leftChord ? undefined : leftKeys}
-            fingers={leftChordFingers}
+            fingers={settings.showFingers ? leftChordFingers : undefined}
             detected={micLive?.midi ?? null}
             flash={flash}
             labelStyle={settings.labelStyle}
+            labelFor={keyboardLabelFor}
             keyHints={keyHints}
             onPress={(m) => virtualInput.press(m)}
           />
         </footer>
       )}
-      <AppVersion className="shrink-0 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] leading-none" />
+      <AppVersion withUpdate={false} className="shrink-0 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] leading-none" />
 
       {tempoMode && tempo.status === 'finished' && (
         <TempoFinishDialog
@@ -868,6 +878,8 @@ function StatusPanel({
   showFeedback,
   listening,
   labelStyle,
+  showNames,
+  showFingers,
 }: {
   state: PracticeState;
   /** Khối "Cần đánh" của bước hiện tại (hết bài → không có). */
@@ -882,6 +894,9 @@ function StatusPanel({
   /** Đang nghe mẫu: con trỏ chạy theo tiếng đàn, chưa chấm. */
   listening?: boolean;
   labelStyle: 'letter' | 'solfege';
+  /** Khối "Cần đánh" theo công tắc Tên nốt / Số ngón tay của khuông nhạc (bản chừa chỗ cũng vậy: phần ẩn không giữ chỗ). */
+  showNames: boolean;
+  showFingers: boolean;
 }) {
   let tone = 'bg-sky-50 text-sky-900 ring-1 ring-sky-200/80 dark:bg-sky-950/80 dark:text-sky-200 dark:ring-sky-800/60';
   let title = listening ? 'Đang nghe mẫu' : 'Đang chờ';
@@ -913,10 +928,10 @@ function StatusPanel({
       <div className="grid items-center justify-items-center [&>*]:[grid-area:1/1]">
         {guideSizes.map((g, i) => (
           <div key={i} className="invisible" aria-hidden>
-            <ExpectedGuide guide={g} state={EMPTY_GUIDE_STATE} labelStyle={labelStyle} sizer />
+            <ExpectedGuide guide={g} state={EMPTY_GUIDE_STATE} labelStyle={labelStyle} showNames={showNames} showFingers={showFingers} sizer />
           </div>
         ))}
-        {guide && <ExpectedGuide guide={guide} state={state} twoHands={twoHands} chordGraded={chordGraded} labelStyle={labelStyle} />}
+        {guide && <ExpectedGuide guide={guide} state={state} twoHands={twoHands} chordGraded={chordGraded} labelStyle={labelStyle} showNames={showNames} showFingers={showFingers} />}
       </div>
     </div>
   );
@@ -931,6 +946,8 @@ function ExpectedGuide({
   twoHands,
   chordGraded,
   labelStyle,
+  showNames,
+  showFingers,
   sizer = false,
 }: {
   guide: StepGuide;
@@ -938,6 +955,8 @@ function ExpectedGuide({
   twoHands?: boolean;
   chordGraded?: boolean;
   labelStyle: 'letter' | 'solfege';
+  showNames: boolean;
+  showFingers: boolean;
   sizer?: boolean;
 }) {
   const { midi, pitch, finger, hand, left, chord } = guide;
@@ -953,25 +972,31 @@ function ExpectedGuide({
         melodyDone={state.melodyDone}
         grading={!!twoHands}
         labelStyle={labelStyle}
+        showNames={showNames}
+        showFingers={showFingers}
         sizer={sizer}
       />
     );
   }
   if (chord) {
+    const chordFingersShown = showFingers && chord.fingers.every(Boolean);
+    if (!showNames && !chordFingersShown) return null;
     return (
       <div className="text-center">
         <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Cần đánh · tay trái</div>
-        <div className="flex gap-1.5 text-3xl font-bold" data-testid={testId('expected-note')}>
-          {chord.pitches.map((p, i) => {
-            const pressed = chordGraded && (i === 0 ? state.melodyDone : !state.pendingLeft.includes(chord.midis[i]));
-            return (
-              <span key={i} className={pressed ? 'text-emerald-600 line-through decoration-2 dark:text-emerald-400' : 'text-fuchsia-600 dark:text-fuchsia-300'}>
-                {pitchToLabel(p, labelStyle)}
-              </span>
-            );
-          })}
-        </div>
-        {chord.fingers.every(Boolean) && (
+        {showNames && (
+          <div className="flex gap-1.5 text-3xl font-bold" data-testid={testId('expected-note')}>
+            {chord.pitches.map((p, i) => {
+              const pressed = chordGraded && (i === 0 ? state.melodyDone : !state.pendingLeft.includes(chord.midis[i]));
+              return (
+                <span key={i} className={pressed ? 'text-emerald-600 line-through decoration-2 dark:text-emerald-400' : 'text-fuchsia-600 dark:text-fuchsia-300'}>
+                  {pitchToLabel(p, labelStyle)}
+                </span>
+              );
+            })}
+          </div>
+        )}
+        {chordFingersShown && (
           <div className="text-lg font-bold text-orange-500 dark:text-orange-300" data-testid={testId('expected-finger')}>
             ngón {chord.fingers.join('·')}
           </div>
@@ -984,25 +1009,27 @@ function ExpectedGuide({
   const chordFingers = [...harmony.map((h) => h.finger), finger];
   return (
     <div className="flex items-center gap-3">
-      <div className="text-center">
-        <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Cần đánh</div>
-        {harmony.length === 0 ? (
-          <div className="text-4xl font-bold text-fuchsia-600 dark:text-fuchsia-300" data-testid={testId('expected-note')}>
-            {pitch ? pitchToLabel(pitch, labelStyle) : midiToLabel(midi, labelStyle)}
-          </div>
-        ) : (
-          <div className="flex gap-1.5 text-3xl font-bold" data-testid={testId('expected-note')}>
-            {[...harmony.map((h) => ({ p: h.pitch, done: !!twoHands && !state.pendingLeft.includes(h.midi) })), { p: pitch ?? midiToName(midi), done: !!twoHands && state.melodyDone }].map(
-              (x, i) => (
-                <span key={i} className={x.done ? 'text-emerald-600 line-through decoration-2 dark:text-emerald-400' : 'text-fuchsia-600 dark:text-fuchsia-300'}>
-                  {pitchToLabel(x.p, labelStyle)}
-                </span>
-              ),
-            )}
-          </div>
-        )}
-      </div>
-      {hand && (
+      {showNames && (
+        <div className="text-center">
+          <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Cần đánh</div>
+          {harmony.length === 0 ? (
+            <div className="text-4xl font-bold text-fuchsia-600 dark:text-fuchsia-300" data-testid={testId('expected-note')}>
+              {pitch ? pitchToLabel(pitch, labelStyle) : midiToLabel(midi, labelStyle)}
+            </div>
+          ) : (
+            <div className="flex gap-1.5 text-3xl font-bold" data-testid={testId('expected-note')}>
+              {[...harmony.map((h) => ({ p: h.pitch, done: !!twoHands && !state.pendingLeft.includes(h.midi) })), { p: pitch ?? midiToName(midi), done: !!twoHands && state.melodyDone }].map(
+                (x, i) => (
+                  <span key={i} className={x.done ? 'text-emerald-600 line-through decoration-2 dark:text-emerald-400' : 'text-fuchsia-600 dark:text-fuchsia-300'}>
+                    {pitchToLabel(x.p, labelStyle)}
+                  </span>
+                ),
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {showFingers && hand && (
         <div className="text-center">
           <div className="text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400" data-testid={testId('expected-hand')}>
             {HAND_LABEL[hand]}
