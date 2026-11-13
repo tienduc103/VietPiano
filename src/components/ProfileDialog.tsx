@@ -88,7 +88,8 @@ export function ProfileDialog({ profile, onClose }: Props) {
           </Button>
         </div>
 
-        <div className="mt-4 flex-1 space-y-5 overflow-y-auto overscroll-contain pr-1">
+        {/* Đệm 4px + margin âm: vùng cuộn cắt mất ring (box-shadow) của ô sát mép nếu không có khoảng đệm. */}
+        <div className="-mx-1 mt-3 flex-1 space-y-5 overflow-y-auto overscroll-contain p-1">
           <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
             <label className="block">
               <span className="text-sm font-semibold">Tên</span>
@@ -200,7 +201,7 @@ export function ProfileDialog({ profile, onClose }: Props) {
           </fieldset>
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           {profile &&
             (confirmDelete ? (
               <>
