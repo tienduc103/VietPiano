@@ -596,6 +596,27 @@ const defs: LessonDef[] = [
       'G4 G4 F4 F4 | E4 E4 D4/h | C4 C4 G4 G4 | A4 A4 G4/h | F4 F4 E4 E4 | D4 D4 C4/h',
   },
   {
+    id: 'song-abc-song',
+    title: 'A B C Song (Mozart)',
+    description: 'Cùng giai điệu "Twinkle Twinkle" nhưng nhịp 2/4, 3 dòng với sắc thái to – nhỏ – to (f – p – f).',
+    category: 'song',
+    clef: 'treble',
+    timeSignature: [2, 4],
+    difficulty: 1,
+    hand: 'right',
+    tempo: 80,
+    source: 'Giai điệu "Ah! vous dirai-je, maman" (Pháp, thế kỷ 18; Mozart viết biến tấu) — phạm vi công cộng; chỉ chép giai điệu, tự ghi lại theo sách tập đàn',
+    notation:
+      'C4 C4 | G4 G4 | A4 A4 | G4/h | F4 F4 | E4 E4 | D4 D4 | C4/h | ' +
+      'G4 G4 | F4 F4 | E4 E4 | D4/h | G4 G4 | F4 F4 | E4 E4 | D4/h | ' +
+      'C4 C4 | G4 G4 | A4 A4 | G4/h | F4 F4 | E4 E4 | D4 D4 | C4/h',
+    dynamics: [
+      { index: 0, mark: 'f' },
+      { index: 21, mark: 'p' },
+      { index: 28, mark: 'f' },
+    ],
+  },
+  {
     id: 'song-mary-lamb',
     title: 'Mary Had a Little Lamb',
     description: 'Bài hát thiếu nhi Mỹ, chỉ dùng 4 nốt Đô Rê Mi Sol.',
