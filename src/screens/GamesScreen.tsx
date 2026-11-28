@@ -48,6 +48,7 @@ const STANDALONE_CARD: Record<StandaloneGameId, string> = {
   'tomato-harvest': 'bg-gradient-to-r from-emerald-600 via-lime-500 to-amber-400 shadow-emerald-500/30',
   'f1-racing': 'bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 shadow-red-500/30',
   'note-quiz': 'bg-gradient-to-r from-pink-500 via-fuchsia-500 to-violet-500 shadow-pink-500/30',
+  'rainbow-hands': 'bg-gradient-to-r from-rose-500 via-amber-400 to-sky-500 shadow-sky-500/30',
 };
 
 /** Trò mở thẳng từ lối tắt (route `games.open`); không còn trò / mức đó → danh sách như thường. */

@@ -32,7 +32,7 @@ export const GAME_INFO: Record<GameKind, GameInfo> = {
 };
 
 /** Trò chơi có màn riêng (id = tên route) — thẻ đầu mục Trò chơi, đích lối tắt. */
-export type StandaloneGameId = 'note-hunter' | 'flappy-note' | 'balloon-pop' | 'tomato-harvest' | 'f1-racing' | 'note-quiz';
+export type StandaloneGameId = 'note-hunter' | 'flappy-note' | 'balloon-pop' | 'tomato-harvest' | 'f1-racing' | 'note-quiz' | 'rainbow-hands';
 
 export interface StandaloneGameInfo {
   id: StandaloneGameId;
@@ -94,6 +94,14 @@ export const STANDALONE_GAMES: readonly StandaloneGameInfo[] = [
     icon: '👩‍🏫🎵',
     shortcutIcon: '🎵',
     description: 'Cô giáo đố — bé chạm vào hình nốt đúng trên khuông · cao độ, trường độ · khoá Sol, Fa, Đô · từ 4 tuổi, không cần đàn, không giới hạn thời gian.',
+  },
+  {
+    id: 'rainbow-hands',
+    title: 'Cầu vồng hai bàn tay',
+    shortTitle: 'Cầu vồng hai tay',
+    icon: '🐻🌈🐰',
+    shortcutIcon: '🌈',
+    description: 'Gấu Trái và Thỏ Phải đi qua cầu vồng tám nốt Đô trưởng — từng tay, hai tay cùng bước, lên núi – xuống núi, giữ nhịp · đưa bạn thú về nhà, sưu tầm sticker · đàn MIDI, piano ảo (micro: từng tay).',
   },
 ];
 

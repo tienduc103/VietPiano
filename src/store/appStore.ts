@@ -49,6 +49,8 @@ export type Route =
   | { name: 'f1-racing' }
   /** Đố bé nốt gì?: cô giáo hỏi, bé chạm hình nốt đúng trên khuông (cao độ / trường độ). */
   | { name: 'note-quiz' }
+  /** Cầu vồng hai bàn tay: tám nốt Đô trưởng từng tay / hai tay (docs/rainbow-hands.md). */
+  | { name: 'rainbow-hands' }
   /** 5 ngón – 8 nốt liên tục: chuỗi 8 nốt sinh tự động trong vị trí 5 ngón (tay phải / trái / luân phiên / hai tay). */
   | { name: 'five-finger' }
   /** `fromSongs`: mở từ Thư viện bài hát → nút quay lại / "Về thư viện" trở về trang đó.
@@ -77,6 +79,7 @@ export function initialRoute(search = typeof location === 'undefined' ? '' : loc
   if (screen === 'tomato-harvest') return { name: 'tomato-harvest' };
   if (screen === 'f1-racing') return { name: 'f1-racing' };
   if (screen === 'note-quiz') return { name: 'note-quiz' };
+  if (screen === 'rainbow-hands') return { name: 'rainbow-hands' };
   if (screen === 'five-finger') return { name: 'five-finger' };
   if (screen === 'coach') return { name: 'coach' };
   if (screen === 'technique') return { name: 'technique' };

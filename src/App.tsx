@@ -12,6 +12,7 @@ import { NoteHunterScreen } from './screens/NoteHunterScreen';
 import { FlappyNoteScreen } from './screens/FlappyNoteScreen';
 import { BalloonPopScreen } from './screens/BalloonPopScreen';
 import { TomatoHarvestScreen } from './screens/TomatoHarvestScreen';
+import { RainbowHandsScreen } from './screens/RainbowHandsScreen';
 import { F1RacingScreen } from './screens/F1RacingScreen';
 import { NoteQuizScreen } from './screens/NoteQuizScreen';
 import { SupplementScreen } from './screens/SupplementScreen';
@@ -67,6 +68,7 @@ export function App() {
       {route.name === 'tomato-harvest' && <TimedGameRoute><TomatoHarvestScreen /></TimedGameRoute>}
       {route.name === 'f1-racing' && <TimedGameRoute><F1RacingScreen /></TimedGameRoute>}
       {route.name === 'note-quiz' && <TimedGameRoute><NoteQuizScreen /></TimedGameRoute>}
+      {route.name === 'rainbow-hands' && <TimedGameRoute><RainbowHandsScreen /></TimedGameRoute>}
       {route.name === 'supplement' && <SupplementScreen />}
       {route.name === 'five-finger' && <FiveFingerScreen />}
       {route.name === 'note-discovery' && <NoteDiscoveryScreen />}
@@ -91,7 +93,7 @@ export function App() {
       )}
       {route.name === 'settings' && <SettingsScreen section={route.section} />}
       {/* Màn hình Luyện tập tự đặt nút trong khung khuông nhạc (góc phải dưới có bàn phím ảo + nút điều khiển). */}
-      {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && route.name !== 'flappy-note' && route.name !== 'balloon-pop' && route.name !== 'tomato-harvest' && route.name !== 'f1-racing' && route.name !== 'note-quiz' && route.name !== 'five-finger' && route.name !== 'sound-explore' && (
+      {route.name !== 'practice' && route.name !== 'lesson' && route.name !== 'note-hunter' && route.name !== 'flappy-note' && route.name !== 'balloon-pop' && route.name !== 'tomato-harvest' && route.name !== 'f1-racing' && route.name !== 'note-quiz' && route.name !== 'rainbow-hands' && route.name !== 'five-finger' && route.name !== 'sound-explore' && (
         <FloatingMicNote className="fixed right-[calc(12px+env(safe-area-inset-right,0px))] bottom-[calc(12px+env(safe-area-inset-bottom,0px))]" />
       )}
       {/* TẠM THỜI tắt nút nổi tải lại cứng (Ctrl+F5) — thay bằng nút Cập nhật bản mới nhất ở dòng phiên bản (AppVersion).

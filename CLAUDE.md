@@ -42,6 +42,7 @@ Thêm / đổi module → cập nhật `docs/architecture.md`; ở đây chỉ g
 | `core/curriculum/` | giáo trình cấp 1–6 (docs/curriculum.md), "Làm quen từng nốt" (docs/supplement.md), "Khám phá nốt nhạc" (docs/note-discovery.md), validate, rubric, Luyện tập sau buổi |
 | `core/games/` | trò chơi sau buổi, mục Trò chơi, trò tự do |
 | `core/noteHunter/`, `flappyNote/`, `balloonPop/`, `f1Racing/`, `fiveFinger/` | Săn nốt, Flappy Note, Bóng bay nốt nhạc, F1 Racing, 5 ngón · 8 nốt (docs/five-finger.md) — máy trạng thái thuần |
+| `core/rainbowHands/` | "Cầu vồng hai bàn tay": tám nốt Đô trưởng từng tay / hai tay cùng bước / lên–xuống núi / giữ nhịp, MỘT `RainbowEngine`; micro chỉ chấm một tay (docs/rainbow-hands.md) |
 | `core/noteQuiz/` | "Đố bé nốt gì?" (bé từ 4 tuổi): cô giáo hỏi bằng giọng + chữ, đáp án là HÌNH nốt trên khuông (khoá Sol / Fa / Đô Alto / Đô Tenor), bé chạm ô đúng — không chữ trên ô (docs/note-quiz.md) |
 | `core/soundExplore/` | "Khám phá âm thanh — Cao độ và Trường độ" (bé 4–6 tuổi, nhập môn của "Làm quen từng nốt"): phân loại theo số MIDI + thời gian giữ phím vật lý, 6 hoạt động, góc phụ huynh, AI cục bộ chỉ viết lời (docs/sound-explore.md) |
 | `core/coach/` | AI Piano Coach: log MIDI gốc, chấm theo bản nhạc, nhận xét AI có xác minh, đo độ trễ (docs/ai-coach/) |

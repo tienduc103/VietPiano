@@ -52,6 +52,8 @@ export const STANDALONE_GAME_SKILLS: Record<StandaloneGameId, readonly SkillTag[
   'f1-racing': ['staff-reading', 'reading-speed', 'two-hands'],
   // Chạm chọn hình nốt đúng (cao độ / trường độ) theo câu hỏi của cô — không đồng hồ, không cần đàn.
   'note-quiz': ['staff-reading'],
+  // Tám nốt Đô trưởng từng tay / hai tay cùng bước (số ngón theo mẫu), có chế độ giữ nhịp.
+  'rainbow-hands': ['two-hands', 'fingers', 'keyboard'],
 };
 
 /** Màn luyện có kỹ năng rõ ràng. */
