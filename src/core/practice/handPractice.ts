@@ -12,7 +12,7 @@
  * "Dòng tập" (`PracticeTrack`) là danh sách bước cho PracticeEngine / TempoFollower, kèm chỉ số nốt trên khuông
  * để tô màu và đặt con trỏ đúng nốt đang tập.
  */
-import { DURATION_BEATS, harmonyMidis, noteHand, type Finger, type Hand, type HarmonyNote, type LeftHandStep, type Lesson } from '../lessons/types';
+import { DURATION_BEATS, harmonyMidis, isAccompanimentMidi, noteHand, type Finger, type Hand, type HarmonyNote, type LeftHandStep, type Lesson } from '../lessons/types';
 
 export type PracticeHand = 'both' | 'right' | 'left';
 
@@ -56,7 +56,7 @@ export interface StepGuide {
   chord?: TrackStep;
 }
 
-/** `leftHand` = tay trái theo từng nốt giai điệu (chỉ có khi tập hai tay bài có phần đệm). */
+/** `leftHand` = tay trái theo từng BƯỚC của dòng tập (`leftHandOfSteps`; chỉ có khi tập hai tay bài có phần đệm). */
 export function stepGuide(lesson: Lesson, track: PracticeTrack, leftHand: readonly LeftHandStep[] | undefined, index: number): StepGuide | undefined {
   const step = track.steps[index];
   if (!step) return undefined;
@@ -107,20 +107,44 @@ function totalBeats(lesson: Lesson): number {
   return Math.max(sum(lesson.notes), sum(lesson.accompaniment ?? []));
 }
 
+/**
+ * Các bước giai điệu: mỗi nốt tay phải một bước. Dấu lặng (vd 4 ô dạo đầu chỉ có tay trái) KHÔNG là bước —
+ * Wait Mode không chờ dấu lặng; bước trước dấu lặng kéo dài tới bước kế (Theo nhịp giữ đúng phách).
+ */
 function melodySteps(lesson: Lesson): TrackStep[] {
   let beat = 0;
-  return lesson.notes.map((n, i) => {
-    const step: TrackStep = {
-      midis: [n.midi],
-      pitches: [n.pitch],
-      fingers: [n.finger],
-      startBeat: beat,
-      beats: DURATION_BEATS[n.duration],
-      scoreIndex: i,
-    };
-    beat += step.beats;
-    return step;
+  const steps: TrackStep[] = [];
+  lesson.notes.forEach((n, i) => {
+    const start = beat;
+    beat += DURATION_BEATS[n.duration];
+    if (n.rest) return;
+    steps.push({ midis: [n.midi], pitches: [n.pitch], fingers: [n.finger], startBeat: start, beats: DURATION_BEATS[n.duration], scoreIndex: i });
   });
+  if (steps.length < lesson.notes.length) spanToNextStep(lesson, steps);
+  return steps;
+}
+
+/** Bài mở đầu bằng đoạn dạo đầu: tay phải nghỉ trong khi tay trái đã chơi (vd 4 ô đầu Canon in D trung cấp). */
+export function hasLeadIn(lesson: Pick<Lesson, 'notes' | 'accompaniment'>): boolean {
+  return !!lesson.notes[0]?.rest && !!lesson.accompaniment?.some((c) => c.midis.length > 0);
+}
+
+/**
+ * Chờ nốt hai tay (đàn MIDI), còn ở đoạn dạo đầu (bước 1, chưa đánh nốt giai điệu): nốt tay trái không thuộc bước 1
+ * là người học đánh theo ô dạo đầu → bỏ qua, không tính sai (đoạn dạo đầu không được chấm ở Chờ / Đếm nốt).
+ */
+export function isLeadInAccompanimentMidi(
+  lesson: Pick<Lesson, 'notes' | 'accompaniment'>,
+  state: { index: number; melodyDone: boolean; pendingLeft: readonly number[] },
+  midi: number,
+): boolean {
+  return hasLeadIn(lesson) && state.index === 0 && !state.melodyDone && isAccompanimentMidi(lesson, midi) && !state.pendingLeft.includes(midi);
+}
+
+/** Tay trái theo từng BƯỚC của dòng tập (`accompanimentByNote` theo nốt → theo bước, bỏ dấu lặng). */
+export function leftHandOfSteps(track: PracticeTrack, byNote: readonly LeftHandStep[] | undefined): LeftHandStep[] | undefined {
+  if (!byNote || track.staff !== 'melody') return undefined;
+  return track.steps.map((s) => byNote[s.scoreIndex]);
 }
 
 /** Các bước tay trái: mỗi nốt / hợp âm đệm (bỏ dấu lặng); `singleNotesOnly` → bỏ cả hợp âm. */
@@ -184,10 +208,15 @@ export function isOtherHandMidi(lesson: Pick<Lesson, 'accompaniment' | 'notes' |
 /**
  * Nốt PracticeEngine phải chờ thêm ở từng bước giai điệu (tham số `leftHand` của engine): nốt hoà âm tay phải
  * (`withHarmony` — chỉ khi nốt đến từ đàn MIDI / bàn phím ảo) + tay trái của bước (`left` — tập hai tay có chấm tay trái).
- * Không có gì phải chờ thêm → `undefined` (engine chỉ chờ giai điệu như cũ).
+ * `left` theo từng bước (`leftHandOfSteps`). Không có gì phải chờ thêm → `undefined` (engine chỉ chờ giai điệu như cũ).
  */
-export function melodyStepExtras(lesson: Pick<Lesson, 'notes'>, left: readonly LeftHandStep[] | undefined, withHarmony: boolean): number[][] | undefined {
-  const extras = lesson.notes.map((n, i) => [...(withHarmony ? harmonyMidis(n) : []), ...(left?.[i]?.midis ?? [])]);
+export function melodyStepExtras(
+  lesson: Pick<Lesson, 'notes'>,
+  steps: readonly Pick<TrackStep, 'scoreIndex'>[],
+  left: readonly LeftHandStep[] | undefined,
+  withHarmony: boolean,
+): number[][] | undefined {
+  const extras = steps.map((s, k) => [...(withHarmony ? harmonyMidis(lesson.notes[s.scoreIndex]) : []), ...(left?.[k]?.midis ?? [])]);
   return extras.some((e) => e.length > 0) ? extras : undefined;
 }
 

@@ -21,7 +21,8 @@ export function useListenSample(lesson: Lesson, steps: readonly { startBeat: num
 
   const start = (index: number, bpm: number) => {
     stop();
-    const plan = listenPlanAtBeat(lesson, steps[index]?.startBeat ?? 0);
+    // Bước đầu → phát từ đầu bài (kể cả ô dạo đầu tay phải nghỉ trước bước đầu tiên).
+    const plan = listenPlanAtBeat(lesson, index === 0 ? 0 : (steps[index]?.startBeat ?? 0));
     const ms = soundOutput.playSequence(scheduleNotes(plan.notes, bpm));
     if (ms === 0) return;
     const t0 = performance.now() + START_DELAY_SEC * 1000;

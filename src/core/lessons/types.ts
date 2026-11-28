@@ -206,6 +206,8 @@ export interface LeftHandStep {
  * Tay trái ứng với từng nốt giai điệu (hướng dẫn hai tay + chấm hai tay): nốt/hợp âm đệm bắt đầu trong
  * khoảng [đầu nốt giai điệu i, đầu nốt i+1) thuộc về nốt i — hợp âm ngân qua nhiều nốt giai điệu chỉ đánh một lần.
  * Đệm bắt đầu lúc giai điệu đang ở dấu lặng → gộp vào nốt giai điệu kế tiếp (Wait Mode không chờ dấu lặng).
+ * Riêng đoạn dạo đầu (đệm bắt đầu TRƯỚC nốt giai điệu đầu tiên, vd 4 ô tay trái mở đầu Canon) → không gán cho bước nào:
+ * Wait Mode bắt đầu chờ từ nốt giai điệu đầu tiên, không bắt đánh cả đoạn dạo đầu ở bước 1.
  * Bài không có phần đệm → `undefined`.
  */
 export function accompanimentByNote(lesson: Pick<Lesson, 'notes' | 'accompaniment'>): LeftHandStep[] | undefined {
@@ -219,10 +221,16 @@ export function accompanimentByNote(lesson: Pick<Lesson, 'notes' | 'accompanimen
   }
   const steps: LeftHandStep[] = lesson.notes.map(() => ({ pitches: [], midis: [], fingers: [], held: [] }));
   const chords: { start: number; end: number; chord: AccompanimentNote }[] = [];
+  const firstPlayed = lesson.notes.findIndex((n) => !n.rest);
+  const leadInEnd = firstPlayed > 0 ? starts[firstPlayed] : 0;
   let at = 0;
   for (const chord of lesson.accompaniment) {
     const end = at + DURATION_BEATS[chord.duration];
     chords.push({ start: at, end, chord });
+    if (at < leadInEnd - EPS) {
+      at = end;
+      continue;
+    }
     // Bước đầu tiên bắt đầu sau hợp âm, không phải dấu lặng (hết bài thì lùi về nốt cuối không phải dấu lặng).
     let i = 0;
     while (i + 1 < starts.length && starts[i + 1] <= at + EPS) i++;

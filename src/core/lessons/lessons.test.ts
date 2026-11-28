@@ -6,7 +6,7 @@ import { LESSONS } from './library';
 import { parseAccompaniment, parseNotes, splitMeasures } from './notation';
 import { lessonManager } from './LessonManager';
 import { buildAccompaniment } from './repertoire';
-import { accompanimentByNote, fingerText, isAccompanimentMidi, measureLength, sectionAt, type Hand, type Lesson } from './types';
+import { accompanimentByNote, DURATION_BEATS, fingerText, isAccompanimentMidi, measureLength, sectionAt, type Hand, type Lesson } from './types';
 
 describe('ký hiệu bài học', () => {
   it('phân tích chuỗi nốt với trường độ mặc định', () => {
@@ -113,10 +113,11 @@ describe('thư viện bài học', () => {
     measures.forEach((m, i) => expect(m.beats).toBeCloseTo(i === 0 && lesson.pickup ? lesson.pickup : full, 9));
   });
 
-  it.each(LESSONS.map((l) => [l.id, l] as const))('%s: nốt nằm trong tầm nhận diện micro, không có dấu lặng', (_id, lesson) => {
-    for (const n of lesson.notes) {
-      // Màn Luyện tập (PracticeEngine) chờ từng nốt — dấu lặng chỉ dùng ở bài tiết tấu của giáo trình.
-      expect(n.rest).toBeUndefined();
+  it.each(LESSONS.map((l) => [l.id, l] as const))('%s: nốt nằm trong tầm nhận diện micro; dấu lặng tay phải chỉ ở bài có tay trái chơi', (_id, lesson) => {
+    // Màn Luyện tập không chờ dấu lặng (bỏ khỏi dòng tập) — dấu lặng tay phải chỉ hợp lý khi tay trái vẫn chơi (vd ô dạo đầu Canon).
+    if (lesson.notes.some((n) => n.rest)) expect(lesson.accompaniment?.length, lesson.id).toBeGreaterThan(0);
+    expect(lesson.notes.some((n) => !n.rest)).toBe(true);
+    for (const n of lesson.notes.filter((x) => !x.rest)) {
       expect(n.midi).toBeGreaterThanOrEqual(36);
       // NoteRecognizer nhận tới C8 (108); thư viện cho giai điệu tới Mi6 (88) để giữ đúng quãng bản in (Canon in D lên Rê6).
       expect(n.midi).toBeLessThanOrEqual(88);
@@ -171,9 +172,10 @@ describe('thư viện bài học', () => {
     accMidis.forEach((m) => expect(m).toBeGreaterThanOrEqual(36));
     // Giai điệu là tay phải; mọi nốt đệm thấp hơn giai điệu để lọc được nốt tay trái khi chấm.
     lesson.notes.forEach((n) => expect(n.hand ?? 'right').toBe('right'));
-    expect(Math.max(...accMidis)).toBeLessThan(Math.min(...lesson.notes.map((n) => n.midi)));
+    const played = lesson.notes.filter((n) => !n.rest);
+    expect(Math.max(...accMidis)).toBeLessThan(Math.min(...played.map((n) => n.midi)));
     accMidis.forEach((m) => expect(isAccompanimentMidi(lesson, m)).toBe(true));
-    lesson.notes.forEach((n) => expect(isAccompanimentMidi(lesson, n.midi)).toBe(false));
+    played.forEach((n) => expect(isAccompanimentMidi(lesson, n.midi)).toBe(false));
   });
 
   it('chữ đánh dấu đoạn theo số ô nhịp in trên bản nhạc (ô lấy đà không đánh số)', () => {
@@ -193,10 +195,23 @@ describe('thư viện bài học', () => {
     }
   });
 
-  it.each(withAccompaniment.map((l) => [l.id, l] as const))('%s: mọi nốt đệm được gán cho một nốt giai điệu (chấm hai tay)', (_id, lesson) => {
+  it.each(withAccompaniment.map((l) => [l.id, l] as const))('%s: mọi nốt đệm (trừ đoạn dạo đầu) được gán cho một nốt giai điệu (chấm hai tay)', (_id, lesson) => {
     const left = accompanimentByNote(lesson)!;
     expect(left).toHaveLength(lesson.notes.length);
-    expect(left.flatMap((s) => s.midis)).toEqual(lesson.accompaniment!.flatMap((n) => n.midis));
+    // Đoạn dạo đầu (đệm bắt đầu trước nốt giai điệu đầu tiên) không thuộc bước nào; nốt dấu lặng không mang tay trái.
+    let lead = 0;
+    for (const n of lesson.notes) {
+      if (!n.rest) break;
+      lead += DURATION_BEATS[n.duration];
+    }
+    let at = 0;
+    const afterLead = lesson.accompaniment!.filter((c) => {
+      const ok = at >= lead - 1e-9;
+      at += DURATION_BEATS[c.duration];
+      return ok;
+    });
+    expect(left.flatMap((s) => s.midis)).toEqual(afterLead.flatMap((n) => n.midis));
+    lesson.notes.forEach((n, i) => n.rest && expect(left[i].midis).toEqual([]));
     left.forEach((s) => expect(s.fingers).toHaveLength(s.midis.length));
   });
 

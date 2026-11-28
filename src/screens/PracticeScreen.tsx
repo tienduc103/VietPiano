@@ -42,6 +42,8 @@ import {
   isOtherHandMidi,
   isUngradedHarmonyMidi,
   melodyStepExtras,
+  leftHandOfSteps,
+  isLeadInAccompanimentMidi,
   practiceTrack,
   PRACTICE_HAND_LABEL,
   resultsOnScore,
@@ -155,14 +157,15 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
   const hand = track.hand;
 
   const midis = useMemo(() => track.steps.map((s) => s.midis[0]), [track]);
-  const leftHand = useMemo(() => (hand === 'both' ? accompanimentByNote(lesson) : undefined), [lesson, hand]);
+  // Tay trái theo từng bước (bài có dấu lặng tay phải: bước ≠ nốt trên khuông).
+  const leftHand = useMemo(() => (hand === 'both' ? leftHandOfSteps(track, accompanimentByNote(lesson)) : undefined), [lesson, hand, track]);
   const guideSizes = useMemo(() => distinctStepGuides(lesson, track, leftHand), [lesson, track, leftHand]);
   // Chùm nốt tay phải (quãng 3, quãng 6, hợp âm): đàn MIDI / bàn phím ảo chấm đủ cả chùm; micro chỉ chấm nốt giai điệu.
   const rightChords = hasRightHarmony(lesson);
   const engine = useMemo(() => {
     // Tay trái: nốt thấp nhất của hợp âm là nốt chính, các nốt còn lại chấm như phần "tay trái" của bước.
     // Hai tay / tay phải: nốt hoà âm tay phải (+ tay trái khi tập hai tay) là nốt phụ của bước.
-    const extra = hand === 'left' ? track.steps.map((s) => s.midis.slice(1)) : melodyStepExtras(lesson, leftHand, rightChords);
+    const extra = hand === 'left' ? track.steps.map((s) => s.midis.slice(1)) : melodyStepExtras(lesson, track.steps, leftHand, rightChords);
     return new PracticeEngine(midis, { ...DEFAULT_PRACTICE_CONFIG }, extra);
   }, [midis, track, hand, leftHand, lesson, rightChords]);
   const state = useSyncExternalStore(
@@ -321,6 +324,7 @@ function Practice({ lesson, base }: { lesson: Lesson; base: Lesson }) {
       if (performModeRef.current) return perfRef.current.handleNoteOn(e);
       if (tempoModeRef.current) return void follower.handleOnset(e.source === 'microphone' ? e.time - MIC_LATENCY_MS : e.time);
       const before = engine.getState();
+      if (twoHandsRef.current && isLeadInAccompanimentMidi(lesson, before, e.midi)) return drop('lead-in');
       engine.handleNote(e.midi, e.time);
       tallyRef.current.record(before, engine.getState(), e.midi);
     };

@@ -2,7 +2,20 @@ import { describe, expect, it } from 'vitest';
 import { LESSONS } from '../lessons/library';
 import { DURATION_BEATS, isAccompanimentMidi } from '../lessons/types';
 import { accompanimentByNote } from '../lessons/types';
-import { distinctStepGuides, hasHandChoice, isOtherHandMidi, leftHandSteps, practiceTrack, resultsOnScore, stepGuide, stepIndexAtBeat } from './handPractice';
+import {
+  distinctStepGuides,
+  hasHandChoice,
+  hasLeadIn,
+  isLeadInAccompanimentMidi,
+  isOtherHandMidi,
+  leftHandOfSteps,
+  leftHandSteps,
+  melodyStepExtras,
+  practiceTrack,
+  resultsOnScore,
+  stepGuide,
+  stepIndexAtBeat,
+} from './handPractice';
 import { PracticeEngine, DEFAULT_PRACTICE_CONFIG } from './PracticeEngine';
 import { listenPlanAtBeat } from './listenSample';
 
@@ -204,5 +217,83 @@ describe('chọn tay — PracticeEngine với dòng tay trái', () => {
     expect(engine.handleNote(t.steps[0].midis[0], 1500)).toBe('correct');
     expect(engine.handleNote(t.steps[1].midis[0], 1550)).toBe('ignored'); // sát lần chuyển nốt
     expect(engine.getState().index).toBe(1);
+  });
+});
+
+
+describe('dấu lặng tay phải (Canon in D trung cấp: 4 ô dạo đầu chỉ tay trái)', () => {
+  const canon = lesson('song-canon-in-d-intermediate');
+  const restCount = canon.notes.filter((n) => n.rest).length;
+  const midiOf = (p: string) => canon.accompaniment!.flatMap((c) => c.pitches.map((x, i) => [x, c.midis[i]] as const)).find(([x]) => x === p)![1];
+
+  it('dấu lặng không là bước: bước 1 là Fa#5 ở ô 5 (phách 16); bước trước dấu lặng kéo tới bước kế; tổng phách giữ nguyên', () => {
+    expect(hasLeadIn(canon)).toBe(true);
+    expect(hasLeadIn(romance)).toBe(false);
+    for (const hand of ['both', 'right'] as const) {
+      const t = practiceTrack(canon, hand, false)!;
+      expect(t.steps).toHaveLength(canon.notes.length - restCount);
+      expect(t.steps.every((s) => s.midis[0] >= 0 && !canon.notes[s.scoreIndex].rest)).toBe(true);
+      expect(t.steps[0]).toMatchObject({ pitches: ['F#5'], startBeat: 16, scoreIndex: 4 });
+      // Ô 20: Rê4 Rê5 Đô#5 + lặng đen → Đô#5 kéo hai phách tới Fa#5 ô 21.
+      const cs = t.steps.findIndex((s) => s.startBeat === 19 * 4 + 2);
+      expect(t.steps[cs]).toMatchObject({ pitches: ['C#5'], beats: 2 });
+      const total = canon.notes.reduce((b, n) => b + DURATION_BEATS[n.duration], 0);
+      expect(t.steps[0].startBeat + t.steps.reduce((b, s) => b + s.beats, 0)).toBeCloseTo(total, 9);
+    }
+    // Bài không có dấu lặng: dòng tập như cũ (mỗi nốt một bước, trường độ đúng nốt).
+    const r = practiceTrack(romance, 'right', false)!;
+    expect(r.steps.map((s) => s.beats)).toEqual(romance.notes.map((n) => DURATION_BEATS[n.duration]));
+  });
+
+  it('tay trái theo bước: đoạn dạo đầu không gán cho bước nào; bước 1 chỉ chờ nốt rải của ô 5', () => {
+    const t = practiceTrack(canon, 'both', false)!;
+    const byNote = accompanimentByNote(canon)!;
+    const lead = canon.notes.findIndex((n) => !n.rest);
+    expect(lead).toBe(4);
+    canon.notes.forEach((n, i) => n.rest && expect(byNote[i].midis).toEqual([]));
+    const left = leftHandOfSteps(t, byNote)!;
+    expect(left).toHaveLength(t.steps.length);
+    expect(left[0].pitches).toEqual(['D3', 'F#3', 'A3', 'D3']);
+    const extras = melodyStepExtras(canon, t.steps, left, true)!;
+    expect(extras).toHaveLength(t.steps.length);
+    // Ô 9: quãng ba Rê5 + Fa#5 → Rê5 là nốt hoà âm của bước.
+    const k = t.steps.findIndex((s) => s.startBeat === 8 * 4);
+    expect(extras[k]).toContain(canon.notes[t.steps[k].scoreIndex].harmony![0].midi);
+    expect(stepGuide(canon, t, left, 0)).toMatchObject({ pitch: 'F#5', finger: 4, left: { pitches: ['D3', 'F#3', 'A3', 'D3'] } });
+  });
+
+  it('Chờ nốt hai tay: đánh theo ô dạo đầu không tính sai, rồi chơi trọn bài chỉ chờ nốt tay phải + tay trái từng bước', () => {
+    const t = practiceTrack(canon, 'both', false)!;
+    const left = leftHandOfSteps(t, accompanimentByNote(canon))!;
+    const engine = new PracticeEngine(
+      t.steps.map((s) => s.midis[0]),
+      { ...DEFAULT_PRACTICE_CONFIG, twoHands: true },
+      melodyStepExtras(canon, t.steps, left, true),
+    );
+    let time = 1000;
+    const play = (midi: number) => {
+      time += 200;
+      // Như màn Luyện tập: nốt tay trái của đoạn dạo đầu bỏ trước khi vào engine.
+      if (isLeadInAccompanimentMidi(canon, engine.getState(), midi)) return 'lead-in';
+      return engine.handleNote(midi, time);
+    };
+    // 4 ô dạo đầu (32 nốt rải): không nốt nào bị tính sai, chưa chuyển bước.
+    const intro = canon.accompaniment!.slice(0, 32).flatMap((c) => c.midis);
+    intro.forEach(play);
+    expect(engine.getState()).toMatchObject({ index: 0, wrong: 0, melodyDone: false });
+    // Nốt tay phải sai vẫn là sai.
+    expect(play(midiOf('A2') + 100)).toBe('wrong');
+    // Chơi đúng từng bước tới hết bài.
+    t.steps.forEach((s, i) => {
+      expect(engine.getState().index).toBe(i);
+      for (const m of [...left[i].midis, ...(canon.notes[s.scoreIndex].harmony ?? []).map((h) => h.midi), s.midis[0]]) play(m);
+    });
+    expect(engine.getState().status).toBe('finished');
+    expect(engine.getState().wrong).toBe(1);
+  });
+
+  it('Nghe mẫu từ bước đầu phát cả đoạn dạo đầu (từ phách 0)', () => {
+    expect(listenPlanAtBeat(canon, 0)).toMatchObject({ fromBeat: 0 });
+    expect(listenPlanAtBeat(canon, 0).notes[0].startBeat).toBe(0);
   });
 });

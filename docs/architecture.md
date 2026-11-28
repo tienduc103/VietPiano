@@ -51,6 +51,9 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
   practice/handPractice.ts    chọn tay ở màn Luyện tập cho mọi bài khuông đôi (Hai tay / Tay phải / Tay trái, `practiceHand`;
                              bài hai tay thay phiên `bh-*`: mỗi tay = các nốt của tay đó, micro chấm được cả hai tay):
                              "dòng tập" = bước cho PracticeEngine / TempoFollower + chỉ số nốt trên khuông (`staff` melody | accompaniment);
+                             dấu lặng tay phải KHÔNG là bước (bước trước kéo tới bước kế) → bước ≠ nốt: tay trái / nốt phụ theo bước
+                             (`leftHandOfSteps`, `melodyStepExtras(lesson, steps, …)`); đoạn dạo đầu chỉ tay trái (`hasLeadIn`, vd Canon trung cấp ô 1–4)
+                             không gán cho bước nào, Chờ hai tay bỏ nốt tay trái đánh theo dạo đầu (`isLeadInAccompanimentMidi`);
                              tay trái: mỗi nốt / hợp âm đệm một bước (nốt thấp nhất = nốt chính, còn lại chấm như phần tay trái),
                              micro → bỏ hợp âm (`skippedChords`), toàn hợp âm → không tập được, về tay phải; tay kia làm mờ
                              (`ScoreView dim`), nốt tay kia bỏ qua (`isMelodyMidi` / `isAccompanimentMidi`). Phiên một tay ghi `hand`,
