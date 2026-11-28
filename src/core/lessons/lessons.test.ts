@@ -321,9 +321,9 @@ describe('thư viện bài học', () => {
       expect(repertoire).toHaveLength(50);
       const home = lessonManager.byCategory().flatMap((g) => g.lessons);
       expect(home.filter((l) => l.repertoire)).toEqual([]);
-      // 34 bài hát + 3 bản phối Happy Birthday (Cơ bản / Trung cấp / Nâng cao).
-      expect(home.filter((l) => l.category === 'song')).toHaveLength(37);
-      expect(lessonManager.songs()).toHaveLength(87);
+      // 35 bài hát + 3 bản phối Happy Birthday (Cơ bản / Trung cấp / Nâng cao).
+      expect(home.filter((l) => l.category === 'song')).toHaveLength(38);
+      expect(lessonManager.songs()).toHaveLength(88);
     });
 
     it.each(repertoire.map((l) => [l.id, l] as const))('%s: khuông đôi hai tay, có nguồn, chọn được tay, tập được tay trái, pedal đủ dùng', (_id, l) => {

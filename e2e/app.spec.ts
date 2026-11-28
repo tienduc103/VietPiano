@@ -12,8 +12,8 @@ test('thư viện hiển thị đủ nhóm bài học', async ({ page }) => {
   for (const name of ['Nhận biết nốt', 'Gam', 'Bài tập tay phải', 'Bài tập tay trái', 'Bài tập hai tay', 'Bé tự học theo số ngón tay', 'Bài hát']) {
     await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
   }
-  // 33 bài hát + 3 bản phối Happy Birthday (Cơ bản / Trung cấp / Nâng cao).
-  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(36);
+  // 35 bài hát + 3 bản phối Happy Birthday (Cơ bản / Trung cấp / Nâng cao).
+  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(38);
 });
 
 test('dòng phiên bản hiện ở cuối mọi màn hình', async ({ page }) => {
@@ -848,8 +848,8 @@ test('trang chủ là Dashboard giáo trình; Curriculum Browser có 6 cấp, c�
   // Thư viện bài nằm ngay dưới phần giáo trình của trang chủ; nút "Thư viện" cuộn xuống.
   await page.getByRole('button', { name: 'Về trang chủ' }).click();
   await expect(page.getByTestId('dashboard').getByTestId('library')).toBeAttached();
-  // 33 bài hát + 3 bản phối Happy Birthday (Cơ bản / Trung cấp / Nâng cao).
-  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(36);
+  // 35 bài hát + 3 bản phối Happy Birthday (Cơ bản / Trung cấp / Nâng cao).
+  await expect(page.locator('[data-testid^="lesson-song-"]')).toHaveCount(38);
   // Mép trên thư viện có thể đã lọt vào cuối màn hình (trang chủ ngắn) — so vị trí thay vì "có trong khung nhìn".
   const libraryTop = async () => (await page.getByTestId('library').boundingBox())?.y ?? Infinity;
   expect(await libraryTop()).toBeGreaterThan(400);

@@ -49,6 +49,18 @@ const AULD_RH =
 
 /** Pedal thay mỗi ô nhịp từ ô `first` tới ô `last` (chỉ số ô gồm cả ô lấy đà). */
 const pedalEachMeasure = (first: number, last: number) =>
+/**
+ * Canon in D (trung cấp): tay trái rải hợp âm móc đơn 4 ô theo vòng bè trầm. Bản in lên Rê4 / Si3 ở nốt thứ tư; tay phải xuống tới Si3
+ * nên hạ một quãng 8 (Rê3 / Si2) — tay trái phải thấp hơn mọi nốt tay phải để micro lọc phần đệm.
+ */
+const CANON_LH_ARPEGGIO =
+  'D3/8 F#3/8 A3/8 D3/8 A2/8 C#3/8 E3/8 A3/8 | B2/8 D3/8 F#3/8 B2/8 F#2/8 A2/8 C#3/8 F#3/8 | ' +
+  'G2/8 B2/8 D3/8 G3/8 D2/8 F#2/8 A2/8 D3/8 | G2/8 B2/8 D3/8 G3/8 A2/8 C#3/8 E3/8 A3/8';
+
+/** Canon in D (trung cấp): 4 ô đoạn nhắc lại cuối bài (bản in có dấu nhắc lại). */
+const CANON_INTERMEDIATE_ENDING =
+  'D5/qd A5/8:4 A5/8 B5/8 A5/8 G5/8 | F#5/qd F#5/8:3 F#5/8 G5/8 F#5/8 E5/8 | D5/qd D5/8:4 D5 A4 | D5/8 C5/8 B4/8 C5/8 C#5/h:4';
+
   Array.from({ length: last - first + 1 }, (_, i) => ({ from: first + i, to: first + i }));
 
 /** Năm đoạn của các bài bé ba ngón dài (1 – 2 – 3, 3 – 4 – 5): tròn/trắng → trắng chấm → đen → đen chấm + móc đơn → tổng hợp. */
@@ -955,6 +967,71 @@ const defs: LessonDef[] = [
     pedal: [{ from: 16, to: 16 }],
   },
   {
+  {
+    id: 'song-canon-in-d-intermediate',
+    title: 'Canon in D (trung cấp)',
+    description:
+      'Bản "dễ có số ngón" mức trung cấp (Rê trưởng, nhịp 4/4): tay phải đi qua các biến tấu nốt trắng → quãng ba → nốt đen → móc đơn → móc kép, ' +
+      'tay trái rải hợp âm rồi giữ nốt trắng theo vòng bè trầm Rê – La – Si – Fa thăng – Sol – Rê – Sol – La; 4 ô cuối chơi hai lần. ' +
+      'Đàn MIDI: chấm cả hai tay. Micro: chỉ chấm giai điệu tay phải.',
+    category: 'song',
+    clef: 'grand',
+    timeSignature: [4, 4],
+    keySignature: 'D',
+    difficulty: 3,
+    hand: 'both',
+    // Bản in: nốt trắng = 50.
+    tempo: 100,
+    sections: [
+      { measure: 1, label: 'A' },
+      { measure: 9, label: 'B' },
+      { measure: 17, label: 'C' },
+      { measure: 25, label: 'D' },
+      { measure: 33, label: 'E' },
+      { measure: 41, label: 'F' },
+    ],
+    source:
+      'Johann Pachelbel (khoảng 1680) — phạm vi công cộng; theo bản piano "Canon in D – An easy version with fingering" (Intermediate). ' +
+      'Bài thư viện không có dấu lặng tay phải nên: bỏ 4 ô dạo đầu chỉ có tay trái (giống ô 1–4 ở đây); dấu lặng đen đổi thành ngân nốt ' +
+      'trước (ô 16, 31) hoặc nốt sau vào sớm (ô 26, 30); đoạn nhắc lại ô 41–44 viết ra hai lần; ô 1–8 nốt rải thứ tư tay trái hạ một quãng 8',
+    notation:
+      // A — ô 1–8: nốt trắng rồi quãng ba.
+      'F#5/h:4 E5/h:3 | D5/h:1 C#5/h:3 | B4/h:1 A4/h:2 | B4/h:1 C#5/h:2 | ' +
+      'D5+F#5/h C#5+E5/h | B4+D5/h A4+C#5/h | G4+B4/h F#4+A4/h | G4+B4/h A4+C#5/h | ' +
+      // B — ô 9–16: nốt đen.
+      'D4:1 F#4 A4 G4 | F#4 D4 F#4 E4 | D4 B3:(2) D4:(1) A4:4 | G4 B4 A4 G4:1 | ' +
+      'F#4:(3) D4:2 E4:(1) C#5:3 | D5:(1) F#5:3 A5:5 A4:1 | B4:5 G4:3 A4:4 F#4:2 | D4:1 D5:5 C#5/h:4 | ' +
+      // C — ô 17–24: móc đơn.
+      'D5/8:5 C#5/8 D5/8 D4/8:(1) C#4/8:(2) A4/8 E4/8 F#4/8 | D4/8 D5/8 C#5/8 B4/8:1 C#5/8 F#5/8 A5/8 B5/8 | ' +
+      'G5/8:4 F#5/8 E5/8 G5/8:5 F#5/8:4 E5/8 D5/8:(1) C#5/8:(4) | B4/8:3 A4/8 G4/8:(1) F#4/8:(3) E4/8 G4/8 F#4/8 E4/8 | ' +
+      'D4/8 E4/8 F#4/8 G4/8 A4/8 E4/8 A4/8 G4/8 | F#4/8:2 B4/8 A4/8 G4/8 A4/8:4 G4/8 F#4/8 E4/8:(1) | ' +
+      'D4/8:(2) B3/8 B4/8:3 C#5/8 D5/8 C#5/8 B4/8:(1) A4/8:(4) | G4/8:3 F#4/8 E4/8 B4/8 A4/8 B4/8 A4/8:4 G4/8:2 | ' +
+      // D — ô 25–32: nốt đen / trắng lên Rê6.
+      'F#4:1 F#5:5 E5/h:2 | D5/h F#5/h:2 | B5/h:4 A5/h:2 | B5/h C#6/h | D6 D5:1 C#5/h:(2) | B4/h D5/h | D5/hd:1 D5 | D5 F#5 E5 A5 | ' +
+      // E — ô 33–40: móc kép.
+      'A5/8:5 F#5/16 G5/16 A5/8 F#5/16 G5/16 A5/16 A4/16 B4/16 C#5/16:(3) D5/16:1 E5/16 F#5/16 G5/16 | ' +
+      'F#5/8 D5/16 E5/16 F#5/8 F#4/16:(2) G4/16:1 A4/16:2 B4/16 A4/16 G4/16 A4/16:4 F#4/16 G4/16 A4/16 | ' +
+      'G4/8:3 B4/16 A4/16 G4/8 F#4/16 E4/16 F#4/16:3 E4/16 D4/16 E4/16 F#4/16:(3) G4/16:1 A4/16 B4/16 | ' +
+      'G4/8 B4/16 A4/16 B4/8 C#5/16 D5/16 A4/16:1 B4/16 C#5/16:(3) D5/16:(1) E5/16 F#5/16 G5/16 A5/16 | ' +
+      'F#5/8:3 D5/16 E5/16 F#5/8 E5/16 D5/16 E5/16:3 C#5/16:2 D5/16:(1) E5/16 F#5/16 E5/16 D5/16 C#5/16:(2) | ' +
+      'D5/8 B4/16 C#5/16:3 D5/8 D4/16:1 E4/16 F#4/16 G4/16 F#4/16:2 E4/16 F#4/16 D5/16:4 C#5/16 D5/16 | ' +
+      'B4/8 D5/16 C#5/16 B4/8 A4/16 G4/16:(2) A4/16 G4/16 F#4/16 G4/16 A4/16:(1) B4/16 C#5/16 D5/16 | ' +
+      'B4/8 D5/16 C#5/16 D5/8 C#5/16 B4/16 C#5/16 D5/16 E5/16 D5/16 C#5/16 D5/16 B4/16 C#5/16 | ' +
+      // F — ô 41–48: đoạn nhắc lại (có Đô hoàn ở ô 44 / 48), viết ra hai lần; ô 49 kết.
+      CANON_INTERMEDIATE_ENDING + ' | ' + CANON_INTERMEDIATE_ENDING + ' | D5/w',
+    accompanimentNotation:
+      'D3/8:5 F#3/8:3 A3/8:2 D3/8 A2/8 C#3/8 E3/8 A3/8 | ' + CANON_LH_ARPEGGIO.slice(CANON_LH_ARPEGGIO.indexOf('|') + 2) + ' | ' +
+      CANON_LH_ARPEGGIO + ' | ' +
+      Array.from({ length: 10 }, () => 'D3/h A2/h | B2/h F#2/h | G2/h D2/h | G2/h A2/h').join(' | ') + ' | D3/w',
+    // Bản in không ghi pedal; tay trái đổi hợp âm mỗi nửa ô → thay pedal mỗi hai phách.
+    pedal: [
+      ...Array.from({ length: 48 }, (_, i) => [
+        { from: i, to: i, toBeat: 2 },
+        { from: i, to: i, fromBeat: 2 },
+      ]).flat(),
+      { from: 48, to: 48 },
+    ],
+  },
     id: 'song-tieng-duong-cam',
     title: 'Tiếng dương cầm (Piano sound)',
     titleColor: 'text-rose-600 dark:text-rose-400 font-bold',
