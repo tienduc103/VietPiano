@@ -297,6 +297,8 @@ export function createMeasureNotes(
       return note;
     });
   });
+  // Dấu lặng trọn ô (khuông chỉ có một dấu lặng, vd 4 ô dạo đầu Canon tay phải nghỉ) → căn giữa ô như bản in.
+  if (fullMeasure) staves.forEach((notes) => notes.length === 1 && notes[0].isRest() && notes[0].setCenterAlignment(true));
   return { staves, played, accompaniment };
 }
 
