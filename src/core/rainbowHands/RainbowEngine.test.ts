@@ -239,3 +239,27 @@ describe('RainbowEngine — giữ nhịp', () => {
     expect(e.getRecords()[2].hands.right!.timing).toBe('on-time');
   });
 });
+
+describe('RainbowEngine — ngược chiều', () => {
+  const starts = { left: 36, right: 60 };
+  it('cùng bộ máy: mỗi bước cần đủ hai tay chạy ngược nhau; một vòng = 15 bước, không đếm trùng hai đầu', () => {
+    const e = new RainbowEngine(buildRoute({ hands: 'both', path: 'round', starts, motion: 'contrary' }), { rounds: 1 });
+    e.start(0);
+    // Tay phải đánh nốt của tay trái theo chiều cùng chiều (Rê thay Si) → sai, gán đúng tay trái theo vùng phím.
+    tap(e, 48, 100);
+    tap(e, 60, 120);
+    expect(e.getState().index).toBe(1);
+    expect(tap(e, 38, 400)).toBe('wrong'); // Rê2: sai hướng tay trái
+    expect(e.getState()).toMatchObject({ lastHand: 'left', fixMidi: 47, index: 1 });
+    let t = 600;
+    for (const step of e.getState().steps.slice(1)) {
+      step.notes.forEach((n, k) => tap(e, n.midi, t + k * 30));
+      t += 400;
+    }
+    expect(e.getState()).toMatchObject({ status: 'done', roundsComplete: 1 });
+    const s = summarize(e.getRecords());
+    expect(s.hands.left).toMatchObject({ notes: 15, hits: 15, wrong: 1 });
+    expect(s.sync).toMatchObject({ complete: 15, together: 15 });
+  });
+});
+

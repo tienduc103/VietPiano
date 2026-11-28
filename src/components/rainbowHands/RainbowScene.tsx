@@ -1,6 +1,6 @@
 import type { Hand } from '../../core/lessons/types';
 import { animalFor } from '../../core/rainbowHands/analysis';
-import { degreeName, ROUND_POSITIONS, type RouteStep } from '../../core/rainbowHands/route';
+import { ROUND_POSITIONS, type RouteStep } from '../../core/rainbowHands/route';
 
 /** Nhân vật mỗi tay: khác con vật + nhãn chữ + vị trí (không chỉ dựa vào màu). */
 export const HAND_CHAR: Record<Hand, { icon: string; name: string; tag: string; text: string; ring: string; bg: string }> = {
@@ -17,6 +17,13 @@ const SKIES = [
   'from-orange-300 via-pink-200 to-violet-200 dark:from-orange-950 dark:via-fuchsia-950 dark:to-violet-950',
   'from-indigo-400 via-violet-300 to-sky-200 dark:from-indigo-950 dark:via-violet-950 dark:to-slate-900',
 ];
+
+const short = (name: string) => name.replace(' cao', '↑').replace(' thấp', '↓');
+/** Tên nốt trên đá bước; ngược chiều hai tay khác nốt → "trái/phải". */
+function stoneLabel(step: RouteStep): string {
+  const names = [...new Set(step.notes.map((n) => short(n.name)))];
+  return names.join('/');
+}
 
 /** Toạ độ % của vị trí 0–14 trên vòm cầu vồng (chân trái → đỉnh = Đô cao → chân phải). */
 function arcPoint(pos: number, lane: number): { x: number; y: number } {
@@ -87,12 +94,12 @@ export function RainbowScene({
           <div
             key={s.pos}
             className={`absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[10px] font-black transition-all sm:text-xs ${
-              now ? 'size-9 bg-white text-violet-700 shadow-lg ring-4 ring-fuchsia-400 sm:size-11' : done ? 'size-6 bg-white/90 text-emerald-700 sm:size-7' : 'size-6 bg-white/50 text-slate-600 sm:size-7'
+              now ? 'h-9 min-w-9 px-1 bg-white text-violet-700 shadow-lg ring-4 ring-fuchsia-400 sm:h-11 sm:min-w-11' : done ? 'h-6 min-w-6 px-1 bg-white/90 text-emerald-700 sm:h-7 sm:min-w-7' : 'h-6 min-w-6 px-1 bg-white/50 text-slate-600 sm:h-7 sm:min-w-7'
             }`}
             style={{ left: `${p.x}%`, top: `${p.y}%` }}
             data-testid={now ? 'rainbow-stone-current' : undefined}
           >
-            {done ? '✓' : showNames ? degreeName(s.notes[0].degree).replace(' cao', '↑') : i + 1}
+            {done ? '✓' : showNames ? stoneLabel(s) : i + 1}
           </div>
         );
       })}

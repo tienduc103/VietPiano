@@ -30,7 +30,7 @@ import {
   type WeakSegment,
 } from '../core/rainbowHands/analysis';
 import { RainbowEngine, type EngineState } from '../core/rainbowHands/RainbowEngine';
-import { buildRoute, buildSegment, degreeName, FINGERING_SOURCE_ID, handsOf, placementGuide, START_CHOICES, noteLabel, type HandSet, type RainbowPath } from '../core/rainbowHands/route';
+import { buildRoute, buildSegment, FINGERING_SOURCE, handsOf, isMirrored, placementGuide, START_CHOICES, noteLabel, type HandSet, type RainbowPath, type RouteStep } from '../core/rainbowHands/route';
 import {
   BPM_CHOICES,
   MODE_INFO,
@@ -105,12 +105,19 @@ export function RainbowHandsScreen() {
   }, [profileId]);
 
   const plan = resolvePlan(settings);
+  const startLeft = plan.starts.left;
+  const startRight = plan.starts.right;
   const phase = retry ? retry.phases[retry.index] : null;
   const handSet: HandSet = phase ? phase.hands : plan.hands;
   const hands = handsOf(handSet);
   const steps = useMemo(
-    () => (phase ? buildSegment(phase.from, phase.to, { hands: phase.hands, starts: settings.starts }) : buildRoute({ hands: plan.hands, path: plan.path, starts: settings.starts })),
-    [phase, plan.hands, plan.path, settings.starts],
+    () => {
+      // Vùng phím thật (ngược chiều có thể lùi tay trái); deps là số nguyên để không dựng lại ván mỗi lần vẽ.
+      const route = { starts: { left: startLeft, right: startRight }, motion: plan.motion };
+      return phase ? buildSegment(phase.from, phase.to, { ...route, hands: phase.hands }) : buildRoute({ ...route, hands: plan.hands, path: plan.path });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [phase, plan.hands, plan.path, plan.motion, startLeft, startRight],
   );
   const timing = phase ? 'wait' : plan.timing;
   const rounds = phase ? phase.rounds : plan.rounds;
@@ -174,7 +181,7 @@ export function RainbowHandsScreen() {
       onNoteOff: (e) => engine.noteOff(e.midi),
     },
     inputSource,
-    { baseMidi: settings.starts[hands.includes('right') ? 'right' : 'left'], listening },
+    { baseMidi: plan.starts[hands.includes('right') ? 'right' : 'left'], listening },
   );
 
   // ── Metronome của chế độ giữ nhịp: lên lịch theo đồng hồ âm thanh, mỗi phách một lần ──
@@ -228,7 +235,7 @@ export function RainbowHandsScreen() {
     const criteria = { accuracy: settings.passAccuracy, onTime: settings.passOnTime };
     const roundSummaries = summarizeRounds(records, roundInfos, timing, criteria);
     const summary = summarize(records);
-    const weak = weakSegment(engine.getRecords());
+    const weak = weakSegment(engine.getRecords(), 2, plan.motion);
     const accuracy = meanAccuracy(summary);
     const mode = phase ? 'retry' : settings.mode;
     const stickers = phase || extra ? [] : missionRewards({ roundsTarget: rounds, rounds: roundSummaries, sync: summary.sync, accuracy, previousAccuracy: previousAccuracy(progress, mode, handSet) });
@@ -317,8 +324,8 @@ export function RainbowHandsScreen() {
   // ── Gợi ý trên bàn phím ──
   const pending = running && state.status !== 'celebrating' && state.status !== 'count-in' ? engine.pendingNotes() : [];
   const flash = useKeyFlash(state.lastEventTime, state.lastMidi, state.lastOutcome === 'wrong' ? 'wrong' : state.lastOutcome === 'hit' || state.lastOutcome === 'step' || state.lastOutcome === 'round' ? 'hit' : null);
-  const lo = Math.min(...hands.map((h) => settings.starts[h]));
-  const hi = Math.max(...hands.map((h) => settings.starts[h])) + 12;
+  const lo = Math.min(...hands.map((h) => plan.starts[h]));
+  const hi = Math.max(...hands.map((h) => plan.starts[h])) + 12;
   const showFingers = settings.fingers && settings.hints !== 'none';
   const keyFingers = showFingers ? Object.fromEntries(pending.filter((n) => n.finger).map((n) => [n.midi, n.finger!])) : undefined;
   const pendingLabel = new Map(pending.map((n) => [n.midi, n]));
@@ -327,7 +334,7 @@ export function RainbowHandsScreen() {
     expectedExtra: settings.hints === 'none' ? undefined : new Set(pending.map((n) => n.midi).filter((m) => m !== state.fixMidi)),
     labelFor: (m: number) => {
       const n = pendingLabel.get(m);
-      if (n && settings.hints === 'full') return `${HAND_CHAR[n.hand].tag[0]}·${degreeName(n.degree).replace(' cao', '')}`;
+      if (n && settings.hints === 'full') return `${HAND_CHAR[n.hand].tag[0]}·${n.name.replace(/ (cao|thấp)$/, '')}`;
       return m % 12 === 0 ? midiToLabel(m, 'solfege') : '';
     },
   };
@@ -482,6 +489,15 @@ function meanAccuracy(s: Summary): number | null {
 }
 
 const DIRECTION_TEXT = { up: '⬆ Đi lên', turn: '🔝 Quay đầu', down: '⬇ Đi xuống' } as const;
+/** Ngược chiều: hai tay tách xa nhau rồi gom lại. */
+const CONTRARY_TEXT = { up: '↔ Tách ra', turn: '🔝 Quay đầu', down: '→← Gom lại' } as const;
+const directionText = (step: RouteStep) => (step.motion === 'contrary' ? CONTRARY_TEXT : DIRECTION_TEXT)[step.direction];
+/** Mũi tên hướng của một tay ở bước này. */
+function handArrow(step: RouteStep, hand: Hand): string {
+  if (step.direction === 'turn') return '↺';
+  const up = (step.direction === 'up') !== isMirrored(hand, step.motion);
+  return up ? '⬆' : '⬇';
+}
 
 function StepPanel({ engine, state, hands, current, hints, fingers }: { engine: RainbowEngine; state: EngineState; hands: Hand[]; current: EngineState['steps'][number]; hints: RainbowSettings['hints']; fingers: boolean }) {
   const next = state.steps[state.index + 1] ?? null;
@@ -490,7 +506,7 @@ function StepPanel({ engine, state, hands, current, hints, fingers }: { engine: 
     <section className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-3xl bg-white/90 px-3 py-2 shadow-md ring-2 ring-violet-200 dark:bg-slate-800/90 dark:ring-violet-900" data-testid="rainbow-step-panel">
       <div className="grid justify-items-center gap-0.5 text-center">
         <span className="text-lg font-black text-violet-700 dark:text-violet-300" data-testid="rainbow-direction">
-          {DIRECTION_TEXT[current.direction]}
+          {directionText(current)}
         </span>
         <span className="text-xs font-semibold text-slate-500">
           Bước {Math.min(state.index + 1, state.steps.length)}/{state.steps.length}
@@ -510,13 +526,13 @@ function StepPanel({ engine, state, hands, current, hints, fingers }: { engine: 
               </span>
               <div className="leading-tight">
                 <div className={`text-xs font-black ${c.text}`}>
-                  {h === 'left' ? '◀ TAY TRÁI' : 'TAY PHẢI ▶'} {done && '· ✓ sẵn sàng'}
+                  {h === 'left' ? '◀ TAY TRÁI' : 'TAY PHẢI ▶'} {current.motion === 'contrary' && <span aria-label="hướng">{handArrow(current, h)}</span>} {done && '· ✓ sẵn sàng'}
                 </div>
                 <div className="text-2xl font-black">
-                  {hints === 'none' ? '♪' : degreeName(note.degree)}
+                  {hints === 'none' ? '♪' : note.name}
                   {fingers && hints !== 'none' && note.finger ? <span className="ml-2 text-base font-bold text-slate-600 dark:text-slate-300">ngón {note.finger}</span> : null}
                 </div>
-                {nextNote && hints !== 'none' && <div className="text-xs text-slate-600 dark:text-slate-300">tiếp: {degreeName(nextNote.degree)}</div>}
+                {nextNote && hints !== 'none' && <div className="text-xs text-slate-600 dark:text-slate-300">tiếp: {nextNote.name}</div>}
               </div>
             </div>
           );
@@ -623,7 +639,7 @@ function ReadyOverlay({
       <ul className="grid gap-1 text-left text-sm" data-testid="rainbow-placement">
         {hands.map((h) => (
           <li key={h} className={`rounded-xl px-3 py-1 ${HAND_CHAR[h].bg}`}>
-            {HAND_CHAR[h].icon} {placementGuide(h, settings.starts[h])}
+            {HAND_CHAR[h].icon} {placementGuide(h, plan.starts[h], plan.motion)}
           </li>
         ))}
       </ul>
@@ -856,7 +872,7 @@ function SettingsModal({ settings, micOnly, onChange, onClose }: { settings: Rai
           <Segmented value={settings.tempoHands} onChange={(tempoHands: HandSet) => onChange({ tempoHands })} options={[{ value: 'both', label: 'Hai tay' }, { value: 'left', label: 'Tay trái' }, { value: 'right', label: 'Tay phải' }]} />
         </Row>
       )}
-      {(settings.mode === 'single' || settings.mode === 'steps') && (
+      {(settings.mode === 'single' || settings.mode === 'steps' || settings.mode === 'contrary') && (
         <Row label="Đường đi">
           <Segmented value={settings.path} onChange={(path: RainbowPath) => onChange({ path })} options={(['up', 'down', 'round'] as const).map((p) => ({ value: p, label: PATH_LABEL[p] }))} />
         </Row>
@@ -872,8 +888,13 @@ function SettingsModal({ settings, micOnly, onChange, onClose }: { settings: Rai
       ))}
       <ul className="-mt-2 grid gap-1 text-xs text-slate-600 dark:text-slate-300">
         {hands.map((h) => (
-          <li key={h}>{placementGuide(h, settings.starts[h])}</li>
+          <li key={h}>{placementGuide(h, plan.starts[h], plan.motion)}</li>
         ))}
+        {plan.motion === 'contrary' && plan.starts.left !== settings.starts.left && (
+          <li className="font-semibold text-violet-700 dark:text-violet-300" data-testid="rainbow-contrary-shift">
+            Ngược chiều: tay trái tự lùi xuống vùng {noteLabel(plan.starts.left)}–{noteLabel(plan.starts.left + 12)} để hai tay không cùng bấm một phím ở bước đầu (như bài mẫu).
+          </li>
+        )}
       </ul>
       <Row label="Số vòng của nhiệm vụ">
         <Segmented value={String(settings.rounds)} onChange={(v) => onChange({ rounds: Number(v) as RainbowSettings['rounds'] })} options={ROUND_CHOICES.map((n) => ({ value: String(n), label: `${n} vòng` }))} />
@@ -914,7 +935,7 @@ function SettingsModal({ settings, micOnly, onChange, onClose }: { settings: Rai
         />
       </Row>
       <p className="-mt-2 text-xs text-slate-500">Đầy đủ: tô phím + tên nốt + số ngón · Vừa: tô nhạt, không tên trên phím · Ít: chỉ tô phím cần sửa sau khi sai.</p>
-      <Toggle checked={settings.fingers} onChange={(fingers) => onChange({ fingers })} label={`Hiện số ngón theo mẫu bài “Gam Đô trưởng hai tay cùng chiều” (${FINGERING_SOURCE_ID})`} />
+      <Toggle checked={settings.fingers} onChange={(fingers) => onChange({ fingers })} label={`Hiện số ngón theo mẫu bài “${FINGERING_SOURCE[plan.motion].title}” (${FINGERING_SOURCE[plan.motion].id})`} />
       <Row label="Âm lượng hiệu ứng">
         <Segmented
           value={settings.volume}

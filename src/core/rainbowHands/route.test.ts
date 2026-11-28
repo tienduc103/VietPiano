@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { exerciseById } from '../technique/catalog';
-import { buildRoute, buildSegment, DEFAULT_STARTS, degreeName, FINGERING_SOURCE_ID, placementGuide, ROUND_POSITIONS, verifiedFingers } from './route';
+import { buildRoute, buildSegment, DEFAULT_STARTS, degreeName, effectiveStarts, FINGERING_SOURCE, FINGERING_SOURCE_ID, noteNameAt, placementGuide, ROUND_POSITIONS, verifiedFingers } from './route';
 
 const starts = DEFAULT_STARTS;
 
@@ -55,5 +55,33 @@ describe('Lộ trình tám nốt', () => {
     expect(placementGuide('left', 48)).toContain('ngón 5 (ngón út) lên Đô3');
     expect(placementGuide('left', 48)).toContain('sang TRÁI 7 phím trắng');
     expect(placementGuide('right', 72)).toContain('sang PHẢI 7 phím trắng');
+  });
+
+  it('ngược chiều: lộ trình + số ngón khớp TỪNG NỐT bài mẫu "Gam Đô trưởng hai tay ngược chiều"', () => {
+    const lesson = exerciseById(FINGERING_SOURCE.contrary.id)!.lesson;
+    const starts = effectiveStarts(DEFAULT_STARTS, 'contrary');
+    expect(starts).toEqual({ left: 36, right: 60 });
+    const route = buildRoute({ hands: 'both', path: 'round', starts, motion: 'contrary' });
+    expect(route.map((s) => s.notes[1].midi)).toEqual(lesson.notes.map((n) => n.midi));
+    expect(route.map((s) => s.notes[0].midi)).toEqual(lesson.accompaniment!.map((a) => a.midis[0]));
+    expect(route.map((s) => s.notes[0].midi)).toEqual([48, 47, 45, 43, 41, 40, 38, 36, 38, 40, 41, 43, 45, 47, 48]);
+    expect(route.map((s) => s.notes[0].finger)).toEqual([1, 2, 3, 1, 2, 3, 4, 5, 4, 3, 2, 1, 3, 2, 1]);
+    expect(route.map((s) => s.notes[1].finger)).toEqual(verifiedFingers('contrary').right);
+    // Hai tay không bao giờ cùng một phím; tay trái luôn thấp hơn.
+    for (const s of route) expect(s.notes[0].midi).toBeLessThan(s.notes[1].midi);
+    expect(route.filter((s) => s.notes[1].midi === 72)).toHaveLength(1);
+    expect(route.filter((s) => s.notes[0].midi === 36)).toHaveLength(1);
+  });
+
+  it('ngược chiều: vùng tay trái chỉ lùi khi cần; tên nốt theo tay; hướng dẫn đặt tay', () => {
+    expect(effectiveStarts({ left: 48, right: 72 }, 'contrary')).toEqual({ left: 48, right: 72 });
+    expect(effectiveStarts({ left: 48, right: 60 }, 'parallel')).toEqual({ left: 48, right: 60 });
+    expect(buildRoute({ hands: 'left', path: 'up', starts: { left: 36, right: 60 }, motion: 'contrary' }).map((s) => s.notes[0].midi)).toEqual([48, 47, 45, 43, 41, 40, 38, 36]);
+    expect([noteNameAt('left', 2, 'contrary'), noteNameAt('right', 2, 'contrary'), noteNameAt('left', 0, 'contrary')]).toEqual(['La', 'Mi', 'Đô']);
+    expect(noteNameAt('left', 7, 'contrary')).toBe('Đô thấp');
+    expect(noteNameAt('right', 7, 'contrary')).toBe('Đô cao');
+    expect(placementGuide('left', 36, 'contrary')).toContain('ngón 1 (ngón cái) lên Đô3');
+    expect(placementGuide('left', 36, 'contrary')).toContain('đi XUỐNG');
+    expect(placementGuide('right', 60, 'contrary')).toContain('ngón 1 (ngón cái) lên Đô4');
   });
 });

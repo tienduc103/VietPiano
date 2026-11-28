@@ -4,10 +4,11 @@
  */
 import type { Hand } from '../lessons/types';
 import type { TimingMode } from './RainbowEngine';
-import { DEFAULT_STARTS, isValidStart, type HandSet, type RainbowPath } from './route';
+import { DEFAULT_STARTS, effectiveStarts, isValidStart, type HandSet, type Motion, type RainbowPath } from './route';
 
-/** A từng tay · B hai tay cùng bước · C lên núi – xuống núi · D giữ nhịp. (Ngược chiều: giai đoạn sau, chưa có.) */
-export type RainbowMode = 'single' | 'steps' | 'mountain' | 'tempo';
+/** A từng tay · B hai tay cùng bước · C lên núi – xuống núi · D giữ nhịp · E hai tay ngược chiều. */
+export type RainbowMode = 'single' | 'steps' | 'mountain' | 'tempo' | 'contrary';
+export const RAINBOW_MODES: readonly RainbowMode[] = ['single', 'steps', 'mountain', 'tempo', 'contrary'];
 export type HintLevel = 'full' | 'light' | 'none';
 export type EffectVolume = 'off' | 'low' | 'mid';
 
@@ -16,6 +17,7 @@ export const MODE_INFO: Record<RainbowMode, { label: string; icon: string; hint:
   steps: { label: 'Hai tay cùng bước', icon: '🤝', hint: 'Mỗi bước một cặp nốt. Game chờ đủ cả hai tay mới đi tiếp.' },
   mountain: { label: 'Lên núi – xuống núi', icon: '⛰️', hint: 'Hai tay chạy lên rồi xuống trọn vòng — đưa các bạn thú về nhà.' },
   tempo: { label: 'Giữ nhịp', icon: '🥁', hint: 'Đếm vào rồi nhịp chạy đều — nốt trễ hoặc thiếu được ghi lại.' },
+  contrary: { label: 'Hai tay ngược chiều', icon: '↔️', hint: 'Tay phải đi lên khi tay trái đi xuống — hai tay tách ra rồi gom lại, cùng số ngón cùng lúc.' },
 };
 
 export const ROUND_CHOICES = [1, 3, 5] as const;
@@ -32,7 +34,7 @@ export interface RainbowSettings {
   hand: Hand;
   /** Tay của chế độ Giữ nhịp. */
   tempoHands: HandSet;
-  /** Đường đi của chế độ A / B (C, D luôn cả vòng). */
+  /** Đường đi của chế độ A / B / E (C, D luôn cả vòng). */
   path: RainbowPath;
   /** Nốt Đô bắt đầu của từng tay. */
   starts: Record<Hand, number>;
@@ -74,7 +76,7 @@ export function sanitizeSettings(raw: unknown): RainbowSettings {
   const r = raw as Partial<Record<keyof RainbowSettings, unknown>>;
   const starts = (r.starts && typeof r.starts === 'object' ? r.starts : {}) as Partial<Record<Hand, unknown>>;
   return {
-    mode: pick(r.mode, ['single', 'steps', 'mountain', 'tempo'] as const, d.mode),
+    mode: pick(r.mode, RAINBOW_MODES, d.mode),
     hand: pick(r.hand, ['left', 'right'] as const, d.hand),
     tempoHands: pick(r.tempoHands, ['left', 'right', 'both'] as const, d.tempoHands),
     path: pick(r.path, ['up', 'down', 'round'] as const, d.path),
@@ -97,6 +99,9 @@ export function sanitizeSettings(raw: unknown): RainbowSettings {
 export interface RainbowPlan {
   hands: HandSet;
   path: RainbowPath;
+  motion: Motion;
+  /** Vùng phím thật (ngược chiều có thể lùi tay trái — `effectiveStarts`). */
+  starts: Record<Hand, number>;
   timing: TimingMode;
   rounds: number;
   /** Nhịp thật (đã áp "Tập chậm"). */
@@ -105,15 +110,18 @@ export interface RainbowPlan {
 
 export function resolvePlan(s: RainbowSettings): RainbowPlan {
   const bpm = s.slow ? Math.round(s.bpm * SLOW_FACTOR) : s.bpm;
+  const base = { rounds: s.rounds, bpm, motion: 'parallel' as Motion, starts: s.starts };
   switch (s.mode) {
     case 'single':
-      return { hands: s.hand, path: s.path, timing: 'wait', rounds: s.rounds, bpm };
+      return { ...base, hands: s.hand, path: s.path, timing: 'wait' };
     case 'steps':
-      return { hands: 'both', path: s.path, timing: 'wait', rounds: s.rounds, bpm };
+      return { ...base, hands: 'both', path: s.path, timing: 'wait' };
     case 'mountain':
-      return { hands: 'both', path: 'round', timing: 'wait', rounds: s.rounds, bpm };
+      return { ...base, hands: 'both', path: 'round', timing: 'wait' };
     case 'tempo':
-      return { hands: s.tempoHands, path: 'round', timing: 'tempo', rounds: s.rounds, bpm };
+      return { ...base, hands: s.tempoHands, path: 'round', timing: 'tempo' };
+    case 'contrary':
+      return { ...base, hands: 'both', path: s.path, timing: 'wait', motion: 'contrary', starts: effectiveStarts(s.starts, 'contrary') };
   }
 }
 

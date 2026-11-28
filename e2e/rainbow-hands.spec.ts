@@ -188,3 +188,37 @@ test('đàn MIDI rút dây giữa chừng → tạm dừng "Mất kết nối", 
   // Phần đánh dở bị bỏ: vẫn chờ cả hai nốt của bước 1.
   await expect(game(page)).toHaveAttribute('data-expected', '50,62');
 });
+
+test('hai tay ngược chiều: tay trái tự lùi xuống Đô2–Đô3 như bài mẫu, tay trái đi xuống khi tay phải đi lên; đủ vòng → tổng kết', async ({ page }) => {
+  await page.goto('/?screen=rainbow-hands');
+  await page.getByTestId('rainbow-open-settings').click();
+  const dlg = page.getByRole('dialog');
+  await dlg.getByRole('button', { name: 'Hai tay ngược chiều' }).click();
+  await dlg.getByRole('button', { name: '1 vòng' }).click();
+  await expect(page.getByTestId('rainbow-contrary-shift')).toContainText('Đô2–Đô3');
+  await expect(dlg).toContainText('tech-l3-scale-c-contrary');
+  await page.getByTestId('rainbow-close-modal').click();
+  await expect(page.getByTestId('rainbow-placement')).toContainText('Tay trái: đặt ngón 1 (ngón cái) lên Đô3');
+  await page.getByTestId('rainbow-start').click();
+  await expect(game(page)).toHaveAttribute('data-mode', 'contrary');
+  await expect(game(page)).toHaveAttribute('data-expected', '48,60');
+  await expect(page.getByTestId('rainbow-direction')).toHaveText('↔ Tách ra');
+
+  await pressTogether(page, [48, 60]);
+  await expect(game(page)).toHaveAttribute('data-step', '1');
+  await expect(game(page)).toHaveAttribute('data-expected', '47,62');
+  await expect(page.getByTestId('rainbow-card-left')).toContainText('⬇');
+  await expect(page.getByTestId('rainbow-card-left')).toContainText('Si');
+  await expect(page.getByTestId('rainbow-card-right')).toContainText('⬆');
+  await page.waitForTimeout(150);
+  // Tay trái đi nhầm hướng (lên Rê3) → nhắc riêng tay trái, giữ bước.
+  await pressTogether(page, [50]);
+  await expect(page.getByTestId('rainbow-feedback')).toContainText('Tay trái: thử phím Si2');
+  await expect(game(page)).toHaveAttribute('data-step', '1');
+
+  await playRound(page, 14);
+  await expect(page.getByTestId('rainbow-result')).toBeVisible();
+  await expect(page.getByTestId('rainbow-stat-complete')).toContainText('1/1');
+  await expect(page.getByTestId('rainbow-stat-acc-right')).toContainText('100%');
+  await expect(page.getByTestId('rainbow-stat-sync')).toContainText('15 · 15');
+});

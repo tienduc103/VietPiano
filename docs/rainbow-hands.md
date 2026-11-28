@@ -1,6 +1,6 @@
 # Cầu vồng hai bàn tay
 
-Trò chơi luyện **tám nốt Đô trưởng** bằng từng tay và hai tay cùng chiều. Gấu Trái (tay trái) và Thỏ Phải (tay phải)
+Trò chơi luyện **tám nốt Đô trưởng** bằng từng tay, hai tay cùng chiều và hai tay ngược chiều. Gấu Trái (tay trái) và Thỏ Phải (tay phải)
 đi qua cầu vồng; xong mỗi vòng một bạn thú về nhà và cầu vồng sáng thêm một mảnh.
 
 - Màn: `screens/RainbowHandsScreen.tsx`, route `rainbow-hands`, `?screen=rainbow-hands`, thẻ trong mục **Trò chơi**
@@ -19,6 +19,13 @@ Trò chơi luyện **tám nốt Đô trưởng** bằng từng tay và hai tay c
   (trừ phím chung Đô4 khi mặc định, không bao giờ cùng bước). `placementGuide` mô tả vị trí trên đàn thật theo Đô giữa.
 - Số ngón: đọc từ bài kỹ thuật **"Gam Đô trưởng hai tay cùng chiều"** (`tech-l3-scale-c-hands`: phải 1 2 3 1 2 3 4 5 4 3 2 1 3 2 1,
   trái 5 4 3 2 1 3 2 1 2 3 1 2 3 4 5). Test so từng nốt với bài đó; bài đổi / mất → không hiện số ngón (không tự suy diễn).
+- **Ngược chiều** (`motion: 'contrary'`, thêm 28/11/2026 theo yêu cầu người dùng): lộ trình + số ngón lấy từ bài kỹ thuật
+  **"Gam Đô trưởng hai tay ngược chiều"** (`tech-l3-scale-c-contrary`): tay phải Đô4 → Đô5 → Đô4 (như cùng chiều), tay trái Đô3 đi
+  XUỐNG Đô2 rồi về Đô3, ngón trái 1 2 3 1 2 3 4 5 4 3 2 1 3 2 1. Test so TỪNG NỐT + ngón với bài mẫu. Vẫn 15 vị trí, Đô hai đầu một lần.
+  Đô cao vùng tay trái phải thấp hơn Đô tay phải (không thì bước đầu hai tay cùng một phím) → vùng mặc định tự lùi tay trái xuống
+  Đô2–Đô3 (`effectiveStarts`, ghi rõ trong Phần phụ huynh); tay phải Đô5 + tay trái Đô3 thì giữ nguyên. Tên cho bé: hai tay đều bắt đầu
+  ở "Đô", tay phải lên "Đô cao", tay trái xuống "Đô thấp" (`noteNameAt`). Thẻ bước có mũi tên ⬆ / ⬇ từng tay, hướng chung "↔ Tách ra" /
+  "→← Gom lại". Lỗi gán tay theo vùng phím như cùng chiều (vùng trái Đô2–Đô3 không chồng tay phải).
 
 ## Bốn chế độ — một bộ máy (`settings.ts` → `resolvePlan` → `RainbowEngine`)
 
@@ -28,10 +35,11 @@ Trò chơi luyện **tám nốt Đô trưởng** bằng từng tay và hai tay c
 | B Hai tay cùng bước (mặc định) | hai tay | lên / xuống / cả vòng | chờ |
 | C Lên núi – xuống núi | hai tay | cả vòng | chờ |
 | D Giữ nhịp | hai tay / trái / phải | cả vòng | nhịp chạy (♩ phụ huynh chọn) |
+| E Hai tay ngược chiều | hai tay | lên (tách ra) / xuống (gom lại) / cả vòng | chờ |
 
 Nhiệm vụ 1 / 3 / 5 vòng ở mọi chế độ. Xong nhiệm vụ → dừng hẳn ở màn tổng kết (điểm dừng + "Nghỉ thôi");
-"Chơi thêm 1 vòng" phải bấm, mỗi lần một vòng. **Hai tay ngược chiều chưa làm** (giai đoạn sau: cần bài luyện + kiểm thử riêng
-rồi mới đưa lên giao diện).
+"Chơi thêm 1 vòng" phải bấm, mỗi lần một vòng. Chế độ E dùng cùng `RainbowEngine` (chỉ khác lộ trình); "Tập lại đoạn này"
+ở chế độ E giữ chiều ngược (tay khó tập riêng đúng chiều của nó, rồi ghép hai tay).
 
 ## Chấm (`RainbowEngine.ts`)
 
@@ -91,9 +99,11 @@ Hiệu ứng âm thanh chỉ kêu khi xong vòng, âm lượng Tắt / Nhỏ / V
 - Unit (`src/core/rainbowHands/*.test.ts`): đủ hai tay mới qua bước, giữ phím không thêm bước, không đếm trùng Đô cao,
   vòng sau cần nhấn Đô mới, đủ nốt ≠ cùng lúc, sai rồi sửa đúng bước + gán đúng tay, chống nhảy, micro không chắc, tạm dừng / mất kết nối
   không tính lỗi, ván mới không mang nốt / điểm cũ, số vòng khớp bản ghi, giữ nhịp (đếm vào, trễ, thiếu, một tay bỏ trống, nghỉ giữa vòng,
-  tạm dừng đếm vào lại), tổng kết / đoạn yếu / nhận xét / gợi ý tăng tốc / sticker / lưu theo hồ sơ.
+  tạm dừng đếm vào lại), tổng kết / đoạn yếu / nhận xét / gợi ý tăng tốc / sticker / lưu theo hồ sơ; ngược chiều: khớp từng nốt + ngón
+  bài mẫu, vùng tay trái tự lùi, hai tay không bao giờ cùng phím, chấm đủ hai tay + gán lỗi đúng tay, đoạn yếu mang tên nốt của tay đó.
 - e2e (`e2e/rainbow-hands.spec.ts`, Chromium, bàn phím ảo + Web MIDI GIẢ): mở từ Trò chơi, hai tay cùng bước + sai một tay,
-  một vòng → tổng kết + sticker + dừng, chơi thêm; từng tay + giữ phím; giữ nhịp tự chạy khi không bấm; rút đàn MIDI → tạm dừng không tính lỗi.
+  một vòng → tổng kết + sticker + dừng, chơi thêm; từng tay + giữ phím; giữ nhịp tự chạy khi không bấm; rút đàn MIDI → tạm dừng không tính lỗi;
+  ngược chiều: vùng tự lùi, hướng từng tay, tay trái đi nhầm hướng được nhắc riêng, đủ vòng → tổng kết.
 - Đây là dữ liệu mô phỏng — **không** chứng minh đàn thật / micro thật / iPad chạy đúng.
 
 ## Checklist thử thật (chưa chạy — đánh dấu + ghi thiết bị, ngày)
@@ -107,12 +117,13 @@ Hiệu ứng âm thanh chỉ kêu khi xong vòng, âm lượng Tắt / Nhỏ / V
 - [ ] iPad Safari, micro + chế độ hai tay → nút Bắt đầu khoá, có giải thích.
 - [ ] iPad Safari, micro: thu hồi quyền micro giữa chừng → "Mất kết nối".
 - [ ] iPad bàn phím ảo đa chạm: hai tay cùng bước bằng hai ngón.
+- [ ] Đàn MIDI thật, ngược chiều: hai ngón cái đặt Đô3 / Đô4, tách ra – gom lại; giáo viên xác nhận vùng tự lùi Đô2–Đô3 phù hợp với bé.
 - [ ] Hiệu ứng âm thanh (MIDI) không che tiếng đàn; với micro không có hiệu ứng.
 - [ ] Trẻ thật: lời nhắc dễ hiểu, muốn chơi lại nhiều vòng, điểm dừng sau nhiệm vụ rõ ràng; dark mode + iPad dọc không che nút.
 
 ## Giới hạn còn tồn tại
 
 - Micro không chấm hai tay (xem trên). Không nhận biết ngón tay / tư thế / bàn tay thật — số ngón chỉ là hướng dẫn theo mẫu bài.
-- Chỉ một bài Đô trưởng; chưa có hai tay ngược chiều, chưa có giọng cô giáo cho màn này.
+- Chỉ một bài Đô trưởng; chưa có giọng cô giáo cho màn này. Ngược chiều chưa có chế độ giữ nhịp riêng (Giữ nhịp chỉ cùng chiều).
 - Đô bắt đầu chỉ chọn trong Đô2/Đô3 (trái) và Đô4/Đô5 (phải); phụ huynh chưa tự đặt số ngón riêng (chỉ bật / tắt số ngón theo mẫu).
 - Bàn phím máy tính (demo) phủ 17 nửa cung từ một nốt Đô → không với hết hai tay.

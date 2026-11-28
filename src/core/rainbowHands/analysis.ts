@@ -8,7 +8,7 @@
  */
 import type { Hand } from '../lessons/types';
 import type { HandMark, RoundInfo, StepRecord, TimingMode } from './RainbowEngine';
-import { degreeAt, degreeName } from './route';
+import { noteNameAt, type Motion } from './route';
 
 export interface PassCriteria {
   /** Độ chính xác tối thiểu MỖI tay. */
@@ -125,7 +125,7 @@ export interface WeakSegment {
  * Đoạn nên tập lại: vị trí có nhiều lỗi CHẮC CHẮN nhất (nốt sai đã xác định + giữ nhịp: thiếu nốt) của một tay,
  * tối thiểu `minErrors`. Lần micro nghe không chắc KHÔNG tính.
  */
-export function weakSegment(records: readonly StepRecord[], minErrors = 2): WeakSegment | null {
+export function weakSegment(records: readonly StepRecord[], minErrors = 2, motion: Motion = 'parallel'): WeakSegment | null {
   const counts = new Map<string, { hand: Hand; pos: number; errors: number }>();
   for (const r of records) {
     for (const [h, m] of Object.entries(r.hands) as [Hand, HandMark][]) {
@@ -148,7 +148,7 @@ export function weakSegment(records: readonly StepRecord[], minErrors = 2): Weak
     toPos,
     practiceFrom: Math.max(0, fromPos - 1),
     practiceTo: Math.min(14, toPos + 1),
-    label: `${degreeName(degreeAt(fromPos))}–${degreeName(degreeAt(toPos))}`,
+    label: `${noteNameAt(best.hand, fromPos, motion)}–${noteNameAt(best.hand, toPos, motion)}`,
     errors: best.errors,
   };
 }

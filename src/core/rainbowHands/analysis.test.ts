@@ -52,6 +52,21 @@ describe('Tổng kết', () => {
     expect(retryPlan(weak, false)).toHaveLength(1);
   });
 
+  it('ngược chiều: đoạn hay sai mang tên nốt của chính tay đó', () => {
+    const e = new RainbowEngine(buildRoute({ hands: 'both', path: 'round', starts: { left: 36, right: 60 }, motion: 'contrary' }), { rounds: 1 });
+    e.start(0);
+    let t = 0;
+    for (const step of e.getState().steps) {
+      if (step.pos === 3) {
+        tap(e, 42, (t += 200)); // Fa thăng 2 thay Sol 2 (tay trái), hai lần
+        tap(e, 42, (t += 200));
+      }
+      step.notes.forEach((n) => tap(e, n.midi, (t += 200)));
+    }
+    // Tay trái ngược chiều: vị trí 2 → 3 là La → Sol.
+    expect(weakSegment(e.getRecords(), 2, 'contrary')).toMatchObject({ hand: 'left', label: 'La–Sol', errors: 2 });
+  });
+
   it('lỗi micro không chắc chắn không tạo đề xuất tập lại', () => {
     const e = new RainbowEngine(buildRoute({ hands: 'right', path: 'up', starts: DEFAULT_STARTS }), { rounds: 1 });
     e.start(0);
@@ -88,13 +103,18 @@ describe('Cài đặt + lưu theo hồ sơ', () => {
 
   it('cài đặt hỏng → mặc định; chế độ → kế hoạch dùng chung một engine', () => {
     expect(sanitizeSettings(null)).toEqual(DEFAULT_RAINBOW_SETTINGS);
-    expect(sanitizeSettings({ mode: 'contrary', rounds: 7, starts: { left: 60, right: 72 }, bpm: 61 })).toMatchObject({ mode: 'steps', rounds: 3, starts: { left: 48, right: 72 }, bpm: 60 });
+    expect(sanitizeSettings({ mode: 'mirror', rounds: 7, starts: { left: 60, right: 72 }, bpm: 61 })).toMatchObject({ mode: 'steps', rounds: 3, starts: { left: 48, right: 72 }, bpm: 60 });
     expect(resolvePlan({ ...DEFAULT_RAINBOW_SETTINGS, mode: 'single', hand: 'left', path: 'up' })).toMatchObject({ hands: 'left', path: 'up', timing: 'wait' });
     expect(resolvePlan({ ...DEFAULT_RAINBOW_SETTINGS, mode: 'mountain', path: 'up' })).toMatchObject({ hands: 'both', path: 'round' });
     expect(resolvePlan({ ...DEFAULT_RAINBOW_SETTINGS, mode: 'tempo', bpm: 60, slow: true })).toMatchObject({ timing: 'tempo', bpm: 45 });
     expect(needsTwoNotes({ ...DEFAULT_RAINBOW_SETTINGS, mode: 'single' })).toBe(false);
     expect(needsTwoNotes({ ...DEFAULT_RAINBOW_SETTINGS, mode: 'tempo', tempoHands: 'right' })).toBe(false);
     expect(needsTwoNotes(DEFAULT_RAINBOW_SETTINGS)).toBe(true);
+    // Ngược chiều: chế độ hai tay, chọn đường đi, vùng tay trái tự lùi khi chạm tay phải.
+    expect(resolvePlan({ ...DEFAULT_RAINBOW_SETTINGS, mode: 'contrary', path: 'up' })).toMatchObject({ hands: 'both', path: 'up', motion: 'contrary', timing: 'wait', starts: { left: 36, right: 60 } });
+    expect(resolvePlan(DEFAULT_RAINBOW_SETTINGS)).toMatchObject({ motion: 'parallel', starts: { left: 48, right: 60 } });
+    expect(needsTwoNotes({ ...DEFAULT_RAINBOW_SETTINGS, mode: 'contrary' })).toBe(true);
+    expect(sanitizeSettings({ mode: 'contrary' }).mode).toBe('contrary');
   });
 
   it('sticker / bạn thú chỉ cộng thêm, không bao giờ trừ; mỗi hồ sơ riêng', () => {

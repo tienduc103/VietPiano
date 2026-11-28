@@ -185,11 +185,12 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              Micro không chấm được hai tay cùng lúc → khoá Bắt đầu
   rainbowHands/            "Cầu vồng hai bàn tay" (`screens/RainbowHandsScreen`, route `rainbow-hands`, `?screen=rainbow-hands`, thẻ mục Trò chơi;
                              chi tiết + checklist thử thật: docs/rainbow-hands.md). `route.ts` vòng 15 vị trí mỗi tay (lên 8 + xuống 7, Đô cao một lần),
-                             lên / xuống / cả vòng, Đô bắt đầu từng tay, số ngón ĐỌC từ bài kỹ thuật `tech-l3-scale-c-hands` (không tự suy).
+                             lên / xuống / cả vòng, Đô bắt đầu từng tay, cùng / ngược chiều (`motion`, tay trái ngược chiều tự lùi vùng `effectiveStarts`),
+                             số ngón ĐỌC từ bài kỹ thuật `tech-l3-scale-c-hands` / `tech-l3-scale-c-contrary` (không tự suy).
                              `RainbowEngine` MỘT bộ máy cho mọi chế độ: chờ (đủ hai nốt mới qua bước; "cùng lúc" chỉ khi ≤ ngưỡng) / giữ nhịp
                              (đếm vào, cửa sổ ±½ phách, thiếu nốt, mỗi tay ≥ 60% nốt mới tính vòng chơi hết); lần nhấn mới (Note Off), lỗi gán theo
                              vùng phím, micro lệch quãng tám / âm ngân = không chắc (không tính lỗi), tạm dừng / mất kết nối không tính lỗi.
-                             `settings.ts` 4 chế độ → `resolvePlan`; `analysis.ts` tổng kết từng tay, đồng bộ, đoạn yếu + `retryPlan`, nhận xét,
+                             `settings.ts` 5 chế độ → `resolvePlan`; `analysis.ts` tổng kết từng tay, đồng bộ, đoạn yếu + `retryPlan`, nhận xét,
                              gợi ý tăng tốc, sticker; `storage.ts` localStorage `vietpiano.rainbow-hands.v1` theo hồ sơ (chỉ cộng sticker / bạn thú).
                              Micro + chế độ hai tay → khoá Bắt đầu. Cảnh: `components/rainbowHands/RainbowScene`
   noteQuiz/                "Đố bé nốt gì?" (bé từ 4 tuổi; `screens/NoteQuizScreen`, route `note-quiz`, `?screen=note-quiz`; chi tiết: docs/note-quiz.md):
