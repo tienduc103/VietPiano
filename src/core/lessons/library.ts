@@ -47,8 +47,6 @@ const AULD_RH =
   'F4/qd F4/8 F4 A4 | G4/qd F4/8 G4 A4 | F4/qd F4/8 A4 C5 | D5/hd D5 | ' +
   'C5/qd A4/8 A4 F4 | G4/qd F4/8 G4 A4 | F4/qd D4/8 D4 C4';
 
-/** Pedal thay mỗi ô nhịp từ ô `first` tới ô `last` (chỉ số ô gồm cả ô lấy đà). */
-const pedalEachMeasure = (first: number, last: number) =>
 /**
  * Canon in D (trung cấp): tay trái rải hợp âm móc đơn 4 ô theo vòng bè trầm. Bản in lên Rê4 / Si3 ở nốt thứ tư; tay phải xuống tới Si3
  * nên hạ một quãng 8 (Rê3 / Si2) — tay trái phải thấp hơn mọi nốt tay phải để micro lọc phần đệm.
@@ -61,6 +59,8 @@ const CANON_LH_ARPEGGIO =
 const CANON_INTERMEDIATE_ENDING =
   'D5/qd A5/8:4 A5/8 B5/8 A5/8 G5/8 | F#5/qd F#5/8:3 F#5/8 G5/8 F#5/8 E5/8 | D5/qd D5/8:4 D5 A4 | D5/8 C5/8 B4/8 C5/8 C#5/h:4';
 
+/** Pedal thay mỗi ô nhịp từ ô `first` tới ô `last` (chỉ số ô gồm cả ô lấy đà). */
+const pedalEachMeasure = (first: number, last: number) =>
   Array.from({ length: last - first + 1 }, (_, i) => ({ from: first + i, to: first + i }));
 
 /** Năm đoạn của các bài bé ba ngón dài (1 – 2 – 3, 3 – 4 – 5): tròn/trắng → trắng chấm → đen → đen chấm + móc đơn → tổng hợp. */
@@ -967,7 +967,6 @@ const defs: LessonDef[] = [
     pedal: [{ from: 16, to: 16 }],
   },
   {
-  {
     id: 'song-canon-in-d-intermediate',
     title: 'Canon in D (trung cấp)',
     description:
@@ -1032,6 +1031,7 @@ const defs: LessonDef[] = [
       { from: 48, to: 48 },
     ],
   },
+  {
     id: 'song-tieng-duong-cam',
     title: 'Tiếng dương cầm (Piano sound)',
     titleColor: 'text-rose-600 dark:text-rose-400 font-bold',
