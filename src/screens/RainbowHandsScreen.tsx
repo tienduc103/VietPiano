@@ -4,6 +4,9 @@ import { ProfileSwitcher } from '../components/ProfileSwitcher';
 import { InputSourceBar } from '../components/curriculum/common';
 import { useFrameClock, useGameState, useKeyFlash } from '../components/games/shared';
 import { HAND_CHAR, RainbowScene } from '../components/rainbowHands/RainbowScene';
+import { DurationStrip, HazardOverlay, HoldResults, modeDetail, RhythmSpeedSettings, SpeedPanel, SpeedResults } from '../components/rainbowHands/RhythmSpeedPanels';
+import { midiInput } from '../core/input/MIDIInputProvider';
+import { sampleInterval, SpeedJudge, speedFeedback, speedPlan, speedStats, type Hazard, type SpeedEvent, type SpeedStats } from '../core/rainbowHands/speed';
 import { PinShortcutButton } from '../components/shortcuts/PinShortcutButton';
 import { Button, FullscreenButton, Icon, Segmented, Toggle } from '../components/ui';
 import { soundOutput } from '../core/audio/SoundOutput';
@@ -67,6 +70,9 @@ interface RunResult {
   stickers: StickerKind[];
   feedback: string;
   tempoAdvice: number | null;
+  /** Chế độ Nhanh – chậm. */
+  speed: SpeedStats | null;
+  caught: Hazard[];
 }
 
 interface Retry {
@@ -114,10 +120,10 @@ export function RainbowHandsScreen() {
     () => {
       // Vùng phím thật (ngược chiều có thể lùi tay trái); deps là số nguyên để không dựng lại ván mỗi lần vẽ.
       const route = { starts: { left: startLeft, right: startRight }, motion: plan.motion };
-      return phase ? buildSegment(phase.from, phase.to, { ...route, hands: phase.hands }) : buildRoute({ ...route, hands: plan.hands, path: plan.path });
+      return phase ? buildSegment(phase.from, phase.to, { ...route, hands: phase.hands }) : buildRoute({ ...route, hands: plan.hands, path: plan.path, ...(plan.rhythm ? { rhythm: plan.rhythm } : {}) });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [phase, plan.hands, plan.path, plan.motion, startLeft, startRight],
+    [phase, plan.hands, plan.path, plan.motion, plan.rhythm, startLeft, startRight],
   );
   const timing = phase ? 'wait' : plan.timing;
   const rounds = phase ? phase.rounds : plan.rounds;
@@ -136,10 +142,58 @@ export function RainbowHandsScreen() {
     setWeakDismissed(false);
   }, [engine]);
 
+  // ── Nhanh – chậm: máy đưa ra tốc độ theo chặng (kế hoạch ngẫu nhiên mỗi ván), đo khoảng giữa hai lần bấm ──
+  const speedOn = plan.speed && !phase;
+  const judge = useMemo(
+    () => (speedOn ? new SpeedJudge(speedPlan(steps.length, rounds, settings.speeds, settings.speedSegment, Math.floor(Math.random() * 2 ** 31)), settings.speedSegment, { ease: settings.speedEase }) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [engine, speedOn],
+  );
+  const [speedEvent, setSpeedEvent] = useState<SpeedEvent | null>(null);
+  const [hazardEvent, setHazardEvent] = useState<SpeedEvent | null>(null);
+  useEffect(() => {
+    setSpeedEvent(null);
+    setHazardEvent(null);
+  }, [judge]);
+  useEffect(() => {
+    if (!hazardEvent) return;
+    const id = window.setTimeout(() => setHazardEvent(null), hazardEvent.caught ? 2200 : 1200);
+    return () => window.clearTimeout(id);
+  }, [hazardEvent]);
+  const onSpeedEvent = (ev: SpeedEvent) => {
+    setSpeedEvent(ev);
+    if (!ev.hazard && !ev.caught) return;
+    setHazardEvent(ev);
+    // Tiếng nhỏ, trầm; không phát khi nghe bằng micro.
+    if (settings.volume !== 'off' && !micOnlyRef.current) soundOutput.scheduleNote(ev.hazard === 'crocodile' ? 40 : 96, 0, ev.caught ? 0.25 : 0.1, EFFECT_VELOCITY[settings.volume]);
+  };
+  const speedRef = useRef({ judge, onSpeedEvent });
+  speedRef.current = { judge, onSpeedEvent };
+  const micOnlyRef = useRef(micOnly);
+  micOnlyRef.current = micOnly;
+  // Tạm dừng (mọi lý do) → không tính thời gian chờ.
+  const wasPaused = useRef(false);
+  useEffect(() => {
+    const paused = state.status === 'paused';
+    if (paused && !wasPaused.current) judge?.pause(performance.now());
+    if (!paused && wasPaused.current) judge?.resume(performance.now());
+    wasPaused.current = paused;
+  }, [state.status, judge]);
+  // Pedal vang (đàn MIDI): thả phím lúc đang đạp không tính nhả sớm.
+  useEffect(() => midiInput.onPedal((e) => engine.setPedal(e.down)), [engine]);
+
   const running = state.status === 'playing' || state.status === 'count-in' || state.status === 'celebrating';
   usePlayingNow(running);
   useGameTimeNow(running && !modal);
-  useFrameClock(running, (now) => engine.tick(now));
+  const frameNow = useFrameClock(running, (now) => {
+    engine.tick(now);
+    const { judge: j, onSpeedEvent: emit } = speedRef.current;
+    const s = engine.getState();
+    if (j && s.status === 'playing') {
+      const ev = j.tick(s.round, s.index, now);
+      if (ev) emit(ev);
+    }
+  });
 
   // Chế độ hai nốt cùng lúc mà chỉ có micro → không chấm (micro chỉ nhận một nốt mỗi lúc).
   const twoNoteBlocked = micOnly && handSet === 'both';
@@ -174,11 +228,18 @@ export function RainbowHandsScreen() {
   useNoteInput(
     {
       onNote: (e) => {
+        const before = engine.getState();
         const out = engine.noteOn(e.midi, e.time, e.source);
         if (e.source === 'virtual' && out !== 'held') soundOutput.playNote(e.midi, 0.4);
+        if (judge && (out === 'step' || out === 'round')) {
+          // Mốc bước = lần bấm sớm nhất của bước (hai tay: tay bấm trước).
+          const rec = engine.getRecords().find((r) => r.round === before.round && r.index === before.index);
+          const times = rec ? Object.values(rec.hands).map((m) => m?.hitTime ?? Infinity) : [];
+          onSpeedEvent(judge.onStep(before.round, before.index, times.length ? Math.min(...times) : e.time));
+        }
         if (out === 'round') chime();
       },
-      onNoteOff: (e) => engine.noteOff(e.midi),
+      onNoteOff: (e) => engine.noteOff(e.midi, e.time),
     },
     inputSource,
     { baseMidi: plan.starts[hands.includes('right') ? 'right' : 'left'], listening },
@@ -209,8 +270,16 @@ export function RainbowHandsScreen() {
     soundOutput.unlock();
     const wasRunning = running;
     if (wasRunning) engine.pause(performance.now(), 'listening');
-    const stepSec = (timing === 'tempo' ? 60 / plan.bpm : 0.55) / (settings.slow && timing !== 'tempo' ? SLOW_FACTOR : 1);
-    const ms = soundOutput.playSequence(steps.flatMap((s, i) => s.notes.map((n) => ({ midi: n.midi, start: i * stepSec, duration: stepSec * 0.9, velocity: 80 }))));
+    // Giữ nhịp / trường độ: đúng số phách từng bước; nhanh – chậm: đúng tốc độ máy đưa ra; chờ: đều tay.
+    const waitSec = 0.55 / (settings.slow && timing !== 'tempo' ? SLOW_FACTOR : 1);
+    let at = 0;
+    const notes = steps.flatMap((s, i) => {
+      const sec = judge ? sampleInterval(judge.target(state.round, i)) / 1000 : timing === 'tempo' ? (s.beats * 60) / plan.bpm : waitSec;
+      const start = at;
+      at += sec;
+      return s.notes.map((n) => ({ midi: n.midi, start, duration: sec * 0.9, velocity: 80 }));
+    });
+    const ms = soundOutput.playSequence(notes);
     setSampleUntil(performance.now() + ms);
     window.setTimeout(() => {
       setSampleUntil(0);
@@ -233,7 +302,13 @@ export function RainbowHandsScreen() {
     const firstRound = roundInfos[0]?.round ?? 1;
     const records = engine.getRecords().filter((r) => r.round >= firstRound && r.closed);
     const criteria = { accuracy: settings.passAccuracy, onTime: settings.passOnTime };
-    const roundSummaries = summarizeRounds(records, roundInfos, timing, criteria);
+    const verdicts = judge ? judge.getVerdicts().filter((v) => v.round >= firstRound) : [];
+    // Nhanh – chậm: vòng đạt khi thêm đúng tốc độ ≥ tiêu chí (khoảng đã đo của vòng).
+    const roundSummaries = summarizeRounds(records, roundInfos, timing, criteria).map((r) => {
+      if (!judge) return r;
+      const st = speedStats(verdicts.filter((v) => v.round === r.round));
+      return { ...r, passed: r.passed && (st.graded === 0 || st.ok / st.graded >= settings.passOnTime) };
+    });
     const summary = summarize(records);
     const weak = weakSegment(engine.getRecords(), 2, plan.motion);
     const accuracy = meanAccuracy(summary);
@@ -266,8 +341,16 @@ export function RainbowHandsScreen() {
       summary,
       weak,
       stickers,
-      feedback: feedbackText({ roundsComplete: complete, weak, sync: summary.sync, timing }),
+      feedback: [
+        feedbackText({ roundsComplete: complete, weak, sync: summary.sync, timing }),
+        judge ? speedFeedback(speedStats(verdicts)) : '',
+        Object.values(summary.hands).some((s) => s && s.holdShort > 0) ? 'Nốt dài nhớ giữ phím đủ phách nhé.' : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
       tempoAdvice: timing === 'tempo' ? adviseTempo(next.tempo, plan.bpm) : null,
+      speed: judge ? speedStats(verdicts) : null,
+      caught: judge ? [...judge.getCaught()] : [],
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.status, state.roundsEnded, engine]);
@@ -387,7 +470,7 @@ export function RainbowHandsScreen() {
         <FullscreenButton />
       </header>
 
-      <main className="grid min-h-0 flex-1 grid-rows-[minmax(150px,1fr)_auto] gap-2 px-2 py-2 sm:px-4">
+      <main className="grid min-h-0 flex-1 grid-rows-[minmax(120px,1fr)_auto_auto] gap-2 px-2 py-2 sm:px-4">
         <RainbowScene
           steps={state.steps}
           index={state.index}
@@ -399,7 +482,11 @@ export function RainbowHandsScreen() {
           celebrating={state.status === 'celebrating'}
           wrongHand={state.lastOutcome === 'wrong' ? state.lastHand : null}
           showNames={settings.hints !== 'none'}
-        />
+        >
+          <HazardOverlay event={hazardEvent} />
+        </RainbowScene>
+        {plan.rhythm && !phase && <DurationStrip steps={state.steps} index={state.index} hands={hands} engine={engine} now={frameNow} micOnly={micOnly} />}
+        {judge && <SpeedPanel judge={judge} round={state.round} index={state.index} stepsCount={state.steps.length} lastEvent={speedEvent} now={frameNow} waiting={state.status === 'playing'} />}
         <StepPanel engine={engine} state={state} hands={hands} current={current} hints={settings.hints} fingers={settings.fingers} />
       </main>
 
@@ -473,6 +560,12 @@ export function RainbowHandsScreen() {
           onTempo={(bpm) => updateSettings({ bpm })}
           onStickers={() => setModal('stickers')}
           onRest={() => navigate({ name: 'games' })}
+          extra={
+            <>
+              {result.speed && <SpeedResults stats={result.speed} caught={result.caught} />}
+              <HoldResults summary={result.summary} hands={hands} />
+            </>
+          }
         />
       )}
 
@@ -636,6 +729,11 @@ function ReadyOverlay({
             ))}
           </div>
           <p className="max-w-xl text-sm">{MODE_INFO[settings.mode].hint}</p>
+          {modeDetail(settings) && (
+            <p className="text-sm font-bold text-violet-700 dark:text-violet-300" data-testid="rainbow-mode-detail">
+              {modeDetail(settings)}
+            </p>
+          )}
           <p className="text-sm font-semibold">
             {plan.hands === 'both' ? 'Hai tay' : HAND_TITLE[plan.hands]} · {PATH_LABEL[plan.path]} · {plan.rounds} vòng
             {plan.timing === 'tempo' ? ` · ♩=${plan.bpm}` : ' · không đồng hồ'}
@@ -729,7 +827,9 @@ function ResultOverlay({
   onTempo,
   onStickers,
   onRest,
+  extra,
 }: {
+  extra?: ReactNode;
   result: RunResult;
   state: EngineState;
   hands: Hand[];
@@ -778,6 +878,7 @@ function ResultOverlay({
               return <Stat key={`t-${h}`} label={`${HAND_TITLE[h]}: đúng nhịp · trễ/sớm · thiếu`} value={s ? `${s.onTime} · ${s.late + s.early} · ${s.missed}` : '—'} />;
             })}
         </dl>
+        {extra}
         {uncertain > 0 && <p className="text-xs text-amber-700 dark:text-amber-300">App nghe chưa rõ {uncertain} lần — không tính là lỗi của bé.</p>}
         {result.stickers.length > 0 && (
           <div className="flex flex-wrap justify-center gap-2" data-testid="rainbow-stickers-earned">
@@ -866,19 +967,26 @@ function SettingsModal({ settings, micOnly, keyboardIsInput, onChange, onClose }
       <PinShortcutButton variant="row" target={{ type: 'game', id: 'rainbow-hands' }} />
       <p className="text-sm text-slate-600 dark:text-slate-300">Đổi chế độ, tay, vùng phím, số vòng hoặc nhịp sẽ bắt đầu ván mới. Gợi ý, số ngón, âm lượng giữ nguyên ván.</p>
       <Row label="Chế độ">
-        <Segmented value={settings.mode} onChange={(mode: RainbowMode) => onChange({ mode })} options={(Object.keys(MODE_INFO) as RainbowMode[]).map((m) => ({ value: m, label: MODE_INFO[m].label }))} />
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Chế độ">
+          {(Object.keys(MODE_INFO) as RainbowMode[]).map((m) => (
+            <Button key={m} variant={settings.mode === m ? 'primary' : 'secondary'} className="min-h-10 px-3 text-sm" onClick={() => onChange({ mode: m })} aria-pressed={settings.mode === m}>
+              {MODE_INFO[m].icon} {MODE_INFO[m].label}
+            </Button>
+          ))}
+        </div>
       </Row>
+      <RhythmSpeedSettings settings={settings} micOnly={micOnly} onChange={onChange} />
       {settings.mode === 'single' && (
         <Row label="Tay luyện">
           <Segmented value={settings.hand} onChange={(hand: Hand) => onChange({ hand })} options={[{ value: 'left', label: '🐻 Tay trái' }, { value: 'right', label: '🐰 Tay phải' }]} />
         </Row>
       )}
-      {settings.mode === 'tempo' && (
+      {(settings.mode === 'tempo' || settings.mode === 'durations') && (
         <Row label="Tay luyện">
           <Segmented value={settings.tempoHands} onChange={(tempoHands: HandSet) => onChange({ tempoHands })} options={[{ value: 'both', label: 'Hai tay' }, { value: 'left', label: 'Tay trái' }, { value: 'right', label: 'Tay phải' }]} />
         </Row>
       )}
-      {(settings.mode === 'single' || settings.mode === 'steps' || settings.mode === 'contrary') && (
+      {(settings.mode === 'single' || settings.mode === 'steps' || settings.mode === 'contrary' || settings.mode === 'speed') && (
         <Row label="Đường đi">
           <Segmented value={settings.path} onChange={(path: RainbowPath) => onChange({ path })} options={(['up', 'down', 'round'] as const).map((p) => ({ value: p, label: PATH_LABEL[p] }))} />
         </Row>
@@ -915,7 +1023,7 @@ function SettingsModal({ settings, micOnly, keyboardIsInput, onChange, onClose }
         </Row>
       )}
       {plan.hands === 'both' && micOnly && <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Micro chỉ nhận một nốt mỗi lúc — chế độ hai tay cần đàn MIDI hoặc bàn phím trên màn hình.</p>}
-      {settings.mode === 'tempo' && (
+      {(settings.mode === 'tempo' || settings.mode === 'durations') && (
         <>
           <Row label="Tốc độ (phụ huynh chọn)">
             <Segmented value={String(settings.bpm)} onChange={(v) => onChange({ bpm: Number(v) })} options={BPM_CHOICES.map((b) => ({ value: String(b), label: `♩=${b}` }))} />

@@ -190,7 +190,10 @@ src/core/            ← logic thuần TypeScript, KHÔNG import React; mọi th
                              `RainbowEngine` MỘT bộ máy cho mọi chế độ: chờ (đủ hai nốt mới qua bước; "cùng lúc" chỉ khi ≤ ngưỡng) / giữ nhịp
                              (đếm vào, cửa sổ ±½ phách, thiếu nốt, mỗi tay ≥ 60% nốt mới tính vòng chơi hết); lần nhấn mới (Note Off), lỗi gán theo
                              vùng phím, micro lệch quãng tám / âm ngân = không chắc (không tính lỗi), tạm dừng / mất kết nối không tính lỗi.
-                             `settings.ts` 5 chế độ → `resolvePlan`; `analysis.ts` tổng kết từng tay, đồng bộ, đoạn yếu + `retryPlan`, nhận xét,
+                             Trường độ: `durations.ts` 5 trường độ + mẫu tiết tấu, bước có `beats` (phách cộng dồn, cửa sổ co theo nốt ngắn), giữ phím
+                             theo Note Off (micro / pedal → không đo). Nhanh – chậm: `speed.ts` `SpeedJudge` đo khoảng giữa hai lần bấm theo tốc độ máy đưa
+                             ra (không nhịp), cá sấu / sét, "bị bắt" rồi chơi tiếp. UI `components/rainbowHands/RhythmSpeedPanels`.
+                             `settings.ts` 7 chế độ → `resolvePlan`; `analysis.ts` tổng kết từng tay, đồng bộ, đoạn yếu + `retryPlan`, nhận xét,
                              gợi ý tăng tốc, sticker; `storage.ts` localStorage `vietpiano.rainbow-hands.v1` theo hồ sơ (chỉ cộng sticker / bạn thú).
                              Micro + chế độ hai tay → khoá Bắt đầu. Cảnh: `components/rainbowHands/RainbowScene`
   noteQuiz/                "Đố bé nốt gì?" (bé từ 4 tuổi; `screens/NoteQuizScreen`, route `note-quiz`, `?screen=note-quiz`; chi tiết: docs/note-quiz.md):

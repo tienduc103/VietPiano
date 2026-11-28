@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { Hand } from '../../core/lessons/types';
 import { animalFor } from '../../core/rainbowHands/analysis';
 import { ROUND_POSITIONS, type RouteStep } from '../../core/rainbowHands/route';
@@ -42,7 +43,10 @@ export function RainbowScene({
   celebrating,
   wrongHand,
   showNames,
+  children,
 }: {
+  /** Lớp phủ trong cảnh (cá sấu / sét của chế độ Nhanh – chậm). */
+  children?: ReactNode;
   steps: readonly RouteStep[];
   index: number;
   hands: readonly Hand[];
@@ -136,6 +140,7 @@ export function RainbowScene({
           ))}
         </span>
       </div>
+      {children}
     </section>
   );
 }

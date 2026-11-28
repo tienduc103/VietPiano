@@ -36,10 +36,43 @@ Trò chơi luyện **tám nốt Đô trưởng** bằng từng tay, hai tay cùn
 | C Lên núi – xuống núi | hai tay | cả vòng | chờ |
 | D Giữ nhịp | hai tay / trái / phải | cả vòng | nhịp chạy (♩ phụ huynh chọn) |
 | E Hai tay ngược chiều | hai tay | lên (tách ra) / xuống (gom lại) / cả vòng | chờ |
+| F Trường độ | hai tay / trái / phải | cả vòng | nhịp chạy, mỗi bước một trường độ |
+| G Nhanh – chậm | phải / trái / hai tay | lên / xuống / cả vòng | chờ nốt đúng + đo khoảng giữa hai lần bấm (không nhịp nhạc) |
 
 Nhiệm vụ 1 / 3 / 5 vòng ở mọi chế độ. Xong nhiệm vụ → dừng hẳn ở màn tổng kết (điểm dừng + "Nghỉ thôi");
 "Chơi thêm 1 vòng" phải bấm, mỗi lần một vòng. Chế độ E dùng cùng `RainbowEngine` (chỉ khác lộ trình); "Tập lại đoạn này"
 ở chế độ E giữ chiều ngược (tay khó tập riêng đúng chiều của nó, rồi ghép hai tay).
+
+## F — Trường độ (`durations.ts`, thêm 28/11/2026 theo yêu cầu người dùng)
+
+- Năm trường độ: **tròn 4 phách, trắng 2, đen 1, móc đơn ½, móc kép ¼** (`DURATION_BEATS` dùng chung). Phụ huynh chọn mẫu
+  tiết tấu: toàn đen / trắng / tròn / móc đơn / móc kép, "trắng – đen – đen", "đen – móc đơn – móc đơn", "móc đơn – móc kép – móc kép",
+  "đủ 5 loại" (tròn → trắng → đen → móc đơn → móc kép). Mỗi chu kỳ tròn phách (test). Mẫu gán cho từng bước của vòng.
+- Dùng chế độ giữ nhịp của `RainbowEngine`: phách bước = tổng phách các bước trước; cửa sổ chấm = ½ khoảng NGẮN hơn giữa bước trước /
+  bước đó (tối đa ½ phách) → móc kép cửa sổ hẹp, nên chọn ♩=40–60. Đếm vào CHỈ lúc bắt đầu / tiếp tục / vòng mới (không hiện lại
+  khi chờ sau nốt dài — `countTarget`, có test).
+- **Giữ phím**: Note Off (đàn MIDI / bàn phím ảo) → giữ đủ khi ≥ 75% độ dài (nốt ngắn: ≥ độ dài − 120 ms, tối thiểu 40%), giữ lâu hơn
+  không bị trừ; thả lúc đang đạp pedal (CC 64) → không đo; micro → không đo (không có Note Off). Vòng đạt cần thêm giữ đủ ≥ tiêu chí
+  khi có lần đo được. Nhả sớm tính vào "đoạn nên tập lại".
+- Giao diện: dải 4 thẻ hình nốt trên khuông nhỏ (VexFlow, khoá Sol / Fa theo tay) — thẻ sáng là nốt đang giữ / sắp đánh, tên + "đếm 1 2";
+  thanh giữ phím từng tay (tím đang giữ → xanh đủ / đỏ nhả sớm). Nghe mẫu phát đúng số phách. Tổng kết: giữ đủ · nhả sớm · không đo từng tay.
+
+## G — Nhanh – chậm (`speed.ts`, thêm 28/11/2026 theo yêu cầu người dùng)
+
+- Mục đích: tay linh hoạt đổi nhanh / chậm — KHÔNG theo nhịp nhạc (không metronome). Máy đưa ra tốc độ cho từng chặng (4 / 8 nốt /
+  cả vòng), chặng sau khác chặng trước, kế hoạch ngẫu nhiên mỗi ván (`speedPlan`, theo seed → test lặp lại được).
+- Dải khoảng giữa hai lần bấm đúng (mức Chuẩn): 🐌 thật chậm 1,5–3 s · 🐢 chậm 0,8–1,5 s · 🐇 nhanh 0,35–0,8 s · 🐆 thật nhanh
+  0,15–0,35 s (dải nối liền nhau). Mức **Dễ** (mặc định, bé nhỏ) nới: đầu dưới × 0,8, đầu trên × 1,25. Phụ huynh chọn tốc độ nào máy
+  được đưa ra (mặc định chậm + nhanh). Các con số là lựa chọn ban đầu của Claude — CHƯA thử với trẻ thật.
+- Nốt đúng / sai vẫn do `RainbowEngine` (chờ). `SpeedJudge` đo khoảng giữa hai bước liên tiếp (mốc bước = lần bấm sớm nhất; hai tay:
+  tay bấm trước). Bước đầu vòng + bước đầu chặng mới không chấm (bé vừa đọc tốc độ mới). Tạm dừng không tính vào khoảng chờ.
+- Chậm quá → 🐊 cá sấu (báo NGAY lúc đang chờ quá giới hạn, một lần mỗi bước); nhanh quá → ⚡ sét / 🪵 khúc củi (luân phiên).
+  Mỗi lần +1 nấc nguy hiểm; 3 nấc → "bị bắt" (hoạt hình to 2 s) rồi về 0 và **chơi tiếp** — không chơi lại vòng, không trừ sticker.
+  3 lần đúng tốc độ liền nhau → bớt một nấc. Tiếng hiệu ứng nhỏ, tắt khi nghe bằng micro.
+- Giao diện: bảng tốc độ (con vật + tên + lời gợi ý, "Sắp đổi → …"), đồng hồ tốc độ thang log (trái chậm, phải nhanh, vùng xanh = dải
+  cần đạt, kim = thời gian đang chờ / khoảng vừa bấm), 3 ô nguy hiểm. Nghe mẫu phát đúng tốc độ từng chặng.
+  Tổng kết: đúng tốc độ x/y, theo từng tốc độ (đúng · chậm · nhanh), số lần bị bắt; vòng đạt cần thêm đúng tốc độ ≥ tiêu chí.
+- Micro: chơi được một tay; "thật nhanh" có thể khó nhận (NoteRecognizer cần thời gian ổn định) — nên dùng đàn MIDI.
 
 ## Chấm (`RainbowEngine.ts`)
 
@@ -121,6 +154,8 @@ Hiệu ứng âm thanh chỉ kêu khi xong vòng, âm lượng Tắt / Nhỏ / V
 - [ ] iPad bàn phím ảo đa chạm: hai tay cùng bước bằng hai ngón.
 - [ ] Đàn MIDI thật, ngược chiều: hai ngón cái đặt Đô3 / Đô4, tách ra – gom lại; giáo viên xác nhận vùng tự lùi Đô2–Đô3 phù hợp với bé.
 - [ ] Hiệu ứng âm thanh (MIDI) không che tiếng đàn; với micro không có hiệu ứng.
+- [ ] Đàn MIDI thật, Trường độ: nốt tròn / trắng giữ đủ → "Giữ đủ"; nhả sớm → đỏ; đạp pedal rồi thả → không đo; móc kép ♩=50 có đánh kịp không.
+- [ ] Nhanh – chậm với trẻ thật: dải tốc độ (Dễ / Chuẩn) có vừa sức không; cá sấu / sét có làm bé sợ hay vui; "thật nhanh" bằng micro iPad.
 - [ ] Trẻ thật: lời nhắc dễ hiểu, muốn chơi lại nhiều vòng, điểm dừng sau nhiệm vụ rõ ràng; dark mode + iPad dọc không che nút.
 
 ## Giới hạn còn tồn tại

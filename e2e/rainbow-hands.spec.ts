@@ -230,3 +230,73 @@ test('hai tay ngược chiều: tay trái tự lùi xuống Đô2–Đô3 như b
   await expect(page.getByTestId('rainbow-stat-acc-right')).toContainText('100%');
   await expect(page.getByTestId('rainbow-stat-sync')).toContainText('15 · 15');
 });
+
+test('trường độ: hình nốt + đếm vào + nhịp chạy; giữ phím nốt trắng đủ phách → "Giữ đủ"', async ({ page }) => {
+  await page.goto('/?screen=rainbow-hands');
+  await page.getByTestId('rainbow-open-settings').click();
+  const dlg = page.getByRole('dialog');
+  await dlg.getByRole('button', { name: /Trường độ/ }).click();
+  await dlg.getByRole('button', { name: 'Tay phải', exact: true }).click();
+  await dlg.getByRole('button', { name: 'Toàn nốt trắng' }).click();
+  await dlg.getByRole('button', { name: '♩=96' }).click();
+  await dlg.getByRole('button', { name: '1 vòng' }).click();
+  await page.getByTestId('rainbow-close-modal').click();
+  await expect(page.getByTestId('rainbow-mode-detail')).toContainText('Toàn nốt trắng');
+  await page.getByTestId('rainbow-start').click();
+  await expect(page.getByTestId('rainbow-duration-current')).toHaveAttribute('data-duration', 'h');
+  await expect(page.getByTestId('rainbow-duration-current')).toContainText('Trắng');
+  await expect(page.getByTestId('rainbow-duration-current').locator('svg')).toBeVisible();
+  await expect(page.getByTestId('rainbow-countdown')).toBeVisible();
+  // Cửa sổ của nốt đầu mở → bấm Đô4 và GIỮ hơn 1 phách rưỡi (trắng ở ♩=96 = 1,25 s, cần ≥ 0,94 s).
+  await expect(game(page)).toHaveAttribute('data-status', 'playing', { timeout: 5000 });
+  await page.locator(keySel(60)).dispatchEvent('pointerdown');
+  await expect(page.getByTestId('rainbow-hold-right')).toHaveAttribute('data-hold', 'holding');
+  await page.waitForTimeout(1100);
+  await page.locator(keySel(60)).dispatchEvent('pointerup');
+  await expect(page.getByTestId('rainbow-hold-right')).toHaveAttribute('data-hold', 'full');
+  // Nhịp vẫn chạy khi bé không bấm.
+  await expect(game(page)).not.toHaveAttribute('data-step', '0', { timeout: 3000 });
+});
+
+test('nhanh – chậm: máy đưa ra tốc độ; đúng khoảng → "Vừa đúng"; chờ lâu → cá sấu; nhanh quá → sét; 3 lần → bị bắt rồi chơi tiếp', async ({ page }) => {
+  await page.goto('/?screen=rainbow-hands');
+  await page.getByTestId('rainbow-open-settings').click();
+  const dlg = page.getByRole('dialog');
+  await dlg.getByRole('button', { name: /Nhanh – chậm/ }).click();
+  await dlg.getByRole('button', { name: '⬆ Đi lên' }).click();
+  await dlg.getByRole('button', { name: 'cả vòng', exact: true }).click();
+  await dlg.getByRole('button', { name: 'Chuẩn' }).click();
+  await dlg.getByRole('button', { name: '1 vòng' }).click();
+  // Chỉ "Nhanh" (350–800 ms): tắt "Chậm".
+  await dlg.getByRole('switch', { name: /Chậm \(/ }).click();
+  await page.getByTestId('rainbow-close-modal').click();
+  await page.getByTestId('rainbow-start').click();
+  await expect(page.getByTestId('rainbow-speed-panel')).toHaveAttribute('data-speed', 'fast');
+  await expect(page.getByTestId('rainbow-speed-target')).toHaveText('Nhanh');
+
+  const tap = (m: number) => pressTogether(page, [m]);
+  await tap(60); // nốt đầu chặng: không chấm
+  await page.waitForTimeout(500);
+  await tap(62);
+  await expect(page.getByTestId('rainbow-speed-feedback')).toContainText('Vừa đúng');
+  // Chờ lâu → cá sấu đến ngay lúc đang chờ.
+  await expect(page.getByTestId('rainbow-hazard')).toHaveAttribute('data-hazard', 'crocodile', { timeout: 3000 });
+  await expect(page.getByTestId('rainbow-danger')).toHaveAttribute('data-danger', '1');
+  await tap(64);
+  // Nhanh quá (≈ 150 ms) → sét; lần thứ ba → bị bắt, nguy hiểm về 0, vẫn chơi tiếp.
+  await page.waitForTimeout(160);
+  await tap(65);
+  await expect(page.getByTestId('rainbow-hazard')).toHaveAttribute('data-hazard', 'lightning');
+  await page.waitForTimeout(160);
+  await tap(67);
+  await expect(page.getByTestId('rainbow-hazard')).toHaveAttribute('data-caught', 'true');
+  await expect(page.getByTestId('rainbow-danger')).toHaveAttribute('data-danger', '0');
+  await expect(game(page)).toHaveAttribute('data-status', 'playing');
+  for (const m of [69, 71, 72]) {
+    await page.waitForTimeout(500);
+    await tap(m);
+  }
+  await expect(page.getByTestId('rainbow-result')).toBeVisible();
+  await expect(page.getByTestId('rainbow-speed-ok')).toContainText('/7');
+  await expect(page.getByTestId('rainbow-speed-caught')).not.toHaveText('0');
+});

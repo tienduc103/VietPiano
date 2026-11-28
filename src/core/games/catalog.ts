@@ -101,7 +101,7 @@ export const STANDALONE_GAMES: readonly StandaloneGameInfo[] = [
     shortTitle: 'Cầu vồng hai tay',
     icon: '🐻🌈🐰',
     shortcutIcon: '🌈',
-    description: 'Gấu Trái và Thỏ Phải đi qua cầu vồng tám nốt Đô trưởng — từng tay, hai tay cùng bước, lên núi – xuống núi, giữ nhịp, ngược chiều · đưa bạn thú về nhà, sưu tầm sticker · đàn MIDI, piano ảo (micro: từng tay).',
+    description: 'Gấu Trái và Thỏ Phải đi qua cầu vồng tám nốt Đô trưởng — từng tay, hai tay cùng bước, lên núi – xuống núi, giữ nhịp, ngược chiều, trường độ, nhanh – chậm · đưa bạn thú về nhà, sưu tầm sticker · đàn MIDI, piano ảo (micro: từng tay).',
   },
 ];
 

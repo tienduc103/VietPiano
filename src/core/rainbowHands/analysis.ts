@@ -32,6 +32,10 @@ export interface HandStats {
   early: number;
   late: number;
   missed: number;
+  /** Chế độ Trường độ: giữ đủ / nhả sớm / không đo (micro, thả lúc đạp pedal, chưa thả). */
+  holdFull: number;
+  holdShort: number;
+  holdUnmeasured: number;
 }
 
 export interface SyncStats {
@@ -54,7 +58,7 @@ export interface RoundSummary extends Summary {
 }
 
 function emptyHand(): HandStats {
-  return { notes: 0, hits: 0, wrong: 0, uncertain: 0, accuracy: null, firstTry: 0, onTime: 0, early: 0, late: 0, missed: 0 };
+  return { notes: 0, hits: 0, wrong: 0, uncertain: 0, accuracy: null, firstTry: 0, onTime: 0, early: 0, late: 0, missed: 0, holdFull: 0, holdShort: 0, holdUnmeasured: 0 };
 }
 
 export function summarize(records: readonly StepRecord[]): Summary {
@@ -75,6 +79,11 @@ export function summarize(records: readonly StepRecord[]): Summary {
       else if (m.timing === 'early') s.early++;
       else if (m.timing === 'late') s.late++;
       else if (m.timing === 'missed') s.missed++;
+      if (r.timed && m.hitTime !== null) {
+        if (m.hold === 'full') s.holdFull++;
+        else if (m.hold === 'short') s.holdShort++;
+        else s.holdUnmeasured++;
+      }
     }
     if (entries.length > 1) {
       if (r.spreadMs !== null) {
@@ -97,6 +106,9 @@ export function roundPassed(summary: Summary, complete: boolean, timing: TimingM
   return Object.values(summary.hands).every((s) => {
     if (!s) return true;
     if ((s.accuracy ?? 0) < criteria.accuracy) return false;
+    // Trường độ: chỉ xét giữ phím khi đo được (micro / pedal → không đo, không làm trượt vòng).
+    const holds = s.holdFull + s.holdShort;
+    if (holds > 0 && s.holdFull / holds < criteria.onTime) return false;
     return timing !== 'tempo' || s.onTime / Math.max(1, s.notes) >= criteria.onTime;
   });
 }
@@ -122,14 +134,14 @@ export interface WeakSegment {
 }
 
 /**
- * Đoạn nên tập lại: vị trí có nhiều lỗi CHẮC CHẮN nhất (nốt sai đã xác định + giữ nhịp: thiếu nốt) của một tay,
+ * Đoạn nên tập lại: vị trí có nhiều lỗi CHẮC CHẮN nhất (nốt sai đã xác định + giữ nhịp: thiếu nốt + trường độ: nhả sớm) của một tay,
  * tối thiểu `minErrors`. Lần micro nghe không chắc KHÔNG tính.
  */
 export function weakSegment(records: readonly StepRecord[], minErrors = 2, motion: Motion = 'parallel'): WeakSegment | null {
   const counts = new Map<string, { hand: Hand; pos: number; errors: number }>();
   for (const r of records) {
     for (const [h, m] of Object.entries(r.hands) as [Hand, HandMark][]) {
-      const e = m.wrong + (m.timing === 'missed' ? 1 : 0);
+      const e = m.wrong + (m.timing === 'missed' ? 1 : 0) + (m.hold === 'short' ? 1 : 0);
       if (e === 0) continue;
       const key = `${h}:${r.pos}`;
       const c = counts.get(key) ?? { hand: h, pos: r.pos, errors: 0 };

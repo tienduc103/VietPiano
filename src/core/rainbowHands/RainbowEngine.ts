@@ -10,7 +10,10 @@
  *  - Sai một nốt: tay đó được ghi lỗi + chỉ phím cần sửa, giữ nguyên bước (không phải chơi lại cả vòng), phần đã
  *    đúng của tay kia giữ nguyên.
  * Giữ nhịp (`timing: 'tempo'`):
- *  - Đếm vào `countInBeats` phách rồi mỗi bước một phách; đồng hồ KHÔNG chờ. Nốt đúng trong cửa sổ ±½ phách quanh
+ *  - Đếm vào `countInBeats` phách rồi mỗi bước `step.beats` phách (chế độ Trường độ: tròn 4, trắng 2, đen 1, móc đơn ½,
+ *    móc kép ¼); đồng hồ KHÔNG chờ. Cửa sổ chấm mỗi bước = ½ khoảng ngắn hơn giữa bước trước / bước đó (tối đa ½ phách).
+ *  - Bước có trường độ: thả phím (Note Off) → giữ đủ / nhả sớm (`holdEnough`). Micro không có Note Off → "không đo";
+ *    thả lúc pedal đang đạp → không đo (không tính nhả sớm), như quy tắc chung của app. Nốt đúng trong cửa sổ ±½ phách quanh
  *    phách của bước: đúng nhịp (≤ `onTimeMs`) / sớm / trễ; hết cửa sổ mà chưa đánh → thiếu. Giữa hai vòng nghỉ
  *    `restBeats` phách (ăn mừng + đếm vào lại).
  *  - Vòng chỉ tính "chơi hết" khi MỖI tay đánh được ≥ `minHitRate` số nốt của mình — một tay bỏ trống không thể
@@ -25,6 +28,7 @@
  */
 import type { Hand } from '../lessons/types';
 import type { RouteNote, RouteStep } from './route';
+import { holdEnough } from './durations';
 
 export type TimingMode = 'wait' | 'tempo';
 export type NoteSource = 'microphone' | 'virtual' | 'midi';
@@ -75,6 +79,10 @@ export interface HandMark {
   deviationMs: number | null;
   /** Nốt đã nhầm sang (để thống kê). */
   wrongMidis: number[];
+  /** Lúc thả phím (chỉ nguồn có Note Off). */
+  releaseTime: number | null;
+  /** Bước có trường độ: giữ đủ / nhả sớm / thả lúc đạp pedal (không đo); null = chưa thả hoặc không đo được (micro). */
+  hold: 'full' | 'short' | 'pedal' | null;
 }
 
 export interface StepRecord {
@@ -92,6 +100,8 @@ export interface StepRecord {
   closed: boolean;
   /** Giữ nhịp: thời điểm phách của bước. */
   beatTime: number | null;
+  /** Bước có trường độ cần chấm giữ phím (chế độ Trường độ). */
+  timed: boolean;
 }
 
 export interface RoundInfo {
@@ -129,7 +139,7 @@ export interface EngineState {
   readonly startedAt: number | null;
 }
 
-const EMPTY_MARK = (): HandMark => ({ hitTime: null, wrong: 0, uncertain: 0, timing: null, deviationMs: null, wrongMidis: [] });
+const EMPTY_MARK = (): HandMark => ({ hitTime: null, wrong: 0, uncertain: 0, timing: null, deviationMs: null, wrongMidis: [], releaseTime: null, hold: null });
 
 export class RainbowEngine {
   private state: EngineState;
@@ -144,6 +154,14 @@ export class RainbowEngine {
   private statusBeforePause: EngineStatus = 'playing';
   /** Giữ nhịp: mốc phách của bước 0 của vòng hiện tại. */
   private anchor = 0;
+  /** Số phách tính từ đầu lượt tới bước i (giữ nhịp với trường độ khác nhau). */
+  private readonly offsets: number[];
+  private readonly totalBeats: number;
+  /** Phím đang giữ → dấu của bước để chấm thời gian giữ khi thả. */
+  private readonly holds = new Map<number, { mark: HandMark; requiredMs: number | null }>();
+  private pedalDown = false;
+  /** Giữ nhịp: đếm vào tới phách này (bắt đầu / tiếp tục / vòng mới) — không phải mọi khoảng chờ trước nốt dài. */
+  private countTarget: { time: number; index: number } | null = null;
 
   constructor(
     private readonly steps: readonly RouteStep[],
@@ -154,6 +172,13 @@ export class RainbowEngine {
     if (steps.length === 0) throw new Error('Lượt phải có ít nhất một bước');
     this.config = { ...DEFAULT_ENGINE_CONFIG, ...config, rounds: Math.max(1, Math.floor(config.rounds ?? DEFAULT_ENGINE_CONFIG.rounds)) };
     this.held = new Set(heldKeys);
+    let acc = 0;
+    this.offsets = steps.map((s) => {
+      const at = acc;
+      acc += s.beats ?? 1;
+      return at;
+    });
+    this.totalBeats = acc;
     this.state = {
       status: 'ready',
       pauseReason: null,
@@ -204,6 +229,25 @@ export class RainbowEngine {
   get onTimeMs(): number {
     return this.config.onTimeMs ?? Math.min(200, Math.max(100, this.beatMs * 0.2));
   }
+  /** Nửa cửa sổ chấm của bước i (ms): ½ khoảng ngắn hơn trong hai khoảng kề, tối đa ½ phách. */
+  halfWindow(i: number): number {
+    const own = this.steps[i].beats ?? 1;
+    const prev = i > 0 ? (this.steps[i - 1].beats ?? 1) : own;
+    return (Math.min(own, prev, 1) * this.beatMs) / 2;
+  }
+  /** Lệch tối đa vẫn là đúng nhịp ở bước i. */
+  onTimeAt(i: number): number {
+    return Math.min(this.onTimeMs, this.halfWindow(i) * 0.6);
+  }
+  /** Lần giữ phím gần nhất của tay ở vòng hiện tại (thanh giữ phím trên màn hình). */
+  lastHold(hand: Hand): { index: number; hitTime: number; releaseTime: number | null; requiredMs: number } | null {
+    const recs = this.roundRecords();
+    for (let i = recs.length - 1; i >= 0; i--) {
+      const m = recs[i].hands[hand];
+      if (m && m.hitTime !== null && this.steps[i].duration) return { index: i, hitTime: m.hitTime, releaseTime: m.releaseTime, requiredMs: (this.steps[i].beats ?? 1) * this.beatMs };
+    }
+    return null;
+  }
   /** Nốt còn chờ của bước hiện tại (rỗng khi không chơi). */
   pendingNotes(): RouteNote[] {
     const s = this.state;
@@ -216,8 +260,8 @@ export class RainbowEngine {
     if (this.config.timing !== 'tempo') return [];
     const recs = this.roundRecords();
     const open = Math.max(0, recs.findIndex((r) => !r.closed));
-    const first = this.anchor + (open - this.config.countInBeats) * this.beatMs;
-    const n = this.config.countInBeats + this.steps.length - open;
+    const first = this.anchor + (this.offsets[open] - this.config.countInBeats) * this.beatMs;
+    const n = this.config.countInBeats + Math.ceil(this.totalBeats - this.offsets[open] - 1e-9);
     return Array.from({ length: n }, (_, i) => first + i * this.beatMs);
   }
 
@@ -230,7 +274,7 @@ export class RainbowEngine {
     this.steps.forEach((step, index) => {
       const hands: Partial<Record<Hand, HandMark>> = {};
       for (const n of step.notes) hands[n.hand] = EMPTY_MARK();
-      this.records.push({ round, index, pos: step.pos, hands, spreadMs: null, together: null, closed: false, beatTime: null });
+      this.records.push({ round, index, pos: step.pos, hands, spreadMs: null, together: null, closed: false, beatTime: null, timed: !!step.duration });
     });
   }
 
@@ -244,7 +288,10 @@ export class RainbowEngine {
 
   private scheduleRound(anchor: number): void {
     this.anchor = anchor;
-    this.roundRecords().forEach((r, i) => (r.beatTime = anchor + i * this.beatMs));
+    const recs = this.roundRecords();
+    recs.forEach((r, i) => (r.beatTime = anchor + this.offsets[i] * this.beatMs));
+    const first = recs.find((r) => !r.closed);
+    this.countTarget = first ? { time: first.beatTime!, index: first.index } : null;
   }
 
   // ── Điều khiển ─────────────────────────────────────────────────
@@ -271,6 +318,7 @@ export class RainbowEngine {
     // Bỏ phần đánh dở của bước (sau khi tiếp tục phải đánh lại) — KHÔNG ghi lỗi.
     const open = this.config.timing === 'tempo' ? this.roundRecords().filter((r) => !r.closed) : [this.current()].filter((r) => r && !r.closed);
     for (const r of open) for (const m of Object.values(r.hands)) if (m) Object.assign(m, { hitTime: null, timing: null, deviationMs: null });
+    this.holds.clear();
     this.set({ status: 'paused', pauseReason: reason, handsDone: [], fixMidi: null, countdown: null });
   }
 
@@ -284,7 +332,7 @@ export class RainbowEngine {
       // Đếm vào lại; bước đang dở trở thành bước đầu sau đếm vào.
       const recs = this.roundRecords();
       const first = recs.findIndex((r) => !r.closed);
-      const anchor = time + this.config.countInBeats * this.beatMs - Math.max(0, first) * this.beatMs;
+      const anchor = time + (this.config.countInBeats - this.offsets[Math.max(0, first)]) * this.beatMs;
       this.scheduleRound(anchor);
       this.set({ status: 'count-in', pauseReason: null, countdown: this.config.countInBeats });
       this.tick(time);
@@ -309,13 +357,34 @@ export class RainbowEngine {
     }
   }
 
-  noteOff(midi: number): void {
+  /** Thả phím. `time` có → chấm thời gian giữ của bước có trường độ. */
+  noteOff(midi: number, time?: number): void {
     this.held.delete(midi);
+    const h = this.holds.get(midi);
+    this.holds.delete(midi);
+    if (!h || time === undefined || h.mark.hitTime === null) return;
+    h.mark.releaseTime = time;
+    if (h.requiredMs === null) return;
+    h.mark.hold = this.pedalDown ? 'pedal' : holdEnough(time - h.mark.hitTime, h.requiredMs) ? 'full' : 'short';
+    this.set({ lastEventTime: this.state.lastEventTime });
   }
 
-  /** Mất hết tín hiệu phím (rút đàn): coi như đã thả mọi phím. */
+  /** Pedal vang (chỉ đàn MIDI): thả phím lúc đang đạp không tính nhả sớm. */
+  setPedal(down: boolean): void {
+    this.pedalDown = down;
+  }
+
+  /** Mất hết tín hiệu phím (rút đàn): coi như đã thả mọi phím (không chấm giữ phím). */
   releaseAll(): void {
     this.held.clear();
+    this.holds.clear();
+  }
+
+  /** Ghi phím vừa đánh đúng để chấm thời gian giữ khi thả (micro không có Note Off → không ghi). */
+  private trackHold(midi: number, mark: HandMark, stepIndex: number, source: NoteSource): void {
+    if (source === 'microphone') return;
+    const step = this.steps[stepIndex];
+    this.holds.set(midi, { mark, requiredMs: step.duration ? (step.beats ?? 1) * this.beatMs : null });
   }
 
   tick(now: number): void {
@@ -328,8 +397,9 @@ export class RainbowEngine {
     if (s.status !== 'count-in' && s.status !== 'playing' && s.status !== 'celebrating') return;
     const recs = this.roundRecords();
     // Đếm vào (tới phách của bước đầu còn mở — sau tạm dừng là bước đang dở).
-    const ref = recs.find((r) => !r.closed)?.beatTime ?? this.anchor;
-    if (now < ref - this.beatMs / 2) {
+    const ct = this.countTarget;
+    if (ct && now < ct.time - this.halfWindow(ct.index)) {
+      const ref = ct.time;
       const beatsLeft = Math.ceil((ref - now) / this.beatMs - 1e-9);
       if (beatsLeft <= this.config.countInBeats) {
         if (s.status !== 'count-in' || s.countdown !== beatsLeft) this.set({ status: 'count-in', countdown: Math.max(1, beatsLeft) });
@@ -337,10 +407,9 @@ export class RainbowEngine {
       return;
     }
     // Đóng các bước đã hết cửa sổ → thiếu nốt.
-    const half = this.beatMs / 2;
     let changed = false;
     for (const r of recs) {
-      if (r.closed || r.beatTime === null || now <= r.beatTime + half) continue;
+      if (r.closed || r.beatTime === null || now <= r.beatTime + this.halfWindow(r.index)) continue;
       r.closed = true;
       changed = true;
       for (const m of Object.values(r.hands)) if (m && m.hitTime === null) m.timing = 'missed';
@@ -372,7 +441,7 @@ export class RainbowEngine {
       const round = s.round + 1;
       this.set({ round, roundsEnded, roundsComplete, index: 0, handsDone: [], status: 'celebrating', fixMidi: null });
       this.openRound(round);
-      this.scheduleRound(lastBeat + (1 + this.config.restBeats) * this.beatMs);
+      this.scheduleRound(lastBeat + ((this.steps.at(-1)?.beats ?? 1) + this.config.restBeats) * this.beatMs);
       return;
     }
     this.celebrateUntil = time + this.config.celebrateMs;
@@ -423,6 +492,7 @@ export class RainbowEngine {
       return 'repeat';
     }
     mark.hitTime = time;
+    this.trackHold(midi, mark, s.index, source);
     const handsDone = [...s.handsDone, target.hand];
     if (handsDone.length < step.notes.length) {
       this.set({ handsDone, lastOutcome: 'hit', lastMidi: midi, lastHand: target.hand, lastEventTime: time, fixMidi: s.fixMidi === midi ? null : s.fixMidi });
@@ -448,11 +518,10 @@ export class RainbowEngine {
 
   private tempoNote(midi: number, time: number, source: NoteSource): NoteOutcome {
     const recs = this.roundRecords();
-    const half = this.beatMs / 2;
     // Bước còn mở có cửa sổ chứa lúc này và có tay chờ đúng nốt này — chọn bước gần nhất.
     let best: { rec: StepRecord; note: RouteNote; dev: number } | null = null;
     for (const r of recs) {
-      if (r.closed || r.beatTime === null || Math.abs(time - r.beatTime) > half) continue;
+      if (r.closed || r.beatTime === null || Math.abs(time - r.beatTime) > this.halfWindow(r.index)) continue;
       const note = this.steps[r.index].notes.find((n) => n.midi === midi && r.hands[n.hand]!.hitTime === null);
       if (note && (!best || Math.abs(time - r.beatTime) < Math.abs(best.dev))) best = { rec: r, note, dev: time - r.beatTime };
     }
@@ -460,7 +529,8 @@ export class RainbowEngine {
       const mark = best.rec.hands[best.note.hand]!;
       mark.hitTime = time;
       mark.deviationMs = best.dev;
-      mark.timing = Math.abs(best.dev) <= this.onTimeMs ? 'on-time' : best.dev < 0 ? 'early' : 'late';
+      mark.timing = Math.abs(best.dev) <= this.onTimeAt(best.rec.index) ? 'on-time' : best.dev < 0 ? 'early' : 'late';
+      this.trackHold(midi, mark, best.rec.index, source);
       const marks = Object.values(best.rec.hands) as HandMark[];
       if (marks.length > 1 && marks.every((m) => m.hitTime !== null)) {
         const t = marks.map((m) => m.hitTime!);
@@ -480,7 +550,7 @@ export class RainbowEngine {
       return 'hit';
     }
     // Nốt không khớp: trong lúc đếm vào → bỏ qua; khi đang chạy → sai của bước có cửa sổ chứa lúc này.
-    const near = recs.find((r) => !r.closed && r.beatTime !== null && Math.abs(time - r.beatTime) <= half);
+    const near = recs.find((r) => !r.closed && r.beatTime !== null && Math.abs(time - r.beatTime) <= this.halfWindow(r.index));
     if (!near) {
       this.set({ lastOutcome: 'ignored', lastMidi: midi, lastEventTime: time });
       return 'ignored';

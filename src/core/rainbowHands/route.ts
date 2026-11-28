@@ -13,6 +13,7 @@
 import type { Finger, Hand } from '../lessons/types';
 import { exerciseById } from '../technique/catalog';
 import { LETTER_TO_SOLFEGE, midiToName } from '../music/notes';
+import { beatsOf, durationAt, type KidDuration, type RhythmPatternId } from './durations';
 
 export type RainbowPath = 'up' | 'down' | 'round';
 export type HandSet = 'left' | 'right' | 'both';
@@ -61,6 +62,10 @@ export interface RouteStep {
   motion: Motion;
   /** Một nốt (một tay) hoặc hai nốt (tay trái trước, tay phải sau). */
   notes: RouteNote[];
+  /** Chế độ Trường độ: trường độ của bước (không có = nốt đen, không chấm giữ phím). */
+  duration?: KidDuration;
+  /** Số phách của bước (giữ nhịp: khoảng tới bước sau). */
+  beats: number;
 }
 
 export interface RouteOptions {
@@ -68,6 +73,8 @@ export interface RouteOptions {
   path: RainbowPath;
   starts: Record<Hand, number>;
   motion?: Motion;
+  /** Mẫu tiết tấu (chế độ Trường độ). */
+  rhythm?: RhythmPatternId;
 }
 
 /** Các vị trí của một lượt theo kiểu đường đi. */
@@ -130,9 +137,11 @@ export function noteAt(hand: Hand, pos: number, start: number, motion: Motion = 
   return { hand, degree, name: noteNameAt(hand, pos, motion), start, midi: start + MAJOR_OFFSETS[degree], finger: verifiedFingers(motion)[hand][pos] };
 }
 
-export function stepAt(pos: number, opts: Pick<RouteOptions, 'hands' | 'starts' | 'motion'>): RouteStep {
+export function stepAt(pos: number, opts: Pick<RouteOptions, 'hands' | 'starts' | 'motion'>, duration?: KidDuration): RouteStep {
   return {
     pos,
+    ...(duration ? { duration } : {}),
+    beats: beatsOf(duration),
     direction: pos < TURN_POS ? 'up' : pos === TURN_POS ? 'turn' : 'down',
     motion: opts.motion ?? 'parallel',
     notes: handsOf(opts.hands).map((h) => noteAt(h, pos, opts.starts[h], opts.motion)),
@@ -141,15 +150,15 @@ export function stepAt(pos: number, opts: Pick<RouteOptions, 'hands' | 'starts' 
 
 /** Các bước của MỘT lượt (một vòng / lên / xuống). */
 export function buildRoute(opts: RouteOptions): RouteStep[] {
-  return pathPositions(opts.path).map((pos) => stepAt(pos, opts));
+  return pathPositions(opts.path).map((pos, i) => stepAt(pos, opts, opts.rhythm ? durationAt(opts.rhythm, i) : undefined));
 }
 
 /** Các bước của một đoạn ngắn [from, to] (vị trí 0–14) — "Tập lại đoạn này". */
-export function buildSegment(from: number, to: number, opts: Pick<RouteOptions, 'hands' | 'starts' | 'motion'>): RouteStep[] {
+export function buildSegment(from: number, to: number, opts: Pick<RouteOptions, 'hands' | 'starts' | 'motion' | 'rhythm'>): RouteStep[] {
   const a = Math.max(0, Math.min(from, to));
   const b = Math.min(ROUND_POSITIONS - 1, Math.max(from, to));
   const out: RouteStep[] = [];
-  for (let p = a; p <= b; p++) out.push(stepAt(p, opts));
+  for (let p = a; p <= b; p++) out.push(stepAt(p, opts, opts.rhythm ? durationAt(opts.rhythm, p - a) : undefined));
   return out;
 }
 
