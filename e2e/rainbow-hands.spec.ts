@@ -187,6 +187,14 @@ test('đàn MIDI rút dây giữa chừng → tạm dừng "Mất kết nối", 
   await expect(game(page)).toHaveAttribute('data-status', 'playing');
   // Phần đánh dở bị bỏ: vẫn chờ cả hai nốt của bước 1.
   await expect(game(page)).toHaveAttribute('data-expected', '50,62');
+
+  // Có đàn MIDI → bàn phím ảo ẩn theo mặc định; bật "Hiện bàn phím ảo" ở Phần phụ huynh → hiện, không mở ván mới.
+  await expect(page.getByTestId('rainbow-keyboard')).toHaveCount(0);
+  await page.getByTestId('rainbow-open-settings').click();
+  await page.getByRole('switch', { name: 'Hiện bàn phím ảo' }).click();
+  await page.getByTestId('rainbow-close-modal').click();
+  await expect(page.getByTestId('rainbow-keyboard')).toBeVisible();
+  await expect(game(page)).toHaveAttribute('data-expected', '50,62');
 });
 
 test('hai tay ngược chiều: tay trái tự lùi xuống Đô2–Đô3 như bài mẫu, tay trái đi xuống khi tay phải đi lên; đủ vòng → tổng kết', async ({ page }) => {

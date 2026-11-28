@@ -45,6 +45,8 @@ export interface RainbowSettings {
   volume: EffectVolume;
   hints: HintLevel;
   fingers: boolean;
+  /** Hiện bàn phím ảo dưới màn chơi (mặc định ẩn). Không micro, không đàn MIDI → bàn phím ảo là nguồn nốt, luôn hiện. */
+  showKeyboard: boolean;
   /** Tiêu chí vòng đạt: độ chính xác mỗi tay. */
   passAccuracy: number;
   /** Giữ nhịp: tỉ lệ đúng nhịp mỗi tay để vòng đạt (và để gợi ý tăng tốc). */
@@ -64,6 +66,7 @@ export const DEFAULT_RAINBOW_SETTINGS: RainbowSettings = {
   volume: 'low',
   hints: 'full',
   fingers: true,
+  showKeyboard: false,
   passAccuracy: 0.8,
   passOnTime: 0.7,
 };
@@ -91,6 +94,7 @@ export function sanitizeSettings(raw: unknown): RainbowSettings {
     volume: pick(r.volume, ['off', 'low', 'mid'] as const, d.volume),
     hints: pick(r.hints, ['full', 'light', 'none'] as const, d.hints),
     fingers: typeof r.fingers === 'boolean' ? r.fingers : d.fingers,
+    showKeyboard: typeof r.showKeyboard === 'boolean' ? r.showKeyboard : d.showKeyboard,
     passAccuracy: pick(r.passAccuracy, PASS_CHOICES, 0.8 as (typeof PASS_CHOICES)[number]),
     passOnTime: pick(r.passOnTime, ON_TIME_CHOICES, 0.7 as (typeof ON_TIME_CHOICES)[number]),
   };

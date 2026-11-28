@@ -103,6 +103,9 @@ describe('Cài đặt + lưu theo hồ sơ', () => {
 
   it('cài đặt hỏng → mặc định; chế độ → kế hoạch dùng chung một engine', () => {
     expect(sanitizeSettings(null)).toEqual(DEFAULT_RAINBOW_SETTINGS);
+    expect(DEFAULT_RAINBOW_SETTINGS.showKeyboard).toBe(false);
+    expect(sanitizeSettings({ showKeyboard: true }).showKeyboard).toBe(true);
+    expect(sanitizeSettings({ showKeyboard: 'yes' }).showKeyboard).toBe(false);
     expect(sanitizeSettings({ mode: 'mirror', rounds: 7, starts: { left: 60, right: 72 }, bpm: 61 })).toMatchObject({ mode: 'steps', rounds: 3, starts: { left: 48, right: 72 }, bpm: 60 });
     expect(resolvePlan({ ...DEFAULT_RAINBOW_SETTINGS, mode: 'single', hand: 'left', path: 'up' })).toMatchObject({ hands: 'left', path: 'up', timing: 'wait' });
     expect(resolvePlan({ ...DEFAULT_RAINBOW_SETTINGS, mode: 'mountain', path: 'up' })).toMatchObject({ hands: 'both', path: 'round' });

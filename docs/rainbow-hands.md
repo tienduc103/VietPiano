@@ -91,6 +91,8 @@ Nhiệm vụ 1 / 3 / 5 vòng ở mọi chế độ. Xong nhiệm vụ → dừng
 Đầu trang: ← (thoát về Trò chơi) · tên · chế độ · "Vòng x/N" · Tạm dừng · Nghe mẫu · 🐢 Tập chậm · ⚙ Phần phụ huynh · ⛶.
 Giữa: cảnh cầu vồng (đá bước có tên nốt, hai nhân vật có nhãn TRÁI / PHẢI — không chỉ dựa vào màu) → thẻ bước (hướng lên / quay đầu /
 xuống, bước x/15, nốt + ngón + nốt tiếp của từng tay, lời nhắc ngắn cao cố định). Dưới: bàn phím đúng vùng đang tập.
+Bàn phím ảo **mặc định ẩn** (`showKeyboard` = false, Phần phụ huynh → "Hiện bàn phím ảo"; đổi không mở ván mới) để bé nhìn đàn thật.
+Không micro, không đàn MIDI → bàn phím ảo là nguồn nốt duy nhất nên luôn hiện (giống quy tắc Tự ẩn của màn Luyện tập).
 Mức gợi ý: Đầy đủ (tô phím + chữ "T·Fa"/"P·Fa" + số ngón) / Vừa (tô nhạt) / Ít (chỉ phím cần sửa sau khi sai).
 Hiệu ứng âm thanh chỉ kêu khi xong vòng, âm lượng Tắt / Nhỏ / Vừa, **luôn tắt khi nghe bằng micro**. Nghe mẫu tạm dừng chấm.
 

@@ -303,7 +303,7 @@ export function RainbowHandsScreen() {
     const next = { ...settings, ...patch };
     saveRainbowSettings(profileId, next);
     setSettings(next);
-    const cosmetic = (['hints', 'fingers', 'volume', 'slow', 'passAccuracy', 'passOnTime'] as const).some((k) => k in patch) && Object.keys(patch).length === 1;
+    const cosmetic = (['hints', 'fingers', 'showKeyboard', 'volume', 'slow', 'passAccuracy', 'passOnTime'] as const).some((k) => k in patch) && Object.keys(patch).length === 1;
     if (!cosmetic) {
       setRetry(null);
       resumeAfterSettings.current = false;
@@ -338,6 +338,10 @@ export function RainbowHandsScreen() {
       return m % 12 === 0 ? midiToLabel(m, 'solfege') : '';
     },
   };
+
+  /** Bàn phím ảo: ẩn theo cài đặt, nhưng không micro + không đàn MIDI thì nó là nguồn nốt duy nhất → luôn hiện. */
+  const keyboardIsInput = !micRunning && !midiConnected;
+  const keyboardVisible = settings.showKeyboard || keyboardIsInput;
 
   const current = state.steps[Math.min(state.index, state.steps.length - 1)];
   const modeTitle = phase ? `🔁 ${phase.label}` : `${MODE_INFO[settings.mode].icon} ${MODE_INFO[settings.mode].label}`;
@@ -399,6 +403,7 @@ export function RainbowHandsScreen() {
         <StepPanel engine={engine} state={state} hands={hands} current={current} hints={settings.hints} fingers={settings.fingers} />
       </main>
 
+      {keyboardVisible ? (
       <div className="h-[26%] min-h-32 shrink-0 px-2 pt-1 pb-[calc(8px+env(safe-area-inset-bottom,0px))] sm:px-4" data-testid="rainbow-keyboard">
         <PianoKeyboard
           from={lo}
@@ -412,6 +417,7 @@ export function RainbowHandsScreen() {
           {...keyboard}
         />
       </div>
+      ) : null}
 
       {state.status === 'count-in' && state.countdown !== null && (
         <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center" data-testid="rainbow-countdown">
@@ -470,7 +476,7 @@ export function RainbowHandsScreen() {
         />
       )}
 
-      {modal === 'settings' && <SettingsModal settings={settings} micOnly={micOnly} onChange={updateSettings} onClose={closeModal} />}
+      {modal === 'settings' && <SettingsModal settings={settings} micOnly={micOnly} keyboardIsInput={keyboardIsInput} onChange={updateSettings} onClose={closeModal} />}
       {modal === 'stickers' && <StickerModal progress={progress} profileName={profile?.name ?? null} onClose={() => setModal(null)} />}
       {state.status === 'ready' && !modal && (
         <div className="absolute right-3 bottom-2 left-3 z-30">
@@ -852,7 +858,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function SettingsModal({ settings, micOnly, onChange, onClose }: { settings: RainbowSettings; micOnly: boolean; onChange: (p: Partial<RainbowSettings>) => void; onClose: () => void }) {
+function SettingsModal({ settings, micOnly, keyboardIsInput, onChange, onClose }: { settings: RainbowSettings; micOnly: boolean; keyboardIsInput: boolean; onChange: (p: Partial<RainbowSettings>) => void; onClose: () => void }) {
   const plan = resolvePlan(settings);
   const hands = handsOf(plan.hands);
   return (
@@ -936,6 +942,12 @@ function SettingsModal({ settings, micOnly, onChange, onClose }: { settings: Rai
       </Row>
       <p className="-mt-2 text-xs text-slate-500">Đầy đủ: tô phím + tên nốt + số ngón · Vừa: tô nhạt, không tên trên phím · Ít: chỉ tô phím cần sửa sau khi sai.</p>
       <Toggle checked={settings.fingers} onChange={(fingers) => onChange({ fingers })} label={`Hiện số ngón theo mẫu bài “${FINGERING_SOURCE[plan.motion].title}” (${FINGERING_SOURCE[plan.motion].id})`} />
+      <Toggle checked={settings.showKeyboard} onChange={(showKeyboard) => onChange({ showKeyboard })} label="Hiện bàn phím ảo" />
+      <p className="-mt-2 text-xs text-slate-500" data-testid="rainbow-keyboard-note">
+        {keyboardIsInput
+          ? 'Đang không có micro hay đàn MIDI → bàn phím ảo là nguồn nốt nên luôn hiện. Bật micro hoặc nối đàn MIDI thì bàn phím ảo ẩn theo cài đặt này.'
+          : 'Mặc định ẩn để bé nhìn đàn thật và cầu vồng. Bật lên nếu muốn xem phím cần bấm trên màn hình.'}
+      </p>
       <Row label="Âm lượng hiệu ứng">
         <Segmented
           value={settings.volume}
